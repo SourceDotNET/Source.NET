@@ -2594,7 +2594,7 @@ public static class MathLib
 		return vec_t.Lerp(System.Random.Shared.Next(), minVal, maxVal);
 	}
 	public static vec_t rand() {
-		return System.Random.Shared.Next();
+		return System.Random.Shared.Next((int)VALVE_RAND_MAX + 1);
 	}
 	public static void Random(ref this Vector3 v, vec_t minVal, vec_t maxVal) {
 		fltx4 rn = Vector128.Create(rand() / VALVE_RAND_MAX, rand() / VALVE_RAND_MAX, rand() / VALVE_RAND_MAX, 0);
