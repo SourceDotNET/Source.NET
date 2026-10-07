@@ -84,6 +84,7 @@ public struct Variant_t
 			case FT.PositionVector:
 				VecVal = Unsafe.As<T, Vector3>(ref value);
 				break;
+			case FT.Input: this = Unsafe.As<T, Variant_t>(ref value); break;
 #if CLIENT_DLL || GAME_DLL
 			case FT.EHandle: EntVal = Unsafe.As<T, Handle<BaseEntity>>(ref value); break;
 #endif
