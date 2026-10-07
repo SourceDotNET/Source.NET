@@ -189,7 +189,7 @@ internal class EngineServer(Cbuf Cbuf, Host Host) : IEngineServer
 	}
 
 	public void ClearSaveDir() {
-		throw new NotImplementedException();
+		// todo saverestore.ClearSaveDir();
 	}
 
 	public void ClearSaveDirAfterClientLoad() {
