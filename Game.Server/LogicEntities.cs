@@ -771,7 +771,8 @@ public class MultiSource : LogicalEntity
 
 		// CONSIDER: a Use input to the multisource always toggles.  Could check useType for ON/OFF/TOGGLE
 
-		rgTriggered[i - 1] ^= 1;
+		if (i > 0)
+			rgTriggered[i - 1] ^= 1;
 
 		if (IsTriggered(activator)) {
 			DevMsg(2, $"Multisource {GetDebugName()} enabled ({Total} inputs)\n");
