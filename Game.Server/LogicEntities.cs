@@ -1572,7 +1572,7 @@ public class LogicAutosave : LogicalEntity
 		if (TriggerSave.AutoSaveDangerousTime != 0.0f && TriggerSave.AutoSaveDangerousTime >= gpGlobals.CurTime) {
 			// A previous dangerous auto save was waiting to become safe
 
-			if (player!.GetDeathTime() == 0.0f || player.GetDeathTime() > gpGlobals.CurTime) {
+			if (player != null && (player.GetDeathTime() == 0.0f || player.GetDeathTime() > gpGlobals.CurTime)) {
 				// The player isn't dead, so make the dangerous auto save safe
 				engine.ServerCommand("autosavedangerousissafe\n");
 			}
@@ -1581,7 +1581,7 @@ public class LogicAutosave : LogicalEntity
 		if (ForceNewLevelUnit)
 			engine.ClearSaveDir();
 
-		if (player!.GetHealth() >= MinHitPoints) {
+		if (player != null && player.GetHealth() >= MinHitPoints) {
 			engine.ServerCommand("autosavedangerous\n");
 			TriggerSave.AutoSaveDangerousTime = gpGlobals.CurTime + inputdata.Value.Float();
 
