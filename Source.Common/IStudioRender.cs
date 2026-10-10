@@ -101,6 +101,7 @@ public interface IStudioRender {
 	void UnloadModel(StudioHWData hardwareData);
 
 	int GetMaterialList(StudioHeader studioHDR, Span<IMaterial> materials);
+	int GetMaterialListFromBodyAndSkin(MDLHandle_t studio, int skin, int body, Span<IMaterial> outputMaterials);
 	Span<Matrix3x4> LockBoneMatrices(int boneCount);
 	void UnlockBoneMatrices();
 	void LockFlexWeights(int weightCount, out Span<float> flexWeights);
