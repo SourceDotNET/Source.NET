@@ -25,9 +25,13 @@ public class FloatInput {
 				}
 
 				// Look for array specification...
-				Span<char> pTemp = stackalloc char[256];
-				// TODO ^^^^^^^^^^^^^^^
-				FloatVecComp = -1;
+				int bracket = varName.IndexOf('[');
+				if (bracket >= 0) {
+					FloatVecComp = ParseVecComp(varName[(bracket + 1)..]);
+					varName = varName[..bracket];
+				}
+				else
+					FloatVecComp = -1;
 
 				bool foundVar;
 				FloatVar = material.FindVar(varName, out foundVar, true);
@@ -43,6 +47,15 @@ public class FloatInput {
 		}
 
 		return true;
+	}
+
+	public static int ParseVecComp(ReadOnlySpan<char> str) {
+		int end = 0;
+		if (end < str.Length && (str[end] == '-' || str[end] == '+'))
+			end++;
+		while (end < str.Length && char.IsAsciiDigit(str[end]))
+			end++;
+		return int.TryParse(str[..end], out int value) ? value : 0;
 	}
 
 	public float GetFloat(){
@@ -73,10 +86,10 @@ public abstract class ResultProxy : IMaterialProxy
 		if (result.IsEmpty)
 			return false;
 
-		Span<char> temp = stackalloc char[256];
-		if (result.Contains('[')) {
-			// todo
-			ResultVecComp = -1;
+		int bracket = result.IndexOf('[');
+		if (bracket >= 0) {
+			ResultVecComp = FloatInput.ParseVecComp(result[(bracket + 1)..]);
+			result = result[..bracket];
 		}
 		else
 			ResultVecComp = -1;
