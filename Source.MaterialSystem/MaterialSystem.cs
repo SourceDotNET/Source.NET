@@ -62,8 +62,8 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 
 	readonly static ConVar mat_vsync = new("mat_vsync", "0", 0, "Force sync to vertical retrace", 0, 1);
 	readonly static ConVar mat_forcehardwaresync = new(IsPC() ? "1" : "0", 0);
-	readonly static ConVar mat_trilinear = new("0", 0);
-	readonly static ConVar mat_forceaniso = new("1", FCvar.Archive); // 0 = Bilinear, 1 = Trilinear, 2+ = Aniso
+	readonly static ConVar mat_trilinear = new("1", 0);
+	readonly static ConVar mat_forceaniso = new("16", FCvar.Archive); // 0 = Bilinear, 1 = Trilinear, 2+ = Aniso
 	readonly static ConVar mat_filterlightmaps = new("1", 0);
 	readonly static ConVar mat_filtertextures = new("1", 0);
 	readonly static ConVar mat_mipmaptextures = new("1", 0);
@@ -303,6 +303,9 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 		if (reloadMaterials)
 			ReloadMaterials();
 
+		if (resetAnisotropy)
+			ShaderAPI.SetAnisotropicLevel(config.ForceAnisotropicLevel);
+
 		if (redownloadTextures) {
 			if (ShaderAPI.CanDownloadTextures()) {
 				TextureSystem.RestoreRenderTargets();
@@ -310,15 +313,12 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 			}
 		}
 		else if (resetTextureFilter) {
-			// TextureSystem.ResetTextureFilteringState();
+			TextureSystem.ResetTextureFilteringState();
 		}
 
 		// Recompute all state snapshots
 		if (recomputeSnapshots)
 			RecomputeAllStateSnapshots();
-
-		// if (resetAnisotropy)
-		// ShaderAPI.SetAnisotropicLevel(config.ForceAnisotropicLevel);
 
 		// if (setStandardVertexShaderConstants)
 		// ShaderAPI.SetStandardVertexShaderConstants(IMaterialSystem.OVERBRIGHT);

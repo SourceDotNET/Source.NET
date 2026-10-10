@@ -27,6 +27,7 @@ public interface ITextureInternal : ITexture
 	void Bind(Sampler sampler, int frame);
 	int GetTextureHandle(int frame, int textureChannel = 0);
 	void OnRestore();
+	void SetFilteringAndClampingMode(bool onlyLodValues = false);
 	void Precache();
 	bool SetRenderTarget(int rt, ITexture? depthTexture = null);
 	void CopyFrameBufferToMe(int renderTargetID = 0, Rectangle? srcRect = null, Rectangle? dstRect = null);
@@ -77,6 +78,7 @@ file sealed class EnvCubemapSentinel : ITextureInternal
 	public void Bind(Sampler sampler, int frame) => throw new NotSupportedException();
 	public int GetTextureHandle(int v) => throw new NotSupportedException();
 	public void OnRestore() => throw new NotSupportedException();
+	public void SetFilteringAndClampingMode(bool onlyLodValues = false) => throw new NotSupportedException();
 	public void Precache() => throw new NotSupportedException();
 	public bool SetRenderTarget(int rt, ITexture? depthTexture = null) => throw new NotSupportedException();
 	public void GetReflectivity(out Vector3 reflectivity) => throw new NotSupportedException();

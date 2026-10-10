@@ -1142,7 +1142,7 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 		WriteMaterialSystemConfigToRegistry(MaterialSystemConfig);
 	}
 
-	static void UpdateMaterialSystemConfig() {
+	internal static void UpdateMaterialSystemConfig() {
 		if (host_state.WorldBrush != null && host_state.WorldBrush.LightData?.Length == 0)
 			mat_fullbright.SetValue(1);
 

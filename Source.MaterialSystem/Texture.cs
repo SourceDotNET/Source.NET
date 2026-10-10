@@ -328,7 +328,7 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 		ActualDimensionLimit = DesiredDimensionLimit;
 	}
 
-	private void SetFilteringAndClampingMode(bool onlyLodValues = false) {
+	public void SetFilteringAndClampingMode(bool onlyLodValues = false) {
 		if (!HasBeenAllocated())
 			return;
 

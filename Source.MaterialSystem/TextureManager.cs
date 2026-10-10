@@ -161,6 +161,11 @@ public class TextureManager : ITextureManager
 				RestoreTexture(tex.Value);
 	}
 
+	internal void ResetTextureFilteringState() {
+		foreach (var tex in TextureList)
+			tex.Value.SetFilteringAndClampingMode();
+	}
+
 	internal void AllocateStandardRenderTargets() {
 		MaterialSystem.BeginRenderTargetAllocation();
 		MaterialSystem.EndRenderTargetAllocation();

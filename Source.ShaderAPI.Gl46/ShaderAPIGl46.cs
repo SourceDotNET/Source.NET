@@ -1757,7 +1757,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 				glSamplerParameteri(samplerObject, GL_TEXTURE_MIN_FILTER, mipped ? GL_NEAREST_MIPMAP_LINEAR : GL_NEAREST);
 				break;
 			case 3:
-				glSamplerParameterf(samplerObject, GL_TEXTURE_MAX_ANISOTROPY, HardwareConfig.MaximumAnisotropicLevel());
+				glSamplerParameterf(samplerObject, GL_TEXTURE_MAX_ANISOTROPY, AnisotropicLevel);
 				glSamplerParameteri(samplerObject, GL_TEXTURE_MIN_FILTER, mipped ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
 				break;
 			default:
@@ -2640,7 +2640,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 				break;
 			case TexFilterMode.Anisotropic:
-				glTextureParameterf(GetModifyTexture(), GL_TEXTURE_MAX_ANISOTROPY, HardwareConfig.MaximumAnisotropicLevel());
+				glTextureParameterf(GetModifyTexture(), GL_TEXTURE_MAX_ANISOTROPY, AnisotropicLevel);
 				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 				break;
 			default:
@@ -2670,7 +2670,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 				break;
 			case TexFilterMode.Anisotropic:
 				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTextureParameterf(GetModifyTexture(), GL_TEXTURE_MAX_ANISOTROPY_EXT, 16.0f);
+				glTextureParameterf(GetModifyTexture(), GL_TEXTURE_MAX_ANISOTROPY_EXT, AnisotropicLevel);
 				break;
 			default:
 				break;
@@ -3251,8 +3251,13 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		throw new NotImplementedException("Incomplete port of IShaderAPI");
 	}
 
+	int AnisotropicLevel = 1;
 	public void SetAnisotropicLevel(int anisotropyLevel) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		int maxAnisotropy = HardwareConfig.MaximumAnisotropicLevel();
+		if (anisotropyLevel > maxAnisotropy || anisotropyLevel <= 1)
+			anisotropyLevel = Math.Max(2, Math.Min(8, maxAnisotropy / 4));
+
+		AnisotropicLevel = anisotropyLevel;
 	}
 
 	public void SetClipPlane(int index, ReadOnlySpan<float> plane) {

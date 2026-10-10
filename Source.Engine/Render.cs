@@ -330,6 +330,8 @@ public partial class Render(
 			g_ShadowMgr.LevelInit(host_state.WorldBrush!.NumSurfaces);
 		}
 
+		UpdateMaterialSystemConfig();
+
 		LoadWorldGeometry();
 
 		Surface_LevelInit();
