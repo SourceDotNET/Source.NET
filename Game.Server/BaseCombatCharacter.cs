@@ -1,10 +1,11 @@
-﻿using Game.Shared;
+using Game.Shared;
 
 using Source;
 using Source.Common;
 using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Formats.BSP;
+using Source.Common.Mathematics;
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -284,7 +285,158 @@ public partial class BaseCombatCharacter : BaseFlex
 			ActiveWeapon.Get()!.Operator_FrameUpdate(this);
 	}
 
-	public BaseCombatWeapon? Weapon_Create(ReadOnlySpan<char> weaponName) => throw new NotImplementedException();
+	public virtual void Weapon_HandleAnimEvent(ref AnimEvent animEvent) {
+		if (ActiveWeapon.Get() != null)
+			ActiveWeapon.Get()!.Operator_HandleAnimEvent(ref animEvent, this);
+	}
+
+	public static readonly ConVar ai_show_hull_attacks = new("ai_show_hull_attacks", "0");
+
+	public virtual BaseEntity? CheckTraceHullAttack(float dist, in Vector3 mins, in Vector3 maxs, float damage, DamageType dmgType, float forceScale = 1.0f, bool damageAnyNPC = false) {
+		MathLib.AngleVectors(GetAbsAngles(), out Vector3 forward);
+		Vector3 start = GetAbsOrigin();
+
+		float verticalOffset = WorldAlignSize().Z * 0.5f;
+
+		if (verticalOffset < maxs.Z)
+			verticalOffset = maxs.Z + 1.0f;
+
+		start.Z += verticalOffset;
+		Vector3 end = start + (forward * dist);
+		return CheckTraceHullAttack(start, end, mins, maxs, damage, dmgType, forceScale, damageAnyNPC);
+	}
+
+	public virtual BaseEntity? CheckTraceHullAttack(in Vector3 start, in Vector3 end, in Vector3 mins, in Vector3 maxs, float damage, DamageType dmgType, float forceScale = 1.0f, bool damageAnyNPC = false) {
+		if (ai_show_hull_attacks.GetBool()) {
+			float length = (end - start).Length();
+			Vector3 direction = end - start;
+			MathLib.VectorNormalize(ref direction);
+			Vector3 hullMaxs = maxs;
+			hullMaxs.X = length + hullMaxs.X;
+			DebugOverlay.BoxDirection(start, mins, hullMaxs, direction, 100, 255, 255, 20, 1.0f);
+			DebugOverlay.BoxDirection(start, mins, maxs, direction, 255, 0, 0, 20, 1.0f);
+		}
+
+		TakeDamageInfo dmgInfo = new(this, this, damage, dmgType);
+
+		TraceFilterMelee traceFilter = new(this, Source.CollisionGroup.Projectile, dmgInfo, forceScale, damageAnyNPC);
+
+		Ray ray = default;
+		ray.Init(start, end, mins, maxs);
+
+		enginetrace.TraceRay(in ray, Mask.ShotHull, ref traceFilter, out Trace tr);
+
+		BaseEntity? entity = traceFilter.Hit;
+
+		if (entity == null) {
+			Vector3 topCenter = GetAbsOrigin();
+			CollisionProp().WorldSpaceAABB(out _, out Vector3 aabbMaxs);
+			topCenter.Z = aabbMaxs.Z + 1.0f;
+
+			ray.Init(topCenter, end, mins, maxs);
+			enginetrace.TraceRay(in ray, Mask.ShotHull, ref traceFilter, out tr);
+
+			entity = traceFilter.Hit;
+		}
+
+		if (entity != null && !entity.CanBeHitByMeleeAttack(this))
+			entity = null;
+
+		return entity;
+	}
+
+	public bool Weapon_IsOnGround(BaseCombatWeapon weapon) {
+		if (weapon.IsConstrained())
+			return false;
+
+		if (MathF.Abs(weapon.WorldSpaceCenter().Z - GetAbsOrigin().Z) >= 12.0f)
+			return false;
+
+		return true;
+	}
+
+	public BaseEntity? Weapon_FindUsable(in Vector3 range) {
+		bool conservative = false;
+
+#if HL2_DLL
+		if (hl2_episodic.GetBool() && GetActiveWeapon() == null) {
+			if (Classify() != Class_T.PlayerAllyVital)
+				conservative = true;
+		}
+#endif
+
+		Span<BaseCombatWeapon?> weaponList = new BaseCombatWeapon?[64];
+		BaseCombatWeapon? bestWeapon = null;
+
+		Vector3 mins = GetAbsOrigin() - range;
+		Vector3 maxs = GetAbsOrigin() + range;
+		int listCount = BaseCombatWeapon.GetAvailableWeaponsInBox(weaponList, mins, maxs);
+
+		float bestDist = 1e6f;
+
+		for (int i = 0; i < listCount; i++) {
+			BaseCombatWeapon weapon = weaponList[i]!;
+			weapon.GetVelocity(out Vector3 velocity, out _);
+
+			if (weapon.CanBePickedUpByNPCs() == false)
+				continue;
+
+			if (velocity.LengthSquared() > 1 || !Weapon_CanUse(weapon))
+				continue;
+
+			if (weapon.IsLocked(this))
+				continue;
+
+			if (GetActiveWeapon() != null) {
+				if (GetActiveWeapon()!.GetClassname().Equals(weapon.GetClassname(), StringComparison.Ordinal))
+					continue;
+
+				if (FClassnameIs(weapon, "weapon_pistol"))
+					continue;
+			}
+
+			float curDist = (weapon.GetLocalOrigin() - GetLocalOrigin()).Length();
+
+			if (weapon.HasSpawnFlags(BaseCombatWeapon.SF_WEAPON_NO_PLAYER_PICKUP))
+				curDist *= 0.5f;
+
+			if (bestWeapon != null) {
+				if (FClassnameIs(weapon, "weapon_ar2"))
+					curDist *= 0.5f;
+
+				if ((weapon.CapabilitiesGet() & (Capability.WeaponRangeAttack1 | Capability.WeaponRangeAttack2)) == 0)
+					continue;
+				else if (curDist > bestDist)
+					continue;
+			}
+
+			if (Weapon_IsOnGround(weapon)) {
+				Vector3 aboveWeapon = weapon.GetAbsOrigin();
+				TraceFilterSimple filter = new(weapon, Source.CollisionGroup.None);
+				Util.TraceEntity(this, aboveWeapon, aboveWeapon + new Vector3(0, 0, 1), Mask.Solid, ref filter, out Trace tr);
+
+				if (tr.StartSolid || (tr.Fraction < 1.0))
+					continue;
+			}
+			else if (conservative)
+				continue;
+
+			if (FVisible(weapon)) {
+				bestDist = curDist;
+				bestWeapon = weapon;
+			}
+		}
+
+		bestWeapon?.Lock(2.0, this);
+
+		return bestWeapon;
+	}
+
+	public BaseCombatWeapon? Weapon_Create(ReadOnlySpan<char> weaponName) {
+		BaseCombatWeapon? weapon = (BaseCombatWeapon?)Create(weaponName, GetLocalOrigin(), GetLocalAngles(), this);
+
+		return weapon;
+	}
 	public virtual void Weapon_Equip(BaseCombatWeapon weapon) {
 		for (int i = 0; i < MAX_WEAPONS; i++) {
 			if (MyWeapons[i].Get() == null) {
@@ -461,4 +613,68 @@ public partial class BaseCombatCharacter : BaseFlex
 			return weapon.GetBulletSpread(GetCurrentWeaponProficiency());
 		return VECTOR_CONE_15DEGREES;
 	}
+}
+
+public struct TraceFilterMelee(IHandleEntity? passentity, CollisionGroup collisionGroup, TakeDamageInfo dmgInfo, float forceScale, bool damageAnyNPC) : ITraceFilter
+{
+	public IHandleEntity? PassEnt = passentity;
+	public CollisionGroup CollisionGroup = collisionGroup;
+	public TakeDamageInfo DmgInfo = dmgInfo;
+	public BaseEntity? Hit;
+	public float ForceScale = forceScale;
+	public bool DamageAnyNPC = damageAnyNPC;
+
+	public bool ShouldHitEntity(IHandleEntity handleEntity, Contents contentsMask) {
+		if (!StandardFilterRules(handleEntity, contentsMask))
+			return false;
+
+		if (!PassServerEntityFilter(handleEntity, PassEnt))
+			return false;
+
+		BaseEntity? entity = EntityFromEntityHandle(handleEntity);
+
+		if (entity != null) {
+			if (!entity.ShouldCollide(CollisionGroup, contentsMask))
+				return false;
+
+			if (!g_pGameRules.ShouldCollide(CollisionGroup, entity.GetCollisionGroup()))
+				return false;
+
+			if (entity.m_takedamage == (byte)Damage.No)
+				return false;
+
+			Vector3 attackDir = entity.WorldSpaceCenter() - DmgInfo.GetAttacker()!.WorldSpaceCenter();
+			MathLib.VectorNormalize(ref attackDir);
+
+			TakeDamageInfo info = DmgInfo;
+			CalculateMeleeDamageForce(ref info, attackDir, info.GetAttacker()!.WorldSpaceCenter(), ForceScale);
+
+			BaseCombatCharacter? bcc = ToBaseCombatCharacter(info.GetAttacker());
+			BaseCombatCharacter? victimBCC = ToBaseCombatCharacter(entity);
+
+			if (bcc != null && victimBCC != null) {
+				if (DamageAnyNPC || bcc.IRelationType(entity) == Disposition.HT) {
+					if (info.GetDamage() != 0)
+						entity.TakeDamage(info);
+
+					SoundEnt.InsertSound(SoundInstanceType.Combat, info.GetDamagePosition(), 200, 0.2f, info.GetAttacker());
+
+					Hit = entity;
+					return true;
+				}
+			}
+			else {
+				Hit = entity;
+
+				Pickup.ForcePlayerToDropThisObject(entity);
+
+				if (info.GetDamage() != 0)
+					entity.TakeDamage(info);
+			}
+		}
+
+		return false;
+	}
+
+	public readonly TraceType GetTraceType() => TraceType.EntitiesOnly;
 }

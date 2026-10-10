@@ -160,8 +160,10 @@ public partial class BaseAnimating : BaseEntity
 		// InitBoneControllers();
 		SetSequence(0);
 
-		// PopulatePoseParameters();
+		PopulatePoseParameters();
 	}
+
+	protected virtual void PopulatePoseParameters() { }
 
 	public void ResetSequence(int sequence) {
 		SetSequence(sequence);

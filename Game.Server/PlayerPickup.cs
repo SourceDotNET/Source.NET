@@ -1,6 +1,7 @@
 ﻿using Game.Server;
 
 using Source.Common.Mathematics;
+using Source.Common.Physics;
 
 using System.Numerics;
 
@@ -34,7 +35,24 @@ public enum PhysGunForce
 public static class Pickup
 {
 	public static void PlayerPickupObject(BasePlayer player, BaseEntity? obj) => throw new NotImplementedException();
-	public static void ForcePlayerToDropThisObject(BaseEntity? target) => throw new NotImplementedException();
+	public static void ForcePlayerToDropThisObject(BaseEntity? target) {
+		if (target == null)
+			return;
+
+		IPhysicsObject? physics = target.VPhysicsGetObject();
+
+		if (physics == null)
+			return;
+
+		if ((physics.GetGameFlags() & PhysicsFlags.PlayerHeld) != 0) {
+			for (int i = 1; i <= gpGlobals.MaxClients; i++) {
+				BasePlayer? player = Util.PlayerByIndex(i);
+				if (player == null)
+					return;
+				player.ForceDropOfCarriedPhysObjects(target);
+			}
+		}
+	}
 
 	public static void OnPhysGunDrop(BaseEntity? obj, BasePlayer player, PhysGunDrop reason) => throw new NotImplementedException();
 	public static void OnPhysGunPickup(BaseEntity? obj, BasePlayer player, PhysGunPickup reason = PhysGunPickup.PickedUpByCannon) => throw new NotImplementedException();

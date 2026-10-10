@@ -45,7 +45,11 @@ public static class WeaponParse
 	static readonly Dictionary<WEAPON_FILE_INFO_HANDLE, FileWeaponInfo> WeaponInfoDatabase = [];
 
 	public static int GetWeaponSoundFromString(ReadOnlySpan<char> str) {
-		throw new NotImplementedException();
+		for (WeaponSound i = WeaponSound.Empty; i < WeaponSound.Num; i++) {
+			if (stricmp(str, FileWeaponInfo.WeaponSoundCategories[(int)i]) == 0)
+				return (int)i;
+		}
+		return -1;
 	}
 
 	internal static void PrecacheFileWeaponInfoDatabase(IFileSystem filesystem) {
