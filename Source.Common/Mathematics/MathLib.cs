@@ -1660,6 +1660,51 @@ public static class MathLib
 		dst[2, 3] = z;
 	}
 
+	public static void MatrixBuildRotateZ(out Matrix4x4 dst, float angleDegrees) {
+		float radians = angleDegrees * (MathF.PI / 180.0f);
+
+		float fSin = MathF.Sin(radians);
+		float fCos = MathF.Cos(radians);
+
+		dst = default;
+		dst[0, 0] = fCos; dst[0, 1] = -fSin; dst[0, 2] = 0.0f; dst[0, 3] = 0.0f;
+		dst[1, 0] = fSin; dst[1, 1] = fCos; dst[1, 2] = 0.0f; dst[1, 3] = 0.0f;
+		dst[2, 0] = 0.0f; dst[2, 1] = 0.0f; dst[2, 2] = 1.0f; dst[2, 3] = 0.0f;
+		dst[3, 0] = 0.0f; dst[3, 1] = 0.0f; dst[3, 2] = 0.0f; dst[3, 3] = 1.0f;
+	}
+
+	public static void MatrixBuildRotationAboutAxis(out Matrix4x4 dst, in Vector3 axisOfRot, float angleDegrees) {
+		float radians = angleDegrees * (MathF.PI / 180.0f);
+		float fSin = MathF.Sin(radians);
+		float fCos = MathF.Cos(radians);
+
+		float axisXSquared = axisOfRot.X * axisOfRot.X;
+		float axisYSquared = axisOfRot.Y * axisOfRot.Y;
+		float axisZSquared = axisOfRot.Z * axisOfRot.Z;
+
+		dst = default;
+		dst[0, 0] = axisXSquared + (1 - axisXSquared) * fCos;
+		dst[1, 0] = axisOfRot.X * axisOfRot.Y * (1 - fCos) + axisOfRot.Z * fSin;
+		dst[2, 0] = axisOfRot.Z * axisOfRot.X * (1 - fCos) - axisOfRot.Y * fSin;
+
+		dst[0, 1] = axisOfRot.X * axisOfRot.Y * (1 - fCos) - axisOfRot.Z * fSin;
+		dst[1, 1] = axisYSquared + (1 - axisYSquared) * fCos;
+		dst[2, 1] = axisOfRot.Y * axisOfRot.Z * (1 - fCos) + axisOfRot.X * fSin;
+
+		dst[0, 2] = axisOfRot.Z * axisOfRot.X * (1 - fCos) + axisOfRot.Y * fSin;
+		dst[1, 2] = axisOfRot.Y * axisOfRot.Z * (1 - fCos) - axisOfRot.X * fSin;
+		dst[2, 2] = axisZSquared + (1 - axisZSquared) * fCos;
+
+		dst[0, 3] = 0;
+		dst[1, 3] = 0;
+		dst[2, 3] = 0;
+
+		dst[3, 0] = 0;
+		dst[3, 1] = 0;
+		dst[3, 2] = 0;
+		dst[3, 3] = 1;
+	}
+
 	public static void BasisToQuaternion(in Vector3 forward, in Vector3 right, in Vector3 up, out Quaternion q) {
 		Assert(MathF.Abs(forward.LengthSquared() - 1.0f) < 1e-3);
 		Assert(MathF.Abs(right.LengthSquared() - 1.0f) < 1e-3);

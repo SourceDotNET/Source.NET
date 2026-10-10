@@ -128,3 +128,53 @@ public abstract class ResultProxy : IMaterialProxy
 	protected IMaterialVar? Result;
 	protected int ResultVecComp;
 }
+
+public abstract class FunctionProxy : ResultProxy
+{
+	public override bool Init(IMaterial material, KeyValues keyValues) {
+		if (!base.Init(material, keyValues))
+			return false;
+
+		ReadOnlySpan<char> srcVar1 = keyValues.GetString("srcVar1");
+		if (srcVar1.IsEmpty)
+			return false;
+
+		bool foundVar;
+		Src1 = material.FindVar(srcVar1, out foundVar, true);
+		if (!foundVar)
+			return false;
+
+		ReadOnlySpan<char> srcVar2 = keyValues.GetString("srcVar2");
+		if (!srcVar2.IsEmpty) {
+			Src2 = material.FindVar(srcVar2, out foundVar, true);
+			if (!foundVar)
+				return false;
+		}
+		else
+			Src2 = null;
+
+		return true;
+	}
+
+	protected void ComputeResultType(out MaterialVarType resultType, ref int vecSize) {
+		resultType = Result!.GetVarType();
+		if (resultType == MaterialVarType.Vector) {
+			if (ResultVecComp >= 0)
+				resultType = MaterialVarType.Float;
+			vecSize = Result.VectorSize();
+		}
+		else if (resultType == MaterialVarType.Undefined) {
+			resultType = Src1!.GetVarType();
+			if (resultType == MaterialVarType.Vector)
+				vecSize = Src1.VectorSize();
+			else if ((resultType == MaterialVarType.Undefined) && Src2 != null) {
+				resultType = Src2.GetVarType();
+				if (resultType == MaterialVarType.Vector)
+					vecSize = Src2.VectorSize();
+			}
+		}
+	}
+
+	protected IMaterialVar? Src1;
+	protected IMaterialVar? Src2;
+}

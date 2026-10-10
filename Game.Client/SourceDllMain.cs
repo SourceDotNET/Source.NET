@@ -79,6 +79,7 @@ public static class SourceDllMain
 	[Dependency] public static IVDebugOverlay debugoverlay { get; private set; } = null!;
 	[Dependency] public static IClientLeafSystem clientLeafSystem { get; private set; } = null!;
 	[Dependency] public static IUniformRandomStream random { get; private set; } = null!;
+	public static readonly GaussianRandomStream randomgaussian = new();
 	[Dependency] public static IPredictableList predictables { get; private set; } = null!;
 	[Dependency] public static ILocalize localize { get; private set; } = null!;
 	[Dependency] public static IViewEffects vieweffects { get; private set; } = null!;

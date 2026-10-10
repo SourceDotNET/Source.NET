@@ -130,6 +130,8 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 	}
 
 	public bool Init() {
+		randomgaussian.AttachToStream(random);
+
 #if GMOD_DLL
 		get.IntroScreen()!.Start();
 		get.IntroScreen()!.Update("Start", true);
