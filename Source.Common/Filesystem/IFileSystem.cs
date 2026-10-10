@@ -124,9 +124,7 @@ public interface ISearchPath
 	ReadOnlySpan<char> GetPathString();
 	object? GetPackFile();
 	object? GetPackedStore();
-	void UnlockFinds();
-	void LockFinds(UtlSymbol wildcard, HashSet<ulong> foundAlready);
-	(string, bool)? FindAt(int index);
+	void PrepareFinds(List<string> files, List<string> dirs, string? wildcard);
 	PathGroupName GetGroupName();
 	void SetGroupName(PathGroupName name);
 	ReadOnlySpan<char> GetDiskPath();

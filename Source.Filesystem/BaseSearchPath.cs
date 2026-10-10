@@ -36,46 +36,5 @@ public abstract class BaseSearchPath : ISearchPath
 	public abstract object? GetPackFile();
 	public abstract object? GetPackedStore();
 
-	protected abstract void PrepareFinds(List<string> files, List<string> dirs, string? wildcard);
-
-	uint FindsIdx;
-	readonly List<string> files = [];
-	readonly List<string> dirs = [];
-	public void LockFinds(UtlSymbol wildcard, HashSet<UtlSymId_t> foundAlready) {
-		if (Interlocked.Increment(ref FindsIdx) == 1) {
-			// Prepare the find buffers...
-			// unfortunately requires a lock here.
-			lock (files)
-				lock (dirs) {
-					files.Clear();
-					dirs.Clear();
-					PrepareFinds(files, dirs, wildcard.String());
-					for (int i = dirs.Count - 1; i >= 0; i--)
-						if (!foundAlready.Add(dirs[i].Hash()))
-							dirs.RemoveAt(i);
-					for (int i = files.Count - 1; i >= 0; i--)
-						if (!foundAlready.Add(files[i].Hash()))
-							files.RemoveAt(i);
-				}
-
-		}
-	}
-	public void UnlockFinds() {
-		Interlocked.Decrement(ref FindsIdx);
-	}
-	public (string, bool)? FindAt(int index) {
-		if (Interlocked.CompareExchange(ref FindsIdx, 0, 0) == 0) {
-			AssertMsg(false, "Unlocked find attempt");
-			return null;
-		}
-
-		if (index >= files.Count) {
-			if (index >= (files.Count + dirs.Count))
-				return null;
-			else
-				return (dirs[index - files.Count], true);
-		}
-		else
-			return (files[index], false);
-	}
+	public abstract void PrepareFinds(List<string> files, List<string> dirs, string? wildcard);
 }

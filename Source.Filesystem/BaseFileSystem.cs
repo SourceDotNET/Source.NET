@@ -718,6 +718,8 @@ public partial class BaseFileSystem : IFileSystem
 		SearchPathCollection? currentCollection;
 		ISearchPath? currentPath;
 		HashSet<FileNameHandle_t>? foundAlready;
+		List<string>? files;
+		List<string>? dirs;
 #if GMOD_DLL
 		List<SearchFile>? addonFiles;
 #endif
@@ -752,6 +754,10 @@ public partial class BaseFileSystem : IFileSystem
 
 			foundAlready ??= [];
 			foundAlready.Clear();
+			files ??= [];
+			files.Clear();
+			dirs ??= [];
+			dirs.Clear();
 #if GMOD_DLL
 			addonFiles ??= [];
 			addonFiles.Clear();
@@ -761,62 +767,75 @@ public partial class BaseFileSystem : IFileSystem
 
 
 		public ReadOnlySpan<char> Next() {
-		findCollection:
-			if (currentCollection == null) {
-				currentCollection = PathID == 0
-					? system.SearchPaths.At(Interlocked.Increment(ref CollectionIdx))
-					: Interlocked.CompareExchange(ref ranAtLeastOnce, 1, 0) == 0
-					? (system.SearchPaths.TryGetValue(PathID.String().Hash(), out var found) ? found : null)
-						: null;
+			while (true) {
+				if (currentPath != null) {
+					var currentFile = FindAt(Interlocked.Increment(ref FileIdx));
+					if (currentFile.HasValue) {
+						IsDirectory = currentFile.Value.Item2;
+						return currentFile.Value.Item1;
+					}
+					currentPath = null;
+				}
 
 				if (currentCollection != null) {
-					// Reset these parts...
-					Interlocked.Exchange(ref FileIdx, -1);
-					Interlocked.Exchange(ref PathIdx, -1);
-					goto findPath; // We don't need to perform the next check
+					currentPath = currentCollection.AtSorted(Interlocked.Increment(ref PathIdx));
+					if (currentPath != null) {
+						PrepareFinds(currentPath);
+						Interlocked.Exchange(ref FileIdx, -1);
+						continue;
+					}
+					currentCollection = null;
 				}
-			}
-			if (currentCollection == null) {
+
+				currentCollection = NextCollection();
+				if (currentCollection == null) {
 #if GMOD_DLL
-				if (addonFiles!.Count != 0) {
-					SearchFile file = addonFiles[0];
-					addonFiles.RemoveAt(0);
-					IsDirectory = file.Folder;
-					return file.FileName;
-				}
+					if (addonFiles!.Count != 0) {
+						SearchFile file = addonFiles[0];
+						addonFiles.RemoveAt(0);
+						IsDirectory = file.Folder;
+						return file.FileName;
+					}
 #endif
-				return null; // Cannot continue.
-			}
-
-		findPath:
-			if (currentPath == null) {
-				// Find the next collection.
-				currentPath = currentCollection.AtSorted(Interlocked.Increment(ref PathIdx));
-
-				if (currentPath != null) {
-					currentPath.LockFinds(Wildcard, foundAlready!);
-					Interlocked.Exchange(ref FileIdx, -1);
-					// We don't need to perform the next check
-					goto findFileDir;
+					return null;
 				}
-			}
 
-			if (currentPath == null) {
-				// Search for a new collection?
-				currentCollection = null;
-				goto findCollection;
+				Interlocked.Exchange(ref FileIdx, -1);
+				Interlocked.Exchange(ref PathIdx, -1);
 			}
+		}
 
-		findFileDir:
-			var currentFile = currentPath.FindAt(Interlocked.Increment(ref FileIdx));
-			if (!currentFile.HasValue) {
-				// Search for a new path?
-				currentPath.UnlockFinds();
-				currentPath = null;
-				goto findPath;
+		SearchPathCollection? NextCollection() {
+			if (PathID == 0)
+				return system.SearchPaths.At(Interlocked.Increment(ref CollectionIdx));
+
+			if (Interlocked.CompareExchange(ref ranAtLeastOnce, 1, 0) == 0)
+				return system.SearchPaths.TryGetValue(PathID.String().Hash(), out var found) ? found : null;
+
+			return null;
+		}
+
+		void PrepareFinds(ISearchPath path) {
+			files!.Clear();
+			dirs!.Clear();
+			path.PrepareFinds(files, dirs, Wildcard.String());
+			for (int i = dirs.Count - 1; i >= 0; i--)
+				if (!foundAlready!.Add(dirs[i].Hash()))
+					dirs.RemoveAt(i);
+			for (int i = files.Count - 1; i >= 0; i--)
+				if (!foundAlready!.Add(files[i].Hash()))
+					files.RemoveAt(i);
+		}
+
+		readonly (string, bool)? FindAt(int index) {
+			if (index >= files!.Count) {
+				if (index >= (files.Count + dirs!.Count))
+					return null;
+				else
+					return (dirs[index - files.Count], true);
 			}
-			IsDirectory = currentFile.Value.Item2;
-			return currentFile.Value.Item1;
+			else
+				return (files[index], false);
 		}
 
 		public void Close() {
@@ -826,7 +845,6 @@ public partial class BaseFileSystem : IFileSystem
 				return;
 			}
 
-			currentPath?.UnlockFinds();
 			Locked = 0;
 			Reset();
 		}

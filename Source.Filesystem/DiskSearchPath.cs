@@ -168,7 +168,7 @@ public class DiskSearchPath : BaseSearchPath
 		return null;
 	}
 
-	protected override void PrepareFinds(List<string> files, List<string> dirs, string? wildcard) {
+	public override void PrepareFinds(List<string> files, List<string> dirs, string? wildcard) {
 		IEnumerable<string> fileSearch, dirSearch;
 
 		if (wildcard != null) {

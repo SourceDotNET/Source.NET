@@ -127,7 +127,7 @@ public class PackStoreSearchPath : BaseSearchPath
 		return DiskPath;
 	}
 
-	protected override void PrepareFinds(List<string> files, List<string> dirs, string? wildcard) {
+	public override void PrepareFinds(List<string> files, List<string> dirs, string? wildcard) {
 		ReadOnlySpan<char> wildcardDir = string.Empty, wildcardFile = string.Empty, wildcardExt = string.Empty;
 		wildcard?.FileInfo(null, out wildcardDir, out wildcardFile, out wildcardExt);
 

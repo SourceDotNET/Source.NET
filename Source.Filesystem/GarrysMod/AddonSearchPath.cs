@@ -32,7 +32,7 @@ public class AddonSearchPath : BaseSearchPath
 	public override object? GetPackFile() => null;
 	public override object? GetPackedStore() => null;
 
-	protected override void PrepareFinds(List<string> files, List<string> dirs, string? wildcard) {
+	public override void PrepareFinds(List<string> files, List<string> dirs, string? wildcard) {
 		List<SearchFile> results = [];
 		Addons.FindFirst(wildcard ?? "*", results, null);
 

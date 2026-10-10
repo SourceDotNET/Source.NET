@@ -109,7 +109,7 @@ public class ZipPackFileSearchPath : BaseSearchPath
 
 	public override ReadOnlySpan<char> GetPathString() => this.DiskPath;
 
-	protected override void PrepareFinds(List<string> files, List<string> dirs, string? wildcard) {
+	public override void PrepareFinds(List<string> files, List<string> dirs, string? wildcard) {
 		// TODO.
 	}
 }
