@@ -1297,9 +1297,8 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 		throw new NotImplementedException("Incomplete port of IMaterialSystem");
 	}
 
-	public MaterialThreadMode GetThreadMode() {
-		throw new NotImplementedException("Incomplete port of IMaterialSystem");
-	}
+	MaterialThreadMode ThreadMode = MaterialThreadMode.SingleThreaded;
+	public MaterialThreadMode GetThreadMode() => ThreadMode;
 
 	public ref readonly MaterialSystemHardwareIdentifier GetVideoCardIdentifier() {
 		throw new NotImplementedException("Incomplete port of IMaterialSystem");
