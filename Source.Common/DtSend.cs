@@ -807,9 +807,8 @@ public class SendTable : IDataTableBase<SendProp>
 		for (i = 0; i < table?.Props?.Length; i++) {
 			SendProp prop = table.Props![i];
 
-			if (prop.IsExcludeProp() || prop.IsInsideArray() || FindExcludeProp(table.GetName(), prop.GetName(), bhs.ExcludeProps!)) {
+			if (prop.IsExcludeProp() || prop.IsInsideArray() || FindExcludeProp(table.GetName(), prop.GetName(), bhs.ExcludeProps!.AsSpan()[..bhs.NumExcludeProps])) 
 				continue;
-			}
 
 			if (prop.GetPropType() == SendPropType.DataTable) {
 				if ((prop.GetFlags() & PropFlags.Collapsible) != 0) {
@@ -844,8 +843,8 @@ public class SendTable : IDataTableBase<SendProp>
 		}
 	}
 
-	private static bool FindExcludeProp(ReadOnlySpan<char> tableName, ReadOnlySpan<char> propName, ExcludeProp[]? excludeProps) {
-		for (int i = 0; i < excludeProps?.Length; i++) {
+	private static bool FindExcludeProp(ReadOnlySpan<char> tableName, ReadOnlySpan<char> propName, Span<ExcludeProp> excludeProps) {
+		for (int i = 0, c = excludeProps.Length; i < c; i++) {
 			if (tableName.Equals(excludeProps[i].TableName!, StringComparison.OrdinalIgnoreCase) && propName.Equals(excludeProps[i].PropName!, StringComparison.OrdinalIgnoreCase)) {
 				return true;
 			}

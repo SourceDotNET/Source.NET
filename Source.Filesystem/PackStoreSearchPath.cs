@@ -28,15 +28,86 @@ public class VpkFileHandle(IFileSystem filesystem, FileNameHandle_t fileName, Me
 
 public class PackStoreSearchPath : BaseSearchPath
 {
+	sealed class PackStore
+	{
+		public readonly string Key;
+		public readonly VpkArchive Vpk = new();
+		public readonly Dictionary<UtlSymId_t, VpkEntry> EntryLookups = [];
+		public readonly Dictionary<UtlSymId_t, VpkDirectory> DirectoryLookups = [];
+		public int References;
+
+		public PackStore(string key, string vpkPath) {
+			Key = key;
+			Vpk.Load(vpkPath);
+
+			int entryCount = 0;
+			foreach (var dir in Vpk.Directories)
+				entryCount += dir.Entries.Count;
+
+			DirectoryLookups.EnsureCapacity(Vpk.Directories.Count);
+			EntryLookups.EnsureCapacity(entryCount);
+
+			Span<char> buildPath = stackalloc char[260];
+			foreach (var dir in Vpk.Directories) {
+				DirectoryLookups[dir.Path.Hash()] = dir;
+
+				foreach (var entry in dir.Entries) {
+					var path = entry.Path.Replace('\\', '/');
+					var filename = entry.Filename;
+					var ext = entry.Extension;
+
+					int strlen = 0;
+					if (path.Length > 0 && path[0] != ' ') {
+						path.CopyTo(buildPath[strlen..]); strlen += path.Length;
+						buildPath[strlen] = '/'; strlen += 1;
+					}
+					filename.CopyTo(buildPath[strlen..]); strlen += filename.Length;
+					buildPath[strlen] = '.'; strlen += 1;
+					ext.CopyTo(buildPath[strlen..]); strlen += ext.Length;
+
+					ReadOnlySpan<char> finalSpan = buildPath[..strlen];
+					EntryLookups[finalSpan.Hash()] = entry;
+				}
+			}
+		}
+	}
+
+	static readonly Dictionary<string, PackStore> packStores = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
+	static PackStore AcquirePackStore(string vpkPath) {
+		string key = Path.GetFullPath(vpkPath);
+		lock (packStores) {
+			if (!packStores.TryGetValue(key, out PackStore? store)) {
+				store = new(key, vpkPath);
+				packStores[key] = store;
+			}
+
+			store.References++;
+			return store;
+		}
+	}
+
+	static void ReleasePackStore(PackStore store) {
+		lock (packStores) {
+			if (--store.References > 0)
+				return;
+
+			packStores.Remove(store.Key);
+		}
+
+		store.Vpk.Dispose();
+	}
+
 	private readonly IFileSystem parent;
-	private readonly VpkArchive vpk;
+	private readonly PackStore? store;
 	private readonly string VpkPath;
 
-	private Dictionary<UtlSymId_t, VpkEntry> vpkEntryLookups = [];
-	private Dictionary<UtlSymId_t, VpkDirectory> vpkDirectoryLookups = [];
+	private readonly Dictionary<UtlSymId_t, VpkEntry> vpkEntryLookups;
+	private readonly Dictionary<UtlSymId_t, VpkDirectory> vpkDirectoryLookups;
 
 	~PackStoreSearchPath(){
-		vpk.Dispose();
+		if (store != null)
+			ReleasePackStore(store);
 	}
 
 	public PackStoreSearchPath(IFileSystem filesystem, string absPath) {
@@ -46,31 +117,9 @@ public class PackStoreSearchPath : BaseSearchPath
 		absPath = $"{absPath}_dir.vpk";
 		VpkPath = absPath;
 		parent = filesystem;
-		vpk = new VpkArchive();
-		vpk.Load(absPath);
-
-		Span<char> buildPath = stackalloc char[260];
-		foreach (var dir in vpk.Directories) {
-			vpkDirectoryLookups[dir.Path.Hash()] = dir;
-
-			foreach (var entry in dir.Entries) {
-				var path = entry.Path.Replace('\\', '/');
-				var filename = entry.Filename;
-				var ext = entry.Extension;
-
-				int strlen = 0;
-				if (path.Length > 0 && path[0] != ' ') {
-					path.CopyTo(buildPath[strlen..]); strlen += path.Length;
-					buildPath[strlen] = '/'; strlen += 1;
-				}
-				filename.CopyTo(buildPath[strlen..]); strlen += filename.Length;
-				buildPath[strlen] = '.'; strlen += 1;
-				ext.CopyTo(buildPath[strlen..]); strlen += ext.Length;
-
-				ReadOnlySpan<char> finalSpan = buildPath[..strlen];
-				vpkEntryLookups[finalSpan.Hash()] = entry;
-			}
-		}
+		store = AcquirePackStore(absPath);
+		vpkEntryLookups = store.EntryLookups;
+		vpkDirectoryLookups = store.DirectoryLookups;
 
 		if (!Path.IsPathFullyQualified(absPath))
 			absPath = Path.GetFullPath(absPath);

@@ -101,6 +101,7 @@ public struct ExcludeProp
 public struct BuildHierarchyStruct
 {
 	public ExcludeProp[]? ExcludeProps;
+	public int NumExcludeProps;
 
 	public InlineArrayMaxTotalSendTableProps<SendProp> DataTableProps;
 	public int NumDataTableProps;

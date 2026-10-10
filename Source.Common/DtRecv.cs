@@ -526,7 +526,7 @@ public class SendTablePrecalc
 		// Now build the hierarchy.
 		BuildHierarchyStruct bhs = default;
 		bhs.ExcludeProps = excludeProps;
-		bhs.ExcludeProps = excludeProps;
+		bhs.NumExcludeProps = numExcludeProps;
 		bhs.NumProps = bhs.NumDataTableProps = 0;
 		bhs.PropProxies = 0;
 		SendTable.BuildHierarchy(GetRootNode(), table, ref bhs);

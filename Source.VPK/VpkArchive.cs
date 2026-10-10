@@ -21,9 +21,10 @@ namespace Source.VPK
 		}
 
 		public void Dispose() {
-			foreach (var part in Parts)
-				part.Dispose();
-			FileHandle.Dispose();
+			if (Parts != null)
+				foreach (var part in Parts)
+					part.Dispose();
+			FileHandle?.Dispose();
 		}
 
 		public void Load(string filename, VpkVersions.Versions version = VpkVersions.Versions.Any) {
@@ -32,75 +33,89 @@ namespace Source.VPK
 			if (IsMultiPart)
 				LoadParts(filename);
 
-			switch (version) {
-				case VpkVersions.Versions.Any:
-					// Try V2 first
-					_reader = new V2.VpkReaderV2(filename);
-					var hdr_anyv2 = _reader.ReadArchiveHeader();
-					if (!hdr_anyv2.Verify()) {
-						// Try V1
+			IVpkArchiveHeader header = null!;
+			try {
+				switch (version) {
+					case VpkVersions.Versions.Any:
+						// Try V2 first
+						_reader = new V2.VpkReaderV2(filename);
+						header = _reader.ReadArchiveHeader();
+						if (!header.Verify()) {
+							// Try V1
+							_reader.Dispose();
+							_reader = new VpkReaderV1(filename);
+
+							header = _reader.ReadArchiveHeader();
+							if (!header.Verify())
+								throw new ArchiveParsingException("Invalid archive header (tried V2, then V1)");
+						}
+						break;
+					case VpkVersions.Versions.V1:
 						_reader = new VpkReaderV1(filename);
 
-						var hdr_anyv1 = _reader.ReadArchiveHeader();
-						if (!hdr_anyv1.Verify())
-							throw new ArchiveParsingException("Invalid archive header (tried V2, then V1)");
-					}
-					break;
-				case VpkVersions.Versions.V1:
-					_reader = new VpkReaderV1(filename);
+						header = _reader.ReadArchiveHeader();
+						if (!header.Verify())
+							throw new ArchiveParsingException("Invalid V1 archive header");
+						break;
+					case VpkVersions.Versions.V2:
+						_reader = new V2.VpkReaderV2(filename);
 
-					var hdr_v1 = _reader.ReadArchiveHeader();
-					if (!hdr_v1.Verify())
-						throw new ArchiveParsingException("Invalid V1 archive header");
-					break;
-				case VpkVersions.Versions.V2:
-					_reader = new V2.VpkReaderV2(filename);
+						header = _reader.ReadArchiveHeader();
+						if (!header.Verify())
+							throw new ArchiveParsingException("Invalid V2 archive header");
+						break;
+				}
 
-					var hdr_v2 = _reader.ReadArchiveHeader();
-					if (!hdr_v2.Verify())
-						throw new ArchiveParsingException("Invalid V2 archive header");
-					break;
+				var reader = _reader.ReadDirectories(this, header.TreeLength);
+				while (reader.MoveNext())
+					Directories.Add(reader.Current);
 			}
-
-			var reader = _reader.ReadDirectories(this);
-			while (reader.MoveNext())
-				Directories.Add(reader.Current);
+			finally {
+				_reader?.Dispose();
+			}
 		}
 
 		public void Load(byte[] file, VpkVersions.Versions version = VpkVersions.Versions.V1) {
-			switch (version) {
-				case VpkVersions.Versions.Any:
-					// Try V2 first
-					_reader = new V2.VpkReaderV2(file);
-					var hdr_anyv2 = _reader.ReadArchiveHeader();
-					if (!hdr_anyv2.Verify()) {
-						// Try V1
+			IVpkArchiveHeader header = null!;
+			try {
+				switch (version) {
+					case VpkVersions.Versions.Any:
+						// Try V2 first
+						_reader = new V2.VpkReaderV2(file);
+						header = _reader.ReadArchiveHeader();
+						if (!header.Verify()) {
+							// Try V1
+							_reader.Dispose();
+							_reader = new VpkReaderV1(file);
+
+							header = _reader.ReadArchiveHeader();
+							if (!header.Verify())
+								throw new ArchiveParsingException("Invalid archive header (tried V2, then V1)");
+						}
+						break;
+					case VpkVersions.Versions.V1:
 						_reader = new VpkReaderV1(file);
 
-						var hdr_anyv1 = _reader.ReadArchiveHeader();
-						if (!hdr_anyv1.Verify())
-							throw new ArchiveParsingException("Invalid archive header (tried V2, then V1)");
-					}
-					break;
-				case VpkVersions.Versions.V1:
-					_reader = new VpkReaderV1(file);
+						header = _reader.ReadArchiveHeader();
+						if (!header.Verify())
+							throw new ArchiveParsingException("Invalid V1 archive header");
+						break;
+					case VpkVersions.Versions.V2:
+						_reader = new V2.VpkReaderV2(file);
 
-					var hdr_v1 = _reader.ReadArchiveHeader();
-					if (!hdr_v1.Verify())
-						throw new ArchiveParsingException("Invalid V1 archive header");
-					break;
-				case VpkVersions.Versions.V2:
-					_reader = new V2.VpkReaderV2(file);
+						header = _reader.ReadArchiveHeader();
+						if (!header.Verify())
+							throw new ArchiveParsingException("Invalid V2 archive header");
+						break;
+				}
 
-					var hdr_v2 = _reader.ReadArchiveHeader();
-					if (!hdr_v2.Verify())
-						throw new ArchiveParsingException("Invalid V2 archive header");
-					break;
+				var reader = _reader.ReadDirectories(this, header.TreeLength);
+				while (reader.MoveNext())
+					Directories.Add(reader.Current);
 			}
-
-			var reader = _reader.ReadDirectories(this);
-			while (reader.MoveNext())
-				Directories.Add(reader.Current);
+			finally {
+				_reader?.Dispose();
+			}
 		}
 
 		private void LoadParts(string filePath) {

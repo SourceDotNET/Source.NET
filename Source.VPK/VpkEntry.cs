@@ -5,7 +5,7 @@
 		public string Extension { get; set; }
 		public string Path { get; set; }
 		public string Filename { get; set; }
-		public string FilenameAndExtension { get; set; }
+		public string FilenameAndExtension { get => field ??= Filename + "." + Extension; set; }
 		public byte[] PreloadData { get { return ReadPreloadData(); } }
 		public byte[] Data { get { return ReadData(); } }
 		public bool HasPreloadData { get; set; }
@@ -32,7 +32,6 @@
 			Extension = extension;
 			Path = path;
 			Filename = filename;
-			FilenameAndExtension = filename + "." + Extension;
 			HasPreloadData = preloadBytes > 0;
 
 		}
