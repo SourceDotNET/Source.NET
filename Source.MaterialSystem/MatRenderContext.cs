@@ -1011,9 +1011,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void OverrideAlphaWriteEnable(bool enable, bool alphaWriteEnable) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void OverrideAlphaWriteEnable(bool enable, bool alphaWriteEnable) => shaderAPI.OverrideAlphaWriteEnable(enable, alphaWriteEnable);
 
 	public void OverrideBlend(bool unk1, bool unk2, int unk3, int unk4, int unk5) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -1027,9 +1025,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void OverrideDepthEnable(bool enable, bool depthEnable) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void OverrideDepthEnable(bool enable, bool depthEnable) => shaderAPI.OverrideDepthEnable(enable, depthEnable);
 
 	public void PerformFullScreenStencilOperation() {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -1075,9 +1071,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void ReadPixels(int x, int y, int width, int height, Span<byte> data, ImageFormat dstFormat) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void ReadPixels(int x, int y, int width, int height, Span<byte> data, ImageFormat dstFormat) => shaderAPI.ReadPixels(x, y, width, height, data, dstFormat);
 
 	public void ReadPixelsAndStretch(ref System.Drawing.Rectangle srcRect, ref System.Drawing.Rectangle pDstRect, Span<byte> buffer, ImageFormat dstFormat, int dstStride) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -1123,9 +1117,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void SetFloatRenderingParameter(int parm_number, float value) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void SetFloatRenderingParameter(int parm_number, float value) => shaderAPI.SetFloatRenderingParameter(parm_number, value);
 
 	public void SetFogZ(float fogZ) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -1143,9 +1135,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void SetIntRenderingParameter(int parm_number, int value) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void SetIntRenderingParameter(int parm_number, int value) => shaderAPI.SetIntRenderingParameter(parm_number, value);
 
 	public void SetLookupWeight(ColorCorrectionHandle_t handle, float weight) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -1175,9 +1165,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void SetVectorRenderingParameter(int parm_number, in Vector3 value) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void SetVectorRenderingParameter(int parm_number, in Vector3 value) => shaderAPI.SetVectorRenderingParameter(parm_number, value);
 
 	public void SyncToken(ReadOnlySpan<char> token) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -1215,13 +1203,9 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
 	}
 
-	public float GetFloatRenderingParameter(int parmNumber) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
-	}
+	public float GetFloatRenderingParameter(int parmNumber) => shaderAPI.GetFloatRenderingParameter(parmNumber);
 
-	public int GetIntRenderingParameter(int parmNumber) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
-	}
+	public int GetIntRenderingParameter(int parmNumber) => shaderAPI.GetIntRenderingParameter(parmNumber);
 
 	public void GetLightmapDimensions(out int w, out int h) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
@@ -1235,9 +1219,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
 	}
 
-	public Vector3 GetVectorRenderingParameter(int parmNumber) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
-	}
+	public Vector3 GetVectorRenderingParameter(int parmNumber) => shaderAPI.GetVectorRenderingParameter(parmNumber);
 
 	public unsafe bool OnDrawMesh(IMesh mesh, PrimList* pLists, int nLists) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");

@@ -939,6 +939,14 @@ public static partial class LuaVGUI
 	static void Panel__SetPaintBackgroundEnabled(Panel panel, [LuaGet] bool state) => panel.SetPaintBackgroundEnabled(state);
 
 	[LuaMethod]
+	static void Panel__SetVerticalScrollbarEnabled(Panel panel) {
+		if (panel is RichText richText)
+			richText.SetVerticalScrollbar(g_Lua!.GetBool(2));
+		if (panel is TextEntry textEntry)
+			textEntry.SetVerticalScrollbar(g_Lua!.GetBool(2));
+	}
+
+	[LuaMethod]
 	static void Panel__MoveToFront(Panel panel) => panel.MoveToFront();
 
 	[LuaMethod]

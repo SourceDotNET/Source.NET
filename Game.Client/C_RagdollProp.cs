@@ -28,4 +28,6 @@ public class C_RagdollProp : C_BaseAnimating
 	public float BlendWeight;
 	[NetworkName("m_nOverlaySequence")]
 	public int OverlaySequence;
+
+	public override bool IsRagdollProp() => true;
 }

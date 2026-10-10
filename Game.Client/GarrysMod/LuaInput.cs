@@ -8,8 +8,28 @@ public static partial class LuaInput
 	[LuaLibrary]
 	static readonly LuaLibrary LL_Factory_input = new("input");
 
-	// todo: IsButtonDown
-	// todo: GetAnalogValue
+	[LuaFunction]
+	static int IsButtonDown(ILuaInterface lua) {
+		int code = (int)lua.CheckNumber(1);
+		if ((uint)code < 1042) {
+			lua.PushBool(inputsystem.IsButtonDown((ButtonCode)code));
+			return 1;
+		}
+		lua.PushBool(false);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetAnalogValue(ILuaInterface lua) {
+		int code = (int)lua.CheckNumber(1);
+		if ((uint)code < 28) {
+			lua.PushNumber(inputsystem.GetAnalogValue((AnalogCode)code));
+			return 1;
+		}
+		lua.PushNumber(0);
+		return 1;
+	}
+
 	[LuaFunction]
 	static int IsMouseDown(ILuaInterface lua) {
 		ButtonCode code = (ButtonCode)(int)lua.CheckNumber(1);
@@ -48,11 +68,61 @@ public static partial class LuaInput
 		return 2;
 	}
 
-	// todo: WasMousePressed
-	// todo: WasMouseReleased
-	// todo: WasMouseDoublePressed
-	// todo: WasKeyPressed
-	// todo: IsKeyDown
+	[LuaFunction]
+	static int WasMousePressed(ILuaInterface lua) {
+		int code = (int)lua.CheckNumber(1);
+		if ((uint)(code - 107) < 7) {
+			lua.PushBool(vguiInput.WasMousePressed((ButtonCode)code));
+			return 1;
+		}
+		lua.PushBool(false);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int WasMouseReleased(ILuaInterface lua) {
+		int code = (int)lua.CheckNumber(1);
+		if ((uint)(code - 107) < 7) {
+			lua.PushBool(vguiInput.WasMouseReleased((ButtonCode)code));
+			return 1;
+		}
+		lua.PushBool(false);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int WasMouseDoublePressed(ILuaInterface lua) {
+		int code = (int)lua.CheckNumber(1);
+		if ((uint)(code - 107) < 7) {
+			lua.PushBool(vguiInput.WasMouseDoublePressed((ButtonCode)code));
+			return 1;
+		}
+		lua.PushBool(false);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int WasKeyPressed(ILuaInterface lua) {
+		int code = (int)lua.CheckNumber(1);
+		if ((uint)code < 107) {
+			lua.PushBool(vguiInput.WasKeyPressed((ButtonCode)code));
+			return 1;
+		}
+		lua.PushBool(false);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int IsKeyDown(ILuaInterface lua) {
+		int code = (int)lua.CheckNumber(1);
+		if ((uint)code < 107) {
+			lua.PushBool(vguiInput.IsKeyDown((ButtonCode)code));
+			return 1;
+		}
+		lua.PushBool(false);
+		return 1;
+	}
+
 	[LuaFunction]
 	static int IsShiftDown(ILuaInterface lua) {
 		lua.PushBool(vguiInput.IsKeyDown(ButtonCode.KeyLShift) || vguiInput.IsKeyDown(ButtonCode.KeyRShift));
@@ -63,13 +133,52 @@ public static partial class LuaInput
 		lua.PushBool(vguiInput.IsKeyDown(ButtonCode.KeyLControl) || vguiInput.IsKeyDown(ButtonCode.KeyRControl));
 		return 1;
 	}
-	// todo: WasKeyTyped
-	// todo: WasKeyReleased
-	// todo: GetKeyName
-	// todo: GetKeyCode
+	[LuaFunction]
+	static int WasKeyTyped(ILuaInterface lua) {
+		int code = (int)lua.CheckNumber(1);
+		if ((uint)code < 107) {
+			lua.PushBool(vguiInput.WasKeyTyped((ButtonCode)code));
+			return 1;
+		}
+		lua.PushBool(false);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int WasKeyReleased(ILuaInterface lua) {
+		int code = (int)lua.CheckNumber(1);
+		if ((uint)code < 107) {
+			lua.PushBool(vguiInput.WasKeyReleased((ButtonCode)code));
+			return 1;
+		}
+		lua.PushBool(false);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetKeyName(ILuaInterface lua) {
+		int code = (int)lua.CheckNumber(1);
+		if ((uint)(code - 1) < 1041) {
+			lua.PushString(inputsystem.ButtonCodeToString((ButtonCode)code));
+			return 1;
+		}
+		return 0;
+	}
+
+	[LuaFunction]
+	static int GetKeyCode(ILuaInterface lua) {
+		lua.PushNumber((int)inputsystem.StringToButtonCode(lua.CheckString(1)));
+		return 1;
+	}
+
 	static bool KeyTrapping;
 
-	// todo: StartKeyTrapping
+	[LuaFunction]
+	static int StartKeyTrapping(ILuaInterface lua) {
+		engine.StartKeyTrapMode();
+		KeyTrapping = true;
+		return 0;
+	}
 
 	[LuaFunction]
 	static int IsKeyTrapping(ILuaInterface lua) {
@@ -77,7 +186,16 @@ public static partial class LuaInput
 		return 1;
 	}
 
-	// todo: CheckKeyTrapping
+	[LuaFunction]
+	static int CheckKeyTrapping(ILuaInterface lua) {
+		if (engine.CheckDoneKeyTrapping(out ButtonCode code)) {
+			lua.PushNumber((int)code);
+			KeyTrapping = false;
+			return 1;
+		}
+		return 0;
+	}
+
 	[LuaFunction]
 	static int LookupBinding(ILuaInterface lua) {
 		string binding = lua.CheckString(1);
@@ -92,7 +210,35 @@ public static partial class LuaInput
 		lua.PushString(key);
 		return 1;
 	}
-	// todo: LookupKeyBinding
-	// todo: TranslateAlias
-	// todo: SelectWeapon
+	[LuaFunction]
+	static int LookupKeyBinding(ILuaInterface lua) {
+		ReadOnlySpan<char> binding = engine.Key_BindingForKey((ButtonCode)(int)lua.CheckNumber(1));
+		if (binding.IsEmpty)
+			return 0;
+		lua.PushString(binding);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int TranslateAlias(ILuaInterface lua) {
+		ReadOnlySpan<char> alias = engine.GMOD_TranslateAlias(lua.CheckString(1));
+		if (alias.IsEmpty)
+			return 0;
+		lua.PushString(alias);
+		return 1;
+	}
+
+	static void SelectWeapon(BaseEntity? ent) {
+		if (ent == null || !ent.IsBaseCombatWeapon()) {
+			g_Lua!.Error("Weapon is NULL/Not a Weapon");
+			ent = null;
+		}
+		input.MakeWeaponSelection((BaseCombatWeapon?)ent);
+	}
+
+	[LuaFunction]
+	static int SelectWeapon(ILuaInterface lua) {
+		SelectWeapon(LuaEntity.Get_Entity(1, false));
+		return 0;
+	}
 }

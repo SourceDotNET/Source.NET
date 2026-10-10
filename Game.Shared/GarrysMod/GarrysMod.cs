@@ -224,8 +224,8 @@ public class GarrysMod : IGarrysMod
 			foreach (ILegacyAddons.Information addon in filesystem.LegacyAddons().GetList()) {
 				if (!string.IsNullOrEmpty(addon.LuaPath))
 					get.LuaShared()!.MountLuaAdd(addon.LuaPath, LuaPathID);
-				if (!string.IsNullOrEmpty(addon.Placeholder4))
-					get.LuaShared()!.MountLuaAdd(addon.Placeholder4, LuaPathID);
+				if (!string.IsNullOrEmpty(addon.GamemodesPath))
+					get.LuaShared()!.MountLuaAdd(addon.GamemodesPath, LuaPathID);
 			}
 			get.LuaShared()!.MountLuaAdd("workshop/lua", LuaPathID);
 			get.LuaShared()!.MountLuaAdd("workshop/gamemodes", LuaPathID);

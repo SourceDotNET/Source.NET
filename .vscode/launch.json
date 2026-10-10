@@ -6,8 +6,8 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build Source.Launcher",
-      "program": "${workspaceFolder}/Build/Source.Launcher.dll",
-      "cwd": "${workspaceFolder}/Build",
+      "program": "${workspaceFolder}/Build/Debug/Source.Launcher.dll",
+      "cwd": "${workspaceFolder}/Build/Debug",
       "stopAtEntry": false
     },
     {
@@ -15,8 +15,8 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build Source.Launcher",
-      "program": "${workspaceFolder}/Build/Source.Launcher.dll",
-      "cwd": "${workspaceFolder}/Build",
+      "program": "${workspaceFolder}/Build/Debug/Source.Launcher.dll",
+      "cwd": "${workspaceFolder}/Build/Debug",
       "stopAtEntry": false,
       "console": "externalTerminal"
     },
@@ -25,8 +25,8 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build Source.Dedicated",
-      "program": "${workspaceFolder}/Build/Source.Dedicated.dll",
-      "cwd": "${workspaceFolder}/Build",
+      "program": "${workspaceFolder}/Build/Debug (Dedicated)/Source.Dedicated.dll",
+      "cwd": "${workspaceFolder}/Build/Debug (Dedicated)",
       "args": ["-maxplayers", "2", "+map", "gm_flatgrass"],
       "stopAtEntry": false
     },
@@ -35,8 +35,8 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build Source.Dedicated",
-      "program": "${workspaceFolder}/Build/Source.Dedicated.dll",
-      "cwd": "${workspaceFolder}/Build",
+      "program": "${workspaceFolder}/Build/Debug (Dedicated)/Source.Dedicated.dll",
+      "cwd": "${workspaceFolder}/Build/Debug (Dedicated)",
       "args": ["-maxplayers", "2", "+map", "gm_flatgrass"],
       "stopAtEntry": false,
       "console": "externalTerminal"

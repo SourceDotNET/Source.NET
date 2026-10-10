@@ -74,9 +74,7 @@ public class IntroScreen : IIntroScreen
 		renderContext.PushMatrix();
 		renderContext.LoadIdentity();
 
-		surface.SetInDrawing(true);
 		DoDraw(ref renderContext, status, width, height, progress);
-		surface.SetInDrawing(false);
 
 		renderContext.MatrixMode(MaterialMatrixMode.Projection);
 		renderContext.PopMatrix();

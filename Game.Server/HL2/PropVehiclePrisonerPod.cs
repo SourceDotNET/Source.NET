@@ -33,4 +33,6 @@ public class PropVehiclePrisonerPod : PhysicsProp
 	public bool LimitView = new();
 	[NetworkName("m_bLocked")]
 	public bool Locked;
+
+	public override bool IsVehicle() => true;
 }

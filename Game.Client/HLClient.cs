@@ -41,6 +41,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 	public static void DLLInit(IServiceCollection services) {
 		services.AddSingleton<IInput, HLInput>();
+		services.AddSingleton<IClientRenderTargets, ClientRenderTargets>();
 		services.AddSingleton<ClientEntityList>();
 		services.AddSingleton<IClientEntityList>(x => x.GetRequiredService<ClientEntityList>());
 		services.AddSingleton<BaseEntityList>(x => x.GetRequiredService<ClientEntityList>());

@@ -56,4 +56,6 @@ public class PropVehicleDriveable : BaseAnimating
 	public Vector3 GunCrosshair;
 	[NetworkName("m_bLocked")]
 	public bool Locked;
+
+	public override bool IsVehicle() => true;
 }

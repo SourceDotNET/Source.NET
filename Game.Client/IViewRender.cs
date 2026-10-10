@@ -11,7 +11,8 @@ public enum RenderViewInfo
 	Unspecified = 0,
 	DrawViewmodel = 1 << 0,
 	DrawHUD = 1 << 1,
-	SuppressMonitorRendering = 1 << 2
+	SuppressMonitorRendering = 1 << 2,
+	NoPostProcess = 1 << 3
 }
 [Flags]
 public enum DrawFlags

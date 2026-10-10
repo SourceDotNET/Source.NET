@@ -44,7 +44,7 @@ public interface IResources
 	IVideoHolly? CreateMovie();
 	IMaterial? FindMaterial(ReadOnlySpan<char> unk1, ReadOnlySpan<char> unk2, bool unk3, bool unk4, bool unk5);
 	Color GetTextureColour(ITexture unk1, int unk2, int unk3);
-	void SavePNG(int unk1, int unk2, Span<byte> unk3, ReadOnlySpan<byte> unk4, int unk5, int unk6);
+	void SavePNG(int unk1, int unk2, Span<byte> unk3, ReadOnlySpan<char> unk4, int unk5, int unk6);
 	void SaveJPG(int unk1, int unk2, int unk3, Span<byte> unk4, ReadOnlySpan<char> unk5, int unk6, int unk7, Stream unk8);
 	bool ShouldRecordSound();
 	void AudioSamples(Span<byte> unk1, uint unk2 /* probably size of unk1*/, byte unk3, byte unk4);

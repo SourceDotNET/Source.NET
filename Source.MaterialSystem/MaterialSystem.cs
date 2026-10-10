@@ -1182,7 +1182,15 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 	}
 
 	public ITexture? CreateNamedRenderTargetTexture(ReadOnlySpan<char> rtName, int w, int h, RenderTargetSizeMode sizeMode, ImageFormat format, MaterialRenderTargetDepth depth = MaterialRenderTargetDepth.Shared, bool clampTexCoords = true, bool autoMipMap = false) {
-		throw new NotImplementedException("Incomplete port of IMaterialSystem");
+		TextureFlags textureFlags = 0;
+		if (clampTexCoords)
+			textureFlags |= TextureFlags.ClampS | TextureFlags.ClampT;
+
+		CreateRenderTargetFlags renderTargetFlags = 0;
+		if (autoMipMap)
+			renderTargetFlags |= CreateRenderTargetFlags.AutoMipmap;
+
+		return CreateNamedRenderTargetTextureEx(rtName, w, h, sizeMode, format, depth, textureFlags, renderTargetFlags);
 	}
 
 	public ITexture? CreateNamedTextureFromBitsEx(ReadOnlySpan<char> name, ReadOnlySpan<char> textureGroupName, int w, int h, int mips, ImageFormat fmt, int srcBufferSize, Span<byte> srcBits, CreateTextureFlags flags) {

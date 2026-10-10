@@ -50,6 +50,7 @@ public class DiskSearchPath : BaseSearchPath
 #endif
 
 	private IFileSystem parent;
+	public bool Workshop;
 	public DiskSearchPath(IFileSystem filesystem, string absPath) {
 		parent = filesystem;
 
@@ -61,7 +62,15 @@ public class DiskSearchPath : BaseSearchPath
 
 	private string GetAbsPath(ReadOnlySpan<char> relPath) => ResolveDiskPath(Path.Combine(DiskPath!, new(relPath)));
 
-	public override bool Exists(ReadOnlySpan<char> path) => Path.Exists(GetAbsPath(path));
+	public override bool Exists(ReadOnlySpan<char> path) {
+		string absPath = GetAbsPath(path);
+		if (Path.Exists(absPath))
+			return true;
+		return Workshop && BaseFileSystem.g_AddonFileSystem.GetFileEntry(absPath) != null;
+	}
+
+	public bool ExistsOnDisk(ReadOnlySpan<char> path) => Path.Exists(GetAbsPath(path));
+	public string GetFullPath(ReadOnlySpan<char> path) => GetAbsPath(path).Replace('\\', '/');
 	public override bool IsDirectory(ReadOnlySpan<char> path) => Directory.Exists(GetAbsPath(path));
 
 	public override bool IsFileWritable(ReadOnlySpan<char> path) {
@@ -76,7 +85,11 @@ public class DiskSearchPath : BaseSearchPath
 		FileOpenOptions operation = options.GetOperation();
 
 		// Scram early if the file doesn't even exist
-		if (!info.Exists && operation == FileOpenOptions.Read) return null;
+		if (!info.Exists && operation == FileOpenOptions.Read) {
+			if (Workshop)
+				return BaseFileSystem.g_AddonFileSystem.GetFileEntry(absPath);
+			return null;
+		}
 
 		// Check file options for invalid access
 		if (operation == FileOpenOptions.Write && info.IsReadOnly && info.Exists)
@@ -153,7 +166,8 @@ public class DiskSearchPath : BaseSearchPath
 	public override DateTime Time(ReadOnlySpan<char> path) {
 		var absPath = GetAbsPath(path);
 		var info = new FileInfo(absPath);
-		if (!info.Exists) return DateTime.UnixEpoch;
+		if (!info.Exists)
+			return BaseFileSystem.g_AddonFileSystem.GetFileSize(absPath) >= 0 ? DateTime.UnixEpoch.AddSeconds(1) : DateTime.UnixEpoch;
 
 		return info.LastWriteTimeUtc;
 	}

@@ -140,6 +140,48 @@ public static partial class LuaGlobalFunctions
 	}
 
 	[LuaGlobal]
+	static int CompileString(ILuaInterface lua) {
+		string code = g_Lua!.CheckString(1);
+		string identifier = g_Lua.CheckStringOpt(2, "CompileString");
+		if (g_Lua.GetType(3) == LuaType.Nil) {
+			if (!g_Lua.RunStringEx(identifier, "", code, false, true, true, true))
+				return 0;
+		}
+		else {
+			bool handleError = g_Lua.GetBool(3);
+			if (!g_Lua.RunStringEx(identifier, "", code, false, handleError, handleError, true) && handleError)
+				return 0;
+		}
+		return 1;
+	}
+
+	[LuaGlobal]
+	static int ProtectedCall(ILuaInterface lua) {
+		LuaObject func = new(1, LuaType.None);
+		if (!func.isFunction()) {
+			g_Lua!.TypeError("function", 1);
+			func.UnReference();
+			return 0;
+		}
+
+		int top = g_Lua!.Top();
+		List<LuaObject> args = [];
+		for (int i = 2; i <= top; i++)
+			args.Add(new LuaObject(i, LuaType.None));
+
+		func.Push();
+		foreach (LuaObject arg in args)
+			arg.Push();
+		foreach (LuaObject arg in args)
+			arg.UnReference();
+		args.Clear();
+
+		g_Lua.PushBool(g_Lua.CallFunctionProtected(top - 1, 0, true));
+		func.UnReference();
+		return 1;
+	}
+
+	[LuaGlobal]
 	static int DeriveGamemode(ILuaInterface lua) {
 		string name = g_Lua!.CheckString(1);
 		gGM!.DeriveGamemode(name);

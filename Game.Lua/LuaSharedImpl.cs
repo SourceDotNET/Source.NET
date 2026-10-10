@@ -205,7 +205,8 @@ public class LuaSharedImpl : ILuaShared
 
 	public void MountLua(ReadOnlySpan<char> pathId) {
 		MountLuaAdd("lua", pathId);
-		MountLuaAdd("gamemodes", pathId);
+		if (stricmp(pathId, "LuaMenu") != 0)
+			MountLuaAdd("gamemodes", pathId);
 	}
 
 	public void MountLuaAdd(ReadOnlySpan<char> path, ReadOnlySpan<char> pathId) {
@@ -214,17 +215,18 @@ public class LuaSharedImpl : ILuaShared
 	}
 
 	void AddSearchPath(ReadOnlySpan<char> path, ReadOnlySpan<char> pathId) {
+		bool workshop = strnicmp(path, "workshop", 8) == 0;
 		Span<char> fullPath = stackalloc char[MaxPath];
 		ReadOnlySpan<char> full = filesystem.RelativePathToFullPath(path, "MOD", fullPath);
 		if (!full.IsEmpty) {
 			if (filesystem.IsDirectory(full, null))
-				filesystem.AddSearchPath(full, pathId, SearchPathAdd.ToTail, PathGroupName.Lua);
+				filesystem.AddSearchPath(full, pathId, SearchPathAdd.ToTail, PathGroupName.Lua, workshop);
 			else
 				Warning($"Tried to add search path, but path isn't path(!?) ({path})\n");
 			return;
 		}
 
-		filesystem.AddSearchPath($"{Get!.GameDir()}{CORRECT_PATH_SEPARATOR}{path}", pathId, SearchPathAdd.ToTail, PathGroupName.Lua);
+		filesystem.AddSearchPath($"{Get!.GameDir()}{CORRECT_PATH_SEPARATOR}{path}", pathId, SearchPathAdd.ToTail, PathGroupName.Lua, workshop);
 	}
 
 	public void UnMountLua(ReadOnlySpan<char> pathId) => filesystem.RemoveSearchPaths(pathId);

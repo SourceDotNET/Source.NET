@@ -1,5 +1,8 @@
 using Source;
+using Source.Common.Bitmap;
 using Source.Common.MaterialSystem;
+
+using TextureFlags = Source.Common.TextureFlags;
 
 namespace Game.Client;
 
@@ -180,6 +183,92 @@ public static class RenderTexture
 		}
 
 		return TeenyTextures[which].Get();
+	}
+
+	static readonly TextureReference BloomTex0 = new();
+	public static ITexture? GetBloomTex0() {
+		if (BloomTex0.IsValid())
+			return BloomTex0.Get();
+
+		BloomTex0.Init(materials.CreateNamedRenderTargetTextureEx2("s_pBloomTex0", 256, 256, RenderTargetSizeMode.HDR, materials.GetBackBufferFormat(), MaterialRenderTargetDepth.Separate, TextureFlags.ClampS | TextureFlags.ClampT, CreateRenderTargetFlags.HDR));
+		if (!BloomTex0.IsValid())
+			Warning("Error Creating Render Target s_pBloomTex0!\n");
+		return BloomTex0.Get();
+	}
+
+	static readonly TextureReference BloomTex1 = new();
+	public static ITexture? GetBloomTex1() {
+		if (BloomTex1.IsValid())
+			return BloomTex1.Get();
+
+		BloomTex1.Init(materials.CreateNamedRenderTargetTextureEx2("s_pBloomTex1", 256, 256, RenderTargetSizeMode.HDR, materials.GetBackBufferFormat(), MaterialRenderTargetDepth.Separate, TextureFlags.ClampS | TextureFlags.ClampT, CreateRenderTargetFlags.HDR));
+		if (!BloomTex1.IsValid())
+			Warning("Error Creating Render Target s_pBloomTex1!\n");
+		return BloomTex1.Get();
+	}
+
+	static readonly TextureReference MoBlurTex0 = new();
+	public static ITexture? GetMoBlurTex0() {
+		if (MoBlurTex0.IsValid())
+			return MoBlurTex0.Get();
+
+		MoBlurTex0.Init(materials.CreateNamedRenderTargetTextureEx2("s_pMoBlurTex0", 256, 256, RenderTargetSizeMode.FullFrameBuffer, materials.GetBackBufferFormat(), MaterialRenderTargetDepth.Separate, TextureFlags.ClampS | TextureFlags.ClampT, CreateRenderTargetFlags.HDR));
+		if (!MoBlurTex0.IsValid())
+			Warning("Error Creating Render Target s_pMoBlurTex0!\n");
+		return MoBlurTex0.Get();
+	}
+
+	static readonly TextureReference MoBlurTex1 = new();
+	public static ITexture? GetMoBlurTex1() {
+		if (MoBlurTex1.IsValid())
+			return MoBlurTex1.Get();
+
+		MoBlurTex1.Init(materials.CreateNamedRenderTargetTextureEx2("s_pMoBlurTex1", 256, 256, RenderTargetSizeMode.FullFrameBuffer, materials.GetBackBufferFormat(), MaterialRenderTargetDepth.Separate, TextureFlags.ClampS | TextureFlags.ClampT, CreateRenderTargetFlags.HDR));
+		if (!MoBlurTex1.IsValid())
+			Warning("Error Creating Render Target s_pMoBlurTex1!\n");
+		return MoBlurTex1.Get();
+	}
+
+	static readonly TextureReference MorphTex0 = new();
+	public static ITexture? GetMorphTex0() {
+		if (MorphTex0.IsValid())
+			return MorphTex0.Get();
+
+		MorphTex0.Init(materials.CreateNamedRenderTargetTextureEx2("s_pMorphTexture0", 256, 256, RenderTargetSizeMode.FullFrameBuffer, materials.GetBackBufferFormat(), MaterialRenderTargetDepth.Separate, TextureFlags.ClampS | TextureFlags.ClampT, CreateRenderTargetFlags.HDR));
+		if (!MorphTex0.IsValid())
+			Warning("Error Creating Render Target s_pMorphTexture0!\n");
+		return MorphTex0.Get();
+	}
+
+	static readonly TextureReference MorphTex1 = new();
+	public static ITexture? GetMorphTex1() {
+		if (MorphTex1.IsValid())
+			return MorphTex1.Get();
+
+		MorphTex1.Init(materials.CreateNamedRenderTargetTextureEx2("s_pMorphTexture1", 256, 256, RenderTargetSizeMode.FullFrameBuffer, materials.GetBackBufferFormat(), MaterialRenderTargetDepth.Separate, TextureFlags.ClampS | TextureFlags.ClampT, CreateRenderTargetFlags.HDR));
+		if (!MorphTex1.IsValid())
+			Warning("Error Creating Render Target s_pMorphTexture1!\n");
+		return MorphTex1.Get();
+	}
+
+	static readonly TextureReference SuperFPTex = new();
+	public static ITexture? GetSuperFPTex(IMaterialSystemHardwareConfig? hardwareConfig) {
+		if (!SuperFPTex.IsValid()) {
+			if (hardwareConfig != null && hardwareConfig.GetDXSupportLevel() >= 90)
+				SuperFPTex.InitRenderTarget(512, 512, RenderTargetSizeMode.FullFrameBuffer, ImageFormat.RGBA16161616F, MaterialRenderTargetDepth.Shared, true, "__rt_SuperTexture1");
+			return SuperFPTex.Get();
+		}
+		return SuperFPTex.Get();
+	}
+
+	static readonly TextureReference SuperFPTex2 = new();
+	public static ITexture? GetSuperFPTex2(IMaterialSystemHardwareConfig? hardwareConfig) {
+		if (!SuperFPTex2.IsValid()) {
+			if (hardwareConfig != null && hardwareConfig.GetDXSupportLevel() >= 90)
+				SuperFPTex2.InitRenderTarget(512, 512, RenderTargetSizeMode.FullFrameBuffer, ImageFormat.RGBA16161616F, MaterialRenderTargetDepth.Shared, true, "__rt_SuperTexture2");
+			return SuperFPTex2.Get();
+		}
+		return SuperFPTex2.Get();
 	}
 
 	public static void ReleaseRenderTargets() {

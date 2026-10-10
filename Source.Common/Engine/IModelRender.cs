@@ -64,4 +64,5 @@ public interface IModelRender
 	ref Matrix4x4 SetupModelState(IClientRenderable renderable);
 	bool DrawModelShadowSetup(IClientRenderable renderable, int body, int skin, ref Source.Common.DrawModelInfo info, Span<Matrix3x4> customBoneToWorld, out Span<Matrix3x4> boneToWorldOut);
 	void DrawModelShadow(IClientRenderable renderable, in Source.Common.DrawModelInfo info, Span<Matrix3x4> boneToWorld);
+	void SuppressEngineLighting(bool suppress);
 }

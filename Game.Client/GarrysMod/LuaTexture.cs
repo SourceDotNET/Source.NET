@@ -18,4 +18,7 @@ public static partial class LuaTexture
 
 	[LuaMethod]
 	static int ITexture__Height(ITexture texture) => texture.GetActualHeight();
+
+	[LuaMethod]
+	static string ITexture__GetName(ITexture texture) => new(texture.GetName());
 }

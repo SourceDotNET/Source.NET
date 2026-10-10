@@ -86,7 +86,7 @@ public class World : BaseEntity
 		g_pGameRules.Precache();
 		BaseTempEntity.PrecacheTempEnts();
 
-		for (int i = 0; i < g_DefaultLightstyles.Length; i++) 
+		for (int i = 0; i < g_DefaultLightstyles.Length; i++)
 			engine.LightStyle(i, GetDefaultLightstyleString(i));
 		// styles 32-62 are assigned by the light program for switchable lights
 
@@ -109,6 +109,10 @@ public class World : BaseEntity
 			ConVarRef skyname = new("sv_skyname");
 			skyname.SetValue(value);
 		}
+		else if (FStrEq(keyName, "newunit")) {
+			// if (atoi(value) != 0)
+			// 	Game_SetOneWayTransition();
+		}
 		else if (FStrEq(keyName, "world_mins")) {
 			Vector3 vec = default;
 			UTIL_StringToVector(vec.Base(), value);
@@ -126,7 +130,7 @@ public class World : BaseEntity
 	}
 
 	public static ReadOnlySpan<char> GetDefaultLightstyleString(int styleIndex) => styleIndex < g_DefaultLightstyles.Length ? g_DefaultLightstyles[styleIndex] : "m";
-	static readonly string[] g_DefaultLightstyles =	[
+	static readonly string[] g_DefaultLightstyles = [
 		// 0 normal
 		"m",
 		// 1 FLICKER (first variety)

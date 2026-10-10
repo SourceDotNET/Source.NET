@@ -230,7 +230,51 @@ public class Resources : IResources
 
 		return new Color(0, 0, 0, 255);
 	}
-	public void SavePNG(int unk1, int unk2, Span<byte> unk3, ReadOnlySpan<byte> unk4, int unk5, int unk6) => throw new NotImplementedException();
+	public void SavePNG(int width, int height, Span<byte> pixels, ReadOnlySpan<char> path, int outWidth, int outHeight) {
+		FIBITMAP bitmap = FreeImage.Allocate(width, height, 32, 0, 0, 0);
+		if (bitmap.IsNull) {
+			Warning("[CResources::SavePNG] Freeimage couldn't allocate!\n");
+			return;
+		}
+
+		IntPtr bits = FreeImage.GetBits(bitmap);
+		if (bits == IntPtr.Zero) {
+			Warning("[CResources::SavePNG] Freeimage couldn't GetBits!\n");
+			return;
+		}
+
+		unsafe {
+			pixels[..(width * height * 4)].CopyTo(new Span<byte>((byte*)bits, width * height * 4));
+		}
+
+		FIBITMAP output = bitmap;
+		if (outHeight != height || outWidth != width) {
+			output = FreeImage.Rescale(bitmap, outWidth, outHeight, FREE_IMAGE_FILTER.FILTER_BILINEAR);
+			FreeImage.Unload(bitmap);
+		}
+
+		FreeImage.FlipVertical(output);
+
+		FIMEMORY memory = FreeImage.OpenMemory(IntPtr.Zero, 0);
+		FreeImage.SaveToMemory(FREE_IMAGE_FORMAT.FIF_PNG, output, memory, FREE_IMAGE_SAVE_FLAGS.PNG_Z_BEST_SPEED);
+
+		IntPtr data = IntPtr.Zero;
+		uint size = 0;
+		FreeImage.AcquireMemory(memory, ref data, ref size);
+
+		IFileHandle? file = size == 0 || data == IntPtr.Zero ? null : g_pFileSystem.Open(path, FileOpenOptions.Write | FileOpenOptions.Binary);
+		if (file == null)
+			Warning($"Couldn't save PNG to '{path}' ({size} bytes)\n");
+		else {
+			unsafe {
+				file.Stream.Write(new ReadOnlySpan<byte>((byte*)data, (int)size));
+			}
+			file.Dispose();
+		}
+
+		FreeImage.CloseMemory(memory);
+		FreeImage.Unload(output);
+	}
 	public void SaveJPG(int unk1, int unk2, int unk3, Span<byte> unk4, ReadOnlySpan<char> unk5, int unk6, int unk7, Stream unk8) => throw new NotImplementedException();
 	public bool ShouldRecordSound() => throw new NotImplementedException();
 	public void AudioSamples(Span<byte> unk1, uint unk2, byte unk3, byte unk4) => throw new NotImplementedException();

@@ -94,6 +94,13 @@ public static partial class LuaPlayer
 	}
 
 	[LuaMethod]
+	static int Player__Alive(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		g_Lua!.PushBool(player.IsAlive());
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Player__GetActiveWeapon(ILuaInterface lua) {
 		BasePlayer player = Get_Player(1, false)!;
 		LuaEntity.Push_Entity(player.GetActiveWeapon());
@@ -167,6 +174,24 @@ public static partial class LuaPlayer
 		else
 			forward = player.WorldClickVector;
 		LuaVector.Push_Vector(forward);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetVehicle(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+#if CLIENT_DLL
+		LuaEntity.Push_Entity(player.GetVehicle()?.GetVehicleEnt());
+#else
+		LuaEntity.Push_Entity(player.IsInAVehicle() ? player.GetVehicleEntity() : null);
+#endif
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetShootPos(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		LuaVector.Push_Vector(player.Weapon_ShootPosition());
 		return 1;
 	}
 

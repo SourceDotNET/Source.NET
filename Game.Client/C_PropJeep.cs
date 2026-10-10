@@ -18,6 +18,8 @@ public class C_PropJeep : C_PropVehicleDriveable
 
 	[NetworkName("m_bHeadlightIsOn")]
 	public bool HeadlightIsOn;
+
+	public override bool IsJeep() => true;
 }
 
 [NetworkName("CPropJeepEpisodic")]

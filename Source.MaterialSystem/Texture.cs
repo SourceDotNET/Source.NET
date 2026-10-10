@@ -1327,8 +1327,10 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 			case RenderTargetSizeMode.Literal: break;
 			case RenderTargetSizeMode.LiteralPicmip: break;
 			default:
+#if !GMOD_DLL
 				Assert(RenderTargetSizeMode == RenderTargetSizeMode.NoChange);
 				Assert(OriginalRenderTargetType == RenderTargetType.NoDepth);
+#endif
 				break;
 		}
 	}

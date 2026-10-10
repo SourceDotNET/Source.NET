@@ -13,6 +13,7 @@ public interface IInputSystem
 	public void PollInputState();
 	public int GetPollTick();
 	public bool IsButtonDown(ButtonCode code);
+	public int GetAnalogValue(AnalogCode code);
 	public int GetButtonPressedTick(ButtonCode code);
 	public int GetButtonReleasedTick(ButtonCode code);
 	public long GetEventCount();

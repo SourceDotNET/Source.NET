@@ -212,7 +212,11 @@ public abstract class ModelInfo(IFileSystem filesystem, IModelLoader modelloader
 	}
 
 	public Model? FindOrLoadModel(ReadOnlySpan<char> name) {
-		throw new NotImplementedException();
+		Model? model = GetModel(GetModelIndex(name));
+		if (model != null)
+			return model;
+
+		return modelloader.GetModelForName(name, ModelLoaderFlags.ClientDLL);
 	}
 
 	public VCollide? GetVCollide(Model? model) {

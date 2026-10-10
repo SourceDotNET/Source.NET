@@ -33,7 +33,8 @@ public class ClientEntityList : BaseEntityList, IClientEntityList
 	public IClientUnknown? GetListedEntity(int entNum) => (IClientUnknown?)LookupEntityByNetworkIndex(entNum);
 
 	public IClientEntity? GetClientEntityFromHandle(in BaseHandle ent) {
-		throw new NotImplementedException();
+		IClientUnknown? pEnt = GetClientUnknownFromHandle(ent);
+		return pEnt == null ? null : pEnt.GetIClientEntity();
 	}
 
 	public IClientNetworkable? GetClientNetworkable(int entnNum) {

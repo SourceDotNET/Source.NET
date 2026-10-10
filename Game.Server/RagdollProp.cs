@@ -40,4 +40,6 @@ public class RagdollProp : BaseAnimating
 	public static bool Ragdoll_IsPropRagdoll(BaseEntity entity) => entity is RagdollProp;
 
 	public static Ragdoll? Ragdoll_GetRagdoll(BaseEntity entity) => (entity as RagdollProp)?.GetRagdoll();
+
+	public override bool IsRagdollProp() => true;
 }

@@ -155,7 +155,17 @@ public static partial class LuaNet
 		return 0;
 	}
 
-	// todo: [LuaFunction] static int WriteMatrix(ILuaInterface lua)
+	[LuaFunction]
+	static int WriteMatrix(ILuaInterface lua) {
+		if (!g_Started)
+			return 0;
+
+		ref Matrix4x4 matrix = ref LuaVMatrix.Get_VMatrix(1);
+		for (int i = 0; i < 4; i++)
+			for (int j = 0; j < 4; j++)
+				g_Write.WriteFloat(matrix[i, j]);
+		return 0;
+	}
 
 	[LuaFunction]
 	static int WriteInt(ILuaInterface lua) {
@@ -554,7 +564,19 @@ public static partial class LuaNet
 		return 1;
 	}
 
-	// todo: [LuaFunction] static int ReadMatrix(ILuaInterface lua)
+	[LuaFunction]
+	static int ReadMatrix(ILuaInterface lua) {
+		if (g_NetIncoming == null)
+			return 0;
+
+		ValidateDataSize(lua, 512);
+		Matrix4x4 matrix = default;
+		for (int i = 0; i < 4; i++)
+			for (int j = 0; j < 4; j++)
+				matrix[i, j] = g_NetIncoming.ReadFloat();
+		LuaVMatrix.Push_VMatrix(matrix);
+		return 1;
+	}
 
 	static readonly byte[] strString = new byte[0x10000];
 

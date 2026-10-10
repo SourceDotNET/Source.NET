@@ -32,11 +32,19 @@ public class LegacyAddonSystem : LegacyAddons.System
 				g_FullFileSystem.AddSearchPath(fullpath.SliceNullTerminatedString(), "GAME", groupName: Common.Filesystem.PathGroupName.AddonContent);
 				g_FullFileSystem.AddSearchPath(fullpath.SliceNullTerminatedString(), "thirdparty", groupName: Common.Filesystem.PathGroupName.AddonContent);
 
+				string full = new(fullpath.SliceNullTerminatedString());
+				string luaPath = "";
+				string gamemodesPath = "";
+				if (g_FullFileSystem.IsDirectory(full + "/lua", null))
+					luaPath = path.ToString() + "/lua";
+				if (g_FullFileSystem.IsDirectory(full + "/gamemodes", null))
+					gamemodesPath = path.ToString() + "/gamemodes";
+
 				ILegacyAddons.Information information;
 				information.Name = new(filename.SliceNullTerminatedString());
-				information.Path = new(fullpath.SliceNullTerminatedString());
-				information.LuaPath = new(path);
-				information.Placeholder4 = ""; // ToDo: Find out.
+				information.Path = full;
+				information.LuaPath = luaPath;
+				information.GamemodesPath = gamemodesPath;
 
 				Addons.Add(information);
 			}

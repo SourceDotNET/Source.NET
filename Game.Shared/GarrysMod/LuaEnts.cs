@@ -22,12 +22,64 @@ public static partial class LuaEnts
 #endif
 	}
 
+	static readonly string[] ProtectedClasses = [
+		"worldspawn",
+		"player",
+		"gm_bot",
+		"gmod_gamerules",
+		"soundent",
+		"ai_ally_speech_manager",
+		"ai_network_build_helper",
+		"scene_manager",
+		"ai_network",
+		"player_manager",
+		"instanced_scripted_scene",
+		"npc_barnacle_tongue_tip",
+	];
+
+	public static bool IsProtectedClass(ReadOnlySpan<char> className) {
+		foreach (string name in ProtectedClasses) {
+			if (stricmp(className, name) == 0)
+				return true;
+		}
+		return false;
+	}
+
+	public static bool IsProtectedEntity(BaseEntity ent) {
+#if CLIENT_DLL
+		if (ent.IsPlayer() || ent == C_World.GetClientWorldEntity())
+#else
+		if (ent.IsPlayer() || ent == GetWorldEntity())
+#endif
+			return true;
+		return IsProtectedClass(ent.GetClassname());
+	}
+
 #if CLIENT_DLL
 	// todo: CreateClientProp
 	// todo: CreateClientRope
 	// todo: CreateClientside
 #else
-	// todo: Create
+	// todo: render depth counter
+	static bool IsRendering() => false;
+
+	[LuaFunction]
+	static int Create(ILuaInterface lua) {
+		if (IsRendering()) {
+			lua.ErrorNoHalt("ents.Create cannot be called while rendering\n");
+			return 0;
+		}
+
+		string? className = lua.CheckString(1);
+		if (className == null || IsProtectedClass(className))
+			return 0;
+
+		if (GetWorldEntity() == null)
+			Warning($"Trying to create entities too early! ({className})\n");
+
+		LuaEntity.Push_Entity(CreateEntityByName(className, -1));
+		return 1;
+	}
 
 	[LuaFunction]
 	static int GetEdictCount() => gEntList.NumberOfEdicts();

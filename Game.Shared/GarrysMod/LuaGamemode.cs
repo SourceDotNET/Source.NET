@@ -57,8 +57,8 @@ public class LuaGamemode : LuaObject, IDisposable
 			FileServ.AddCSLuaFile(name + "/gamemode/" + "cl_init.lua", "!GM");
 #endif
 			foreach (ILegacyAddons.Information addon in filesystem.LegacyAddons().GetList()) {
-				string path = addon.Placeholder4 + "/" + folder + "/entities";
-				if (!string.IsNullOrEmpty(addon.Placeholder4) && filesystem.IsDirectory(path, "MOD"))
+				string path = addon.GamemodesPath + "/" + folder + "/entities";
+				if (!string.IsNullOrEmpty(addon.GamemodesPath) && filesystem.IsDirectory(path, "MOD"))
 					get.LuaShared()!.MountLuaAdd(path, Game.Client.GarrysMod.GarrysMod.LuaPathID);
 			}
 			get.LuaShared()!.MountLuaAdd("workshop/" + folder + "/entities", Game.Client.GarrysMod.GarrysMod.LuaPathID);

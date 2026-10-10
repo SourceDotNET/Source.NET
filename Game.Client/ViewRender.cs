@@ -312,6 +312,17 @@ public class Rendering3dView : Base3dView
 
 		render.SetBlend(1);
 
+		DrawFlags drawFlags = GetDrawFlags();
+#if GMOD_DLL
+		if (depthMode == RenderDepthMode.Normal && gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PreDrawOpaqueRenderables)) {
+			g_Lua!.PushBool(false);
+			g_Lua.PushBool((drawFlags & DrawFlags.DrawSkybox) != 0);
+			g_Lua.PushBool(SkyboxView.Rendering3DSkybox);
+			if (gGM.CallFinish(3))
+				return;
+		}
+#endif
+
 		// todo, this has more
 
 		// First do the brush models
@@ -322,6 +333,15 @@ public class Rendering3dView : Base3dView
 			DrawOpaqueRenderables_Range(RenderGroup.OpaqueEntityHuge + 2 * bucket, depthMode);
 			DrawOpaqueRenderables_DrawStaticProps(RenderGroup.OpaqueStaticHuge + 2 * bucket, depthMode);
 		}
+
+#if GMOD_DLL
+		if (depthMode == RenderDepthMode.Normal && gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PostDrawOpaqueRenderables)) {
+			g_Lua!.PushBool(false);
+			g_Lua.PushBool((drawFlags & DrawFlags.DrawSkybox) != 0);
+			g_Lua.PushBool(SkyboxView.Rendering3DSkybox);
+			gGM.CallNoReturns(3);
+		}
+#endif
 	}
 
 	private void DrawOpaqueRenderable(IClientRenderable ent, bool twoPass, RenderDepthMode depthMode, StudioFlags defaultFlags = 0) {
@@ -576,6 +596,7 @@ public class Rendering3dView : Base3dView
 
 public class SkyboxView : Rendering3dView
 {
+	public static bool Rendering3DSkybox;
 	SafeFieldPointer<PlayerLocalData, Sky3DParams> Sky3dParams = new();
 	public SkyboxView(ViewRender mainView) : base(mainView) {
 
@@ -624,6 +645,7 @@ public class SkyboxView : Rendering3dView
 		if (sky3dParams.Scale > 0)
 			setup.Origin *= 1f / sky3dParams.Scale;
 		setup.Origin += sky3dParams.Origin;
+		Rendering3DSkybox = true;
 
 		render.ViewSetupVisEx(false, new(ref sky3dParams.Origin), out _);
 		render.Push3DView(in setup, ClearFlags, rtColor, GetFrustrum(), rtDepth);
@@ -658,6 +680,12 @@ public class SkyboxView : Rendering3dView
 		}
 
 		render.PopView(GetFrustrum());
+
+#if GMOD_DLL
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PostDrawSkyBox) && gGM.CallFinish(0))
+			return;
+#endif
+		Rendering3DSkybox = false;
 	}
 
 	private SafeFieldPointer<PlayerLocalData, Sky3DParams> PreRender3dSkyboxWorld(ref SkyboxVisibility skyboxVisible) {

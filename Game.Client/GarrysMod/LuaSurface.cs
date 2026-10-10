@@ -1,3 +1,5 @@
+using Game.Client.HUD;
+
 using Source;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.GUI;
@@ -59,7 +61,12 @@ public static partial class LuaSurface
 		return 0;
 	}
 
-	// todo: GetDrawColor
+	[LuaFunction]
+	static int GetDrawColor(ILuaInterface lua) {
+		surface.DrawGetColor(out Color color);
+		lua.PushColor(color);
+		return 1;
+	}
 
 	[LuaFunction]
 	static void DrawRect([LuaGet] int x, [LuaGet] int y, [LuaGet] int w, [LuaGet] int h) => surface.DrawFilledRect(x, y, x + w, y + h);
@@ -72,7 +79,15 @@ public static partial class LuaSurface
 		surface.DrawFilledRect(w - thickness + x, thickness + y, x + w, h - thickness + y);
 	}
 
-	// todo: DrawLine
+	[LuaFunction]
+	static int DrawLine(ILuaInterface lua) {
+		float y1 = (float)lua.CheckNumber(4);
+		float x1 = (float)lua.CheckNumber(3);
+		float y0 = (float)lua.CheckNumber(2);
+		float x0 = (float)lua.CheckNumber(1);
+		surface.DrawLine((int)x0, (int)y0, (int)x1, (int)y1);
+		return 0;
+	}
 
 	[LuaFunction]
 	static int SetTextColor(ILuaInterface lua) {
@@ -80,7 +95,12 @@ public static partial class LuaSurface
 		return 0;
 	}
 
-	// todo: GetTextColor
+	[LuaFunction]
+	static int GetTextColor(ILuaInterface lua) {
+		surface.DrawGetTextColor(out Color color);
+		lua.PushColor(color);
+		return 1;
+	}
 
 	[LuaFunction]
 	static void SetTextPos([LuaGet] int x, [LuaGet] int y) => surface.DrawSetTextPos(x, y);
@@ -267,7 +287,15 @@ public static partial class LuaSurface
 		return (wide, tall);
 	}
 
-	// todo: GetHUDTexture
+	[LuaFunction]
+	static int GetHUDTexture(ILuaInterface lua) {
+		HudTexture? icon = gHUD.GetIcon(lua.CheckString(1));
+		if (icon == null)
+			return 0;
+		lua.PushNumber((int)icon.TextureID);
+		return 1;
+	}
+
 	[LuaFunction]
 	static int DrawTexturedRect(ILuaInterface lua) {
 		int x = (int)lua.CheckNumber(1);
@@ -279,7 +307,32 @@ public static partial class LuaSurface
 		return 0;
 	}
 
-	// todo: DrawTexturedRectRotated
+	[InlineArray(4)] struct InlineArrayRotatedVerts { SurfaceVertex first; }
+	static InlineArrayRotatedVerts RotatedVerts;
+
+	[LuaFunction]
+	static int DrawTexturedRectRotated(ILuaInterface lua) {
+		int x = (int)lua.CheckNumber(1);
+		int y = (int)lua.CheckNumber(2);
+		float w = (int)lua.CheckNumber(3);
+		float h = (int)lua.CheckNumber(4);
+		float rotation = (float)lua.CheckNumber(5);
+
+		(float sin, float cos) = MathF.SinCos(-rotation * 0.017453292f);
+
+		RotatedVerts[0].Position = new(cos * w * -0.5f + x + -sin * h * -0.5f, sin * w * -0.5f + y + cos * h * -0.5f);
+		RotatedVerts[0].TexCoord = new(0, 0);
+		RotatedVerts[1].Position = new(cos * w + RotatedVerts[0].Position.X, sin * w + RotatedVerts[0].Position.Y);
+		RotatedVerts[1].TexCoord = new(1, 0);
+		RotatedVerts[2].Position = new(-sin * h + RotatedVerts[1].Position.X, RotatedVerts[1].Position.Y + cos * h);
+		RotatedVerts[2].TexCoord = new(1, 1);
+		RotatedVerts[3].Position = new(-sin * h + RotatedVerts[0].Position.X, RotatedVerts[0].Position.Y + cos * h);
+		RotatedVerts[3].TexCoord = new(0, 1);
+
+		surface.DrawTexturedPolygon(RotatedVerts, true);
+		return 0;
+	}
+
 	[LuaFunction]
 	static int PlaySound(ILuaInterface lua) {
 		ReadOnlySpan<char> sound = lua.CheckString(1);
@@ -325,8 +378,26 @@ public static partial class LuaSurface
 		vertices.UnReference();
 		return 0;
 	}
-	// todo: DisableClipping
-	// todo: DrawCircle
+	[LuaFunction]
+	static int DisableClipping(ILuaInterface lua) {
+		surface.GetClippingRect(out _, out _, out _, out _, out bool clippingDisabled);
+		surface.DisableClipping(lua.GetBool(1));
+		lua.PushBool(clippingDisabled);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int DrawCircle(ILuaInterface lua) {
+		double x = lua.CheckNumber(1);
+		double y = lua.CheckNumber(2);
+		double radius = lua.CheckNumber(3);
+		if (lua.GetType(4) != LuaType.Nil)
+			surface.DrawSetColor(GetColor(lua, 4));
+
+		float segments = Math.Clamp(MathF.Abs((float)radius), 8, 64);
+		surface.DrawOutlinedCircle((int)x, (int)y, (int)radius, (int)segments);
+		return 0;
+	}
 	[LuaFunction]
 	static int DrawTexturedRectUV(ILuaInterface lua) {
 		int x = (int)lua.GetNumber(1);
@@ -344,6 +415,31 @@ public static partial class LuaSurface
 	[LuaFunction]
 	static float GetAlphaMultiplier() => surface.DrawGetAlphaMultiplier();
 
-	// todo: GetPanelPaintState
-	// todo: GetScissorRect
+	[LuaFunction]
+	static int GetPanelPaintState(ILuaInterface lua) {
+		LuaTable table = new(null, 0);
+		surface.DrawGetTranslate(out int translateX, out int translateY);
+		table.SetMember("translate_x", translateX);
+		table.SetMember("translate_y", translateY);
+		surface.GetClippingRect(out int left, out int top, out int right, out int bottom, out bool clippingDisabled);
+		table.SetMember("scissor_left", left);
+		table.SetMember("scissor_top", top);
+		table.SetMember("scissor_right", right);
+		table.SetMember("scissor_bottom", bottom);
+		table.SetMember("scissor_enabled", !clippingDisabled);
+		table.Push();
+		table.UnReference();
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetScissorRect(ILuaInterface lua) {
+		surface.GetClippingRect(out int left, out int top, out int right, out int bottom, out bool clippingDisabled);
+		lua.PushBool(!clippingDisabled);
+		lua.PushNumber(left);
+		lua.PushNumber(top);
+		lua.PushNumber(right);
+		lua.PushNumber(bottom);
+		return 5;
+	}
 }

@@ -1012,6 +1012,13 @@ public class AddonFileSystem : Addon.FileSystem
 		return new AddonFileHandle(in info, g_FullFileSystem.FindOrAddFileName(fileName));
 	}
 
+	public string ResolveFile(string fileName) {
+		if (!GetFile(fileName, out AddonFileInfo info))
+			return "";
+
+		return ModPath + info.FolderName + info.FileName;
+	}
+
 	public int GetFileSize(string fileName) {
 		if (Secrets)
 			Msg($"Addon[GetFileSize]: [{fileName}]\n");

@@ -698,14 +698,16 @@ public class ModelRender : IModelRender
 #endif
 	}
 
-	bool SuppressEngineLighting = false;
+	bool EngineLightingSuppressed = false;
+
+	public void SuppressEngineLighting(bool suppress) => EngineLightingSuppressed = suppress;
 
 	LightingState ActualLightingState;
 	readonly BSPDWorldLight[] WorldLights = new BSPDWorldLight[Render.MAXLOCALLIGHTS];
 	readonly BSPDWorldLightPtr[] SourceLight = new BSPDWorldLightPtr[Render.MAXLOCALLIGHTS];
 
 	private void StudioSetupLighting(DrawModelState state, in Vector3 absEntCenter, ref LightCacheHandle_t lightcache, bool vertexLit, bool needsEnvCubemap, ref bool staticLighting, ref DrawModelInfo drawInfo, ModelRenderInfo renderInfo, StudioRenderFlags drawFlags) {
-		if (SuppressEngineLighting)
+		if (EngineLightingSuppressed)
 			return;
 
 #if !SWDS

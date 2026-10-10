@@ -1074,7 +1074,7 @@ public partial class C_BaseEntity : IClientEntity
 	public virtual void ValidateModelIndex() {
 		SetModelByIndex(ModelIndex);
 	}
-	void SetModelPointer(Model? model) {
+	public void SetModelPointer(Model? model) {
 		if (model != Model) {
 			DestroyModelInstance();
 			Model = model;
@@ -2112,6 +2112,17 @@ public partial class C_BaseEntity : IClientEntity
 	public ref Matrix3x4 EntityToWorldTransform() {
 		CalcAbsolutePosition();
 		return ref CoordinateFrame;
+	}
+
+	public virtual void GetVectors(out Vector3 forward, out Vector3 right, out Vector3 up) {
+		ref readonly Matrix3x4 entityToWorld = ref EntityToWorldTransform();
+
+		MathLib.MatrixGetColumn(entityToWorld, 0, out forward);
+
+		MathLib.MatrixGetColumn(entityToWorld, 1, out right);
+		right *= -1.0f;
+
+		MathLib.MatrixGetColumn(entityToWorld, 2, out up);
 	}
 
 	public ref Vector3 GetNetworkOrigin() => ref NetworkOrigin;

@@ -136,4 +136,6 @@ public class C_HL2MPRagdoll : C_BaseAnimatingOverlay
 	public EHANDLE Player = new();
 	[NetworkName("m_vecRagdollVelocity")]
 	public Vector3 RagdollVelocity;
+
+	public override bool IsRagdollProp() => true;
 }

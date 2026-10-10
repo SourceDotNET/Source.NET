@@ -102,6 +102,8 @@ public class SDL3_InputSystem(IServiceProvider services) : IInputSystem
 		return InputState.ButtonState.IsBitSet((int)code);
 	}
 
+	public int GetAnalogValue(AnalogCode code) => InputState.AnalogValue[(int)code];
+
 	public void ClearInputState() {
 		foreach (var state in InputStates) {
 			state.Events.Clear();

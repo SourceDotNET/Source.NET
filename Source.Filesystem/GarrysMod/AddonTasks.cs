@@ -242,8 +242,8 @@ public static class AddonTasks
 
 		public override void Cycle() {
 			IAddonDownloadNotification? notify = AddonSystem.Notify();
-			if (notify == null)
-				return;
+			// if (notify == null) // TODO, add this back once implemented
+			// 	return;
 
 			if (Thread != null) {
 				if (!Thread.IsDone())
@@ -276,7 +276,7 @@ public static class AddonTasks
 
 			if (Extracting) {
 				if (!Extractor!.IsDone()) {
-					notify.ExtractProgress(Info.WorkshopID, Info.HContentPreview, Info.Title, (uint)(Extractor.GetProgress() * Percent));
+					notify?.ExtractProgress(Info.WorkshopID, Info.HContentPreview, Info.Title, (uint)(Extractor.GetProgress() * Percent));
 					return;
 				}
 
@@ -308,7 +308,7 @@ public static class AddonTasks
 			BaseFileSystem.get.RunSteamCallbacks();
 
 			if (SteamUGC.GetItemDownloadInfo(new PublishedFileId_t(Info.WorkshopID), out ulong downloadedBytes, out ulong totalBytes) && totalBytes != 0) {
-				notify.DownloadProgress(Info.WorkshopID, Info.HContentPreview, Info.Title, (uint)downloadedBytes, (uint)totalBytes);
+				notify?.DownloadProgress(Info.WorkshopID, Info.HContentPreview, Info.Title, (uint)downloadedBytes, (uint)totalBytes);
 				BytesTransferred += (int)downloadedBytes - PrevDownloadedBytes;
 				PrevDownloadedBytes = (int)downloadedBytes;
 			}

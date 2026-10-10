@@ -12,11 +12,72 @@ public static partial class LuaVGUI
 	[LuaLibrary]
 	static readonly LuaLibrary LL_Factory_vgui = new("vgui");
 
-	// todo: GetAll
-	// todo: CursorVisible
-	// todo: IsHoveringWorld
-	// todo: GetWorldPanel
-	// todo: FocusedHasParent
+	static void AddChildren(List<IPanel> panels, IPanel panel) {
+		panels.Add(panel);
+		int count = panel.GetChildCount();
+		for (int i = 0; i < count; i++)
+			AddChildren(panels, panel.GetChild(i));
+	}
+
+	[LuaFunction]
+	static int GetAll(ILuaInterface lua) {
+		IPanel root = surface.GetEmbeddedPanel();
+		List<IPanel> panels = [root];
+		int count = root.GetChildCount();
+		for (int i = 0; i < count; i++)
+			AddChildren(panels, root.GetChild(i));
+
+		lua.PreCreateTable(panels.Count, 0);
+		int n = 0;
+		foreach (IPanel vpanel in panels) {
+			if (vpanel is not Panel panel || !panel.LuaPanel)
+				continue;
+			lua.PushNumber(++n);
+			Push_Panel(panel);
+			lua.SetTable(-3);
+		}
+		return 1;
+	}
+
+	[LuaFunction]
+	static int CursorVisible(ILuaInterface lua) {
+		lua.PushBool(surface.IsCursorVisible());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int IsHoveringWorld(ILuaInterface lua) {
+		if (!surface.IsCursorVisible()) {
+			lua.PushBool(false);
+			return 1;
+		}
+		Panel? world = GModBase.GetGModBasePanel(true);
+		lua.PushBool(vguiInput.GetMouseOver() == world);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetWorldPanel(ILuaInterface lua) {
+		Push_Panel(GModBase.GetGModBasePanel(true));
+		return 1;
+	}
+
+	[LuaFunction]
+	static int FocusedHasParent(ILuaInterface lua) {
+		Panel? panel = Get_Panel(1);
+		if (panel == null)
+			return 0;
+
+		IPanel? focus = vguiInput.GetFocus();
+		if (focus != null && focus.HasParent(panel)) {
+			lua.PushBool(true);
+			return 1;
+		}
+
+		lua.PushBool(false);
+		return 1;
+	}
+
 	[LuaFunction]
 	static int GetKeyboardFocus(ILuaInterface lua) {
 		IPanel? focus = vguiInput.GetFocus();

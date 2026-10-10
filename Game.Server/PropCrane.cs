@@ -27,4 +27,6 @@ public class PropCrane : BaseAnimating
 	public bool ExitAnimOn;
 	[NetworkName("m_vecEyeExitEndpoint")]
 	public Vector3 EyeExitEndpoint;
+
+	public override bool IsVehicle() => true;
 }

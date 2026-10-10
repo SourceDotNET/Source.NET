@@ -37,7 +37,14 @@ public class ClientModeShared : GameEventListener, IClientMode
 		strcpy(HostName, "Unset");
 	}
 
-	static void SetupVGuiMatrices(bool push, IMatRenderContext renderContext) {
+	public void SetupGModSurface(bool push) {
+		if (push)
+			surface.PushMakeCurrent(GarrysMod.GModBase.GetGModBasePanel(true)!, false);
+		else
+			surface.PopMakeCurrent(GarrysMod.GModBase.GetGModBasePanel(true)!);
+	}
+
+	public static void SetupVGuiMatrices(bool push, IMatRenderContext renderContext) {
 		if (!push) {
 			renderContext.MatrixMode(MaterialMatrixMode.Projection);
 			renderContext.PopMatrix();

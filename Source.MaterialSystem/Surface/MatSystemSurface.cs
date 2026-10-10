@@ -399,10 +399,6 @@ public class MatSystemSurface : IMatSystemSurface
 		}
 	}
 
-#if GMOD_DLL
-	public void SetInDrawing(bool inDrawing) => InDrawing = inDrawing;
-#endif
-
 	public void DestroyTextureID(in TextureID id) {
 		TextureDictionary.DestroyTexture(id);
 	}
@@ -413,7 +409,9 @@ public class MatSystemSurface : IMatSystemSurface
 	}
 
 	public void DrawFilledRect(int x0, int y0, int x1, int y1) {
+#if !GMOD_DLL
 		Assert(InDrawing);
+#endif
 
 		if (FullyTransparent)
 			return;
@@ -431,7 +429,9 @@ public class MatSystemSurface : IMatSystemSurface
 	}
 
 	public void DrawFilledRectArray(Span<Rectangle> rects, int numRects) {
+#if !GMOD_DLL
 		Assert(InDrawing);
+#endif
 
 		if (FullyTransparent)
 			return;
@@ -518,7 +518,9 @@ public class MatSystemSurface : IMatSystemSurface
 	}
 
 	public void DrawLine(int x0, int y0, int x1, int y1) {
+#if !GMOD_DLL
 		Assert(InDrawing);
+#endif
 
 		if (FullyTransparent)
 			return;
@@ -605,7 +607,9 @@ public class MatSystemSurface : IMatSystemSurface
 	}
 
 	public void DrawOutlinedCircle(int x, int y, int radius, int segments) {
+#if !GMOD_DLL
 		Assert(InDrawing);
+#endif
 		Assert(!In3DPaintMode);
 
 		if (FullyTransparent)
@@ -661,7 +665,9 @@ public class MatSystemSurface : IMatSystemSurface
 	IFont? CurrentFont;
 
 	public void DrawPrintText(ReadOnlySpan<char> text, FontDrawType drawType = FontDrawType.Default) {
+#if !GMOD_DLL
 		Assert(InDrawing);
+#endif
 
 		if (text.IsEmpty)
 			return;
@@ -878,7 +884,9 @@ public class MatSystemSurface : IMatSystemSurface
 	}
 
 	public void DrawTexturedRect(int x0, int y0, int x1, int y1) {
+#if !GMOD_DLL
 		Assert(InDrawing);
+#endif
 
 		if (DrawColor.A == 0)
 			return;
@@ -900,7 +908,9 @@ public class MatSystemSurface : IMatSystemSurface
 	}
 
 	public void DrawTexturedSubRect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
+#if !GMOD_DLL
 		Assert(InDrawing);
+#endif
 
 		if (DrawColor.A == 0)
 			return;
@@ -1190,7 +1200,9 @@ public class MatSystemSurface : IMatSystemSurface
 		renderContext.MatrixMode(MaterialMatrixMode.View);
 		renderContext.PopMatrix();
 
+#if !GMOD_DLL
 		Assert(InDrawing);
+#endif
 		InDrawing = false;
 	}
 
@@ -1286,7 +1298,9 @@ public class MatSystemSurface : IMatSystemSurface
 
 	public void DrawTexturedPolygon(Span<SurfaceVertex> vertices, bool clipVertices = true) {
 		Assert(!In3DPaintMode);
+#if !GMOD_DLL
 		Assert(InDrawing);
+#endif
 
 		// Don't even bother drawing fully transparent junk
 		if (vertices.IsEmpty || vertices.Length == 0 || DrawColor[3] == 0)
@@ -1868,7 +1882,9 @@ public class MatSystemSurface : IMatSystemSurface
 	}
 
 	private void DrawRenderCharInternal(CharRenderInfo info) {
+#if !GMOD_DLL
 		Assert(InDrawing);
+#endif
 
 		if (info.ShouldClip) {
 			Span<SurfaceVertex> clip = [info.Verts[0], info.Verts[1]];
@@ -1887,7 +1903,9 @@ public class MatSystemSurface : IMatSystemSurface
 
 
 	public bool DrawGetCharRenderInfo(char ch, ref CharRenderInfo info) {
+#if !GMOD_DLL
 		Assert(InDrawing);
+#endif
 		info.Valid = false;
 
 		if (CurrentFont == null)
@@ -2089,6 +2107,16 @@ public class MatSystemSurface : IMatSystemSurface
 		bottom = scissorRect.Bottom;
 		clippingDisabled = !scissorRect.Scissor;
 	}
+
+#if GMOD_DLL
+	public void DrawGetColor(out Color color) => color = DrawColor;
+	public void DrawGetTextColor(out Color color) => color = DrawTextColor;
+
+	public void DrawGetTranslate(out int x, out int y) {
+		x = TranslateX;
+		y = TranslateY;
+	}
+#endif
 
 	public void PushFullscreenViewport() {
 		using MatRenderContextPtr renderContext = new(materials);

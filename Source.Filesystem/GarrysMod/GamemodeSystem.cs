@@ -124,8 +124,8 @@ public class GamemodeSystem : Gamemode.System
 
 		Span<char> fullPath = stackalloc char[MAX_PATH];
 		foreach (ILegacyAddons.Information addon in g_FullFileSystem.LegacyAddons().GetList()) {
-			string path = addon.Placeholder4 + "/" + gm.Name + "/content";
-			if (!string.IsNullOrEmpty(addon.Placeholder4) && g_FullFileSystem.IsDirectory(path, "MOD")) {
+			string path = addon.GamemodesPath + "/" + gm.Name + "/content";
+			if (!string.IsNullOrEmpty(addon.GamemodesPath) && g_FullFileSystem.IsDirectory(path, "MOD")) {
 				ReadOnlySpan<char> full = g_FullFileSystem.RelativePathToFullPath(path, "MOD", fullPath);
 				if (!full.IsEmpty) {
 					g_FullFileSystem.AddSearchPath(full, "GAME", SearchPathAdd.ToTail, PathGroupName.GMContent);

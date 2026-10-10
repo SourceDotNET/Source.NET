@@ -18,6 +18,8 @@ public class PropJeep : PropVehicleDriveable
 
 	[NetworkName("m_bHeadlightIsOn")]
 	public bool HeadlightIsOn;
+
+	public override bool IsJeep() => true;
 }
 
 [LinkEntityToClass("prop_vehicle_jeep")]

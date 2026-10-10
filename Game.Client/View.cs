@@ -1,6 +1,9 @@
 global using static Game.Client.ViewConVars;
 global using static Game.Client.ViewAccessors;
 
+#if GMOD_DLL
+using Game.Client.GarrysMod;
+#endif
 using Game.Shared;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -97,7 +100,7 @@ public class ViewRender : IViewRender
 	static ConVar r_nearz = new(VIEW_NEARZ.ToString(), FCvar.Cheat, "Override the near clipping plane.");
 	static ConVar r_farz = new("-1", FCvar.Cheat, "Override the far clipping plane. -1 means to use the value in env_fog_controller.");
 
-	public ViewSetup? CurrentView;
+	public ViewSetup CurrentView;
 	bool ForceNoVis;
 	DrawFlags BaseDrawFlags;
 	Frustum Frustum;
@@ -144,7 +147,7 @@ public class ViewRender : IViewRender
 	}
 
 	public ref ViewSetup GetViewSetup() {
-		throw new NotImplementedException();
+		return ref CurrentView;
 	}
 
 	public void GetWaterLODParams(ref float cheapWaterStartDistance, ref float cheapWaterEndDistance) {
@@ -330,6 +333,11 @@ public class ViewRender : IViewRender
 					throw new NotImplementedException("Stereo-eye not yet implemented");
 			}
 
+#if GMOD_DLL
+			if (LuaRender.RenderViewID == ViewID.Illegal)
+				SpawnIconRenderer.RenderQueued();
+#endif
+
 			ClearFlags clearFlags = ClearFlags.ClearColor | ClearFlags.ClearDepth | ClearFlags.ClearStencil;
 
 			bool drawViewModel = true; // todo
@@ -380,6 +388,8 @@ public class ViewRender : IViewRender
 	IEngineVGui enginevgui => _enginevgui ??= Singleton<IEngineVGui>();
 
 	public void RenderView(in ViewSetup viewRender, ClearFlags clearFlags, RenderViewInfo whatToDraw) {
+		CurrentView = viewRender;
+
 		using C_BaseAnimating.AutoAllowBoneAccess boneaccess = new(true, true);
 
 		MatRenderContextPtr renderContext;

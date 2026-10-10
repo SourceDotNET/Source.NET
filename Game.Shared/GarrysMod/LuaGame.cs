@@ -1,5 +1,6 @@
 #if CLIENT_DLL || GAME_DLL
 using Source;
+using Source.Common.GarrysMod;
 using Source.Common.GarrysMod.Lua;
 
 using Game.Shared;
@@ -46,6 +47,33 @@ public static partial class LuaGame
 	// todo: GetSkillLevel
 	// todo: AddParticles
 	// todo: IsDedicated
+
+	[LuaFunction]
+	static int MountGMA(ILuaInterface lua) {
+		string path = g_Lua!.CheckString(1);
+		if (!GMOD.IsValidPath(path)) {
+			g_Lua.PushBool(false);
+			return 1;
+		}
+
+		List<string> files = [];
+		if (!filesystem.Addons().MountFile(path, files, 0, 0, 2)) {
+			g_Lua.PushBool(false);
+			return 1;
+		}
+
+		g_Lua.PushBool(true);
+		g_Lua.CreateTable();
+		for (int i = 0; i < files.Count; i++) {
+			g_Lua.PushNumber(i + 1);
+			g_Lua.PushString(files[i]);
+			g_Lua.SetTable(-3);
+			// todo: engine.GMOD_LoadModel
+			// if (Bootil.String.Test.EndsWith(files[i], ".mdl"))
+			// 	engine.GMOD_LoadModel(files[i]);
+		}
+		return 2;
+	}
 	[LuaFunction]
 	static int GetWorld(ILuaInterface lua) {
 #if CLIENT_DLL
