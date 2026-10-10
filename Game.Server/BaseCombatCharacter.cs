@@ -1,10 +1,11 @@
-﻿using Game.Shared;
+using Game.Shared;
 
 using Source;
 using Source.Common;
 using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Formats.BSP;
+using Source.Common.Mathematics;
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -284,6 +285,66 @@ public partial class BaseCombatCharacter : BaseFlex
 			ActiveWeapon.Get()!.Operator_FrameUpdate(this);
 	}
 
+	public virtual void Weapon_HandleAnimEvent(ref AnimEvent animEvent) {
+		if (ActiveWeapon.Get() != null)
+			ActiveWeapon.Get()!.Operator_HandleAnimEvent(ref animEvent, this);
+	}
+
+	public static readonly ConVar ai_show_hull_attacks = new("ai_show_hull_attacks", "0");
+
+	public virtual BaseEntity? CheckTraceHullAttack(float dist, in Vector3 mins, in Vector3 maxs, float damage, DamageType dmgType, float forceScale = 1.0f, bool damageAnyNPC = false) {
+		MathLib.AngleVectors(GetAbsAngles(), out Vector3 forward);
+		Vector3 start = GetAbsOrigin();
+
+		float verticalOffset = WorldAlignSize().Z * 0.5f;
+
+		if (verticalOffset < maxs.Z)
+			verticalOffset = maxs.Z + 1.0f;
+
+		start.Z += verticalOffset;
+		Vector3 end = start + (forward * dist);
+		return CheckTraceHullAttack(start, end, mins, maxs, damage, dmgType, forceScale, damageAnyNPC);
+	}
+
+	public virtual BaseEntity? CheckTraceHullAttack(in Vector3 start, in Vector3 end, in Vector3 mins, in Vector3 maxs, float damage, DamageType dmgType, float forceScale = 1.0f, bool damageAnyNPC = false) {
+		if (ai_show_hull_attacks.GetBool()) {
+			float length = (end - start).Length();
+			Vector3 direction = end - start;
+			MathLib.VectorNormalize(ref direction);
+			Vector3 hullMaxs = maxs;
+			hullMaxs.X = length + hullMaxs.X;
+			DebugOverlay.BoxDirection(start, mins, hullMaxs, direction, 100, 255, 255, 20, 1.0f);
+			DebugOverlay.BoxDirection(start, mins, maxs, direction, 255, 0, 0, 20, 1.0f);
+		}
+
+		TakeDamageInfo dmgInfo = new(this, this, damage, dmgType);
+
+		TraceFilterMelee traceFilter = new(this, Source.CollisionGroup.Projectile, dmgInfo, forceScale, damageAnyNPC);
+
+		Ray ray = default;
+		ray.Init(start, end, mins, maxs);
+
+		enginetrace.TraceRay(in ray, Mask.ShotHull, ref traceFilter, out Trace tr);
+
+		BaseEntity? entity = traceFilter.Hit;
+
+		if (entity == null) {
+			Vector3 topCenter = GetAbsOrigin();
+			CollisionProp().WorldSpaceAABB(out _, out Vector3 aabbMaxs);
+			topCenter.Z = aabbMaxs.Z + 1.0f;
+
+			ray.Init(topCenter, end, mins, maxs);
+			enginetrace.TraceRay(in ray, Mask.ShotHull, ref traceFilter, out tr);
+
+			entity = traceFilter.Hit;
+		}
+
+		if (entity != null && !entity.CanBeHitByMeleeAttack(this))
+			entity = null;
+
+		return entity;
+	}
+
 	public BaseCombatWeapon? Weapon_Create(ReadOnlySpan<char> weaponName) => throw new NotImplementedException();
 	public virtual void Weapon_Equip(BaseCombatWeapon weapon) {
 		for (int i = 0; i < MAX_WEAPONS; i++) {
@@ -461,4 +522,68 @@ public partial class BaseCombatCharacter : BaseFlex
 			return weapon.GetBulletSpread(GetCurrentWeaponProficiency());
 		return VECTOR_CONE_15DEGREES;
 	}
+}
+
+public struct TraceFilterMelee(IHandleEntity? passentity, CollisionGroup collisionGroup, TakeDamageInfo dmgInfo, float forceScale, bool damageAnyNPC) : ITraceFilter
+{
+	public IHandleEntity? PassEnt = passentity;
+	public CollisionGroup CollisionGroup = collisionGroup;
+	public TakeDamageInfo DmgInfo = dmgInfo;
+	public BaseEntity? Hit;
+	public float ForceScale = forceScale;
+	public bool DamageAnyNPC = damageAnyNPC;
+
+	public bool ShouldHitEntity(IHandleEntity handleEntity, Contents contentsMask) {
+		if (!StandardFilterRules(handleEntity, contentsMask))
+			return false;
+
+		if (!PassServerEntityFilter(handleEntity, PassEnt))
+			return false;
+
+		BaseEntity? entity = EntityFromEntityHandle(handleEntity);
+
+		if (entity != null) {
+			if (!entity.ShouldCollide(CollisionGroup, contentsMask))
+				return false;
+
+			if (!g_pGameRules.ShouldCollide(CollisionGroup, entity.GetCollisionGroup()))
+				return false;
+
+			if (entity.m_takedamage == (byte)Damage.No)
+				return false;
+
+			Vector3 attackDir = entity.WorldSpaceCenter() - DmgInfo.GetAttacker()!.WorldSpaceCenter();
+			MathLib.VectorNormalize(ref attackDir);
+
+			TakeDamageInfo info = DmgInfo;
+			CalculateMeleeDamageForce(ref info, attackDir, info.GetAttacker()!.WorldSpaceCenter(), ForceScale);
+
+			BaseCombatCharacter? bcc = ToBaseCombatCharacter(info.GetAttacker());
+			BaseCombatCharacter? victimBCC = ToBaseCombatCharacter(entity);
+
+			if (bcc != null && victimBCC != null) {
+				if (DamageAnyNPC || bcc.IRelationType(entity) == Disposition.HT) {
+					if (info.GetDamage() != 0)
+						entity.TakeDamage(info);
+
+					SoundEnt.InsertSound(SoundInstanceType.Combat, info.GetDamagePosition(), 200, 0.2f, info.GetAttacker());
+
+					Hit = entity;
+					return true;
+				}
+			}
+			else {
+				Hit = entity;
+
+				Pickup.ForcePlayerToDropThisObject(entity);
+
+				if (info.GetDamage() != 0)
+					entity.TakeDamage(info);
+			}
+		}
+
+		return false;
+	}
+
+	public readonly TraceType GetTraceType() => TraceType.EntitiesOnly;
 }

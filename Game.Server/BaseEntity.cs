@@ -3183,6 +3183,8 @@ public partial class BaseEntity : IServerEntity
 	}
 	public bool IsWorld() => EntIndex() == 0;
 
+	public virtual bool CanBeHitByMeleeAttack(BaseEntity? attacker) => true;
+
 	public virtual bool FVisible(BaseEntity entity, Mask traceMask = Mask.BlockLOS) {
 		if ((entity.GetFlags() & EntityFlags.NoTarget) != 0)
 			return false;
