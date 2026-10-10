@@ -103,7 +103,9 @@ public class ClientLauncherAPI(IGame game, IServiceProvider services, Common COM
 	}
 
 	private bool Init() {
-		// if (!game.Init()) 
+		materials.SetMaterialProxyFactory(Shader.s_MaterialProxyFactory);
+
+		// if (!game.Init())
 			// goto onStartupError;
 		
 		if (!videomode.Init()) 
