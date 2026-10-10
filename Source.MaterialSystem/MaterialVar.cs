@@ -222,7 +222,24 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	public override void SetVecComponentValue(float val, int component) {
-		throw new NotImplementedException();
+		if (Type == MaterialVarType.Vector && VecVal[component] == val)
+			return;
+
+		FlushIfCurrentMaterial();
+
+		Type = MaterialVarType.Vector;
+		Assert(component <= 3);
+
+		if (NumVectorComps < component) {
+			for (int i = NumVectorComps; i != component; ++i)
+				VecVal[i] = 0.0f;
+
+			NumVectorComps = (byte)component;
+		}
+
+		VecVal[component] = val;
+
+		VarChanged();
 	}
 
 	void SetVecValueInternal(in Vector4 vec, int comps) {

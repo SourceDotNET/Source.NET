@@ -547,6 +547,54 @@ public class ModelLoader(IFileSystem fileSystem, Host Host,
 		}
 	}
 
+	internal void Mod_RecomputeTranslucency(Model mod, int skin, int body, object? clientRenderable, float instanceAlphaModulate) {
+		if (instanceAlphaModulate < 1.0f) {
+			mod.Flags |= ModelFlag.Translucent;
+			return;
+		}
+
+		mod.Flags &= ~ModelFlag.Translucent;
+
+		switch (mod.Type) {
+			case ModelType.Brush: {
+					for (int i = 0; i < mod.Brush.NumModelSurfaces; ++i) {
+						ref BSPMSurface2 surfID = ref SurfaceHandleFromIndex(mod.Brush.FirstModelSurface + i, mod.Brush.Shared);
+						if ((MSurf_Flags(ref surfID) & SurfDraw.NoDraw) != 0)
+							continue;
+
+						IMaterial material = MSurf_TexInfo(ref surfID, mod.Brush.Shared).Material!;
+						if (material.IsTranslucent()) {
+							mod.Flags |= ModelFlag.Translucent;
+							break;
+						}
+					}
+				}
+				break;
+
+			case ModelType.Studio: {
+					StudioHeader studioHdr = MDLCache.GetStudioHdr(mod.Studio)!;
+					if ((studioHdr.Flags & StudioHdrFlags.ForceOpaque) != 0)
+						return;
+
+					Span<IMaterial> materials = new IMaterial[128];
+					int materialCount = StudioRender.GetMaterialListFromBodyAndSkin(mod.Studio, skin, body, materials);
+					for (int i = 0; i < materialCount; i++) {
+						if (materials[i] != null) {
+							using MatRenderContextPtr renderContext = new(SourceDllMain.materials);
+							renderContext.Bind(materials[i], clientRenderable);
+							bool isTranslucent = materials[i].IsTranslucent();
+
+							if (isTranslucent) {
+								mod.Flags |= ModelFlag.Translucent;
+								break;
+							}
+						}
+					}
+				}
+				break;
+		}
+	}
+
 	internal int Mod_GetModelMaterials(Model model, Span<IMaterial> materials) {
 		StudioHeader studioHdr;
 		int found = 0;

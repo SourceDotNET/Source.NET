@@ -220,6 +220,9 @@ public class MatRenderContext : IMatRenderContextInternal
 		}
 		SetCurrentProxy(proxyData);
 
+		if (materials.GetThreadMode() == MaterialThreadMode.SingleThreaded)
+			GetCurrentMaterialInternal()!.CallBindProxy(proxyData);
+
 		shaderAPI.Bind(GetCurrentMaterialInternal());
 	}
 

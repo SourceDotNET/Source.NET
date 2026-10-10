@@ -15,6 +15,7 @@ public interface IUniformRandomStream
 
 public static class RandomGlobals {
 	static readonly UniformRandomStream s_UniformStream = new();
+	internal static IUniformRandomStream UniformStream => s_UniformStream;
 	public static void RandomSeed(int seed) => s_UniformStream.SetSeed(seed);
 	public static float RandomFloat(float min, float max) => s_UniformStream.RandomFloat(min, max);
 	public static float RandomFloatExp(float min, float max, float exponent) => s_UniformStream.RandomFloatExp(min, max, exponent);
@@ -128,5 +129,43 @@ public class UniformRandomStream : IUniformRandomStream
 	public void SetSeed(int seed) {
 		m_idum = ((seed < 0) ? seed : -seed);
 		m_iy = 0;
+	}
+}
+
+public class GaussianRandomStream
+{
+	IUniformRandomStream? UniformStream;
+	bool HaveValue;
+	float RandomValue;
+
+	public GaussianRandomStream(IUniformRandomStream? uniformStream = null) => AttachToStream(uniformStream);
+
+	public void AttachToStream(IUniformRandomStream? uniformStream) {
+		UniformStream = uniformStream;
+		HaveValue = false;
+	}
+
+	public float RandomFloat(float mean = 0.0f, float stdDev = 1.0f) {
+		IUniformRandomStream uniformStream = UniformStream ?? RandomGlobals.UniformStream;
+		float fac, rsq, v1, v2;
+
+		if (!HaveValue) {
+			do {
+				v1 = 2.0f * uniformStream.RandomFloat(0.0f, 1.0f) - 1.0f;
+				v2 = 2.0f * uniformStream.RandomFloat(0.0f, 1.0f) - 1.0f;
+				rsq = v1 * v1 + v2 * v2;
+			} while ((rsq > 1.0f) || (rsq == 0.0f));
+
+			fac = MathF.Sqrt(-2.0f * MathF.Log(rsq) / rsq);
+
+			RandomValue = v1 * fac;
+			HaveValue = true;
+
+			return stdDev * (v2 * fac) + mean;
+		}
+		else {
+			HaveValue = false;
+			return stdDev * RandomValue + mean;
+		}
 	}
 }

@@ -1081,8 +1081,147 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 
 	public void BindStandardTexture(Sampler sampler, StandardTextureId id) => GetRenderContextInternal().BindStandardTexture(sampler, id);
 
+	bool ReplacementFilesValid;
+	readonly Dictionary<string, KeyValues> Replacements = new(StringComparer.OrdinalIgnoreCase);
+
+	static readonly string[] ReplacementForceCopy = ["$nocull"];
+
+	void ScanDirForReplacements(ReadOnlySpan<char> pathName) {
+		string baseName = $"{pathName}/replacements.vmt";
+		if (FileSystem.FileExists(baseName)) {
+			KeyValues? kv = FileSystem.LoadKeyValues(IFileSystem.KeyValuesPreloadType.VMT, baseName);
+			if (kv != null)
+				Replacements.TryAdd($"{pathName}/", kv);
+		}
+
+		ReadOnlySpan<char> findFileName = FileSystem.FindFirstEx($"{pathName}/*", null, out ulong findHandle);
+
+		while (!findFileName.IsEmpty) {
+			if (FileSystem.FindIsDirectory(findHandle)) {
+				if (!findFileName.SequenceEqual(".") && !findFileName.SequenceEqual(".."))
+					ScanDirForReplacements($"{pathName}/{findFileName}");
+			}
+
+			findFileName = FileSystem.FindNext(findHandle);
+		}
+
+		FileSystem.FindClose(findHandle);
+	}
+
+	void PreloadReplacements() {
+		Replacements.Clear();
+
+		ScanDirForReplacements("materials");
+
+		ReplacementFilesValid = true;
+	}
+
+	static string ExtractFilePath(string path) {
+		int src = path.Length > 0 ? path.Length - 1 : 0;
+		while (src != 0 && path[src - 1] != '/' && path[src - 1] != '\\')
+			src--;
+		return path[..src];
+	}
+
 	public IMaterialProxy? DetermineProxyReplacements(IMaterial? material, KeyValues? fallbackKeyValues) {
-		throw new NotImplementedException();
+		ReplacementProxy? replacementProxy = null;
+
+		if (!HardwareConfig.SupportsPixelShaders_2_0())
+			return null;
+
+		if (!ReplacementFilesValid)
+			PreloadReplacements();
+
+		string materialName = new(material!.GetName());
+
+		string shaderName = fallbackKeyValues!.Name;
+
+		string lastPath = materialName;
+		int length = lastPath.Length - ReplacementProxy.REPLACEMENT_NAME.Length;
+		if (length > 0 && lastPath.AsSpan(length).Equals(ReplacementProxy.REPLACEMENT_NAME, StringComparison.OrdinalIgnoreCase))
+			return null;
+
+		while (true) {
+			string checkPath = ExtractFilePath(lastPath);
+
+			string checkName = $"materials/{checkPath.AsSpan().TrimStart(['/', '\\'])}";
+
+			if (Replacements.TryGetValue(checkName, out KeyValues? kv)) {
+				KeyValues? templatesKV = kv.FindKey("templates");
+				KeyValues? patternsKV = kv.FindKey("patterns");
+
+				int slash = materialName.AsSpan().LastIndexOfAny('/', '\\');
+				ReadOnlySpan<char> fileName = slash >= 0 ? materialName.AsSpan(slash + 1) : materialName;
+
+				if (templatesKV == null || patternsKV == null)
+					Warning($"Replacements: Invalid KV file {checkName}\n");
+				else {
+					for (KeyValues? subKey = patternsKV.GetFirstSubKey(); subKey != null; subKey = subKey.GetNextKey()) {
+						string replacementName = subKey.Name;
+
+						if (fileName.Length >= replacementName.Length && fileName[..replacementName.Length].Equals(replacementName, StringComparison.OrdinalIgnoreCase)) {
+							KeyValues? templateNameKV = subKey.FindKey("template");
+							KeyValues? replacementMaterial = null;
+
+							if (templateNameKV != null) {
+								KeyValues? templateKV = templatesKV.FindKey(templateNameKV.GetString());
+								if (templateKV != null) {
+									templateKV = templateKV.FindKey(shaderName);
+
+									if (templateKV != null && templateKV.GetFirstSubKey() != null)
+										replacementMaterial = templateKV.GetFirstSubKey()!.MakeCopy();
+								}
+							}
+							else {
+								if (subKey.GetFirstSubKey() != null)
+									replacementMaterial = subKey.GetFirstSubKey()!.MakeCopy();
+							}
+
+							if (replacementMaterial == null)
+								break;
+
+							if (replacementMaterial.GetInt("$copyall") == 1) {
+								for (KeyValues? copyKV = fallbackKeyValues.GetFirstSubKey(); copyKV != null; copyKV = copyKV.GetNextKey()) {
+									if (replacementMaterial.FindKey(copyKV.Name) == null)
+										replacementMaterial.SetString(copyKV.Name, copyKV.GetString());
+								}
+							}
+							else {
+								foreach (string forceCopy in ReplacementForceCopy) {
+									KeyValues? copyKV = fallbackKeyValues.FindKey(forceCopy);
+									if (copyKV != null)
+										replacementMaterial.SetString(forceCopy, copyKV.GetString());
+								}
+							}
+
+							for (KeyValues? searchKV = replacementMaterial.GetFirstSubKey(); searchKV != null; searchKV = searchKV.GetNextKey()) {
+								ReadOnlySpan<char> value = searchKV.GetString();
+								if (!value.IsEmpty && value[0] == '$') {
+									KeyValues? copyKV = fallbackKeyValues.FindKey(value);
+									if (copyKV != null)
+										searchKV.SetStringValue(copyKV.GetString());
+									else
+										searchKV.SetStringValue("");
+								}
+							}
+							replacementProxy = new ReplacementProxy(this);
+							replacementProxy.Init(material, replacementMaterial);
+
+							break;
+						}
+					}
+				}
+
+				break;
+			}
+
+			if (checkPath.Length == 0)
+				break;
+
+			lastPath = checkPath;
+		}
+
+		return replacementProxy;
 	}
 
 	IMaterialProxyFactory? MaterialProxyFactory;
@@ -1297,9 +1436,8 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 		throw new NotImplementedException("Incomplete port of IMaterialSystem");
 	}
 
-	public MaterialThreadMode GetThreadMode() {
-		throw new NotImplementedException("Incomplete port of IMaterialSystem");
-	}
+	MaterialThreadMode ThreadMode = MaterialThreadMode.SingleThreaded;
+	public MaterialThreadMode GetThreadMode() => ThreadMode;
 
 	public ref readonly MaterialSystemHardwareIdentifier GetVideoCardIdentifier() {
 		throw new NotImplementedException("Incomplete port of IMaterialSystem");

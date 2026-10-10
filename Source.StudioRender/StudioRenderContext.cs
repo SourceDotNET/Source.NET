@@ -43,6 +43,7 @@ public class StudioRenderCtx
 public class StudioRenderContext(IMaterialSystem materialSystem, IStudioDataCache studioDataCache, StudioRender studioRenderImp) : IStudioRender
 {
 	readonly IMaterialSystemHardwareConfig hardwareConfig = Singleton<IMaterialSystemHardwareConfig>();
+	IMDLCache mdlcache => field ??= Singleton<IMDLCache>();
 
 	public void BeginFrame() {
 		RC.Config.SupportsVertexAndPixelShaders = hardwareConfig.SupportsVertexAndPixelShaders();
@@ -56,6 +57,48 @@ public class StudioRenderContext(IMaterialSystem materialSystem, IStudioDataCach
 	}
 
 	public void UpdateConfig(in StudioRenderConfig config) => RC.Config = config;
+
+	public int GetMaterialListFromBodyAndSkin(MDLHandle_t studio, int skin, int body, Span<IMaterial> outputMaterials) {
+		int found = 0;
+
+		StudioHWData? studioHWData = mdlcache.GetHardwareData(studio);
+		if (studioHWData == null)
+			return 0;
+
+		for (int lodID = studioHWData.RootLOD; lodID < studioHWData.NumLODs; lodID++) {
+			StudioHeader studioHdr = mdlcache.GetStudioHdr(studio)!;
+			Span<IMaterial> inputMaterials = studioHWData.LODs![lodID].Materials;
+
+			if (skin >= studioHdr.NumSkinFamilies)
+				skin = 0;
+
+			Span<short> skinRef = studioHdr.SkinRef(0)[(skin * studioHdr.NumSkinRef)..];
+
+			for (int i = 0; i < studioHdr.NumBodyParts; i++) {
+				studioRenderImp.R_StudioSetupModel(i, body, out MStudioModel? model, studioHdr);
+
+				for (int k = 0; k < model!.NumMeshes; ++k) {
+					MStudioMesh mesh = model.Mesh(k);
+					IMaterial material = inputMaterials[skinRef[mesh.Material]];
+					Assert(material != null);
+
+					int m;
+					for (m = 0; m < found; m++) {
+						if (outputMaterials[m] == material)
+							break;
+					}
+					if (m >= found) {
+						outputMaterials[found++] = material!;
+
+						if (found >= outputMaterials.Length)
+							return found;
+					}
+				}
+			}
+		}
+
+		return found;
+	}
 
 	public int GetMaterialList(StudioHeader studioHDR, Span<IMaterial> materials) {
 		AssertMsg(studioHDR != null, "Don't ignore this assert! StudioRenderContext.GetMaterialList() has null studioHDR.");
