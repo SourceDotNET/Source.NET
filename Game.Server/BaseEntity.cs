@@ -2262,6 +2262,15 @@ public partial class BaseEntity : IServerEntity
 
 	public bool BlocksLOS() => !IsEFlagSet(EFL.DontBlockLOS);
 
+	public void SetAIWalkable(bool blocksLOS) {
+		if (blocksLOS)
+			RemoveEFlags(EFL.DontWalkOn);
+		else
+			AddEFlags(EFL.DontWalkOn);
+	}
+
+	public bool IsAIWalkable() => !IsEFlagSet(EFL.DontWalkOn);
+
 	public Vector3 AbsVelocity;
 	public QAngle AngVelocity;
 

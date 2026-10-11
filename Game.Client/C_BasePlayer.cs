@@ -715,7 +715,7 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	public float VehicleViewFOV;
 	public int VehicleViewSavedFrame;
 
-	public int GetHealth() => Health;
+
 	public bool IsSuitEquipped() => Local.WearingSuit;
 
 	public TimeUnit_t GetLaggedMovementValue() => LaggedMovementValue;
