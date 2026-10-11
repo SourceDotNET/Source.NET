@@ -13,6 +13,7 @@ using Source.Common.Mathematics;
 using Source.Common.Physics;
 using Source.Engine;
 
+using System.Buffers;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -1916,6 +1917,75 @@ public partial class BasePlayer : BaseCombatCharacter
 	public virtual void PlayUseDenySound() { }
 
 	public virtual void PickupObject(BaseEntity obj, bool limitMassAndSize = true) { }
+
+	public void SetUseEntity(BaseEntity? useEntity) => UseEntity.Set(useEntity);
+	public BaseEntity? GetUseEntity() => UseEntity.Get();
+
+	public static bool CanPickupObject(BaseEntity? obj, float massLimit, float sizeLimit) {
+		// UNDONE: Make this virtual and move to HL2 player
+		//Must be valid
+		if (obj == null)
+			return false;
+
+		//Must move with physics
+		if (obj.GetMoveType() != Source.MoveType.VPhysics)
+			return false;
+
+		IPhysicsObject[] list = ArrayPool<IPhysicsObject>.Shared.Rent(VPHYSICS_MAX_OBJECT_LIST_COUNT);
+		try {
+			int count = obj.VPhysicsGetObjectList(list);
+
+			//Must have a physics object
+			if (count == 0)
+				return false;
+
+			float objectMass = 0;
+			bool checkEnable = false;
+			for (int i = 0; i < count; i++) {
+				objectMass += list[i].GetMass();
+				if (!list[i].IsMoveable())
+					checkEnable = true;
+				if ((list[i].GetGameFlags() & Source.Common.Physics.PhysicsFlags.NoPlayerPickup) != 0)
+					return false;
+				if (list[i].IsHinged())
+					return false;
+			}
+
+			//Must be under our threshold weight
+			if (massLimit > 0 && objectMass > massLimit)
+				return false;
+
+			if (checkEnable) {
+				// Allowing picking up of bouncebombs.
+				// CBounceBomb *pBomb = dynamic_cast<CBounceBomb*>(pObject);
+				// if( pBomb )
+				// 	return true;
+
+				// Allow pickup of phys props that are motion enabled on player pickup
+				PhysicsProp? prop = obj as PhysicsProp;
+				PhysBox? box = obj as PhysBox;
+				if (prop == null && box == null)
+					return false;
+
+				if (prop != null && !(prop.HasSpawnFlags(SF_PHYSPROP_ENABLE_ON_PHYSCANNON)))
+					return false;
+
+				if (box != null && !(box.HasSpawnFlags(PhysBox.SF_PHYSBOX_ENABLE_ON_PHYSCANNON)))
+					return false;
+			}
+
+			if (sizeLimit > 0) {
+				ref readonly Vector3 size = ref obj.CollisionProp().OBBSize();
+				if (size.X > sizeLimit || size.Y > sizeLimit || size.Z > sizeLimit)
+					return false;
+			}
+
+			return true;
+		}
+		finally {
+			ArrayPool<IPhysicsObject>.Shared.Return(list, true);
+		}
+	}
 
 	/// <summary>
 	/// Return true if this object can be +used by the player

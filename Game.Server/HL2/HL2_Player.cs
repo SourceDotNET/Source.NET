@@ -10,6 +10,7 @@ using Game.Shared.HL2;
 
 namespace Game.Server.HL2;
 
+using DEFINE = Source.DEFINE<HL2_Player>;
 using FIELD = Source.FIELD<HL2_Player>;
 
 [PrecacheRegister("player")]
@@ -22,12 +23,17 @@ public class HL2_Player : BaseMultiplayerPlayer
 	]);
 	public static new readonly ServerClass ServerClass = new ServerClass(DT_HL2_Player);
 
+	public static readonly new DataMap DataDesc = new(typeof(HL2_Player), BasePlayer.DataDesc, [
+		DEFINE.INPUTFUNC(FieldType.Void, "ForceDropPhysObjects", nameof(InputForceDropPhysObjects), (INPUTFUNCPTR)((self, data) => ((HL2_Player)self).InputForceDropPhysObjects(data))),
+	]);
+	public override DataMap? GetDataDescMap() => DataDesc;
+
 	[NetworkName("m_HL2Local")]
 	public readonly HL2PlayerLocalData HL2Local = new();
 
 #if HL2MP
 	const int HL2_WALK_SPEED = 150;
-	const int HL2_NORM_SPEED = 190;
+	public const int HL2_NORM_SPEED = 190;
 	const int HL2_SPRINT_SPEED = 320;
 #else
 #endif
@@ -191,7 +197,7 @@ public class HL2_Player : BaseMultiplayerPlayer
 
 	void StopSprinting() { }
 
-	void EnableSprint(bool enable) {
+	public void EnableSprint(bool enable) {
 		if (!enable && IsSprinting())
 			StopSprinting();
 
@@ -514,19 +520,56 @@ public class HL2_Player : BaseMultiplayerPlayer
 		throw new NotImplementedException();
 	}
 
-	public override void PickupObject(BaseEntity Object, bool limitMassAndSize = true) { }
+	public override void PickupObject(BaseEntity obj, bool limitMassAndSize = true) => HL2_PickupObject(obj, limitMassAndSize);
 
-	bool IsHoldingEntity(BaseEntity ent) {
-		throw new NotImplementedException();
+	protected void HL2_PickupObject(BaseEntity obj, bool limitMassAndSize) {
+		// can't pick up what you're standing on
+		if (GetGroundEntity() == obj)
+			return;
+
+		if (limitMassAndSize == true) {
+			if (CanPickupObject(obj, 35, 128) == false)
+				return;
+		}
+
+		// Can't be picked up if NPCs are on me
+		// if ( pObject->HasNPCsOnIt() )
+		// 	return;
+
+		PlayerPickupController.PlayerPickupObject(this, obj);
 	}
 
-	float GetHeldObjectMass(IPhysicsObject heldObject) {
-		throw new NotImplementedException();
+	public bool IsHoldingEntity(BaseEntity? ent) {
+		return PlayerPickupController.PlayerPickupControllerIsHoldingEntity(UseEntity.Get(), ent);
 	}
 
-	void ForceDropOfCarriedPhysObjects(BaseEntity onlyIfHoldingThis) { }
+	public override float GetHeldObjectMass(IPhysicsObject? heldObject) {
+		float mass = PlayerPickupController.PlayerPickupGetHeldObjectMass(UseEntity.Get(), heldObject!);
+		// if ( mass == 0.0f )
+		// 	mass = PhysCannonGetHeldObjectMass( GetActiveWeapon(), pHeldObject );
+		return mass;
+	}
 
-	// void InputForceDropPhysObjects(inputdata_t data ) { }
+	/// <summary>
+	/// Force the player to drop any physics objects he's carrying
+	/// </summary>
+	public override void ForceDropOfCarriedPhysObjects(BaseEntity? onlyIfHoldingThis) {
+		if (PhysIsInCallback()) {
+			Variant_t value = default;
+			g_EventQueue.AddEvent(this, "ForceDropPhysObjects", value, 0.01f, onlyIfHoldingThis, this);
+			return;
+		}
+
+		// Drop any objects being handheld.
+		ClearUseEntity();
+
+		// Then force the physcannon to drop anything it's holding, if it's our active weapon
+		// PhysCannonForceDrop( GetActiveWeapon(), NULL );
+	}
+
+	public void InputForceDropPhysObjects(InputData data) {
+		ForceDropOfCarriedPhysObjects(data.Activator);
+	}
 
 	void UpdateClientData() { }
 

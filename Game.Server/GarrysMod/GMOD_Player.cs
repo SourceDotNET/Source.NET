@@ -113,6 +113,10 @@ public partial class GMOD_Player : HL2MP_Player
 		base.PlayerRunCommand(ucmd, moveHelper);
 	}
 
+	public override void PickupObject(BaseEntity obj, bool limitMassAndSize = true) {
+		HL2_PickupObject(obj, limitMassAndSize);
+	}
+
 	public override void CheckChatText(ReadOnlySpan<char> text) {
 		if (!stristr(text, "bloxwich").IsEmpty)
 			AwardAchievement((int)GMODAchievementID.GMA_SAY_1, 1);
