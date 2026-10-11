@@ -943,4 +943,11 @@ public partial class BaseAnimating : BaseEntity
 	public bool IsUsingClientSideAnimation() {
 		return ClientSideAnimation;
 	}
+
+	public void UseClientSideAnimation(bool use) {
+		if (ClientSideAnimation != use) {
+			NetworkStateChanged();
+			ClientSideAnimation = use;
+		}
+	}
 }

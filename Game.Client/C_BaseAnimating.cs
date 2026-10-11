@@ -8,6 +8,7 @@ using Source;
 using Source.Common;
 using Source.Common.Commands;
 using Source.Common.Engine;
+using Source.Common.Formats.Keyvalues;
 using Source.Common.Mathematics;
 
 using System;
@@ -179,6 +180,28 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		return vecReturn.Length();
 	}
 	public TimeUnit_t GetSequenceGroundSpeed(int sequence) => GetSequenceGroundSpeed(GetModelPtr(), sequence);
+	static string? Studio_GetKeyValueText(StudioHdr? studioHdr, int sequence) {
+		if (studioHdr != null && studioHdr.SequencesAvailable()) {
+			if (sequence >= 0 && sequence < studioHdr.GetNumSeq()) {
+				MStudioSeqDesc seqdesc = studioHdr.Seqdesc(sequence);
+				if (seqdesc.KeyValueSize != 0)
+					return System.Text.Encoding.ASCII.GetString(((ReadOnlySpan<byte>)seqdesc.Data.Span[seqdesc.KeyValueIndex..]).SliceNullTerminatedString());
+			}
+		}
+		return null;
+	}
+
+	public KeyValues? GetSequenceKeyValues(int sequence) {
+		string? text = Studio_GetKeyValueText(GetModelPtr(), sequence);
+
+		if (text != null) {
+			KeyValues seqKeyValues = new("");
+			if (seqKeyValues.LoadFromBuffer(modelinfo.GetModelName(GetModel()), text))
+				return seqKeyValues;
+		}
+		return null;
+	}
+
 	public TimeUnit_t GetSequenceGroundSpeed(StudioHdr? studioHdr, int sequence) {
 		TimeUnit_t t = SequenceDuration(studioHdr, sequence);
 		if (t > 0)
@@ -1283,7 +1306,9 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		return flInterval;
 	}
 
-	public virtual void UpdateClientSideAnimation() {
+	public virtual void UpdateClientSideAnimation() => UpdateBaseClientSideAnimation();
+
+	protected void UpdateBaseClientSideAnimation() {
 		if (ClientSideAnimation) {
 			Assert(ClientSideAnimationListHandle != INVALID_CLIENTSIDEANIMATION_LIST_HANDLE);
 			if (GetSequence() != -1) {

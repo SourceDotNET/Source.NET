@@ -112,6 +112,10 @@ public partial class HL2MP_Player : HL2_Player
 		AngEyeAngles.Init();
 
 		base.ChangeTeam(0);
+
+#if GMOD_DLL
+		UseClientSideAnimation(true);
+#endif
 	}
 
 	public override void UpdateOnRemove() {

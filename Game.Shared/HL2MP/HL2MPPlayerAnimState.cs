@@ -309,6 +309,7 @@ public class HL2MPPlayerAnimState : MultiPlayerAnimState
 		return false;
 	}
 
+#if !GMOD_DLL
 	new bool SetupPoseParameters(StudioHdr? studioHdr) {
 		if (PoseParameterInit)
 			return true;
@@ -473,6 +474,7 @@ public class HL2MPPlayerAnimState : MultiPlayerAnimState
 
 		return speed;
 	}
+#endif
 
 	public HL2MP_Player GetHL2MPPlayer() => HL2MPPlayer!;
 }

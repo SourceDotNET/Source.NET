@@ -10,6 +10,7 @@ using Source;
 using Source.Common;
 using Source.Common.Commands;
 using Source.Common.Mathematics;
+using Source.Common.Formats.Keyvalues;
 
 using System.Numerics;
 
@@ -605,6 +606,41 @@ public class MultiPlayerAnimState
 
 		return actDesired;
 	}
+#if GMOD_DLL
+	protected virtual float GetCurrentMaxGroundSpeed() {
+		StudioHdr? studioHdr = GetBasePlayer().GetModelPtr();
+
+		if (studioHdr == null)
+			return 1.0f;
+
+		int moveX = GetBasePlayer().LookupPoseParameter(studioHdr, "move_x");
+		int moveY = GetBasePlayer().LookupPoseParameter(studioHdr, "move_y");
+
+		float prevX = GetBasePlayer().GetPoseParameter(moveX);
+		float prevY = GetBasePlayer().GetPoseParameter(moveY);
+
+		float d = Math.Max(MathF.Abs(prevX), MathF.Abs(prevY));
+		float newX = 1.0f, newY = 0.0f;
+		if (d != 0.0) {
+			newX = prevX / d;
+			newY = prevY / d;
+		}
+
+		if (moveX >= 0)
+			GetBasePlayer().SetPoseParameter(studioHdr, moveX, newX);
+		if (moveY >= 0)
+			GetBasePlayer().SetPoseParameter(studioHdr, moveY, newY);
+
+		float speed = (float)GetBasePlayer().GetSequenceGroundSpeed(studioHdr, GetBasePlayer().GetSequence());
+
+		if (moveX >= 0)
+			GetBasePlayer().SetPoseParameter(studioHdr, moveX, prevX);
+		if (moveY >= 0)
+			GetBasePlayer().SetPoseParameter(studioHdr, moveY, prevY);
+
+		return speed;
+	}
+#else
 	protected virtual float GetCurrentMaxGroundSpeed() {
 		StudioHdr? studioHdr = GetBasePlayer().GetModelPtr();
 
@@ -635,7 +671,19 @@ public class MultiPlayerAnimState
 
 		return speed;
 	}
-	protected virtual float CalcMovementSpeed(out bool isMoving) => throw new NotImplementedException();
+#endif
+	protected virtual float CalcMovementSpeed(out bool isMoving) {
+		GetOuterAbsVelocity(out Vector3 velocity);
+		float speed = velocity.Length2D();
+
+		if (speed > MOVING_MINIMUM_SPEED) {
+			isMoving = true;
+			return speed;
+		}
+
+		isMoving = false;
+		return 0.0f;
+	}
 	protected virtual float CalcMovementPlaybackRate(out bool isMoving) => throw new NotImplementedException();
 	protected float GetInterpolatedGroundSpeed() => throw new NotImplementedException();
 	protected virtual void ComputeSequences(StudioHdr? studioHdr) {
@@ -656,6 +704,15 @@ public class MultiPlayerAnimState
 
 		CurrentMainSequenceActivity = idealActivity;
 
+#if GMOD_DLL
+		if (SpecificMainSequence >= 0) {
+			if (player.GetSequence() != SpecificMainSequence) {
+				player.ResetSequence(SpecificMainSequence);
+				ResetGroundSpeed();
+			}
+			return;
+		}
+#else
 		if (SpecificMainSequence >= 0) {
 			if (player.GetSequence() != SpecificMainSequence) {
 				player.ResetSequence(SpecificMainSequence);
@@ -670,6 +727,7 @@ public class MultiPlayerAnimState
 			RestartMainSequence();
 			ResetGroundSpeed();
 		}
+#endif
 
 		int animDesired = SelectWeightedSequence(TranslateActivity(idealActivity));
 		if (player.GetSequenceActivity(player.GetSequence()) == player.GetSequenceActivity(animDesired))
@@ -750,7 +808,11 @@ public class MultiPlayerAnimState
 				return;
 			}
 			else
+#if GMOD_DLL
+				gesture.AnimLayer.Cycle = 0.0;
+#else
 				gesture.AnimLayer.Cycle = 1.0;
+#endif
 		}
 #else
 		if (gesture.Activity != Activity.ACT_INVALID && gesture.AnimLayer!.Activity == Activity.ACT_INVALID)
@@ -800,6 +862,22 @@ public class MultiPlayerAnimState
 
 		return GetBasePlayer().IsAlive() || Dying;
 	}
+#if GMOD_DLL
+	protected bool SetupPoseParameters(StudioHdr? studioHdr) {
+		if (PoseParameterInit)
+			return true;
+
+		if (studioHdr == null)
+			return false;
+
+		PoseParameterInit = true;
+
+		PoseParameterData.AimPitch = GetBasePlayer().LookupPoseParameter(studioHdr, "aim_pitch");
+		PoseParameterData.AimYaw = GetBasePlayer().LookupPoseParameter(studioHdr, "aim_yaw");
+
+		return true;
+	}
+#else
 	protected bool SetupPoseParameters(StudioHdr? studioHdr) {
 		if (PoseParameterInit)
 			return true;
@@ -820,13 +898,244 @@ public class MultiPlayerAnimState
 
 		return true;
 	}
-	protected void DoMovementTest(StudioHdr? studioHdr, float x, float y) => throw new NotImplementedException();
-	protected void DoMovementTest(StudioHdr? studioHdr) => throw new NotImplementedException();
-	protected void GetMovementFlags(StudioHdr? studioHdr) => throw new NotImplementedException();
+#endif
+#if GMOD_DLL
+	protected void DoMovementTest(StudioHdr? studioHdr, float x, float y) {
+		GetBasePlayer().SetPoseParameter(studioHdr, GetBasePlayer().LookupPoseParameter(GetBasePlayer().GetModelPtr(), "move_x"), x);
+		GetBasePlayer().SetPoseParameter(studioHdr, GetBasePlayer().LookupPoseParameter(GetBasePlayer().GetModelPtr(), "move_y"), y);
+	}
+#else
+	protected void DoMovementTest(StudioHdr? studioHdr, float x, float y) {
+		GetBasePlayer().SetPoseParameter(studioHdr, PoseParameterData.MoveX, x);
+		GetBasePlayer().SetPoseParameter(studioHdr, PoseParameterData.MoveY, y);
+	}
+#endif
+
+	protected void DoMovementTest(StudioHdr? studioHdr) {
+		if (LegAnimType == LegAnimType.Anim9Way) {
+			DoMovementTest(studioHdr, -1.0f, -1.0f);
+			DoMovementTest(studioHdr, -1.0f, 0.0f);
+			DoMovementTest(studioHdr, -1.0f, 1.0f);
+			DoMovementTest(studioHdr, 0.0f, -1.0f);
+			DoMovementTest(studioHdr, 0.0f, 1.0f);
+			DoMovementTest(studioHdr, 1.0f, -1.0f);
+			DoMovementTest(studioHdr, 1.0f, 0.0f);
+			DoMovementTest(studioHdr, 1.0f, 1.0f);
+		}
+	}
+
+	protected void GetMovementFlags(StudioHdr? studioHdr) {
+		if (MovementSequence == GetBasePlayer().GetSequence())
+			return;
+
+		MovementSequence = GetBasePlayer().GetSequence();
+		LegAnimType = LegAnimType.Anim9Way;
+
+		KeyValues? seqKeyValues = GetBasePlayer().GetSequenceKeyValues(MovementSequence);
+		if (seqKeyValues != null) {
+			KeyValues? kvMovement = seqKeyValues.FindKey("movement");
+			if (kvMovement != null) {
+				ReadOnlySpan<char> style = kvMovement.GetString();
+				if (stricmp(style, "robot2") == 0)
+					LegAnimType = LegAnimType.Anim8Way;
+			}
+		}
+
+		if (MovementSequence < 0 || (GetBasePlayer().GetFlags() & EntityFlags.OnGround) == 0 || studioHdr!.Seqdesc(MovementSequence).GroupSize[0] == 1)
+			return;
+
+		DoMovementTest(studioHdr);
+	}
+
+	static float SnapYawTo(float value) {
+		float sign = 1.0f;
+		if (value < 0.0f) {
+			sign = -1.0f;
+			value = -value;
+		}
+
+		if (value < 23.0f)
+			value = 0.0f;
+		else if (value < 67.0f)
+			value = 45.0f;
+		else if (value < 113.0f)
+			value = 90.0f;
+		else if (value < 157)
+			value = 135.0f;
+		else
+			value = 180.0f;
+
+		return value * sign;
+	}
+
+#if GMOD_DLL
+	protected virtual void ComputePoseParam_MoveYaw(StudioHdr? studioHdr) {
+		EstimateYaw();
+
+		float angle = MathLib.AngleNormalize(EyeYaw);
+
+		float yaw = angle - PoseParameterData.EstimateYaw;
+		yaw = MathLib.AngleNormalize(-yaw);
+
+		float speed = CalcMovementSpeed(out bool isMoving);
+
+		BasePlayer player = GetBasePlayer();
+		Vector2 currentMoveYaw = default;
+		if (!isMoving) {
+			int moveX = player.LookupPoseParameter(player.GetModelPtr(), "move_x");
+			int moveY = player.LookupPoseParameter(player.GetModelPtr(), "move_y");
+			if (moveX >= 0)
+				player.SetPoseParameter(player.GetModelPtr(), moveX, 0);
+			if (moveY >= 0)
+				player.SetPoseParameter(player.GetModelPtr(), moveY, 0);
+		}
+		else {
+			GetMovementFlags(studioHdr);
+
+			if (mp_slammoveyaw.GetBool())
+				yaw = SnapYawTo(yaw);
+
+			if (LegAnimType == LegAnimType.Anim9Way) {
+				currentMoveYaw.X = MathF.Cos(MathLib.DEG2RAD(yaw));
+				currentMoveYaw.Y = -MathF.Sin(MathLib.DEG2RAD(yaw));
+				float invScale = Math.Max(MathF.Abs(currentMoveYaw.X), MathF.Abs(currentMoveYaw.Y));
+				if (invScale != 0.0f) {
+					currentMoveYaw.X /= invScale;
+					currentMoveYaw.Y /= invScale;
+				}
+
+				int moveX = player.LookupPoseParameter(player.GetModelPtr(), "move_x");
+				int moveY = player.LookupPoseParameter(player.GetModelPtr(), "move_y");
+				if (moveX >= 0)
+					player.SetPoseParameter(moveX, currentMoveYaw.X);
+				if (moveY >= 0)
+					player.SetPoseParameter(moveY, currentMoveYaw.Y);
+
+				float maxSpeed = (float)player.GetSequenceGroundSpeed(player.GetModelPtr(), player.GetSequence());
+				if (speed < maxSpeed) {
+					currentMoveYaw.X *= speed / maxSpeed;
+					currentMoveYaw.Y *= speed / maxSpeed;
+				}
+
+				if (moveX >= 0)
+					player.SetPoseParameter(moveX, currentMoveYaw.X);
+				if (moveY >= 0)
+					player.SetPoseParameter(moveY, currentMoveYaw.Y);
+			}
+			else {
+				int moveYaw = player.LookupPoseParameter(player.GetModelPtr(), "move_yaw");
+				int moveScale = player.LookupPoseParameter(player.GetModelPtr(), "move_scale");
+				if (moveYaw >= 0)
+					player.SetPoseParameter(moveYaw, yaw);
+				if (moveScale >= 0)
+					player.SetPoseParameter(moveScale, 1.0f);
+
+				float maxSpeed = (float)player.GetSequenceGroundSpeed(player.GetModelPtr(), player.GetSequence());
+				if (speed < maxSpeed && moveScale >= 0)
+					player.SetPoseParameter(moveScale, speed / maxSpeed);
+			}
+		}
+
+		DebugAnimData.MoveYaw = currentMoveYaw;
+	}
+
+	protected virtual void EstimateYaw() {
+		TimeUnit_t deltaTime = gpGlobals.FrameTime;
+		if (deltaTime == 0.0f)
+			return;
+
+		GetOuterAbsVelocity(out Vector3 estVelocity);
+		QAngle angles = GetBasePlayer().GetLocalAngles();
+
+		if (estVelocity.X == 0.0f && estVelocity.Y == 0.0f) {
+			float yawDelta = angles[YAW] - PoseParameterData.EstimateYaw;
+			yawDelta = MathLib.AngleNormalize(yawDelta);
+
+			if (deltaTime < 0.25f)
+				yawDelta *= (float)(deltaTime * 4.0f);
+			else
+				yawDelta *= (float)deltaTime;
+
+			PoseParameterData.EstimateYaw += yawDelta;
+		}
+		else {
+			PoseParameterData.EstimateYaw = (float)(Math.Atan2(estVelocity.Y, estVelocity.X) * 180.0f / Math.PI);
+			PoseParameterData.EstimateYaw = Math.Clamp(PoseParameterData.EstimateYaw, -180.0f, 180.0f);
+		}
+	}
+
+	protected virtual void ComputePoseParam_AimPitch(StudioHdr? studioHdr) {
+		float aimPitch = EyePitch;
+
+		BasePlayer player = GetBasePlayer();
+		player.SetPoseParameter(studioHdr, PoseParameterData.AimPitch, aimPitch);
+		int aimPitchParam = player.LookupPoseParameter(player.GetModelPtr(), "aim_pitch");
+		if (aimPitchParam >= 0)
+			player.SetPoseParameter(player.GetModelPtr(), aimPitchParam, aimPitch);
+
+		DebugAnimData.AimPitch = aimPitch;
+	}
+
+	protected virtual void ComputePoseParam_AimYaw(StudioHdr? studioHdr) {
+		GetOuterAbsVelocity(out Vector3 velocity);
+
+		bool moving = velocity.Length() > 1.0f;
+
+		if (moving || ForceAimYaw)
+			GoalFeetYaw = EyeYaw;
+		else {
+			if (PoseParameterData.LastAimTurnTime <= 0.0f) {
+				GoalFeetYaw = EyeYaw;
+				CurrentFeetYaw = EyeYaw;
+				PoseParameterData.LastAimTurnTime = (float)gpGlobals.CurTime;
+			}
+			else {
+				float yawDelta = MathLib.AngleNormalize(GoalFeetYaw - EyeYaw);
+
+				if (MathF.Abs(yawDelta) > 45.0f) {
+					float side = (yawDelta > 0.0f) ? -1.0f : 1.0f;
+					GoalFeetYaw += 45.0f * side;
+				}
+			}
+		}
+
+		GoalFeetYaw = MathLib.AngleNormalize(GoalFeetYaw);
+		if (GoalFeetYaw != CurrentFeetYaw) {
+			if (ForceAimYaw)
+				CurrentFeetYaw = GoalFeetYaw;
+			else {
+				ConvergeYawAngles(GoalFeetYaw, 720.0f, gpGlobals.FrameTime, ref CurrentFeetYaw);
+				LastAimTurnTime = gpGlobals.CurTime;
+			}
+		}
+
+		AngRender[YAW] = CurrentFeetYaw;
+
+		float aimYaw = EyeYaw - CurrentFeetYaw;
+		aimYaw = MathLib.AngleNormalize(aimYaw);
+
+		BasePlayer player = GetBasePlayer();
+		player.SetPoseParameter(studioHdr, PoseParameterData.AimYaw, aimYaw);
+		int aimYawParam = player.LookupPoseParameter(player.GetModelPtr(), "aim_yaw");
+		if (aimYawParam >= 0)
+			player.SetPoseParameter(player.GetModelPtr(), aimYawParam, aimYaw);
+
+		ForceAimYaw = false;
+		DebugAnimData.AimYaw = aimYaw;
+
+#if !CLIENT_DLL
+		QAngle angle = GetBasePlayer().GetAbsAngles();
+		angle[YAW] = CurrentFeetYaw;
+
+		GetBasePlayer().SetAbsAngles(angle);
+#endif
+	}
+#else
 	protected virtual void ComputePoseParam_MoveYaw(StudioHdr? studioHdr) => throw new NotImplementedException();
 	protected virtual void EstimateYaw() => throw new NotImplementedException();
 	protected virtual void ComputePoseParam_AimPitch(StudioHdr? studioHdr) => throw new NotImplementedException();
 	protected virtual void ComputePoseParam_AimYaw(StudioHdr? studioHdr) => throw new NotImplementedException();
+#endif
 	protected void ConvergeYawAngles(float goalYaw, float yawRate, TimeUnit_t deltaTime, ref float currentYaw) {
 		const float FADE_TURN_DEGREES = 60.0f;
 
