@@ -282,6 +282,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public static readonly new DataMap DataDesc = new(typeof(AI_BaseNPC), BaseEntity.DataDesc, [
 		DEFINE.KEYFIELD(nameof(SpawnEquipment), FieldType.String, "additionalequipment"),
+		DEFINE.KEYFIELD(nameof(HintGroup), FieldType.String, "hintgroup"),
+		DEFINE.KEYFIELD(nameof(HintGroupNavLimiting), FieldType.Boolean, "hintlimiting"),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
@@ -2828,6 +2830,21 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 		return base.CanStandOn(surface);
 	}
+
+	public virtual bool IsUnusableNode(int nodeID, AI_Hint? hint) {
+		if (HintGroupNavLimiting && !string.IsNullOrEmpty(HintGroup)) {
+			if (hint == null || hint.GetGroup() != GetHintGroup())
+				return true;
+		}
+		return false;
+	}
+
+	public string? GetHintGroup() => HintGroup;
+
+	public virtual Vector3 GetNodeViewOffset() => GetViewOffset();
+
+	public string? HintGroup;
+	public bool HintGroupNavLimiting;
 
 	public virtual Vector3 GetCrouchEyeOffset() => new(0, 0, 40);
 

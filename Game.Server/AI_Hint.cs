@@ -3,6 +3,7 @@ namespace Game.Server;
 public class AI_Hint : ServerOnlyEntity
 {
 	public short HintType() => throw new NotImplementedException();
+	public string? GetGroup() => throw new NotImplementedException();
 	public void Unlock(float delay) => throw new NotImplementedException();
 }
 
