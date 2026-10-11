@@ -135,6 +135,13 @@ public class ViewRender : IViewRender
 		throw new NotImplementedException();
 	}
 
+	public DrawFlags GetBaseDrawFlags() => BaseDrawFlags;
+
+	public void DisableFog() {
+		using MatRenderContextPtr renderContext = new(materials);
+		renderContext.FogMode(MaterialFogMode.None);
+	}
+
 	public Frustum GetFrustum() => ActiveRenderer?.GetFrustrum() ?? Frustum;
 
 	public ref ViewSetup GetPlayerViewSetup() => ref GetView(StereoEye.Mono);
@@ -427,6 +434,9 @@ public class ViewRender : IViewRender
 			ViewDrawScene(drew3dSkybox, skyboxVisible, in viewRender, clearFlags, ViewID.Main, (whatToDraw & RenderViewInfo.DrawViewmodel) != 0);
 		else
 			ViewDrawScene_Intro(in viewRender, clearFlags, IntroData.g_pIntroData);
+
+		DisableFog();
+
 		render.SceneEnd();
 
 		RenderPlayerSprites();
@@ -440,6 +450,19 @@ public class ViewRender : IViewRender
 		// Overlay screen fade on entire screen
 		IMaterial? material = blend ? ModulateSingleColor.Get() : TranslucentSingleColor.Get();
 		render.ViewDrawFade(color, material);
+
+		if (viewRender.DoBloomAndToneMapping) {
+			bool flashlightIsOn = false;
+			C_BasePlayer? local = C_BasePlayer.GetLocalPlayer();
+			if (local != null)
+				flashlightIsOn = local.IsEffectActive(EntityEffects.DimLight);
+			DoEnginePostProcessing(viewRender.X, viewRender.Y, viewRender.Width, viewRender.Height, flashlightIsOn);
+		}
+
+		if (HardwareConfig.GetHDRType() == HDRType.Integer) {
+			using (renderContext = new MatRenderContextPtr(materials))
+				renderContext.SetToneMappingScaleLinear(new(1, 1, 1));
+		}
 
 		CleanupMain3DView(in viewRender);
 
@@ -525,6 +548,8 @@ public class ViewRender : IViewRender
 			drawSkybox = false;
 
 		DrawWorldAndEntities(drawSkybox, in viewRender, clearFlags);
+
+		DisableFog();
 
 		DebugViewRender.Draw3DDebuggingInfo(in viewRender);
 
@@ -618,6 +643,8 @@ public class ViewRender : IViewRender
 		renderContext.MatrixMode(MaterialMatrixMode.Projection);
 		renderContext.PopMatrix();
 
+		DisableFog();
+
 		// Make sure sound doesn't stutter
 		engine.Sound_ExtraUpdate();
 
@@ -628,11 +655,154 @@ public class ViewRender : IViewRender
 	static RenderUtils? _renderUtils;
 	static RenderUtils renderUtils => _renderUtils ??= Singleton<RenderUtils>();
 
-	private void DrawWorldAndEntities(bool drawSkybox, in ViewSetup viewRender, ClearFlags clearFlags) {
-		SimpleWorldView noWaterView = new SimpleWorldView(this);
-		noWaterView.Setup(in viewRender, clearFlags, drawSkybox);
-		AddViewToScene(noWaterView);
-		noWaterView.ReleaseLists();
+	float CheapWaterStartDistance = 0.0f;
+	float CheapWaterEndDistance = 0.1f;
+
+	private void DetermineWaterRenderInfo(in VisibleFogVolumeInfo fogVolumeInfo, out WaterRenderInfo info) {
+		info.CheapWater = true;
+		info.Refract = false;
+		info.Reflect = false;
+		info.ReflectEntities = false;
+		info.DrawWaterSurface = false;
+		info.OpaqueWater = true;
+
+		IMaterial? waterMaterial = fogVolumeInfo.FogVolumeMaterial;
+		if ((fogVolumeInfo.VisibleFogVolume == -1) || waterMaterial == null)
+			return;
+
+		info.DrawWaterSurface = mat_drawwater.GetBool();
+		if (!info.DrawWaterSurface) {
+			info.OpaqueWater = false;
+			return;
+		}
+
+		bool forceExpensive = r_waterforceexpensive.GetBool();
+		bool forceReflectEntities = r_waterforcereflectentities.GetBool();
+
+		info.OpaqueWater = !waterMaterial.IsTranslucent();
+
+		bool forceCheap = false;
+
+		waterMaterial.TryFindVar("$forcecheap", out IMaterialVar? forceCheapVar, false);
+		waterMaterial.TryFindVar("$forceexpensive", out IMaterialVar? forceExpensiveVar, false);
+		if (forceCheapVar != null && forceCheapVar.IsDefined()) {
+			forceCheap = forceCheapVar.GetIntValue() != 0;
+			if (forceCheap)
+				forceExpensive = false;
+		}
+		if (!forceCheap && forceExpensiveVar != null && forceExpensiveVar.IsDefined())
+			forceExpensive = forceExpensive || (forceExpensiveVar.GetIntValue() != 0);
+
+		bool debugCheapWater = r_debugcheapwater.GetBool();
+		if (debugCheapWater)
+			Msg($"Water material: {waterMaterial.GetName()} dist to water: {fogVolumeInfo.DistanceToWater}\nforcecheap: {(forceCheap ? "true" : "false")} forceexpensive: {(forceExpensive ? "true" : "false")}\n");
+
+		bool localReflection;
+		if (!forceExpensive || !r_WaterDrawReflection.GetBool())
+			localReflection = false;
+		else {
+			waterMaterial.TryFindVar("$reflecttexture", out IMaterialVar? reflectTextureVar, false);
+			localReflection = reflectTextureVar != null && (reflectTextureVar.GetVarType() == MaterialVarType.Texture);
+		}
+
+		if (((fogVolumeInfo.DistanceToWater >= CheapWaterEndDistance) && !localReflection) || forceCheap)
+			return;
+
+		if (!r_WaterDrawRefraction.GetBool())
+			info.Refract = false;
+		else {
+			waterMaterial.TryFindVar("$refracttexture", out IMaterialVar? refractTextureVar, true);
+			info.Refract = refractTextureVar != null && (refractTextureVar.GetVarType() == MaterialVarType.Texture);
+
+			if (info.Refract)
+				info.OpaqueWater = false;
+		}
+
+		info.Reflect = localReflection;
+		if (info.Reflect) {
+			if (forceReflectEntities)
+				info.ReflectEntities = true;
+			else {
+				waterMaterial.TryFindVar("$reflectentities", out IMaterialVar? reflectEntitiesVar, false);
+				info.ReflectEntities = reflectEntitiesVar != null && (reflectEntitiesVar.GetIntValue() != 0);
+			}
+		}
+
+		info.CheapWater = !info.Reflect && !info.Refract;
+
+		if (debugCheapWater)
+			Warning($"refract: {(info.Refract ? "true" : "false")} reflect: {(info.Reflect ? "true" : "false")}\n");
+	}
+
+	private void DrawWorldAndEntities(bool drawSkybox, in ViewSetup viewIn, ClearFlags clearFlags) {
+		VisibleFogVolumeInfo fogVolumeInfo = default;
+		render.GetVisibleFogVolume(in viewIn.Origin, ref fogVolumeInfo);
+
+		DetermineWaterRenderInfo(in fogVolumeInfo, out WaterRenderInfo info);
+
+		if (info.CheapWater) {
+			SimpleWorldView noWaterView = new SimpleWorldView(this);
+			noWaterView.Setup(in viewIn, clearFlags, drawSkybox, in fogVolumeInfo, in info);
+			AddViewToScene(noWaterView);
+			noWaterView.ReleaseLists();
+			return;
+		}
+
+		if (!r_ForceWaterLeaf.GetBool())
+			fogVolumeInfo.VisibleFogVolumeLeaf = -1;
+
+		if (!fogVolumeInfo.EyeInFogVolume) {
+			AboveWaterView aboveWaterView = new AboveWaterView(this);
+			aboveWaterView.Setup(in viewIn, drawSkybox, in fogVolumeInfo, in info);
+			AddViewToScene(aboveWaterView);
+			aboveWaterView.ReleaseLists();
+		}
+		else {
+			UnderWaterView underWaterView = new UnderWaterView(this);
+			underWaterView.Setup(in viewIn, drawSkybox, in fogVolumeInfo, in info);
+			AddViewToScene(underWaterView);
+			underWaterView.ReleaseLists();
+		}
+	}
+
+	public static bool DoesViewPlaneIntersectWater(float waterZ, int leafWaterDataID) {
+		if (leafWaterDataID == -1)
+			return false;
+
+		using MatRenderContextPtr renderContext = new(SourceDllMain.materials);
+
+		renderContext.GetMatrix(MaterialMatrixMode.View, out Matrix4x4 viewMatrix);
+		renderContext.GetMatrix(MaterialMatrixMode.Projection, out Matrix4x4 projectionMatrix);
+		MathLib.MatrixMultiply(in projectionMatrix, in viewMatrix, out Matrix4x4 viewProjectionMatrix);
+		MathLib.MatrixInverseGeneral(in viewProjectionMatrix, out Matrix4x4 inverseViewProjectionMatrix);
+
+		MathLib.ClearBounds(out Vector3 mins, out Vector3 maxs);
+		ReadOnlySpan<Vector3> testPoint = [
+			new(-1.0f, -1.0f, 0.0f),
+			new(-1.0f, 1.0f, 0.0f),
+			new(1.0f, -1.0f, 0.0f),
+			new(1.0f, 1.0f, 0.0f),
+		];
+		bool above = false;
+		bool below = false;
+		float fudge = 7.0f;
+		for (int i = 0; i < 4; i++) {
+			MathLib.Vector3DMultiplyPositionProjective(in inverseViewProjectionMatrix, in testPoint[i], out Vector3 worldPos);
+			MathLib.AddPointToBounds(worldPos, ref mins, ref maxs);
+			if (worldPos.Z + fudge > waterZ)
+				above = true;
+			if (worldPos.Z - fudge < waterZ)
+				below = true;
+		}
+
+		if (!(above && below))
+			return false;
+
+		Vector3 vecFudge = new(fudge, fudge, fudge);
+		mins -= vecFudge;
+		maxs += vecFudge;
+
+		return SourceDllMain.render.DoesBoxIntersectWaterVolume(in mins, in maxs, leafWaterDataID);
 	}
 
 	public static Vector3 g_VecRenderOrigin = new(0, 0, 0);
@@ -652,7 +822,7 @@ public class ViewRender : IViewRender
 	public static bool RenderingView = false;
 	public static ViewID g_CurrentViewID = ViewID.None;
 	public virtual bool ShouldForceNoVis() => ForceNoVis;
-	private void SetupVis(in ViewSetup viewRender, out uint visFlags) {
+	internal void SetupVis(in ViewSetup viewRender, out uint visFlags) {
 		// TODO: more logic here 
 		render.ViewSetupVisEx(ShouldForceNoVis(), new ReadOnlySpan<Vector3>(in viewRender.Origin), out visFlags);
 	}
@@ -784,7 +954,7 @@ public class ViewRender : IViewRender
 		render.PopView(GetFrustum());
 	}
 
-	private void AddViewToScene(Rendering3dView view) {
+	public void AddViewToScene(Rendering3dView view) {
 		SimpleExecutor.AddView(view);
 	}
 
@@ -800,11 +970,11 @@ public class ViewRender : IViewRender
 	}
 
 	public void SetCheapWaterEndDistance(float cheapWaterEndDistance) {
-		throw new NotImplementedException();
+		CheapWaterEndDistance = cheapWaterEndDistance;
 	}
 
 	public void SetCheapWaterStartDistance(float cheapWaterStartDistance) {
-		throw new NotImplementedException();
+		CheapWaterStartDistance = cheapWaterStartDistance;
 	}
 
 	public void SetScreenOverlayMaterial(IMaterial? pMaterial) {

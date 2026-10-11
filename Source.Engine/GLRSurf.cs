@@ -35,16 +35,6 @@ public struct FogVolumeInfo
 	public int FogVolumeID;
 }
 
-public struct VisibleFogVolumeInfo
-{
-	public int VisibleFogVolume;
-	public int VisibleFogVolumeLeaf;
-	public bool EyeInFogVolume;
-	public float DistanceToWater;
-	public float WaterHeight;
-	public IMaterial? FogVolumeMaterial;
-}
-
 public struct CachedConvars
 {
 	public int DrawLeaf;
@@ -1140,7 +1130,7 @@ public static class GLRSurf
 			R_RecursiveWorldNode(renderList, node.Children[side]!, cullMask);
 
 			SurfaceHandle_t surfID = node.FirstSurface;
-			int i = ModelLoader.MSurf_Index(ref ModelLoader.SurfaceHandleFromIndex(surfID));
+			int i = surfID;
 			int lastSurface = i + node.NumSurfaces;
 			ref VarBitSet visitedSurfs = ref renderList.VisitedSurfs;
 			for (; i < lastSurface; ++i, ++surfID) {
@@ -1165,8 +1155,61 @@ public static class GLRSurf
 			node = node.Children[side == 0 ? 1 : 0]!;
 		}
 	}
-	public static IMaterial R_GetFogVolumeMaterial(int fogVolume, bool eyeInFogVolume) => throw new NotImplementedException();
-	public static void R_SetFogVolumeState(int fogVolume, bool useHeightFog) => throw new NotImplementedException();
+	public const float INVALID_WATER_HEIGHT = 1000000.0f;
+
+	static float R_GetWaterHeight(int fogVolume) {
+		if (fogVolume < 0 || fogVolume >= host_state.WorldBrush!.LeafWaterData!.Length)
+			return INVALID_WATER_HEIGHT;
+
+		return host_state.WorldBrush!.LeafWaterData![fogVolume].SurfaceZ;
+	}
+
+	public static IMaterial? R_GetFogVolumeMaterial(int fogVolume, bool eyeInFogVolume) {
+		if (fogVolume < 0 || fogVolume >= host_state.WorldBrush!.LeafWaterData!.Length)
+			return null;
+
+		ref BSPMLeafWaterData leafWaterData = ref host_state.WorldBrush!.LeafWaterData![fogVolume];
+		ref ModelTexInfo texInfo = ref host_state.WorldBrush!.TexInfo![leafWaterData.SurfaceTexInfoID];
+
+		IMaterial? material = texInfo.Material;
+		if (eyeInFogVolume) {
+			IMaterialVar? var = material!.FindVar("$bottommaterial", out _);
+			if (var != null) {
+				ReadOnlySpan<char> materialName = var.GetStringValue();
+				if (!materialName.IsEmpty)
+					material = materials.FindMaterial(materialName, MaterialDefines.TEXTURE_GROUP_OTHER);
+			}
+		}
+		return material;
+	}
+	public static void R_SetFogVolumeState(int fogVolume, bool useHeightFog) {
+		IMaterial? material = R_GetFogVolumeMaterial(fogVolume, !useHeightFog);
+		ref BSPMLeafWaterData leafWaterData = ref host_state.WorldBrush!.LeafWaterData![fogVolume];
+		IMaterialVar fogColorVar = material!.FindVar("$fogcolor", out _);
+		IMaterialVar fogEnableVar = material.FindVar("$fogenable", out _);
+		IMaterialVar fogStartVar = material.FindVar("$fogstart", out _);
+		IMaterialVar fogEndVar = material.FindVar("$fogend", out _);
+
+		using MatRenderContextPtr renderContext = new(materials);
+
+		if (material != null && fogEnableVar.GetIntValue() != 0 && fog_enable_water_fog.GetBool()) {
+			renderContext.SetFogZ(leafWaterData.SurfaceZ);
+			if (useHeightFog)
+				renderContext.FogMode(MaterialFogMode.LinearBelowFogZ);
+			else
+				renderContext.FogMode(MaterialFogMode.Linear);
+
+			Span<float> fogColor = stackalloc float[3];
+			fogColorVar.GetVecValue(fogColor);
+
+			renderContext.FogColor3fv(fogColor);
+			renderContext.FogStart(fogStartVar.GetFloatValue());
+			renderContext.FogEnd(fogEndVar.GetFloatValue());
+			renderContext.FogMaxDensity(1.0f);
+		}
+		else
+			renderContext.FogMode(MaterialFogMode.None);
+	}
 	static bool R_CullNodeTopView(BSPMNode node) => throw new NotImplementedException();
 	static void R_DrawTopViewLeaf(WorldRenderList renderList, BSPMLeaf leaf) => throw new NotImplementedException();
 	public static void R_RenderWorldTopView(WorldRenderList renderList, BSPMNode node) => throw new NotImplementedException();
@@ -1218,8 +1261,58 @@ public static class GLRSurf
 		info.LeafFogVolume = renderList.VisibleLeafFogVolumes;
 	}
 
-	static void ClearFogInfo(ref VisibleFogVolumeInfo info) => throw new NotImplementedException();
-	public static void R_GetVisibleFogVolume(in Vector3 eyePoint, ref VisibleFogVolumeInfo info) => throw new NotImplementedException();
+	static void ClearFogInfo(ref VisibleFogVolumeInfo info) {
+		info.EyeInFogVolume = false;
+		info.VisibleFogVolume = -1;
+		info.VisibleFogVolumeLeaf = -1;
+		info.FogVolumeMaterial = null;
+		info.WaterHeight = INVALID_WATER_HEIGHT;
+	}
+
+	static readonly ConVar fast_fogvolume = new("fast_fogvolume", "0");
+
+	public static void R_GetVisibleFogVolume(in Vector3 eyePoint, ref VisibleFogVolumeInfo info) {
+		WorldBrushData brush = host_state.WorldBrush!;
+		if (brush.LeafWaterData == null || brush.LeafWaterData.Length == 0) {
+			ClearFogInfo(ref info);
+			return;
+		}
+
+		int leafID = CM.PointLeafnum(eyePoint);
+		BSPMLeaf leaf = brush.Leafs![leafID];
+
+		Contents leafContents = (Contents)leaf.Contents;
+		if (leaf.LeafWaterDataID != -1) {
+			Assert((leafContents & (Contents.Slime | Contents.Water)) != 0);
+			info.EyeInFogVolume = true;
+			info.VisibleFogVolume = leaf.LeafWaterDataID;
+			info.VisibleFogVolumeLeaf = leafID;
+			info.FogVolumeMaterial = R_GetFogVolumeMaterial(info.VisibleFogVolume, true);
+			info.WaterHeight = R_GetWaterHeight(info.VisibleFogVolume);
+		}
+		else if ((leafContents & Contents.TestFogVolume) != 0) {
+			Assert((leafContents & (Contents.Slime | Contents.Water)) == 0);
+			if (fast_fogvolume.GetBool() && brush.LeafWaterData.Length == 1) {
+				info.VisibleFogVolume = 0;
+				info.VisibleFogVolumeLeaf = brush.LeafWaterData[0].FirstLeafIndex;
+			}
+			else {
+				VisibleFogVolumeQuery query = new();
+				query.FindVisibleFogVolume(eyePoint, out info.VisibleFogVolume, out info.VisibleFogVolumeLeaf);
+			}
+
+			info.EyeInFogVolume = false;
+			info.FogVolumeMaterial = R_GetFogVolumeMaterial(info.VisibleFogVolume, false);
+			info.WaterHeight = R_GetWaterHeight(info.VisibleFogVolume);
+		}
+		else
+			ClearFogInfo(ref info);
+
+		if (brush.LeafMinDistToWater != null)
+			info.DistanceToWater = brush.LeafMinDistToWater[leafID];
+		else
+			info.DistanceToWater = 0.0f;
+	}
 
 	public static void R_DrawWorldLists(IWorldRenderList renderListIn, DrawWorldListFlags flags, float waterZAdjust) {
 		WorldRenderList renderList = (WorldRenderList)renderListIn;
@@ -1240,7 +1333,7 @@ public static class GLRSurf
 
 	public static void R_BrushBatchInit() => throw new NotImplementedException();
 	public static void R_Surface_LevelInit() => throw new NotImplementedException();
-	public static void R_Surface_LevelShutdown() => throw new NotImplementedException();
+	public static void R_Surface_LevelShutdown() => WorldRenderList.PurgeAll();
 	static void R_DrawBrushModel_Override(IClientEntity? baseEntity, Model? model, in Vector3 origin) => throw new NotImplementedException();
 	public static int R_MarkDlightsOnBrushModel(Model? model, IClientRenderable renderable) => throw new NotImplementedException();
 
@@ -1303,8 +1396,58 @@ public class VisibleFogVolumeQuery
 	int VisibleFogVolume;
 	int VisibleFogVolumeLeaf;
 
-	public void FindVisibleFogVolume(in Vector3 viewPoint, out int visibleFogVolume, out int visibleFogVolumeLeaf) => throw new NotImplementedException();
-	bool RecursiveGetVisibleFogVolume(BSPMNode node) => throw new NotImplementedException();
+	public void FindVisibleFogVolume(in Vector3 viewPoint, out int visibleFogVolume, out int visibleFogVolumeLeaf) {
+		R_SetupAreaBits();
+
+		SearchPoint = viewPoint;
+		VisibleFogVolume = -1;
+		VisibleFogVolumeLeaf = -1;
+
+		RecursiveGetVisibleFogVolume(host_state.WorldBrush!.Nodes![0]);
+
+		visibleFogVolume = VisibleFogVolume;
+		visibleFogVolumeLeaf = VisibleFogVolumeLeaf;
+	}
+
+	bool RecursiveGetVisibleFogVolume(BSPMNode node) {
+		if (node.Contents == (int)Contents.Solid)
+			return true;
+
+		if (node.VisFrame != r_visframecount)
+			return true;
+
+		int fixmeTempRemove = FRUSTUM_CLIP_ALL;
+		if (R_CullNode(g_Frustum, node, ref fixmeTempRemove))
+			return true;
+
+		if (node.Contents >= 0) {
+			BSPMLeaf leaf = (BSPMLeaf)node;
+
+			if (leaf.LeafWaterDataID == -1)
+				return true;
+
+			if ((leaf.Contents & (int)Contents.Slime) != 0)
+				return true;
+
+			VisibleFogVolume = leaf.LeafWaterDataID;
+			VisibleFogVolumeLeaf = leaf.Index;
+			return false;
+		}
+
+		ref CollisionPlane plane = ref node.Plane;
+		float dot;
+		if ((byte)plane.Type <= 2)
+			dot = SearchPoint[(byte)plane.Type] - plane.Dist;
+		else
+			dot = Vector3.Dot(SearchPoint, plane.Normal) - plane.Dist;
+
+		int side = (dot >= 0) ? 0 : 1;
+
+		if (!RecursiveGetVisibleFogVolume(node.Children[side]!))
+			return false;
+
+		return RecursiveGetVisibleFogVolume(node.Children[side == 0 ? 1 : 0]!);
+	}
 }
 
 public class BrushSurface : IBrushSurface

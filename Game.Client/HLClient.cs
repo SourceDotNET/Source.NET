@@ -80,6 +80,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		vieweffects.LevelInit();
 
 		modemanager.LevelInit(mapname);
+		ResetToneMapping(1.0f);
 		IGameSystem.LevelInitPreEntityAllSystems(mapname);
 #if GMOD_DLL
 		garrysmod.LevelInit(mapname);

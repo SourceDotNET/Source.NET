@@ -21,8 +21,6 @@
 #define cFlashlightScreenScale      ps_const[31] // .zw are currently unused
 #define flFlashlightNoLambertValue  cFlashlightColor.w // This is either 0.0 or 2.0
 
-#define HDR_INPUT_MAP_SCALE 16.0
-
 #define TONEMAP_SCALE_NONE 0
 #define TONEMAP_SCALE_LINEAR 1
 #define TONEMAP_SCALE_GAMMA 2
@@ -119,11 +117,6 @@ vec4 TextureCombine(vec4 baseColor, vec4 detailColor, int combine_mode, float fB
     return baseColor;
 }
 
-vec3 lerp5(vec3 f1, vec3 f2, float i1, float i2, float x)
-{
-    return f1 + (f2 - f1) * (x - i1) / (i2 - i1);
-}
-
 vec3 TextureCombinePostLighting(vec3 lit_baseColor, vec4 detailColor, int combine_mode, float fBlendFactor)
 {
     if (combine_mode == TCOMBINE_RGB_ADDITIVE_SELFILLUM)
@@ -158,7 +151,13 @@ float CalcRangeFog(float flProjPosZ, float flFogStartOverRange, float flFogMaxDe
     return clamp(min(flFogMaxDensity, (flProjPosZ * flFogOORange) - flFogStartOverRange), 0.0, 1.0);
 }
 
-float CalcPixelFogFactor(int iPIXELFOGTYPE, vec4 fogParams, float flEyePosZ, float flWorldPosZ, float flProjPosZ)
+float CalcRadialFog_NonFixedFunction(vec3 vWorldPos, vec3 vEyePos, float flFogMaxDensity, float flFogEndOverRange, float flFogOORange)
+{
+    float flDistance = distance(vEyePos.xyz, vWorldPos.xyz);
+    return min(flFogMaxDensity, clamp((flDistance * flFogOORange) - flFogEndOverRange, 0.0, 1.0));
+}
+
+float CalcPixelFogFactor(int iPIXELFOGTYPE, vec4 fogParams, vec3 vEyePos, vec3 vWorldPos, float flProjPosZ)
 {
     float retVal = 0.0;
     if (iPIXELFOGTYPE == PIXEL_FOG_TYPE_NONE)
@@ -169,31 +168,42 @@ float CalcPixelFogFactor(int iPIXELFOGTYPE, vec4 fogParams, float flEyePosZ, flo
     {
         retVal = CalcRangeFog(flProjPosZ, fogParams.x, fogParams.z, fogParams.w);
     }
+    else if (iPIXELFOGTYPE == PIXEL_FOG_TYPE_RANGE_RADIAL)
+    {
+        float flFogMaxDensity = fogParams.z;
+        float flFogEndOverRange = fogParams.x;
+        float flFogOORange = fogParams.w;
+
+        retVal = CalcRadialFog_NonFixedFunction(vWorldPos, vEyePos, flFogMaxDensity, flFogEndOverRange, flFogOORange);
+    }
     else if (iPIXELFOGTYPE == PIXEL_FOG_TYPE_HEIGHT) //height fog
     {
-        retVal = CalcWaterFogAlpha(fogParams.y, flEyePosZ, flWorldPosZ, flProjPosZ, fogParams.w);
+        retVal = CalcWaterFogAlpha(fogParams.y, vEyePos.z, vWorldPos.z, flProjPosZ, fogParams.w);
     }
 
     return retVal;
 }
 
-//g_FogParams not defined by default, but this is the same layout for every shader that does define it
-#define g_FogEndOverRange	g_FogParams.x
-#define g_WaterZ			g_FogParams.y
-#define g_FogMaxDensity		g_FogParams.z
-#define g_FogOORange		g_FogParams.w
+float CalcPixelFogFactor(int iPIXELFOGTYPE, vec4 fogParams, float flEyePosZ, float flWorldPosZ, float flProjPosZ)
+{
+    if (iPIXELFOGTYPE == PIXEL_FOG_TYPE_RANGE_RADIAL)
+        return CalcPixelFogFactor(PIXEL_FOG_TYPE_RANGE, fogParams, vec3(0.0, 0.0, flEyePosZ), vec3(0.0, 0.0, flWorldPosZ), flProjPosZ);
+
+    return CalcPixelFogFactor(iPIXELFOGTYPE, fogParams, vec3(0.0, 0.0, flEyePosZ), vec3(0.0, 0.0, flWorldPosZ), flProjPosZ);
+}
 
 vec3 BlendPixelFog(vec3 vShaderColor, float pixelFogFactor, vec3 vFogColor, int iPIXELFOGTYPE)
 {
-    if (iPIXELFOGTYPE == PIXEL_FOG_TYPE_RANGE || iPIXELFOGTYPE == PIXEL_FOG_TYPE_RANGE_RADIAL) //either range fog or no fog depending on fog parameters and whether this is ps20 or ps2b
+    if (iPIXELFOGTYPE == PIXEL_FOG_TYPE_RANGE || iPIXELFOGTYPE == PIXEL_FOG_TYPE_RANGE_RADIAL)
     {
         pixelFogFactor = clamp(pixelFogFactor, 0.0, 1.0);
-        return mix(vShaderColor.rgb, vFogColor.rgb, pixelFogFactor * pixelFogFactor); //squaring the factor will get the middle range mixing closer to hardware fog
+        return mix(vShaderColor.rgb, vFogColor.rgb, pixelFogFactor * pixelFogFactor);
     }
     else if (iPIXELFOGTYPE == PIXEL_FOG_TYPE_HEIGHT)
     {
         return mix(vShaderColor.rgb, vFogColor.rgb, clamp(pixelFogFactor, 0.0, 1.0));
     }
+
     return vShaderColor;
 }
 
@@ -235,8 +245,7 @@ vec4 FinalOutput(vec4 vShaderColor, float pixelFogFactor, int iPIXELFOGTYPE, int
     else
         result.a = vShaderColor.a;
 
-    // TODO: fog
-    // result.rgb = BlendPixelFog(result.rgb, pixelFogFactor, g_LinearFogColor.rgb, iPIXELFOGTYPE);
+    result.rgb = BlendPixelFog(result.rgb, pixelFogFactor, g_LinearFogColor.rgb, iPIXELFOGTYPE);
 
     result.rgb = SRGBOutput(result.rgb); //SRGB in pixel shader conversion
 

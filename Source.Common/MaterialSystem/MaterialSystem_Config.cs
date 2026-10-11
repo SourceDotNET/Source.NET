@@ -116,6 +116,7 @@ public class MaterialSystem_Config
 	public bool EnableParallaxMapping() => (Flags & (int)MaterialSystem_Config_Flags.EnableParallaxMapping) != 0;
 	public bool UseZPrefill() => (Flags & (int)MaterialSystem_Config_Flags.UseZPrefill) != 0;
 	public bool ReduceFillrate() => (Flags & (int)MaterialSystem_Config_Flags.ReduceFillrate) != 0;
+	public bool HDREnabled() => (Flags & (int)MaterialSystem_Config_Flags.ENABLE_HDR) != 0;
 	public bool LimitWindowedSize() => (Flags & (int)MaterialSystem_Config_Flags.LimitedWindowSize) != 0;
 	public bool ScaleToOutputResolution() => (Flags & (int)MaterialSystem_Config_Flags.ScaleToOutputResolution) != 0;
 	public bool UsingMultipleWindows() => (Flags & (int)MaterialSystem_Config_Flags.UsingMultipleWindows) != 0;

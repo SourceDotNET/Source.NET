@@ -114,6 +114,30 @@ public class RenderView(EngineVGui EngineVGui, Render engineRenderer) : IRenderV
 	public void DrawWorldLists(IWorldRenderList? list, uint flags, float waterZAdjust) => engineRenderer.DrawWorldLists(list, flags, waterZAdjust);
 	public void DrawTranslucentSurfaces(IWorldRenderList? list, int sortIndex, uint flags, bool shadowDepth) => GLRSurf.Shader_DrawTranslucentSurfaces(list!, sortIndex, flags, shadowDepth);
 	public bool LeafContainsTranslucentSurfaces(IWorldRenderList? list, int sortIndex, uint flags) => GLRSurf.Shader_LeafContainsTranslucentSurfaces(list!, sortIndex, flags);
+	public void GetVisibleFogVolume(in Vector3 eyePoint, ref VisibleFogVolumeInfo info) => R_GetVisibleFogVolume(in eyePoint, ref info);
+	public void SetFogVolumeState(int fogVolume, bool useHeightFog) => R_SetFogVolumeState(fogVolume, useHeightFog);
+
+	struct BoxIntersectWaterContext : ISpatialLeafEnumerator
+	{
+		public bool FoundWaterLeaf;
+		public int LeafWaterDataID;
+
+		public bool EnumerateLeaf(int leaf, nint context) {
+			if (host_state.WorldBrush!.Leafs![leaf].LeafWaterDataID == LeafWaterDataID) {
+				FoundWaterLeaf = true;
+				return false;
+			}
+			return true;
+		}
+	}
+
+	public bool DoesBoxIntersectWaterVolume(in Vector3 mins, in Vector3 maxs, int leafWaterDataID) {
+		BoxIntersectWaterContext context = default;
+		context.FoundWaterLeaf = false;
+		context.LeafWaterDataID = leafWaterDataID;
+		g_ToolBSPTree.EnumerateLeavesInBox(in mins, in maxs, ref context, 0);
+		return context.FoundWaterLeaf;
+	}
 	public void BeginUpdateLightmaps() => engineRenderer.BeginUpdateLightmaps();
 	public void EndUpdateLightmaps() => engineRenderer.EndUpdateLightmaps();
 

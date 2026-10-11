@@ -170,6 +170,74 @@ public static class ColorSpace
 		retBump3[2] = MathLib.RoundFloatToByte(correctedBumpColor3[2] * 255.0f);
 	}
 
+	public static ushort LinearFloatToCorrectedShort(float input) {
+		input = MathF.Min(input * 4096.0f, 65535.0f);
+		return (ushort)MathF.Max(input, 0.0f);
+	}
+
+	public static ushort LinearToUnsignedShort(float input, int fractionalBits) {
+		input = input * (1 << fractionalBits);
+		input = MathF.Min(input, 65535);
+		return (ushort)MathF.Max(input, 0.0f);
+	}
+
+	public static void ClampToHDR(in Vector3 input, Span<ushort> output) {
+		output[0] = LinearFloatToCorrectedShort(input.X);
+		output[1] = LinearFloatToCorrectedShort(input.Y);
+		output[2] = LinearFloatToCorrectedShort(input.Z);
+	}
+
+	public static void LinearToBumpedLightmap(
+		ReadOnlySpan<float> linearColor, ReadOnlySpan<float> linearBumpColor1,
+		ReadOnlySpan<float> linearBumpColor2, ReadOnlySpan<float> linearBumpColor3,
+		out Vector3 ret, out Vector3 retBump1,
+		out Vector3 retBump2, out Vector3 retBump3) {
+
+		Vector3 linearUnbumped = linearColor[..3].Cast<float, Vector3>()[0];
+		Vector3 linearBump1 = linearBumpColor1[..3].Cast<float, Vector3>()[0];
+		Vector3 linearBump2 = linearBumpColor2[..3].Cast<float, Vector3>()[0];
+		Vector3 linearBump3 = linearBumpColor3[..3].Cast<float, Vector3>()[0];
+
+		Vector3 bumpAverage = linearBump1;
+		bumpAverage += linearBump2;
+		bumpAverage += linearBump3;
+		bumpAverage *= (1.0f / 3.0f);
+
+		Vector3 correctionScale = default;
+		if (const_reinterpret<float, int>(in bumpAverage.X) != 0 && const_reinterpret<float, int>(in bumpAverage.Y) != 0 && const_reinterpret<float, int>(in bumpAverage.Z) != 0)
+			MathLib.VectorDivide(linearUnbumped, bumpAverage, out correctionScale);
+		else {
+			correctionScale.Init(0.0f, 0.0f, 0.0f);
+			if (bumpAverage[0] != 0.0f)
+				correctionScale[0] = linearUnbumped[0] / bumpAverage[0];
+			if (bumpAverage[1] != 0.0f)
+				correctionScale[1] = linearUnbumped[1] / bumpAverage[1];
+			if (bumpAverage[2] != 0.0f)
+				correctionScale[2] = linearUnbumped[2] / bumpAverage[2];
+		}
+		linearBump1 *= correctionScale;
+		linearBump2 *= correctionScale;
+		linearBump3 *= correctionScale;
+
+		ret = linearUnbumped;
+		retBump1 = linearBump1;
+		retBump2 = linearBump2;
+		retBump3 = linearBump3;
+	}
+
+	public static void LinearToBumpedLightmap(
+		ReadOnlySpan<float> linearColor, ReadOnlySpan<float> linearBumpColor1,
+		ReadOnlySpan<float> linearBumpColor2, ReadOnlySpan<float> linearBumpColor3,
+		Span<ushort> ret, Span<ushort> retBump1,
+		Span<ushort> retBump2, Span<ushort> retBump3) {
+		LinearToBumpedLightmap(linearColor, linearBumpColor1, linearBumpColor2, linearBumpColor3, out Vector3 linearUnbumped, out Vector3 linearBump1, out Vector3 linearBump2, out Vector3 linearBump3);
+
+		ClampToHDR(in linearUnbumped, ret);
+		ClampToHDR(in linearBump1, retBump1);
+		ClampToHDR(in linearBump2, retBump2);
+		ClampToHDR(in linearBump3, retBump3);
+	}
+
 	internal static void SetGamma(float screenGamma, float texGamma, float overbright, bool allowCheats, bool linearFrameBuffer) {
 		int i, inf;
 		float g1, g3;

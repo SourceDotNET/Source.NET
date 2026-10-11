@@ -2,8 +2,6 @@
 //	STATIC: "INTRO"						"0..1"
 //  STATIC: "USE_STATIC_CONTROL_FLOW"	"0..1"
 
-//	DYNAMIC: "COMPRESSED_VERTS"			"0..1"
-//	DYNAMIC: "DOWATERFOG"				"0..1"
 //	DYNAMIC: "SKINNING"					"0..1"
 //	DYNAMIC: "DYNAMIC_LIGHT"			"0..1"
 //	DYNAMIC: "STATIC_LIGHT"				"0..1"
@@ -23,32 +21,19 @@ layout(std140, binding = 0) uniform source_matrices {
     mat4 modelMatrix;
 };
 
-layout(std140, binding = 2) uniform source_vertex_sharedUBO {
-    int numBones;
-    int lightCount;
-    int vertexSharedPad0;
-    int vertexSharedPad1;
-    vec4 lightEnabled;
-};
-
-layout(std140, binding = 4) uniform source_bone_matrices {
-    mat4 bones[256];
-};
-
 layout(std140, binding = 5) uniform source_vs_constants {
     vec4 vs_const[256];
 };
 
-const int VERTEX_SHADER_CAMERA_POS = 2;
-const int VERTEX_SHADER_AMBIENT_LIGHT = 21;
-const int VERTEX_SHADER_LIGHT_INFO = 27;
 const int SHADER_SPECIFIC_CONST_0 = 48;
 const int SHADER_SPECIFIC_CONST_1 = 49;
 
 #include "common_gl460.vs"
+#include "common_lighting_gl460.vs"
+#include "common_morph_gl460.vs"
+#include "common_skinning_gl460.vs"
 #include "vortwarp_gl460.vs"
 
-const int  g_FogType	= DOWATERFOG;
 const bool g_bSkinning	= SKINNING != 0;
 
 #define cTeethLighting		vs_const[SHADER_SPECIFIC_CONST_0]
@@ -61,7 +46,8 @@ const bool g_bSkinning	= SKINNING != 0;
 out vec2 vs_BaseTexCoord;
 out vec3 vs_VertAtten;
 out vec4 vs_WorldPos_ProjPosZ;
-out vec4 vs_FogFactorW;
+
+#include "common_clipplanes_gl460.vs"
 
 void main()
 {
@@ -85,9 +71,9 @@ void main()
 
     vec4 vProjPos = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);
     gl_Position = vProjPos;
+    WriteUserClipDistances(gl_Position);
 
     vs_WorldPos_ProjPosZ = vec4(worldPos.xyz, vProjPos.z);
-    vs_FogFactorW.w = CalcFog(worldPos, vProjPos.xyz, g_FogType);
 
     InitLightInfo();
 #if USE_STATIC_CONTROL_FLOW

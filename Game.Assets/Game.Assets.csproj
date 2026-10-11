@@ -15,5 +15,9 @@
     <ProjectReference Include="..\Source.Common\Source.Common.csproj" />
     <ProjectReference Include="..\Source.GUI.Controls\Source.GUI.Controls.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="**\*" Exclude="**\*.cs;**\*.csproj;obj\**;bin\**;**\*_bak\**;sourceengine\**;platform\**;hl2\resource\**;hl2\gamemodes\**;hl2\lua\**;hl2\cache\workshop\**;hl2\maps\**;hl2\steam.inf;hl2\garrysmod_*.vpk;hl2\cfg\autoexec.cfg" CopyToOutputDirectory="PreserveNewest" />
+    <None Remove="@(Content)" />
+  </ItemGroup>
 
 </Project>

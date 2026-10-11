@@ -1,5 +1,4 @@
 #version 460
-// STATIC: "CONVERT_TO_SRGB"			"0..0"
 // STATIC: "CUBEMAP"					"0..1"
 // STATIC: "SELFILLUM"					"0..1"
 // STATIC: "SELFILLUMFRESNEL"			"0..1"
@@ -15,7 +14,7 @@
 // STATIC: "BLENDTINTBYBASEALPHA"       "0..1"
 
 // DYNAMIC: "WRITEWATERFOGTODESTALPHA"  "0..1"
-// DYNAMIC: "PIXELFOGTYPE"				"0..1"
+// DYNAMIC: "PIXELFOGTYPE"				"0..2"
 // DYNAMIC: "NUM_LIGHTS"				"0..4"
 // DYNAMIC: "WRITE_DEPTH_TO_DESTALPHA"	"0..1"
 // DYNAMIC: "FLASHLIGHTSHADOWS"			"0..1"
@@ -139,7 +138,7 @@ void main()
     baseColor = TextureCombine(baseColor, detailColor, DETAIL_BLEND_MODE, g_SelfIllumTint_and_DetailBlendFactor.w);
 #endif
 
-    float fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos_SpecExponent.z, vWorldPos.z, vProjPos.z);
+    float fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos_SpecExponent.xyz, vWorldPos.xyz, vProjPos.z);
 
     vec3 vEyeDir = normalize(vs_WorldVertToEyeVector.xyz);
     vec3 vRimAmbientCubeColor = PixelShaderAmbientLight(vEyeDir, cAmbientCube);

@@ -18,6 +18,8 @@ out vec4 vs_TexCoord1;
 out vec4 vs_TexCoord2;
 out vec4 vs_Color0;
 
+#include "common_clipplanes_gl460.vs"
+
 void main()
 {
 #if TRANSFORMVERTS
@@ -25,6 +27,7 @@ void main()
 #else
     gl_Position = vec4(v_Position, 1.0);
 #endif
+    WriteUserClipDistances(gl_Position);
     vs_BaseTexCoord = vec2(v_TexCoord.x, 1.0 - v_TexCoord.y);
     vs_TexCoord0 = vec4(vs_BaseTexCoord, 0.0, 1.0);
     vs_TexCoord1 = vec4(0.0, 0.0, 0.0, 1.0);

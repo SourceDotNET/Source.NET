@@ -20,6 +20,16 @@ public struct WorldListInfo
 	public List<LeafFogVolume_t> LeafFogVolume;
 }
 
+public struct VisibleFogVolumeInfo
+{
+	public int VisibleFogVolume;
+	public int VisibleFogVolumeLeaf;
+	public bool EyeInFogVolume;
+	public float DistanceToWater;
+	public float WaterHeight;
+	public IMaterial? FogVolumeMaterial;
+}
+
 public enum DrawBrushModelMode
 {
 	DrawAll = 0,
@@ -94,6 +104,9 @@ public interface IRenderView
 	void DrawWorldLists(IWorldRenderList? list, uint flags, float waterZAdjust);
 	void DrawTranslucentSurfaces(IWorldRenderList? list, int sortIndex, uint flags, bool shadowDepth);
 	bool LeafContainsTranslucentSurfaces(IWorldRenderList? list, int sortIndex, uint flags);
+	void GetVisibleFogVolume(in Vector3 eyePoint, ref VisibleFogVolumeInfo info);
+	void SetFogVolumeState(int fogVolume, bool useHeightFog);
+	bool DoesBoxIntersectWaterVolume(in Vector3 mins, in Vector3 maxs, int leafWaterDataID);
 	void BeginUpdateLightmaps();
 	void EndUpdateLightmaps();
 	void Push3DView(in ViewSetup viewRender, ClearFlags clearFlags, ITexture? rtColor, Frustum frustum, ITexture? rtDepth);

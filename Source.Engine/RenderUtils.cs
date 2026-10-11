@@ -39,13 +39,11 @@ public class RenderUtils(IMaterialSystem materials)
 		meshBuilder.Begin(mesh, MaterialPrimitiveType.Quads, xSegments * ySegments);
 		{
 			renderContext.GetRenderTargetDimensions(out int screenWidth, out int screenHeight);
-			float flOffset = 0.5f;
+			float flLeftX = destX;
+			float flRightX = destX + width;
 
-			float flLeftX = destX - flOffset;
-			float flRightX = destX + width - flOffset;
-
-			float flTopY = destY - flOffset;
-			float flBottomY = destY + height - flOffset;
+			float flTopY = destY;
+			float flBottomY = destY + height;
 
 			float flSubrectWidth = srcTextureX1 - srcTextureX0;
 			float flSubrectHeight = srcTextureY1 - srcTextureY0;

@@ -135,6 +135,7 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 		ShaderSystem.Init();
 		CreateDebugMaterials();
 		MatLightmaps = new(this);
+		OcclusionQueryMgr = new(this);
 	}
 
 	ILauncherManager launcherMgr;
@@ -185,10 +186,10 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 
 		ShaderAPI.SetDefaultState();
 
-		// if (config.HDREnabled() != Config.HDREnabled()) {
-		// 	forceUpdate = true;
-		// 	reloadMaterials = true;
-		// }
+		if (config.HDREnabled() != Config.HDREnabled()) {
+			forceUpdate = true;
+			reloadMaterials = true;
+		}
 
 		if (config.ShadowDepthTexture != Config.ShadowDepthTexture) {
 			forceUpdate = true;
@@ -952,6 +953,8 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 
 	void ReleaseShaderObjects() {
 		// todo
+		OcclusionQueryMgr.FreeOcclusionQueryObjects();
+		ReleaseStandardTextures();
 		for (int i = 0; i < ReleaseFunc.Count; i++)
 			ReleaseFunc[i]();
 	}
@@ -967,6 +970,8 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 		}
 
 		TextureSystem.RestoreRenderTargets();
+		AllocateStandardTextures();
+		OcclusionQueryMgr.AllocOcclusionQueryObjects();
 		Restore?.Invoke();
 		for (int i = 0; i < RestoreFunc.Count; i++)
 			RestoreFunc[i]((RestoreChangeFlags)changeFlags);
@@ -1244,7 +1249,55 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 	}
 
 	public void ReloadMaterials(ReadOnlySpan<char> subString = default) {
-		// todo
+		bool vertexFormatChanged = false;
+		if (subString.IsEmpty) {
+			vertexFormatChanged = true;
+			UncacheAllMaterials();
+			CacheUsedMaterials();
+		}
+		else {
+			const char multiDelim = '*';
+			List<string> searchItems = [];
+			if (subString.Contains(multiDelim))
+				searchItems.AddRange(new string(subString).Split(multiDelim));
+
+			foreach (IMaterialInternal material in (IMaterialInternal[])[.. MaterialDict]) {
+				if (material.GetReferenceCount() <= 0)
+					continue;
+
+				ReadOnlySpan<char> matName = material.GetName();
+
+				if (searchItems.Count > 1) {
+					bool matched = false;
+					for (int k = 0; !matched && k < searchItems.Count; ++k)
+						if (matName.Contains(searchItems[k], StringComparison.OrdinalIgnoreCase))
+							matched = true;
+
+					if (!matched)
+						continue;
+				}
+				else if (!matName.Contains(subString, StringComparison.OrdinalIgnoreCase))
+					continue;
+
+				if (!material.IsPrecached()) {
+					if (material.IsPrecachedVars())
+						material.Uncache();
+				}
+				else {
+					VertexFormat oldVertexFormat = material.GetVertexFormat();
+					material.Uncache();
+					material.Precache();
+					material.ReloadTextures();
+					if (material.GetVertexFormat() != oldVertexFormat)
+						vertexFormatChanged = true;
+				}
+			}
+		}
+
+		if (vertexFormatChanged) {
+			ReleaseShaderObjects();
+			RestoreShaderObjects(null, (int)RestoreChangeFlags.VertexFormatChanged);
+		}
 	}
 
 	void RecomputeAllStateSnapshots() {
@@ -1287,6 +1340,7 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 
 	public IMaterialInternal errorMaterial;
 	public readonly MatLightmaps MatLightmaps;
+	public readonly OcclusionQueryMgr OcclusionQueryMgr;
 
 	public bool AddTextureCompositorTemplate(ReadOnlySpan<char> name, KeyValues tmplDesc, int texCompositeTemplateFlags = 0) {
 		throw new NotImplementedException("Incomplete port of IMaterialSystem");
@@ -1309,7 +1363,11 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 	}
 
 	public void CacheUsedMaterials() {
-		throw new NotImplementedException("Incomplete port of IMaterialSystem");
+		foreach (IMaterialInternal material in (IMaterialInternal[])[.. MaterialDict]) {
+			Assert(material.GetReferenceCount() >= 0);
+			if (material.GetReferenceCount() > 0)
+				material.Precache();
+		}
 	}
 
 	public void ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil = false) {
@@ -1492,11 +1550,12 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 	}
 
 	public void ReacquireResources() {
-		throw new NotImplementedException("Incomplete port of IMaterialSystem");
+		ShaderDevice.ReacquireResources();
 	}
 
 	public void ReleaseResources() {
-		throw new NotImplementedException("Incomplete port of IMaterialSystem");
+		ShaderAPI.FlushBufferedPrimitives();
+		ShaderDevice.ReleaseResources();
 	}
 
 	public void ReloadFilesInList(IFileList filesToReload) {
@@ -1572,7 +1631,7 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 	}
 
 	public bool SupportsHDRMode(HDRType hdrMode) {
-		throw new NotImplementedException("Incomplete port of IMaterialSystem");
+		return HardwareConfig.SupportsHDRMode(hdrMode);
 	}
 
 	public bool SupportsMSAAMode(int nMSAAMode) {
@@ -1625,13 +1684,23 @@ public struct RenderTargetStackElement
 	public ITexture? RenderTarget2;
 	public ITexture? RenderTarget3;
 
-	public readonly ITexture? this[int index] => index switch {
-		0 => RenderTarget0,
-		1 => RenderTarget1,
-		2 => RenderTarget2,
-		3 => RenderTarget3,
-		_ => null
-	};
+	public ITexture? this[int index] {
+		readonly get => index switch {
+			0 => RenderTarget0,
+			1 => RenderTarget1,
+			2 => RenderTarget2,
+			3 => RenderTarget3,
+			_ => null
+		};
+		set {
+			switch (index) {
+				case 0: RenderTarget0 = value; break;
+				case 1: RenderTarget1 = value; break;
+				case 2: RenderTarget2 = value; break;
+				case 3: RenderTarget3 = value; break;
+			}
+		}
+	}
 
 	public ITexture? DepthTexture;
 

@@ -1,11 +1,10 @@
 #version 460
-// DYNAMIC: "PIXELFOGTYPE"				"0..1"
+// DYNAMIC: "PIXELFOGTYPE"				"0..2"
 // DYNAMIC: "WRITE_DEPTH_TO_DESTALPHA"	"0..1"
 
 in vec2 vs_BaseTexCoord;
 in vec3 vs_VertAtten;
 in vec4 vs_WorldPos_ProjPosZ;
-in vec4 vs_FogFactorW;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];
@@ -30,6 +29,6 @@ void main()
 
     bool bWriteDepthToAlpha = WRITE_DEPTH_TO_DESTALPHA != 0;
 
-    float fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos_SpecExponent.z, vs_WorldPos_ProjPosZ.z, vs_WorldPos_ProjPosZ.w);
+    float fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos_SpecExponent.xyz, vs_WorldPos_ProjPosZ.xyz, vs_WorldPos_ProjPosZ.w);
     fragColor = FinalOutput(result, fogFactor, PIXELFOGTYPE, TONEMAP_SCALE_LINEAR, bWriteDepthToAlpha, vs_WorldPos_ProjPosZ.w);
 }

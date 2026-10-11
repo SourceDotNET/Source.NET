@@ -38,13 +38,4 @@
 		<None Include="$(MSBuildThisFileDirectory)..\Dependencies\LuaJIT\win64\lua51.dll" Link="lua51.dll" CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="'$(IsWindows)'=='true'" />
 		<None Include="$(MSBuildThisFileDirectory)..\Dependencies\LuaJIT\linux64\libluajit.so" Link="liblua51.so" CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="'$(IsLinux)'=='true'" />
 	</ItemGroup>
-
-	<!-- Copy Game.Assets -->
-	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-		<ItemGroup>
-			<GameAssets Include="$(MSBuildThisFileDirectory)..\Game.Assets\**\*" Exclude="$(MSBuildThisFileDirectory)..\Game.Assets\**\*.cs;$(MSBuildThisFileDirectory)..\Game.Assets\**\*.csproj;$(MSBuildThisFileDirectory)..\Game.Assets\obj\**;$(MSBuildThisFileDirectory)..\Game.Assets\bin\**;$(MSBuildThisFileDirectory)..\Game.Assets\**\*_bak\**;$(MSBuildThisFileDirectory)..\Game.Assets\sourceengine\**;$(MSBuildThisFileDirectory)..\Game.Assets\platform\**;$(MSBuildThisFileDirectory)..\Game.Assets\hl2\resource\**;$(MSBuildThisFileDirectory)..\Game.Assets\hl2\gamemodes\**;$(MSBuildThisFileDirectory)..\Game.Assets\hl2\lua\**;$(MSBuildThisFileDirectory)..\Game.Assets\hl2\cache\workshop\**;$(MSBuildThisFileDirectory)..\Game.Assets\hl2\maps\**;$(MSBuildThisFileDirectory)..\Game.Assets\hl2\steam.inf;$(MSBuildThisFileDirectory)..\Game.Assets\hl2\garrysmod_*.vpk;$(MSBuildThisFileDirectory)..\Game.Assets\hl2\cfg\autoexec.cfg" />
-		</ItemGroup>
-
-		<Copy SourceFiles="@(GameAssets)" DestinationFolder="$(OutDir)%(RecursiveDir)" SkipUnchangedFiles="true" />
-	</Target>
 </Project>

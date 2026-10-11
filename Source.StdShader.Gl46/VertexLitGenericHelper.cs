@@ -540,11 +540,10 @@ public partial class BaseVSShader
 					}
 				}
 
-				// todo
-				// if (hasFlashlight)
-				// 	shader.FogToBlack();
-				// else
-				// 	shader.DefaultFog();
+				if (hasFlashlight)
+					shader.FogToBlack();
+				else
+					shader.DefaultFog();
 
 				shaderShadow.EnableAlphaWrites(fullyOpaque);
 			}
@@ -795,6 +794,7 @@ public partial class BaseVSShader
 						pshIndex.Set("NUM_LIGHTS", lightState.NumLights);
 						pshIndex.Set("AMBIENT_LIGHT", lightState.AmbientLight ? 1 : 0);
 						pshIndex.Set("FLASHLIGHTSHADOWS", bFlashlightShadows);
+						pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 						dynamicCmdsOut.SetPixelShaderIndex(pshIndex.GetIndex());
 					}
 					else {
@@ -820,6 +820,7 @@ public partial class BaseVSShader
 					pshIndex.Set("NUM_LIGHTS", lightState.NumLights);
 					pshIndex.Set("AMBIENT_LIGHT", lightState.AmbientLight ? 1 : 0);
 					pshIndex.Set("FLASHLIGHTSHADOWS", bFlashlightShadows);
+					pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 					dynamicCmdsOut.SetPixelShaderIndex(pshIndex.GetIndex());
 
 					Span<bool> unusedTexCoords = [false, false, !shaderAPI.IsHWMorphingEnabled() || !isDecal];
@@ -849,6 +850,7 @@ public partial class BaseVSShader
 					if (HardwareConfig.SupportsPixelShaders_2_b() || HardwareConfig.ShouldAlwaysUseShaderModel2bShaders()) {
 						DynamicShaderIndex pshIndex = new(shaderAPI, ShaderType.Pixel);
 						pshIndex.Set("FLASHLIGHTSHADOWS", bFlashlightShadows);
+						pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 						pshIndex.Set("LIGHTING_PREVIEW", shaderAPI.GetIntRenderingParameter((int)RenderParamInt.EnableFixedLighting));
 						dynamicCmdsOut.SetPixelShaderIndex(pshIndex.GetIndex());
 					}
@@ -874,6 +876,7 @@ public partial class BaseVSShader
 
 					DynamicShaderIndex pshIndex = new(shaderAPI, ShaderType.Pixel);
 					pshIndex.Set("FLASHLIGHTSHADOWS", bFlashlightShadows);
+					pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 					pshIndex.Set("LIGHTING_PREVIEW", shaderAPI.GetIntRenderingParameter((int)RenderParamInt.EnableFixedLighting));
 					dynamicCmdsOut.SetPixelShaderIndex(pshIndex.GetIndex());
 

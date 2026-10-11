@@ -31,12 +31,15 @@ out vec3 vs_T2;
 out float vs_T3;
 out vec4 vs_Color;
 
+#include "common_clipplanes_gl460.vs"
+
 void main()
 {
     vec3 worldPos = (modelMatrix * vec4(v_Position, 1.0)).xyz;
     vec3 worldNormal = mat3(modelMatrix) * v_Normal;
 
     gl_Position = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);
+    WriteUserClipDistances(gl_Position);
 
     vec3 vTexturePos;
     vTexturePos.x = dot(vec4(worldPos, 1.0), cShadowTextureMatrix0);

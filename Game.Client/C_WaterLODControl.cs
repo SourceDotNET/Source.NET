@@ -20,5 +20,10 @@ public class C_WaterLODControl : C_BaseEntity
 	public float CheapWaterStartDistance;
 	[NetworkName("m_flCheapWaterEndDistance")]
 	public float CheapWaterEndDistance;
+
+	public override void OnDataChanged(DataUpdateType updateType) {
+		view.SetCheapWaterStartDistance(CheapWaterStartDistance);
+		view.SetCheapWaterEndDistance(CheapWaterEndDistance);
+	}
 }
 

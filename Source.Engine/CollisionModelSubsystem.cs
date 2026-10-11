@@ -557,7 +557,10 @@ public class CollisionBSPData
 		BSPDertex[] verts = new MapLoadHelper(LumpIndex.Vertexes).LoadLumpData<BSPDertex>();
 		BSPDEdge[] edges = new MapLoadHelper(LumpIndex.Edges).LoadLumpData<BSPDEdge>();
 		int[] surfEdges = new MapLoadHelper(LumpIndex.SurfEdges).LoadLumpData<int>();
-		BSPDFace[] faces = new MapLoadHelper(LumpIndex.Faces).LoadLumpData<BSPDFace>();
+		LumpIndex faceLumpToLoad = LumpIndex.Faces;
+		if (HardwareConfig.GetHDRType() != HDRType.None && MapLoadHelper.GetLumpSize(LumpIndex.FacesHDR) > 0)
+			faceLumpToLoad = LumpIndex.FacesHDR;
+		BSPDFace[] faces = new MapLoadHelper(faceLumpToLoad).LoadLumpData<BSPDFace>();
 		BSPDDispInfo[] dispInfos = new MapLoadHelper(LumpIndex.DispInfo).LoadLumpData<BSPDDispInfo>();
 		DispVert[] dispVerts = new MapLoadHelper(LumpIndex.DispVerts).LoadLumpData<DispVert>();
 		DispTri[] dispTris = new MapLoadHelper(LumpIndex.DispTris).LoadLumpData<DispTri>();

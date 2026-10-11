@@ -1,13 +1,12 @@
 #version 460
 // DYNAMIC: "WRITE_DEPTH_TO_DESTALPHA"	"0..1"
-// DYNAMIC: "PIXELFOGTYPE"				"0..1"
+// DYNAMIC: "PIXELFOGTYPE"				"0..2"
 
 in vec2 vs_BaseTexCoord;
 in vec2 vs_IrisTexCoord;
 in vec2 vs_GlintTexCoord;
 in vec3 vs_Color;
 in vec4 vs_WorldPos_ProjPosZ;
-in vec4 vs_FogFactorW;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];
@@ -25,7 +24,6 @@ layout(binding = 2) uniform sampler2D GlintSampler;
 #define g_EyePos_SpecExponent	ps_const[11]
 #define g_FogParams				ps_const[12]
 
-#define fDilationFactor	cEyeScalars.x
 #define fGlintDamping	cEyeScalars.y
 
 void main()
@@ -43,6 +41,6 @@ void main()
 
     bool bWriteDepthToAlpha = WRITE_DEPTH_TO_DESTALPHA != 0;
 
-    float fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos_SpecExponent.z, vs_WorldPos_ProjPosZ.z, vs_WorldPos_ProjPosZ.w);
+    float fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos_SpecExponent.xyz, vs_WorldPos_ProjPosZ.xyz, vs_WorldPos_ProjPosZ.w);
     fragColor = FinalOutput(result, fogFactor, PIXELFOGTYPE, TONEMAP_SCALE_LINEAR, bWriteDepthToAlpha, vs_WorldPos_ProjPosZ.w);
 }

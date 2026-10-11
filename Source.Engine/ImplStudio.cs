@@ -2,12 +2,14 @@
 using Source.Common.Commands;
 using Source.Common.DataCache;
 using Source.Common.Engine;
+using Source.Common.Filesystem;
 using Source.Common.Formats.BSP;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 
 namespace Source.Engine;
@@ -52,6 +54,7 @@ public class ColorMeshData
 	public uint TotalSize;
 	// FSAsyncControl_t AsyncControlVertex; // todo
 	// FSAsyncControl_t AsyncControlTexel; // todo
+	public FSAsyncControl? AsyncControl;
 	public bool HasInvalidVB;
 	public bool ColorMeshValid;
 	public bool ColorTextureValid;
@@ -1103,8 +1106,8 @@ public class ModelRender : IModelRender
 		Assert(studioHdr != null && studioHWData != null);
 
 		if (!debugColorSet && (inst.Flags & ModelInstanceFlags.HasDiskCompiledColor) != 0) {
-			// if (LoadStaticPropColorData(pProp, inst.ColorMeshHandle, studioHWData)) // todo
-			// 	return true;
+			if (LoadStaticPropColorData(pProp, inst.ColorMeshHandle, studioHWData!))
+				return true;
 		}
 
 		colorMeshData.ColorMeshValid = false;
@@ -1247,8 +1250,124 @@ public class ModelRender : IModelRender
 		if (!HardwareConfig.SupportsColorOnSecondStream() || !StaticPropMgr().IsStaticProp(prop))
 			return;
 
-		// todo
+		if (!ModelLoader.g_bLoadedMapHasBakedPropLighting || StaticPropMgr().PropHasBakedLightingDisabled(prop))
+			return;
 
+		ReadOnlySpan<char> fileName = StaticPropColorDataFileName(prop);
+
+		Span<byte> buf = stackalloc byte[Unsafe.SizeOf<HardwareVerts.FileHeader>()];
+		if (!g_pFileSystem.ReadFile(fileName, "GAME", buf, 0))
+			return;
+
+		StudioHeader? studioHdr = MDLCache.GetStudioHdr(instance.Model!.Studio);
+
+		ref readonly HardwareVerts.FileHeader vhvHdr = ref MemoryMarshal.Cast<byte, HardwareVerts.FileHeader>(buf)[0];
+		if (vhvHdr.Version != HardwareVerts.VHV_VERSION ||
+			vhvHdr.Checksum != (uint)studioHdr!.Checksum ||
+			vhvHdr.VertexSize != 4) {
+			instance.Flags |= ModelInstanceFlags.DiskCompiledColorBad;
+			return;
+		}
+
+		instance.Flags &= ~ModelInstanceFlags.DiskCompiledColorBad;
+		instance.Flags |= ModelInstanceFlags.HasDiskCompiledColor;
+	}
+
+	static string StaticPropColorDataFileName(IHandleEntity prop) {
+		if (HardwareConfig.GetHDRType() == HDRType.None || ModelLoader.g_bBakedPropLightingNoSeparateHDR)
+			return $"sp_{StaticPropMgr().GetStaticPropIndex(prop)}.vhv";
+		else
+			return $"sp_hdr_{StaticPropMgr().GetStaticPropIndex(prop)}.vhv";
+	}
+
+	class StaticPropAsyncContext
+	{
+		public DataCacheHandle_t ColorMeshHandle;
+		public ColorMeshData? ColorMeshData;
+		public int Meshes;
+		public uint RootLOD;
+		public string? Filename;
+	}
+
+	static void StaticPropColorMeshCallback(in FileAsyncRequest request, int numReadBytes, FSAsyncStatus asyncStatus) {
+		StaticPropAsyncContext staticPropContext = (StaticPropAsyncContext)request.Context!;
+
+		if (asyncStatus == FSAsyncStatus.OK) {
+			ReadOnlySpan<byte> data = request.Data.AsSpan(0, numReadBytes);
+			ref readonly HardwareVerts.FileHeader vhvHdr = ref MemoryMarshal.Cast<byte, HardwareVerts.FileHeader>(data)[0];
+
+			int startMesh;
+			for (startMesh = 0; startMesh < vhvHdr.Meshes; startMesh++) {
+				if (HardwareVerts.FileHeader.Mesh(data, startMesh).Lod == staticPropContext.RootLOD)
+					break;
+			}
+
+			for (int meshID = startMesh; meshID < vhvHdr.Meshes; meshID++) {
+				int numVertexes = (int)HardwareVerts.FileHeader.Mesh(data, meshID).Vertexes;
+				if (numVertexes != staticPropContext.ColorMeshData!.MeshInfos![meshID - startMesh].NumVerts)
+					break;
+
+				int id = meshID - startMesh;
+
+				ReadOnlySpan<byte> input = HardwareVerts.FileHeader.VertexBase(data, meshID);
+
+				MeshBuilder meshBuilder = new();
+				meshBuilder.Begin(staticPropContext.ColorMeshData.MeshInfos[id].Mesh!, MaterialPrimitiveType.Heterogenous, numVertexes, 0);
+
+				for (int i = 0; i < numVertexes; i++) {
+					byte red = input[0];
+					byte green = input[1];
+					byte blue = input[2];
+					meshBuilder.Specular4ub(blue, green, red, input[3]);
+					meshBuilder.AdvanceVertex();
+					input = input[4..];
+				}
+
+				meshBuilder.End();
+			}
+		}
+
+		staticPropContext.ColorMeshData!.ColorMeshValid = true;
+	}
+
+	private bool LoadStaticPropColorData(IHandleEntity? prop, DataCacheHandle_t colorMeshHandle, StudioHWData studioHWData) {
+		if (!ModelLoader.g_bLoadedMapHasBakedPropLighting || !r_proplightingfromdisk.GetBool())
+			return false;
+
+		ColorMeshData? colorMeshData = CacheGet(colorMeshHandle);
+		if (colorMeshData == null)
+			return false;
+
+		if (colorMeshData.AsyncControl != null)
+			return true;
+
+		string fileName = StaticPropColorDataFileName(prop!);
+
+		colorMeshData.ColorMeshValid = false;
+
+		StaticPropAsyncContext context = new() {
+			RootLOD = (uint)studioHWData.RootLOD,
+			Meshes = colorMeshData.NumMeshes,
+			ColorMeshHandle = colorMeshHandle,
+			ColorMeshData = colorMeshData,
+			Filename = fileName
+		};
+
+		FileAsyncRequest fileRequest = new() {
+			Context = context,
+			Callback = StaticPropColorMeshCallback,
+			Data = null,
+			FileName = fileName,
+			Offset = 0,
+			Flags = FSAsyncFlags.Sync,
+			Bytes = 0,
+			Priority = -1,
+			PathID = "GAME"
+		};
+
+		g_pFileSystem.AsyncRead(fileRequest, out colorMeshData.AsyncControl);
+
+		return true;
 	}
 
 

@@ -259,7 +259,11 @@ public class StaticPropMgrImpl : IStaticPropMgrEngine, IStaticPropMgrClient, ISt
 	}
 
 	public bool PropHasBakedLightingDisabled(IHandleEntity? handleEntity) {
-		throw new NotImplementedException();
+		int index = HandleEntityToIndex(handleEntity);
+
+		StaticProp prop = StaticProps[index];
+
+		return (prop.Flags() & (int)StaticPropFlags.NoPerVertexLighting) != 0;
 	}
 
 	public ref readonly Vector3 ViewOrigin() => ref LastViewOrigin;

@@ -7,6 +7,7 @@ using Source.Common;
 using Source.Common.Client;
 using Source.Common.Commands;
 using Source.Common.Engine;
+using Source.Common.GarrysMod.Lua;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 using Source.Engine;
@@ -22,12 +23,44 @@ public static class ViewRenderConVars
 	internal readonly static ConVar r_drawopaqueworld = new("1", FCvar.Cheat);
 	internal readonly static ConVar r_drawtranslucentworld = new("1", FCvar.Cheat);
 	internal readonly static ConVar r_3dsky = new("1", 0, "Enable the rendering of 3d sky boxes");
+	internal readonly static ConVar r_3dskyinreflection = new("1", 0, "Enable the rendering of 3d sky boxes in water reflection");
 	internal readonly static ConVar r_skybox = new("1", FCvar.Cheat, "Enable the rendering of sky boxes");
 	internal readonly static ConVar r_drawviewmodel = new("1", FCvar.Cheat);
 	internal readonly static ConVar r_drawtranslucentrenderables = new("1", FCvar.Cheat);
 	internal readonly static ConVar r_drawopaquerenderables = new("1", FCvar.Cheat);
 	internal readonly static ConVar r_threaded_renderables = new("0", 0);
 	internal readonly static ConVar r_DrawDetailProps = new("1", FCvar.None, "0=Off, 1=Normal, 2=Wireframe");
+	internal readonly static ConVar r_debugcheapwater = new("0", FCvar.Cheat);
+	internal readonly static ConVar r_waterforceexpensive = new("0", FCvar.Archive);
+	internal readonly static ConVar r_waterforcereflectentities = new("0", 0);
+	internal readonly static ConVar r_WaterDrawRefraction = new("1", 0, "Enable water refraction");
+	internal readonly static ConVar r_WaterDrawReflection = new("1", 0, "Enable water reflection");
+	internal readonly static ConVar r_ForceWaterLeaf = new("1", 0, "Enable for optimization to water - considers view in leaf under water for purposes of culling");
+	internal readonly static ConVar mat_drawwater = new("1", FCvar.Cheat);
+	internal readonly static ConVar mat_clipz = new("1", 0);
+	internal readonly static ConVar fog_override = new("0", FCvar.Cheat);
+	internal readonly static ConVar fog_start = new("-1", FCvar.Cheat);
+	internal readonly static ConVar fog_end = new("-1", FCvar.Cheat);
+	internal readonly static ConVar fog_color = new("-1 -1 -1", FCvar.Cheat);
+	internal readonly static ConVar fog_enable = new("1", FCvar.Cheat);
+	internal readonly static ConVar fog_startskybox = new("-1", FCvar.Cheat);
+	internal readonly static ConVar fog_endskybox = new("-1", FCvar.Cheat);
+	internal readonly static ConVar fog_maxdensityskybox = new("-1", FCvar.Cheat);
+	internal readonly static ConVar fog_colorskybox = new("-1 -1 -1", FCvar.Cheat);
+	internal readonly static ConVar fog_enableskybox = new("1", FCvar.Cheat);
+	internal readonly static ConVar fog_maxdensity = new("-1", FCvar.Cheat);
+	internal readonly static ConVar fog_radial = new("-1", FCvar.Cheat);
+	internal readonly static ConVar fog_radialskybox = new("-1", FCvar.Cheat);
+}
+
+public struct WaterRenderInfo
+{
+	public bool CheapWater;
+	public bool Reflect;
+	public bool Refract;
+	public bool ReflectEntities;
+	public bool DrawWaterSurface;
+	public bool OpaqueWater;
 }
 
 public class RenderExecutor
@@ -106,19 +139,135 @@ public class Base3dView
 public class BaseWorldView : Rendering3dView
 {
 	public BaseWorldView(ViewRender mainView) : base(mainView) { }
-	protected void DrawSetup(float waterHeight, DrawFlags setupFlags, float waterZAdjust) {
+
+	static Vector3 SavedLinearLightMapScale = new(-1, -1, -1);
+
+	protected static void SetLightmapScaleForWater() {
+		if (Singleton<IMaterialSystemHardwareConfig>().GetHDRType() == HDRType.Integer) {
+			using MatRenderContextPtr renderContext = new(materials);
+			SavedLinearLightMapScale = renderContext.GetToneMappingScaleLinear();
+			Vector3 t25 = SavedLinearLightMapScale;
+			t25 *= 0.25f;
+			renderContext.SetToneMappingScaleLinear(t25);
+		}
+	}
+
+	protected bool AdjustView(float waterHeight) {
+		if ((DrawFlags & DrawFlags.RenderRefraction) != 0) {
+			ITexture texture = RenderTexture.GetWaterRefractionTexture()!;
+
+			setup.X = setup.Y = 0;
+			setup.Width = texture.GetActualWidth();
+			setup.Height = texture.GetActualHeight();
+
+			return true;
+		}
+
+		if ((DrawFlags & DrawFlags.RenderReflection) != 0) {
+			ITexture texture = RenderTexture.GetWaterReflectionTexture()!;
+
+			if (setup.ViewToProjectionOverride)
+				setup.ViewToProjection.M23 = -setup.ViewToProjection.M23;
+
+			setup.X = setup.Y = 0;
+			setup.Width = texture.GetActualWidth();
+			setup.Height = texture.GetActualHeight();
+			setup.Angles.X = -setup.Angles.X;
+			setup.Angles.Z = -setup.Angles.Z;
+			setup.Origin.Z -= 2.0f * (setup.Origin.Z - waterHeight);
+			return true;
+		}
+
+		return false;
+	}
+
+	protected void PushView(float waterHeight) {
+		float spread = 2.0f;
+		if ((DrawFlags & DrawFlags.FudgeUp) != 0)
+			waterHeight += spread;
+		else
+			waterHeight -= spread;
+
+		MaterialHeightClipMode clipMode = MaterialHeightClipMode.Disable;
+		if ((DrawFlags & DrawFlags.ClipZ) != 0 && mat_clipz.GetBool()) {
+			if ((DrawFlags & DrawFlags.ClipBelow) != 0)
+				clipMode = MaterialHeightClipMode.RenderAboveHeight;
+			else
+				clipMode = MaterialHeightClipMode.RenderBelowHeight;
+		}
+
+		using MatRenderContextPtr renderContext = new(mainView.materials);
+
+		if ((DrawFlags & DrawFlags.RenderRefraction) != 0) {
+			renderContext.SetFogZ(waterHeight);
+			renderContext.SetHeightClipZ(waterHeight);
+			renderContext.SetHeightClipMode(clipMode);
+
+			render.Push3DView(in setup, ClearFlags, RenderTexture.GetWaterRefractionTexture(), GetFrustrum(), null);
+
+			return;
+		}
+
+		if ((DrawFlags & DrawFlags.RenderReflection) != 0) {
+			ITexture? texture = RenderTexture.GetWaterReflectionTexture();
+
+			renderContext.SetFogZ(waterHeight);
+			renderContext.SetHeightClipZ(waterHeight);
+			renderContext.SetHeightClipMode(clipMode);
+
+			render.Push3DView(in setup, ClearFlags, texture, GetFrustrum(), null);
+
+			SetLightmapScaleForWater();
+			return;
+		}
+
+		if ((ClearFlags & (ClearFlags.ClearDepth | ClearFlags.ClearColor | ClearFlags.ClearStencil)) != 0) {
+			if ((ClearFlags & ClearFlags.ClearObeyStencil) != 0)
+				renderContext.ClearBuffersObeyStencil((ClearFlags & ClearFlags.ClearColor) != 0, (ClearFlags & ClearFlags.ClearDepth) != 0);
+			else
+				renderContext.ClearBuffers((ClearFlags & ClearFlags.ClearColor) != 0, (ClearFlags & ClearFlags.ClearDepth) != 0, (ClearFlags & ClearFlags.ClearStencil) != 0);
+		}
+
+		renderContext.SetHeightClipMode(clipMode);
+		if (clipMode != MaterialHeightClipMode.Disable)
+			renderContext.SetHeightClipZ(waterHeight);
+	}
+
+	protected void PopView() {
+		using MatRenderContextPtr renderContext = new(mainView.materials);
+
+		renderContext.SetHeightClipMode(MaterialHeightClipMode.Disable);
+		if ((DrawFlags & (DrawFlags.RenderRefraction | DrawFlags.RenderReflection)) != 0) {
+			render.PopView(GetFrustrum());
+			if (SavedLinearLightMapScale.X >= 0) {
+				renderContext.SetToneMappingScaleLinear(SavedLinearLightMapScale);
+				SavedLinearLightMapScale.X = -1;
+			}
+		}
+	}
+
+	protected void DrawSetup(float waterHeight, DrawFlags setupFlags, float waterZAdjust, int forceViewLeaf = -1) {
 		ViewID savedViewID = ViewRender.g_CurrentViewID;
 		ViewRender.g_CurrentViewID = ViewID.Illegal;
+
+		bool viewChanged = AdjustView(waterHeight);
+
+		if (viewChanged)
+			render.Push3DView(in setup, 0, null, GetFrustrum(), null);
 
 		render.BeginUpdateLightmaps();
 
 		bool drawEntities = (setupFlags & DrawFlags.DrawEntities) != 0;
-		BuildWorldRenderLists(drawEntities, -1, true);
+		bool drawReflection = (setupFlags & DrawFlags.RenderReflection) != 0;
+		BuildWorldRenderLists(drawEntities, forceViewLeaf, true, false, drawReflection ? new Span<float>(ref waterHeight) : default);
 
 		if (drawEntities)
 			BuildRenderableRenderLists(savedViewID);
 
 		render.EndUpdateLightmaps();
+
+		if (viewChanged)
+			render.PopView(GetFrustrum());
 
 		ViewRender.g_CurrentViewID = savedViewID;
 	}
@@ -142,10 +291,19 @@ public class BaseWorldView : Rendering3dView
 		g_ClientShadowMgr.ComputeShadowTextures(in setup, WorldListInfo.LeafCount, WorldListInfo.LeafList);
 		MaybeInvalidateLocalPlayerAnimation();
 
-		ViewRender.g_CurrentViewID = savedViewID;
+		engine.Sound_ExtraUpdate();
+
+		ViewRender.g_CurrentViewID = viewID;
+
+		DrawFlags drawFlagsBackup = DrawFlags;
+		DrawFlags |= mainView.GetBaseDrawFlags();
+
+		PushView(waterHeight);
 
 		using MatRenderContextPtr renderContext = new(mainView.materials);
-		renderContext.ClearBuffers(false, true, false);
+
+		ITexture? saveFrameBufferCopyTexture = renderContext.GetFrameBufferCopyTexture(0);
+		renderContext.SetFrameBufferCopyTexture(RenderTexture.GetPowerOfTwoFrameBufferTexture());
 
 		RenderDepthMode depthMode = RenderDepthMode.Normal;
 
@@ -154,27 +312,418 @@ public class BaseWorldView : Rendering3dView
 			DrawOpaqueRenderables(depthMode);
 			DrawTranslucentRenderables(depthMode);
 		}
+		else {
+			DrawWorld(waterZAdjust);
+			DrawTranslucentWorldInLeaves(false);
+		}
+
+		renderContext.SetFrameBufferCopyTexture(saveFrameBufferCopyTexture);
+		PopView();
+
+		DrawFlags = drawFlagsBackup;
+
+		ViewRender.g_CurrentViewID = savedViewID;
 	}
 }
 
 public class SimpleWorldView : BaseWorldView
 {
+	VisibleFogVolumeInfo FogInfo;
+
 	public SimpleWorldView(ViewRender mainView) : base(mainView) { }
-	public void Setup(in ViewSetup view, ClearFlags clearFlags, bool drawSkybox) {
+	public void Setup(in ViewSetup view, ClearFlags clearFlags, bool drawSkybox, in VisibleFogVolumeInfo fogInfo, in WaterRenderInfo waterInfo) {
 		base.Setup(in view);
 
 		ClearFlags = clearFlags;
 		DrawFlags = DrawFlags.DrawEntities;
 
-		DrawFlags |= DrawFlags.RenderUnderwater | DrawFlags.RenderAbovewater;
+		if (!waterInfo.OpaqueWater)
+			DrawFlags |= DrawFlags.RenderUnderwater | DrawFlags.RenderAbovewater;
+		else {
+			bool viewIntersectsWater = ViewRender.DoesViewPlaneIntersectWater(fogInfo.WaterHeight, fogInfo.VisibleFogVolume);
+			if (viewIntersectsWater)
+				DrawFlags |= DrawFlags.RenderUnderwater | DrawFlags.RenderAbovewater;
+			else if (fogInfo.EyeInFogVolume)
+				DrawFlags |= DrawFlags.RenderUnderwater;
+			else
+				DrawFlags |= DrawFlags.RenderAbovewater;
+		}
+		if (waterInfo.DrawWaterSurface)
+			DrawFlags |= DrawFlags.RenderWater;
+
+		if (!fogInfo.EyeInFogVolume && drawSkybox)
+			DrawFlags |= DrawFlags.DrawSkybox;
+
+		FogInfo = fogInfo;
+	}
+	public override void Draw() {
+		DrawSetup(0, DrawFlags, 0);
+
+		if (!FogInfo.EyeInFogVolume)
+			EnableWorldFog();
+		else {
+			ClearFlags |= ClearFlags.ClearColor;
+
+			SetFogVolumeState(in FogInfo, false);
+
+			using MatRenderContextPtr fogRenderContext = new(mainView.materials);
+
+			fogRenderContext.GetFogColor(out Color fogColor);
+			fogRenderContext.ClearColor4ub(fogColor.R, fogColor.G, fogColor.B, 255);
+		}
+
+		DrawExecute(0, CurrentViewID(), 0);
+
+		using MatRenderContextPtr renderContext = new(mainView.materials);
+		renderContext.ClearColor4ub(0, 0, 0, 255);
+	}
+}
+
+public class BaseWaterView : BaseWorldView
+{
+	protected VisibleFogVolumeInfo FogInfo;
+	protected float WaterHeight;
+
+	public BaseWaterView(ViewRender mainView) : base(mainView) { }
+}
+
+public class AboveWaterView : BaseWaterView
+{
+	WaterRenderInfo WaterInfo;
+	readonly ReflectionView Reflection;
+	readonly RefractionView Refraction;
+	readonly IntersectionView Intersection;
+	readonly SkyboxReflectionView SkyboxReflection;
+
+	public AboveWaterView(ViewRender mainView) : base(mainView) {
+		Reflection = new(mainView, this);
+		Refraction = new(mainView, this);
+		Intersection = new(mainView, this);
+		SkyboxReflection = new(mainView, this);
+	}
+
+	public void Setup(in ViewSetup view, bool drawSkybox, in VisibleFogVolumeInfo fogInfo, in WaterRenderInfo waterInfo) {
+		base.Setup(in view);
+
+		WaterHeight = fogInfo.WaterHeight;
+
+		DrawFlags = DrawFlags.RenderAbovewater | DrawFlags.DrawEntities;
+		ClearFlags = ClearFlags.ClearDepth;
 
 		if (drawSkybox)
 			DrawFlags |= DrawFlags.DrawSkybox;
+
+		if (waterInfo.DrawWaterSurface)
+			DrawFlags |= DrawFlags.RenderWater;
+		if (!waterInfo.Refract && !waterInfo.OpaqueWater)
+			DrawFlags |= DrawFlags.RenderUnderwater;
+
+		FogInfo = fogInfo;
+		WaterInfo = waterInfo;
 	}
+
+	public override void ReleaseLists() {
+		base.ReleaseLists();
+		Reflection.ReleaseLists();
+		Refraction.ReleaseLists();
+		Intersection.ReleaseLists();
+		SkyboxReflection.ReleaseLists();
+	}
+
+	public override void Draw() {
+		if (WaterInfo.Reflect) {
+			bool drew3dSkybox = false;
+			if (r_3dskyinreflection.GetBool() && r_3dsky.GetInt() != 0 && SkyboxReflection.Setup()) {
+				mainView.AddViewToScene(SkyboxReflection);
+				drew3dSkybox = true;
+
+				mainView.SetupVis(in setup, out _);
+			}
+
+			Reflection.Setup(WaterInfo.ReflectEntities, drew3dSkybox);
+			mainView.AddViewToScene(Reflection);
+		}
+
+		bool viewIntersectsWater = false;
+
+		if (WaterInfo.Refract) {
+			Refraction.Setup();
+			mainView.AddViewToScene(Refraction);
+
+			viewIntersectsWater = ViewRender.DoesViewPlaneIntersectWater(FogInfo.WaterHeight, FogInfo.VisibleFogVolume);
+		}
+		else if ((DrawFlags & DrawFlags.DrawSkybox) == 0)
+			ClearFlags |= ClearFlags.ClearColor;
+
+		if (viewIntersectsWater)
+			DrawFlags |= DrawFlags.ClipZ | DrawFlags.ClipBelow;
+
+		DrawSetup(WaterHeight, DrawFlags, 0);
+		EnableWorldFog();
+		DrawExecute(WaterHeight, CurrentViewID(), 0);
+
+		if (WaterInfo.Refract && viewIntersectsWater) {
+			Intersection.Setup();
+			mainView.AddViewToScene(Intersection);
+		}
+	}
+
+	class ReflectionView(ViewRender mainView, AboveWaterView outer) : BaseWorldView(mainView)
+	{
+		public void Setup(bool reflectEntities, bool drew3dSkybox) {
+			base.Setup(in outer.setup);
+
+			ClearFlags = ClearFlags.ClearDepth;
+
+			DrawFlags = DrawFlags.RenderReflection | DrawFlags.ClipZ | DrawFlags.ClipBelow | DrawFlags.RenderAbovewater;
+
+			if (!drew3dSkybox)
+				DrawFlags |= DrawFlags.DrawSkybox;
+
+			if (reflectEntities)
+				DrawFlags |= DrawFlags.DrawEntities;
+		}
+
+		public override void Draw() {
+			ViewID saveViewID = CurrentViewID();
+			SetupCurrentView(in setup.Origin, in setup.Angles, ViewID.Reflection);
+
+			DrawSetup(outer.FogInfo.WaterHeight, DrawFlags, 0.0f, outer.FogInfo.VisibleFogVolumeLeaf);
+
+			EnableWorldFog();
+			DrawExecute(outer.FogInfo.WaterHeight, ViewID.Reflection, 0.0f);
+
+			SetupCurrentView(in setup.Origin, in setup.Angles, saveViewID);
+
+			using MatRenderContextPtr renderContext = new(mainView.materials);
+			renderContext.Flush();
+		}
+	}
+
+	class SkyboxReflectionView(ViewRender mainView, AboveWaterView outer) : BaseWorldView(mainView)
+	{
+		SafeFieldPointer<PlayerLocalData, Sky3DParams> Sky3dParams = new();
+
+		public bool Setup() {
+			base.Setup(in outer.setup);
+
+			SkyboxVisibility skyboxVisible = SkyboxVisibility.Skybox3D;
+			Sky3dParams = PreRender3dSkyboxWorld(ref skyboxVisible);
+
+			if (Sky3dParams.IsNull)
+				return false;
+
+			ClearFlags = ClearFlags.ClearDepth;
+			ClearFlags |= ClearFlags.ClearColor;
+
+			DrawFlags = DrawFlags.RenderReflection | DrawFlags.ClipZ | DrawFlags.ClipBelow | DrawFlags.RenderAbovewater;
+			DrawFlags |= DrawFlags.DrawSkybox;
+			return true;
+		}
+
+		public override void Draw() {
+			if (Sky3dParams.IsNull)
+				return;
+
+			ref Sky3DParams sky3dParams = ref Sky3dParams.Get();
+
+			Span<byte> areaBits = render.GetAreaBits();
+			Span<byte> saveBits = stackalloc byte[Constants.MAX_AREA_STATE_BYTES];
+			areaBits.CopyTo(saveBits);
+			areaBits.Clear();
+
+			areaBits[sky3dParams.Area >> 3] |= (byte)(1 << (sky3dParams.Area & 7));
+
+			setup.ZNear = 2.0f;
+			setup.ZFar = WorldSize.MAX_TRACE_LENGTH;
+
+			float scale = (sky3dParams.Scale > 0) ? (1.0f / sky3dParams.Scale) : 1.0f;
+			Vector3 skyOrigin = sky3dParams.Origin;
+			setup.Origin *= scale;
+			setup.Origin += skyOrigin;
+
+			float waterHeight = skyOrigin.Z + (scale * outer.FogInfo.WaterHeight);
+			AdjustView(waterHeight);
+
+			Enable3dSkyboxFog();
+
+			render.ViewSetupVisEx(false, new(ref sky3dParams.Origin), out _);
+
+			using MatRenderContextPtr renderContext = new(mainView.materials);
+
+			ITexture? texture = RenderTexture.GetWaterReflectionTexture();
+
+			renderContext.SetHeightClipZ(waterHeight);
+
+			MaterialHeightClipMode clipMode = MaterialHeightClipMode.Disable;
+			if ((DrawFlags & DrawFlags.ClipZ) != 0 && mat_clipz.GetBool())
+				clipMode = MaterialHeightClipMode.RenderAboveHeight;
+
+			renderContext.SetHeightClipMode(clipMode);
+
+			SetLightmapScaleForWater();
+
+			render.Push3DView(in setup, ClearFlags, texture, GetFrustrum(), null);
+
+			ViewID saveViewID = CurrentViewID();
+			Vector3 oldOrigin = CurrentViewOrigin();
+			QAngle oldAngles = CurrentViewAngles();
+			SetupCurrentView(in setup.Origin, in setup.Angles, ViewID.Sky3D);
+
+			render.BeginUpdateLightmaps();
+			BuildWorldRenderLists(true, -1, true);
+			BuildRenderableRenderLists(ViewID.Sky3D);
+			render.EndUpdateLightmaps();
+
+			engine.Sound_ExtraUpdate();
+
+			DrawWorld(0.0f);
+
+			DrawOpaqueRenderables(RenderDepthMode.Normal);
+			DrawTranslucentRenderables(RenderDepthMode.Normal);
+			mainView.DisableFog();
+
+			renderContext.Flush();
+			saveBits.CopyTo(areaBits);
+
+			PopView();
+
+			SetupCurrentView(in oldOrigin, in oldAngles, saveViewID);
+		}
+	}
+
+	class RefractionView(ViewRender mainView, AboveWaterView outer) : BaseWorldView(mainView)
+	{
+		public void Setup() {
+			base.Setup(in outer.setup);
+
+			ClearFlags = ClearFlags.ClearColor | ClearFlags.ClearDepth;
+
+			DrawFlags = DrawFlags.RenderRefraction | DrawFlags.ClipZ | DrawFlags.RenderUnderwater | DrawFlags.FudgeUp | DrawFlags.DrawEntities;
+		}
+
+		public override void Draw() {
+			ViewID saveViewID = CurrentViewID();
+			SetupCurrentView(in setup.Origin, in setup.Angles, ViewID.Refraction);
+
+			DrawSetup(outer.WaterHeight, DrawFlags, 0);
+
+			SetFogVolumeState(in outer.FogInfo, true);
+			SetClearColorToFogColor();
+			DrawExecute(outer.WaterHeight, ViewID.Refraction, 0);
+
+			SetupCurrentView(in setup.Origin, in setup.Angles, saveViewID);
+
+			using MatRenderContextPtr renderContext = new(mainView.materials);
+			renderContext.ClearColor4ub(0, 0, 0, 255);
+			renderContext.Flush();
+		}
+	}
+
+	class IntersectionView(ViewRender mainView, AboveWaterView outer) : BaseWorldView(mainView)
+	{
+		public void Setup() {
+			base.Setup(in outer.setup);
+			DrawFlags = DrawFlags.RenderUnderwater | DrawFlags.ClipZ | DrawFlags.DrawEntities;
+		}
+
+		public override void Draw() {
+			DrawSetup(outer.FogInfo.WaterHeight, DrawFlags, 0);
+
+			SetFogVolumeState(in outer.FogInfo, true);
+			SetClearColorToFogColor();
+			DrawExecute(outer.FogInfo.WaterHeight, ViewID.None, 0);
+			using MatRenderContextPtr renderContext = new(mainView.materials);
+			renderContext.ClearColor4ub(0, 0, 0, 255);
+		}
+	}
+}
+
+public class UnderWaterView : BaseWaterView
+{
+	WaterRenderInfo WaterInfo;
+	bool DrawSkybox;
+	readonly RefractionView Refraction;
+
+	public UnderWaterView(ViewRender mainView) : base(mainView) {
+		Refraction = new(mainView, this);
+	}
+
+	public void Setup(in ViewSetup view, bool drawSkybox, in VisibleFogVolumeInfo fogInfo, in WaterRenderInfo waterInfo) {
+		base.Setup(in view);
+
+		WaterHeight = fogInfo.WaterHeight;
+
+		DrawFlags = DrawFlags.FudgeUp | DrawFlags.RenderUnderwater | DrawFlags.DrawEntities;
+		ClearFlags = ClearFlags.ClearDepth;
+
+		DrawFlags |= DrawFlags.ClipZ;
+		if (waterInfo.DrawWaterSurface)
+			DrawFlags |= DrawFlags.RenderWater;
+		if (!waterInfo.Refract && !waterInfo.OpaqueWater)
+			DrawFlags |= DrawFlags.RenderAbovewater;
+
+		FogInfo = fogInfo;
+		WaterInfo = waterInfo;
+		DrawSkybox = drawSkybox;
+	}
+
+	public override void ReleaseLists() {
+		base.ReleaseLists();
+		Refraction.ReleaseLists();
+	}
+
 	public override void Draw() {
 		using MatRenderContextPtr renderContext = new(mainView.materials);
-		DrawSetup(0, DrawFlags, 0);
-		DrawExecute(0, ViewRender.g_CurrentViewID, 0);
+		if (WaterInfo.Refract) {
+			Refraction.Setup();
+			mainView.AddViewToScene(Refraction);
+		}
+
+		if (!WaterInfo.Refract) {
+			SetFogVolumeState(in FogInfo, true);
+			renderContext.GetFogColor(out Color fogColor);
+			renderContext.ClearColor4ub(fogColor.R, fogColor.G, fogColor.B, 255);
+		}
+
+		DrawSetup(WaterHeight, DrawFlags, 0);
+		SetFogVolumeState(in FogInfo, false);
+		DrawExecute(WaterHeight, CurrentViewID(), 0);
+		ClearFlags = 0;
+
+		renderContext.ClearColor4ub(0, 0, 0, 255);
+	}
+
+	class RefractionView(ViewRender mainView, UnderWaterView outer) : BaseWorldView(mainView)
+	{
+		public void Setup() {
+			base.Setup(in outer.setup);
+			DrawFlags = DrawFlags.ClipZ | DrawFlags.ClipBelow | DrawFlags.RenderAbovewater | DrawFlags.DrawEntities;
+
+			ClearFlags = ClearFlags.ClearDepth;
+			if (outer.DrawSkybox) {
+				ClearFlags |= ClearFlags.ClearColor;
+				DrawFlags |= DrawFlags.DrawSkybox | DrawFlags.ClipSkybox;
+			}
+		}
+
+		public override void Draw() {
+			using MatRenderContextPtr renderContext = new(mainView.materials);
+
+			SetFogVolumeState(in outer.FogInfo, true);
+			renderContext.GetFogColor(out Color fogColor);
+			renderContext.ClearColor4ub(fogColor.R, fogColor.G, fogColor.B, 255);
+
+			DrawSetup(outer.WaterHeight, DrawFlags, 0);
+
+			EnableWorldFog();
+			DrawExecute(outer.WaterHeight, ViewID.Refraction, 0);
+
+			System.Drawing.Rectangle srcRect = new(setup.X, setup.Y, setup.Width, setup.Height);
+
+			ITexture? texture = RenderTexture.GetWaterRefractionTexture();
+			renderContext.CopyRenderTargetToTextureEx(texture, 0, ref srcRect, ref System.Runtime.CompilerServices.Unsafe.NullRef<System.Drawing.Rectangle>());
+		}
 	}
 }
 public class Rendering3dView : Base3dView
@@ -518,7 +1067,383 @@ public class Rendering3dView : Base3dView
 		render.SetBlend(1);
 	}
 
-	protected void EnableWorldFog() => throw new NotImplementedException();
+	protected static void SetClearColorToFogColor() {
+		using MatRenderContextPtr renderContext = new(materials);
+
+		renderContext.GetFogColor(out Color fogColor);
+		if (Singleton<IMaterialSystemHardwareConfig>().GetHDRType() == HDRType.Integer) {
+			float scale = MathLib.LinearToGammaFullRange(renderContext.GetToneMappingScaleLinear().X);
+			fogColor.R = (byte)(fogColor.R * scale);
+			fogColor.G = (byte)(fogColor.G * scale);
+			fogColor.B = (byte)(fogColor.B * scale);
+		}
+		renderContext.ClearColor4ub(fogColor.R, fogColor.G, fogColor.B, 255);
+	}
+
+	static void ParseFogColor(string fogColorString, Span<float> color) {
+		string[] tokens = fogColorString.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		for (int i = 0; i < 3 && i < tokens.Length; i++) {
+			if (!float.TryParse(tokens[i], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float value))
+				break;
+			color[i] = value;
+		}
+	}
+
+	static void CheckAndTransitionColor(float percent, Span<float> color, ReadOnlySpan<float> lerpToColor) {
+		if (lerpToColor[0] != color[0] || lerpToColor[1] != color[1] || lerpToColor[2] != color[2]) {
+			color[0] = MathLib.Lerp(percent, color[0], lerpToColor[0]);
+			color[1] = MathLib.Lerp(percent, color[1], lerpToColor[1]);
+			color[2] = MathLib.Lerp(percent, color[2], lerpToColor[2]);
+		}
+		else {
+			color[0] = lerpToColor[0];
+			color[1] = lerpToColor[1];
+			color[2] = lerpToColor[2];
+		}
+	}
+
+	static void GetFogColorTransition(ref FogParams fogParams, Span<float> colorPrimary, Span<float> colorSecondary) {
+		if (fogParams.LerpTime >= gpGlobals.CurTime) {
+			float percent = (float)(1.0 - ((fogParams.LerpTime - gpGlobals.CurTime) / fogParams.Duration));
+
+			ReadOnlySpan<float> primaryColorLerp = [fogParams.ColorPrimaryLerpTo.R, fogParams.ColorPrimaryLerpTo.G, fogParams.ColorPrimaryLerpTo.B];
+			ReadOnlySpan<float> secondaryColorLerp = [fogParams.ColorSecondaryLerpTo.R, fogParams.ColorSecondaryLerpTo.G, fogParams.ColorSecondaryLerpTo.B];
+
+			CheckAndTransitionColor(percent, colorPrimary, primaryColorLerp);
+			CheckAndTransitionColor(percent, colorSecondary, secondaryColorLerp);
+		}
+	}
+
+	static void GetFogColor(C_BasePlayer? pbp, Span<float> color) {
+		if (pbp == null)
+			return;
+
+		ref FogParams fogParams = ref pbp.GetFogParams();
+
+		if (fog_override.GetInt() != 0)
+			ParseFogColor(fog_color.GetString(), color);
+		else {
+			Span<float> primaryColor = [fogParams.ColorPrimary.R, fogParams.ColorPrimary.G, fogParams.ColorPrimary.B];
+			Span<float> secondaryColor = [fogParams.ColorSecondary.R, fogParams.ColorSecondary.G, fogParams.ColorSecondary.B];
+
+			GetFogColorTransition(ref fogParams, primaryColor, secondaryColor);
+
+			if (fogParams.Blend) {
+				pbp.EyeVectors(out Vector3 forward);
+
+				MathLib.VectorNormalize(ref fogParams.DirPrimary);
+
+				float blendFactor = 0.5f * Vector3.Dot(forward, fogParams.DirPrimary) + 0.5f;
+
+				color[0] = primaryColor[0] * blendFactor + secondaryColor[0] * (1 - blendFactor);
+				color[1] = primaryColor[1] * blendFactor + secondaryColor[1] * (1 - blendFactor);
+				color[2] = primaryColor[2] * blendFactor + secondaryColor[2] * (1 - blendFactor);
+			}
+			else {
+				color[0] = primaryColor[0];
+				color[1] = primaryColor[1];
+				color[2] = primaryColor[2];
+			}
+		}
+
+		color[0] *= 1.0f / 255.0f;
+		color[1] *= 1.0f / 255.0f;
+		color[2] *= 1.0f / 255.0f;
+	}
+
+	static float GetFogStart(C_BasePlayer? pbp) {
+		if (pbp == null)
+			return 0.0f;
+
+		ref FogParams fogParams = ref pbp.GetFogParams();
+
+		if (fog_override.GetInt() != 0) {
+			if (fog_start.GetFloat() == -1.0f)
+				return fogParams.Start;
+			else
+				return fog_start.GetFloat();
+		}
+		else {
+			if (fogParams.LerpTime > gpGlobals.CurTime) {
+				if (fogParams.Start != fogParams.StartLerpTo) {
+					if (fogParams.LerpTime > gpGlobals.CurTime) {
+						float percent = (float)(1.0 - ((fogParams.LerpTime - gpGlobals.CurTime) / fogParams.Duration));
+
+						return MathLib.Lerp(percent, fogParams.Start, fogParams.StartLerpTo);
+					}
+					else {
+						if (fogParams.Start != fogParams.StartLerpTo)
+							fogParams.Start = fogParams.StartLerpTo;
+					}
+				}
+			}
+
+			return fogParams.Start;
+		}
+	}
+
+	static float GetFogEnd(C_BasePlayer? pbp) {
+		if (pbp == null)
+			return 0.0f;
+
+		ref FogParams fogParams = ref pbp.GetFogParams();
+
+		if (fog_override.GetInt() != 0) {
+			if (fog_end.GetFloat() == -1.0f)
+				return fogParams.End;
+			else
+				return fog_end.GetFloat();
+		}
+		else {
+			if (fogParams.LerpTime > gpGlobals.CurTime) {
+				if (fogParams.End != fogParams.EndLerpTo) {
+					if (fogParams.LerpTime > gpGlobals.CurTime) {
+						float percent = (float)(1.0 - ((fogParams.LerpTime - gpGlobals.CurTime) / fogParams.Duration));
+
+						return MathLib.Lerp(percent, fogParams.End, fogParams.EndLerpTo);
+					}
+					else {
+						if (fogParams.End != fogParams.EndLerpTo)
+							fogParams.End = fogParams.EndLerpTo;
+					}
+				}
+			}
+
+			return fogParams.End;
+		}
+	}
+
+	static bool GetFogEnable(C_BasePlayer? pbp) {
+		if (fog_override.GetInt() != 0)
+			return fog_enable.GetInt() != 0;
+		else {
+			if (pbp != null)
+				return pbp.GetFogParams().Enable != false;
+
+			return false;
+		}
+	}
+
+	static float GetFogMaxDensity(C_BasePlayer? pbp) {
+		if (pbp == null)
+			return 1.0f;
+
+		ref FogParams fogParams = ref pbp.GetFogParams();
+
+		if (fog_override.GetInt() != 0) {
+			if (fog_maxdensity.GetFloat() == -1.0f)
+				return fogParams.MaxDensity;
+			else
+				return fog_maxdensity.GetFloat();
+		}
+		else
+			return fogParams.MaxDensity;
+	}
+
+	static bool GetFogRadial(C_BasePlayer? pbp) {
+		if (fog_override.GetInt() != 0) {
+			if (fog_radial.GetInt() != -1)
+				return fog_radial.GetBool();
+		}
+
+		if (pbp == null)
+			return false;
+
+		return pbp.GetFogParams().Radial;
+	}
+
+	protected static void GetSkyboxFogColor(Span<float> color) {
+		C_BasePlayer? pbp = C_BasePlayer.GetLocalPlayer();
+		if (pbp == null)
+			return;
+
+		PlayerLocalData local = pbp.Local;
+
+		if (fog_override.GetInt() != 0)
+			ParseFogColor(fog_colorskybox.GetString(), color);
+		else {
+			if (local.Skybox3D.Fog.Blend) {
+				pbp.EyeVectors(out Vector3 forward);
+
+				MathLib.VectorNormalize(ref local.Skybox3D.Fog.DirPrimary);
+
+				float blendFactor = 0.5f * Vector3.Dot(forward, local.Skybox3D.Fog.DirPrimary) + 0.5f;
+
+				color[0] = local.Skybox3D.Fog.ColorPrimary.R * blendFactor + local.Skybox3D.Fog.ColorSecondary.R * (1 - blendFactor);
+				color[1] = local.Skybox3D.Fog.ColorPrimary.G * blendFactor + local.Skybox3D.Fog.ColorSecondary.G * (1 - blendFactor);
+				color[2] = local.Skybox3D.Fog.ColorPrimary.B * blendFactor + local.Skybox3D.Fog.ColorSecondary.B * (1 - blendFactor);
+			}
+			else {
+				color[0] = local.Skybox3D.Fog.ColorPrimary.R;
+				color[1] = local.Skybox3D.Fog.ColorPrimary.G;
+				color[2] = local.Skybox3D.Fog.ColorPrimary.B;
+			}
+		}
+
+		color[0] *= 1.0f / 255.0f;
+		color[1] *= 1.0f / 255.0f;
+		color[2] *= 1.0f / 255.0f;
+	}
+
+	protected static float GetSkyboxFogStart() {
+		C_BasePlayer? pbp = C_BasePlayer.GetLocalPlayer();
+		if (pbp == null)
+			return 0.0f;
+
+		PlayerLocalData local = pbp.Local;
+
+		if (fog_override.GetInt() != 0) {
+			if (fog_startskybox.GetFloat() == -1.0f)
+				return local.Skybox3D.Fog.Start;
+			else
+				return fog_startskybox.GetFloat();
+		}
+		else
+			return local.Skybox3D.Fog.Start;
+	}
+
+	protected static float GetSkyboxFogEnd() {
+		C_BasePlayer? pbp = C_BasePlayer.GetLocalPlayer();
+		if (pbp == null)
+			return 0.0f;
+
+		PlayerLocalData local = pbp.Local;
+
+		if (fog_override.GetInt() != 0) {
+			if (fog_endskybox.GetFloat() == -1.0f)
+				return local.Skybox3D.Fog.End;
+			else
+				return fog_endskybox.GetFloat();
+		}
+		else
+			return local.Skybox3D.Fog.End;
+	}
+
+	protected static float GetSkyboxFogMaxDensity() {
+		C_BasePlayer? pbp = C_BasePlayer.GetLocalPlayer();
+		if (pbp == null)
+			return 1.0f;
+
+		PlayerLocalData local = pbp.Local;
+
+		if (fog_override.GetInt() != 0) {
+			if (fog_maxdensityskybox.GetFloat() == -1.0f)
+				return local.Skybox3D.Fog.MaxDensity;
+			else
+				return fog_maxdensityskybox.GetFloat();
+		}
+		else
+			return local.Skybox3D.Fog.MaxDensity;
+	}
+
+	protected static bool GetSkyboxFogRadial() {
+		C_BasePlayer? pbp = C_BasePlayer.GetLocalPlayer();
+		if (pbp == null)
+			return false;
+
+		PlayerLocalData local = pbp.Local;
+
+		if (fog_override.GetInt() != 0) {
+			if (fog_radialskybox.GetInt() != -1)
+				return fog_radialskybox.GetBool();
+		}
+
+		return local.Skybox3D.Fog.Radial;
+	}
+
+	protected void EnableWorldFog() {
+		using MatRenderContextPtr renderContext = new(mainView.materials);
+
+		C_BasePlayer? pbp = C_BasePlayer.GetLocalPlayer();
+
+		if (gGM != null && gGM.Call((int)LUA_POOLEDSTRING.SetupWorldFog))
+			return;
+
+		if (GetFogEnable(pbp)) {
+			Span<float> fogColor = stackalloc float[3];
+			GetFogColor(pbp, fogColor);
+
+			renderContext.FogMode(MaterialFogMode.Linear);
+			renderContext.FogColor3fv(fogColor);
+			renderContext.FogStart(GetFogStart(pbp));
+			renderContext.FogEnd(GetFogEnd(pbp));
+			renderContext.FogMaxDensity(GetFogMaxDensity(pbp));
+			renderContext.FogRadial(GetFogRadial(pbp));
+		}
+		else
+			renderContext.FogMode(MaterialFogMode.None);
+	}
+
+	protected void SetFogVolumeState(in VisibleFogVolumeInfo fogInfo, bool useHeightFog) {
+		render.SetFogVolumeState(fogInfo.VisibleFogVolume, useHeightFog);
+	}
+
+	protected static SafeFieldPointer<PlayerLocalData, Sky3DParams> PreRender3dSkyboxWorld(ref SkyboxVisibility skyboxVisible) {
+		if ((skyboxVisible != SkyboxVisibility.Skybox3D) && r_3dsky.GetInt() != 2)
+			return SafeFieldPointer<PlayerLocalData, Sky3DParams>.Null;
+
+		if (r_3dsky.GetInt() == 0)
+			return SafeFieldPointer<PlayerLocalData, Sky3DParams>.Null;
+
+		C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
+		if (player == null)
+			return SafeFieldPointer<PlayerLocalData, Sky3DParams>.Null;
+
+		PlayerLocalData local = player.Local;
+		if (local.Skybox3D.Area == 255)
+			return SafeFieldPointer<PlayerLocalData, Sky3DParams>.Null;
+
+		return new(local, GetSkybox3DRef);
+	}
+
+	static ref Sky3DParams GetSkybox3DRef(PlayerLocalData local) => ref local.Skybox3D;
+
+	protected static bool GetSkyboxFogEnable() {
+		C_BasePlayer? pbp = C_BasePlayer.GetLocalPlayer();
+		if (pbp == null)
+			return false;
+
+		PlayerLocalData local = pbp.Local;
+
+		if (fog_override.GetInt() != 0)
+			return fog_enableskybox.GetInt() != 0;
+		else
+			return local.Skybox3D.Fog.Enable;
+	}
+
+	protected void Enable3dSkyboxFog() {
+		C_BasePlayer? pbp = C_BasePlayer.GetLocalPlayer();
+		if (pbp == null)
+			return;
+
+		PlayerLocalData local = pbp.Local;
+
+		using MatRenderContextPtr renderContext = new(mainView.materials);
+
+		float scale = 1.0f;
+		if (local.Skybox3D.Scale > 0.0f)
+			scale = 1.0f / local.Skybox3D.Scale;
+
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.SetupSkyboxFog)) {
+			g_Lua!.PushNumber(scale);
+			if (gGM.CallFinish(1))
+				return;
+		}
+
+		if (GetSkyboxFogEnable()) {
+			Span<float> fogColor = stackalloc float[3];
+			GetSkyboxFogColor(fogColor);
+
+			renderContext.FogMode(MaterialFogMode.Linear);
+			renderContext.FogColor3fv(fogColor);
+			renderContext.FogStart(GetSkyboxFogStart() * scale);
+			renderContext.FogEnd(GetSkyboxFogEnd() * scale);
+			renderContext.FogMaxDensity(GetSkyboxFogMaxDensity());
+			renderContext.FogRadial(GetSkyboxFogRadial());
+		}
+		else
+			renderContext.FogMode(MaterialFogMode.None);
+	}
 	protected void SetupRenderablesList(ViewID viewID) {
 		// Clear the list.
 		int i;
@@ -647,6 +1572,8 @@ public class SkyboxView : Rendering3dView
 		setup.Origin += sky3dParams.Origin;
 		Rendering3DSkybox = true;
 
+		Enable3dSkyboxFog();
+
 		render.ViewSetupVisEx(false, new(ref sky3dParams.Origin), out _);
 		render.Push3DView(in setup, ClearFlags, rtColor, GetFrustrum(), rtDepth);
 
@@ -671,6 +1598,8 @@ public class SkyboxView : Rendering3dView
 		DrawTranslucentRenderables(RenderDepthMode.Normal);
 		// todo: DrawNoZBufferTranslucentRenderables()
 
+		mainView.DisableFog();
+
 		// restore old area bits
 		saveBits.CopyTo(areaBits);
 
@@ -687,26 +1616,6 @@ public class SkyboxView : Rendering3dView
 #endif
 		Rendering3DSkybox = false;
 	}
-
-	private SafeFieldPointer<PlayerLocalData, Sky3DParams> PreRender3dSkyboxWorld(ref SkyboxVisibility skyboxVisible) {
-		if ((skyboxVisible != SkyboxVisibility.Skybox3D) && r_3dsky.GetInt() != 2)
-			return SafeFieldPointer<PlayerLocalData, Sky3DParams>.Null;
-
-		if (r_3dsky.GetInt() == 0)
-			return SafeFieldPointer<PlayerLocalData, Sky3DParams>.Null;
-
-		C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
-		if (player == null)
-			return SafeFieldPointer<PlayerLocalData, Sky3DParams>.Null;
-
-		PlayerLocalData local = player.Local;
-		if (local.Skybox3D.Area == 255)
-			return SafeFieldPointer<PlayerLocalData, Sky3DParams>.Null;
-
-		return new(local, GetSkybox3DRef);
-	}
-
-	static ref Sky3DParams GetSkybox3DRef(PlayerLocalData local) => ref local.Skybox3D;
 
 	private SkyboxVisibility ComputeSkyboxVisibility() {
 		return engine.IsSkyboxVisibleFromPoint(setup.Origin);

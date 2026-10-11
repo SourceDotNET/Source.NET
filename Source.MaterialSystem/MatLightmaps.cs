@@ -593,7 +593,72 @@ public class MatLightmaps
 	}
 
 	void BumpedLightmapBitsToPixelWriter_HDRI(Span<float> floatImage, Span<float> floatImageBump1, Span<float> floatImageBump2, Span<float> floatImageBump3, Span<int> lightmapSize, Span<int> offsetIntoLightmapPage) {
-		throw new NotImplementedException();
+		int lightmapSize0 = lightmapSize[0];
+		int lightmap0WriterSizeBytes = lightmapSize0 * LightmapPixelWriter.GetPixelSize();
+		int rewindToNextPixel = -((lightmap0WriterSizeBytes * 3) - LightmapPixelWriter.GetPixelSize());
+
+		Span<ushort> color0 = stackalloc ushort[4];
+		Span<ushort> color1 = stackalloc ushort[4];
+		Span<ushort> color2 = stackalloc ushort[4];
+		Span<ushort> color3 = stackalloc ushort[4];
+
+		if (LightmapPixelWriter.IsUsingFloatFormat()) {
+			for (int t = 0; t < lightmapSize[1]; t++) {
+				int srcTexelOffset = 4 * (0 + t * lightmapSize0);
+				LightmapPixelWriter.Seek(offsetIntoLightmapPage[0], offsetIntoLightmapPage[1] + t);
+
+				for (int s = 0; s < lightmapSize0;
+					s++, LightmapPixelWriter.SkipBytes(rewindToNextPixel), srcTexelOffset += 4) {
+					ColorSpace.LinearToBumpedLightmap(floatImage[srcTexelOffset..],
+						floatImageBump1[srcTexelOffset..], floatImageBump2[srcTexelOffset..],
+						floatImageBump3[srcTexelOffset..],
+						color0, color1, color2, color3);
+					float alpha = floatImage[srcTexelOffset + 3];
+					Assert(alpha >= 0.0f && alpha <= 1.0f);
+					color0[3] = color1[3] = color2[3] = color3[3] = (ushort)alpha;
+
+					float toFloat = 1.0f / (float)(1 << 16);
+
+					LightmapPixelWriter.WritePixelNoAdvanceF(toFloat * color0[0], toFloat * color0[1], toFloat * color0[2], toFloat * color0[3]);
+
+					LightmapPixelWriter.SkipBytes(lightmap0WriterSizeBytes);
+					LightmapPixelWriter.WritePixelNoAdvanceF(toFloat * color1[0], toFloat * color1[1], toFloat * color1[2], toFloat * color1[3]);
+
+					LightmapPixelWriter.SkipBytes(lightmap0WriterSizeBytes);
+					LightmapPixelWriter.WritePixelNoAdvanceF(toFloat * color2[0], toFloat * color2[1], toFloat * color2[2], toFloat * color2[3]);
+
+					LightmapPixelWriter.SkipBytes(lightmap0WriterSizeBytes);
+					LightmapPixelWriter.WritePixelNoAdvanceF(toFloat * color3[0], toFloat * color3[1], toFloat * color3[2], toFloat * color3[3]);
+				}
+			}
+		}
+		else {
+			for (int t = 0; t < lightmapSize[1]; t++) {
+				int srcTexelOffset = 4 * (0 + t * lightmapSize0);
+				LightmapPixelWriter.Seek(offsetIntoLightmapPage[0], offsetIntoLightmapPage[1] + t);
+
+				for (int s = 0; s < lightmapSize0;
+					s++, LightmapPixelWriter.SkipBytes(rewindToNextPixel), srcTexelOffset += 4) {
+					ColorSpace.LinearToBumpedLightmap(floatImage[srcTexelOffset..],
+						floatImageBump1[srcTexelOffset..], floatImageBump2[srcTexelOffset..],
+						floatImageBump3[srcTexelOffset..],
+						color0, color1, color2, color3);
+					ushort alpha = ColorSpace.LinearToUnsignedShort(floatImage[srcTexelOffset + 3], 16);
+					color0[3] = color1[3] = color2[3] = color3[3] = alpha;
+
+					LightmapPixelWriter.WritePixelNoAdvance(color0[0], color0[1], color0[2], color0[3]);
+
+					LightmapPixelWriter.SkipBytes(lightmap0WriterSizeBytes);
+					LightmapPixelWriter.WritePixelNoAdvance(color1[0], color1[1], color1[2], color1[3]);
+
+					LightmapPixelWriter.SkipBytes(lightmap0WriterSizeBytes);
+					LightmapPixelWriter.WritePixelNoAdvance(color2[0], color2[1], color2[2], color2[3]);
+
+					LightmapPixelWriter.SkipBytes(lightmap0WriterSizeBytes);
+					LightmapPixelWriter.WritePixelNoAdvance(color3[0], color3[1], color3[2], color3[3]);
+				}
+			}
+		}
 	}
 
 	void LightmapBitsToPixelWriter_LDR(Span<float> floatImage, Span<int> lightmapSize, Span<int> offsetIntoLightmapPage) {
@@ -615,7 +680,35 @@ public class MatLightmaps
 	}
 
 	void LightmapBitsToPixelWriter_HDRI(Span<float> floatImage, Span<int> lightmapSize, Span<int> offsetIntoLightmapPage) {
-		throw new NotImplementedException();
+		Span<float> src = floatImage;
+		if (LightmapPixelWriter.IsUsingFloatFormat()) {
+			for (int t = 0; t < lightmapSize[1]; ++t) {
+				LightmapPixelWriter.Seek(offsetIntoLightmapPage[0], offsetIntoLightmapPage[1] + t);
+				for (int s = 0; s < lightmapSize[0]; ++s, src = src[4..]) {
+					int r = ColorSpace.LinearFloatToCorrectedShort(src[0]);
+					int g = ColorSpace.LinearFloatToCorrectedShort(src[1]);
+					int b = ColorSpace.LinearFloatToCorrectedShort(src[2]);
+
+					float toFloat = 1.0f / (float)(1 << 16);
+
+					Assert(src[3] >= 0.0f && src[3] <= 1.0f);
+					LightmapPixelWriter.WritePixelF(r * toFloat, g * toFloat, b * toFloat, src[3]);
+				}
+			}
+		}
+		else {
+			for (int t = 0; t < lightmapSize[1]; ++t) {
+				LightmapPixelWriter.Seek(offsetIntoLightmapPage[0], offsetIntoLightmapPage[1] + t);
+				for (int s = 0; s < lightmapSize[0]; ++s, src = src[4..]) {
+					int r = ColorSpace.LinearFloatToCorrectedShort(src[0]);
+					int g = ColorSpace.LinearFloatToCorrectedShort(src[1]);
+					int b = ColorSpace.LinearFloatToCorrectedShort(src[2]);
+					int a = ColorSpace.LinearToUnsignedShort(src[3], 16);
+
+					LightmapPixelWriter.WritePixel(r, g, b, a);
+				}
+			}
+		}
 	}
 
 	// For computing sort info

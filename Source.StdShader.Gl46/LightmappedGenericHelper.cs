@@ -411,7 +411,7 @@ public partial class BaseVSShader
 
 					shaderShadow.EnableAlphaWrites(fullyOpaque);
 					shaderShadow.EnableSRGBWrite(true);
-					// shader.DefaultFog(); // TODO
+					shader.DefaultFog();
 
 				}
 			}
@@ -611,7 +611,7 @@ public partial class BaseVSShader
 				DynamicShaderIndex pshIndex = new(shaderAPI, ShaderType.Pixel);
 				pshIndex.Set("FASTPATH", pixelShaderFastPath || contextData.PixelShaderForceFastPathBecauseOutline);
 				pshIndex.Set("FASTPATHENVMAPCONTRAST", pixelShaderFastPath && envmapContrast == 1.0f);
-				pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo());
+				pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 				pshIndex.Set("WRITE_DEPTH_TO_DESTALPHA", writeDepthToAlpha);
 				pshIndex.Set("WRITEWATERFOGTODESTALPHA", writeWaterFogToAlpha);
 				pshIndex.Set("LIGHTING_PREVIEW", fixedLightingMode);

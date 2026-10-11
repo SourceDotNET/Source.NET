@@ -159,15 +159,19 @@ public class PlayerLocalData
 		}
 	}
 
+	public SkyCamera? OldSkyCamera;
+
 	public static void ClientData_Update(BasePlayer pl) {
-		// TODO!
-		// SkyCamera skyCamera = GetCurrentSkyCamera();
-		// if (skyCamera != pl.Local.OldSkyCamera) {
-		// 	pl.Local.OldSkyCamera = skyCamera;
-		// 	pl.Local.Skybox3D.CopyFrom(skyCamera.SkyboxData);
-		// }
-		// else if (skyCamera == null)
-		pl.Local.Skybox3D.Area = 255;
+		SkyCamera? skyCamera = SkyCamera.GetCurrentSkyCamera();
+
+		if (skyCamera == null) {
+			pl.Local.Skybox3D.Area = 255;
+			pl.Local.OldSkyCamera = null;
+		}
+		else if (skyCamera != pl.Local.OldSkyCamera) {
+			pl.Local.OldSkyCamera = skyCamera;
+			pl.Local.Skybox3D = skyCamera.SkyboxData;
+		}
 	}
 
 	public static void UpdateAllClientData() {

@@ -126,6 +126,18 @@ enum SamplerTextureType
 internal sealed class VcsTranslator
 {
 	const string Xyzw = "xyzw";
+	const string AlphaTest =
+		"if (isAlphaTesting) {\n" +
+		"switch (alphaTestFunc) {\n" +
+		"case 0: discard; break;\n" +
+		"case 1: if (oC0.a >= alphaTestRef) { discard; } break;\n" +
+		"case 2: if (oC0.a != alphaTestRef) { discard; } break;\n" +
+		"case 3: if (oC0.a > alphaTestRef) { discard; } break;\n" +
+		"case 4: if (oC0.a <= alphaTestRef) { discard; } break;\n" +
+		"case 5: if (oC0.a == alphaTestRef) { discard; } break;\n" +
+		"case 6: if (oC0.a < alphaTestRef) { discard; } break;\n" +
+		"}\n" +
+		"}\n";
 	static readonly string Temps = string.Concat(Enumerable.Range(0, 32).Select(i => $", r{i} = vec4(0.0)"));
 
 	const int ShaderVcsVersion = 6;
@@ -332,7 +344,7 @@ internal sealed class VcsTranslator
 
 		StringBuilder head = new("#version 460\n");
 		if (pixel)
-			head.Append("layout(std140, binding = 6) uniform source_ps_constants { vec4 ps_const[256]; };\nlayout(location = 0) out vec4 oC0;\n");
+			head.Append("layout(std140, binding = 3) uniform source_pixel_sharedUBO { bool isAlphaTesting; int alphaTestFunc; float alphaTestRef; };\nlayout(std140, binding = 6) uniform source_ps_constants { vec4 ps_const[256]; };\nlayout(location = 0) out vec4 oC0;\n");
 		else
 			head.Append("layout(std140, binding = 0) uniform source_matrices { mat4 viewMatrix; mat4 projectionMatrix; mat4 modelMatrix; };\nlayout(std140, binding = 5) uniform source_vs_constants { vec4 vs_const[256]; };\n");
 
@@ -486,7 +498,9 @@ internal sealed class VcsTranslator
 			body.Append($"{dst}{m} = ({expr}){m};\n");
 		}
 
-		if (!pixel)
+		if (pixel)
+			body.Append(AlphaTest);
+		else
 			body.Append("gl_Position = oPos;\n");
 		foreach (string decl in io)
 			head.Append(decl).Append('\n');

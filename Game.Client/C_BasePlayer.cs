@@ -195,7 +195,77 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 				GetWeapon(i).UpdateClientData(this);
 		}
 	}
-	public virtual void UpdateFogController() { }
+	FogParams CurrentFog = new();
+	Handle<BaseEntity> OldFogController = new();
+
+	public ref FogParams GetFogParams() => ref CurrentFog;
+
+	public override void OnPreDataChanged(DataUpdateType updateType) {
+		for (int i = 0; i < MAX_AMMO_TYPES; ++i)
+			OldAmmo[i] = GetAmmoCount(i);
+
+		WasFreezeFraming = GetObserverMode() == Shared.ObserverMode.FreezeCam;
+		OldFogController = Local.PlayerFog.Ctrl;
+
+		base.OnPreDataChanged(updateType);
+	}
+
+	public void FogControllerChanged(bool snap) {
+		if (Local.PlayerFog.Ctrl.Get() is Game.Server.C_FogController ctrl) {
+			ref FogParams fogParams = ref ctrl.Fog;
+
+			Local.PlayerFog.OldColor = CurrentFog.ColorPrimary;
+			Local.PlayerFog.OldStart = CurrentFog.Start;
+			Local.PlayerFog.OldEnd = CurrentFog.End;
+
+			Local.PlayerFog.NewColor = fogParams.ColorPrimary;
+			Local.PlayerFog.NewStart = fogParams.Start;
+			Local.PlayerFog.NewEnd = fogParams.End;
+
+			Local.PlayerFog.TransitionTime = snap ? -1 : gpGlobals.CurTime;
+
+			CurrentFog = fogParams;
+
+			UpdateFogController();
+		}
+	}
+
+	public virtual void UpdateFogController() {
+		if (Local.PlayerFog.Ctrl.Get() is Game.Server.C_FogController ctrl) {
+			if (Local.PlayerFog.TransitionTime == -1 && (OldFogController == Local.PlayerFog.Ctrl))
+				CurrentFog = ctrl.Fog;
+		}
+		else {
+			if (CurrentFog.FarZ != -1 || CurrentFog.Enable != false) {
+				CurrentFog.FarZ = -1;
+				CurrentFog.Enable = false;
+			}
+		}
+
+		UpdateFogBlend();
+	}
+
+	public void UpdateFogBlend() {
+		if (Local.PlayerFog.TransitionTime != -1) {
+			TimeUnit_t timeDelta = gpGlobals.CurTime - Local.PlayerFog.TransitionTime;
+			if (timeDelta < CurrentFog.Duration) {
+				float scale = (float)(timeDelta / CurrentFog.Duration);
+				CurrentFog.ColorPrimary.R = (byte)((Local.PlayerFog.NewColor.R * scale) + (Local.PlayerFog.OldColor.R * (1.0f - scale)));
+				CurrentFog.ColorPrimary.G = (byte)((Local.PlayerFog.NewColor.G * scale) + (Local.PlayerFog.OldColor.G * (1.0f - scale)));
+				CurrentFog.ColorPrimary.B = (byte)((Local.PlayerFog.NewColor.B * scale) + (Local.PlayerFog.OldColor.B * (1.0f - scale)));
+				CurrentFog.Start = (Local.PlayerFog.NewStart * scale) + (Local.PlayerFog.OldStart * (1.0f - scale));
+				CurrentFog.End = (Local.PlayerFog.NewEnd * scale) + (Local.PlayerFog.OldEnd * (1.0f - scale));
+			}
+			else {
+				CurrentFog.ColorPrimary.R = Local.PlayerFog.NewColor.R;
+				CurrentFog.ColorPrimary.G = Local.PlayerFog.NewColor.G;
+				CurrentFog.ColorPrimary.B = Local.PlayerFog.NewColor.B;
+				CurrentFog.Start = Local.PlayerFog.NewStart;
+				CurrentFog.End = Local.PlayerFog.NewEnd;
+				Local.PlayerFog.TransitionTime = -1;
+			}
+		}
+	}
 
 	public void UpdateFlashlight() {
 		if (IsEffectActive(EntityEffects.DimLight)) {
@@ -328,9 +398,8 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 
 			Soundscape_Update(ref Local.Audio);
 
-			// todo
-			// if (OldFogController != Local.PlayerFog.Ctrl) 
-			// 	FogControllerChanged(updateType == DataUpdateType.Created);
+			if (OldFogController != Local.PlayerFog.Ctrl)
+				FogControllerChanged(updateType == DataUpdateType.Created);
 		}
 	}
 	public void SetViewAngles(in QAngle angles) {

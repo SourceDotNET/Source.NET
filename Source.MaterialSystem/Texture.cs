@@ -695,6 +695,8 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 			DimsAllocated = allocated;
 		}
 
+		Reflectivity = vtfTexture.Reflectivity();
+
 		// TODO: How does Source stream textures?
 		if (ConvertToActualFormat(vtfTexture)) {
 
@@ -795,6 +797,7 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 	private IVTFTexture? HandleFileLoadFailedTexture(IVTFTexture? vtfTexture) {
 		vtfTexture.Init(32, 32, 1, ImageFormat.BGRA8888, (int)Flags, 1);
 		Init(vtfTexture.Width(), vtfTexture.Height(), vtfTexture.Depth(), vtfTexture.Format(), vtfTexture.Flags(), vtfTexture.FrameCount());
+		Reflectivity = new(0.5f, 0.5f, 0.5f);
 
 		DimsAllocated.Width = DimsActual.Width = DimsMapping.Width = (ushort)vtfTexture.Width();
 		DimsAllocated.Height = DimsActual.Height = DimsMapping.Height = (ushort)vtfTexture.Height();

@@ -1,5 +1,6 @@
 ﻿using Source.Common;
 using Source.Common.Bitmap;
+using Source.Common.Commands;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 using Source.Common.ShaderAPI;
@@ -7,6 +8,7 @@ using Source.Common.Utilities;
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Source.MaterialSystem;
 
@@ -314,12 +316,23 @@ public class MatRenderContext : IMatRenderContextInternal
 	bool FlashlightEnable;
 	bool DirtyViewState;
 	bool DirtyViewProjState;
-	bool EnableClippingValue;
+	bool EnableClippingValue = true;
 	MaterialHeightClipMode HeightClipMode;
+	float HeightClipZ;
+
+	struct PlaneStackElement
+	{
+		public InlineArray4<float> Values;
+		public bool Hack_IsHeightClipPlane;
+	}
+
+	readonly List<PlaneStackElement> CustomClipPlanes = [];
 
 	public bool EnableClipping(bool enable) {
 		if (enable != EnableClippingValue) {
 			EnableClippingValue = enable;
+			ApplyCustomClipPlanes();
+
 			return !enable;
 		}
 		return enable;
@@ -328,17 +341,159 @@ public class MatRenderContext : IMatRenderContextInternal
 	public MaterialHeightClipMode GetHeightClipMode() => HeightClipMode;
 
 	public void SetHeightClipMode(MaterialHeightClipMode heightClipMode) {
-		if (HeightClipMode != heightClipMode)
+		if (HeightClipMode != heightClipMode) {
 			HeightClipMode = heightClipMode;
+			UpdateHeightClipUserClipPlane();
+		}
+	}
+
+	public void SetHeightClipZ(float z) {
+		if (z != HeightClipZ) {
+			HeightClipZ = z;
+			UpdateHeightClipUserClipPlane();
+		}
+	}
+
+	void UpdateHeightClipUserClipPlane() {
+		PlaneStackElement pse = default;
+		pse.Hack_IsHeightClipPlane = true;
+
+		int existingHeightClipPlaneIndex;
+		for (existingHeightClipPlaneIndex = CustomClipPlanes.Count; --existingHeightClipPlaneIndex >= 0;) {
+			if (CustomClipPlanes[existingHeightClipPlaneIndex].Hack_IsHeightClipPlane)
+				break;
+		}
+
+		switch (HeightClipMode) {
+			case MaterialHeightClipMode.Disable:
+				if (existingHeightClipPlaneIndex != -1)
+					CustomClipPlanes.RemoveAt(existingHeightClipPlaneIndex);
+				break;
+			case MaterialHeightClipMode.RenderAboveHeight:
+				pse.Values[0] = 0.0f;
+				pse.Values[1] = 0.0f;
+				pse.Values[2] = 1.0f;
+				pse.Values[3] = HeightClipZ;
+				if (existingHeightClipPlaneIndex != -1)
+					CustomClipPlanes[existingHeightClipPlaneIndex] = pse;
+				else
+					CustomClipPlanes.Add(pse);
+				break;
+			case MaterialHeightClipMode.RenderBelowHeight:
+				pse.Values[0] = 0.0f;
+				pse.Values[1] = 0.0f;
+				pse.Values[2] = -1.0f;
+				pse.Values[3] = -HeightClipZ;
+				if (existingHeightClipPlaneIndex != -1)
+					CustomClipPlanes[existingHeightClipPlaneIndex] = pse;
+				else
+					CustomClipPlanes.Add(pse);
+				break;
+		}
+
+		ApplyCustomClipPlanes();
+	}
+
+	public void PushCustomClipPlane(ReadOnlySpan<float> plane) {
+		PlaneStackElement pse = default;
+		plane[..4].CopyTo(pse.Values);
+		pse.Hack_IsHeightClipPlane = false;
+		CustomClipPlanes.Add(pse);
+		ApplyCustomClipPlanes();
+	}
+
+	public void PopCustomClipPlane() {
+		Assert(CustomClipPlanes.Count != 0);
+
+		int i;
+		for (i = CustomClipPlanes.Count; --i >= 0;) {
+			if (!CustomClipPlanes[i].Hack_IsHeightClipPlane) {
+				CustomClipPlanes.RemoveAt(i);
+				break;
+			}
+		}
+		Assert(i != -1);
+		ApplyCustomClipPlanes();
+	}
+
+	void ApplyCustomClipPlanes() {
+		int maxClipPlanes = materials.HardwareConfig.MaxUserClipPlanes();
+		int customPlanes = EnableClippingValue ? CustomClipPlanes.Count : 0;
+
+		float fakePlaneVal = BitConverter.Int32BitsToSingle(unchecked((int)0xFFFFFFFF));
+		ReadOnlySpan<float> fakePlane = [fakePlaneVal, fakePlaneVal, fakePlaneVal, fakePlaneVal];
+
+		SyncMatrices();
+
+		Span<PlaneStackElement> planes = CollectionsMarshal.AsSpan(CustomClipPlanes);
+		if (maxClipPlanes >= customPlanes) {
+			int i;
+			for (i = 0; i < customPlanes; ++i) {
+				shaderAPI.SetClipPlane(i, planes[i].Values);
+				shaderAPI.EnableClipPlane(i, true);
+			}
+			for (; i < maxClipPlanes; ++i) {
+				shaderAPI.EnableClipPlane(i, false);
+				shaderAPI.SetClipPlane(i, fakePlane);
+			}
+		}
+		else {
+			int customPlaneOffset = customPlanes - maxClipPlanes;
+
+			for (int i = customPlaneOffset; i < customPlanes; ++i) {
+				shaderAPI.SetClipPlane(i % maxClipPlanes, planes[i].Values);
+				shaderAPI.EnableClipPlane(i % maxClipPlanes, true);
+			}
+		}
 	}
 
 	public bool InFlashlightMode() {
 		return FlashlightEnable;
 	}
 
+	Vector3 LastSetToneMapScale = new(1, 1, 1);
 	float CurToneMapScale = 1.0f;
+	float GoalToneMapScale = 1.0f;
+	TimeUnit_t FrameTime;
 
-	public void TurnOnToneMapping() => SetToneMappingScaleLinear(new(CurToneMapScale, CurToneMapScale, CurToneMapScale));
+	static readonly ConVar mat_accelerate_adjust_exposure_down = new("mat_accelerate_adjust_exposure_down", "3.0", FCvar.Cheat);
+	static readonly ConVar mat_hdr_manual_tonemap_rate = new("mat_hdr_manual_tonemap_rate", "1.0");
+	static readonly ConVar mat_tonemap_algorithm = new("mat_tonemap_algorithm", "1", FCvar.Cheat, "0 = Original Algorithm 1 = New Algorithm");
+
+	public void TurnOnToneMapping() {
+		if ((materials.HardwareConfig.GetHDRType() != HDRType.None) && (FrameTime > 0.0)) {
+			TimeUnit_t elapsedTime = FrameTime;
+			float goalScale = GoalToneMapScale;
+			float rate = mat_hdr_manual_tonemap_rate.GetFloat();
+
+			if (mat_tonemap_algorithm.GetInt() == 1)
+				rate *= 2.0f;
+
+			if (rate == 0.0f)
+				CurToneMapScale = goalScale;
+			else {
+				if (goalScale < CurToneMapScale) {
+					float accExposureAdjust = mat_accelerate_adjust_exposure_down.GetFloat();
+					rate = Math.Min(accExposureAdjust * rate, MathLib.Lerp(rate, accExposureAdjust * rate, 0.0f, 1.5f, CurToneMapScale - goalScale));
+				}
+
+				float rateTimesTime = (float)(rate * elapsedTime);
+				if (mat_tonemap_algorithm.GetInt() == 1)
+					rateTimesTime = Math.Min(rateTimesTime, (1.0f / 16.0f) * 0.25f);
+
+				float alpha = Math.Max(0.0f, Math.Min(1.0f, rateTimesTime));
+				CurToneMapScale = (goalScale * alpha) + (CurToneMapScale * (1.0f - alpha));
+
+				if (!float.IsFinite(CurToneMapScale)) {
+					Assert(false);
+					CurToneMapScale = goalScale;
+				}
+			}
+
+			SetToneMappingScaleLinear(new(CurToneMapScale, CurToneMapScale, CurToneMapScale));
+			LastSetToneMapScale = new(CurToneMapScale, CurToneMapScale, CurToneMapScale);
+		}
+	}
 
 	public void SetToneMappingScaleLinear(in Vector3 scale) => shaderAPI.SetToneMappingScaleLinear(in scale);
 
@@ -350,10 +505,11 @@ public class MatRenderContext : IMatRenderContextInternal
 	}
 
 	public void SetFrameTime(double frameTime) {
-
+		FrameTime = frameTime;
 	}
 
 	public void SwapBuffers() {
+		materials.OcclusionQueryMgr.AdvanceFrame();
 		materials.ShaderDevice.Present();
 	}
 
@@ -802,9 +958,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void BeginOcclusionQueryDrawing(OcclusionQueryObjectHandle_t handle) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void BeginOcclusionQueryDrawing(OcclusionQueryObjectHandle_t handle) => materials.OcclusionQueryMgr.BeginOcclusionQueryDrawing(handle);
 
 	public void BeginPIXEvent(Color color, ReadOnlySpan<char> name) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -847,7 +1001,9 @@ public class MatRenderContext : IMatRenderContextInternal
 	}
 
 	public OcclusionQueryObjectHandle_t CreateOcclusionQueryObject() {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
+		OcclusionQueryObjectHandle_t h = materials.OcclusionQueryMgr.CreateOcclusionQueryObject();
+		materials.OcclusionQueryMgr.OnCreateOcclusionQueryObject(h);
+		return h;
 	}
 
 	public void CullMode(MaterialCullMode cullMode) {
@@ -858,9 +1014,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void DestroyOcclusionQueryObject(OcclusionQueryObjectHandle_t handle) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void DestroyOcclusionQueryObject(OcclusionQueryObjectHandle_t handle) => materials.OcclusionQueryMgr.DestroyOcclusionQueryObject(handle);
 
 	public void DrawScreenSpaceQuad(IMaterial? material) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -886,45 +1040,41 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void EndOcclusionQueryDrawing(OcclusionQueryObjectHandle_t handle) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void EndOcclusionQueryDrawing(OcclusionQueryObjectHandle_t handle) => materials.OcclusionQueryMgr.EndOcclusionQueryDrawing(handle);
 
 	public void EndPIXEvent() {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
 	public void FogColor3f(float r, float g, float b) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
+		byte r8 = (byte)Math.Clamp((int)(r * 255.0f), 0, 255);
+		byte g8 = (byte)Math.Clamp((int)(g * 255.0f), 0, 255);
+		byte b8 = (byte)Math.Clamp((int)(b * 255.0f), 0, 255);
+		shaderAPI.SceneFogColor3ub(r8, g8, b8);
 	}
 
 	public void FogColor3fv(ReadOnlySpan<float> rgb) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
+		byte r8 = (byte)Math.Clamp((int)(rgb[0] * 255.0f), 0, 255);
+		byte g8 = (byte)Math.Clamp((int)(rgb[1] * 255.0f), 0, 255);
+		byte b8 = (byte)Math.Clamp((int)(rgb[2] * 255.0f), 0, 255);
+		shaderAPI.SceneFogColor3ub(r8, g8, b8);
 	}
 
-	public void FogColor3ub(byte r, byte g, byte b) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void FogColor3ub(byte r, byte g, byte b) => shaderAPI.SceneFogColor3ub(r, g, b);
 
-	public void FogColor3ubv(ReadOnlySpan<byte> rgb) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void FogColor3ubv(ReadOnlySpan<byte> rgb) => shaderAPI.SceneFogColor3ub(rgb[0], rgb[1], rgb[2]);
 
-	public void FogEnd(float end) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void FogEnd(float end) => shaderAPI.FogEnd(end);
 
-	public void FogMaxDensity(float maxDensity) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void FogMaxDensity(float maxDensity) => shaderAPI.FogMaxDensity(maxDensity);
 
-	public void FogMode(MaterialFogMode fogMode) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void FogMode(MaterialFogMode fogMode) => shaderAPI.SceneFogMode(fogMode);
 
-	public void FogStart(float start) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void FogStart(float start) => shaderAPI.FogStart(start);
+
+	public void FogRadial(bool radial) => shaderAPI.SceneFogRadial(radial);
+
+	public bool GetFogRadial() => shaderAPI.GetSceneFogRadial();
 
 	public void GMOD_FlushQueue() {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -934,17 +1084,11 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void GetFogColor(out Color rgb) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void GetFogColor(out Color rgb) => shaderAPI.GetSceneFogColor(out rgb);
 
-	public void GetFogDistances(out float start, out float end, out float fogZ) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void GetFogDistances(out float start, out float end, out float fogZ) => shaderAPI.GetFogDistances(out start, out end, out fogZ);
 
-	public MaterialFogMode GetFogMode() {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public MaterialFogMode GetFogMode() => shaderAPI.GetSceneFogMode();
 
 	public void GetMatrix(MaterialMatrixMode matrixMode, out Matrix3x4 matrix) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -963,7 +1107,10 @@ public class MatRenderContext : IMatRenderContextInternal
 	}
 
 	public Vector3 GetToneMappingScaleLinear() {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
+		if (materials.HardwareConfig.GetHDRType() == HDRType.None)
+			return new(1, 1, 1);
+		else
+			return LastSetToneMapScale;
 	}
 
 	public void GetWorldSpaceCameraVectors(out Vector3 forward, out Vector3 right, out Vector3 up) {
@@ -1010,9 +1157,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public int OcclusionQuery_GetNumPixelsRendered(OcclusionQueryObjectHandle_t handle) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public int OcclusionQuery_GetNumPixelsRendered(OcclusionQueryObjectHandle_t handle) => materials.OcclusionQueryMgr.OcclusionQuery_GetNumPixelsRendered(handle, true);
 
 	public void OverrideAlphaWriteEnable(bool enable, bool alphaWriteEnable) => shaderAPI.OverrideAlphaWriteEnable(enable, alphaWriteEnable);
 
@@ -1046,10 +1191,6 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void PopCustomClipPlane() {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
 	public void PopDeformation() {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
@@ -1058,16 +1199,14 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void PushCustomClipPlane(ReadOnlySpan<float> plane) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
 	public void PushDeformation(ref readonly DeformationBase deformation) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
 	public void PushRenderTargetAndViewport() {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
+		RenderTargetStackElement top = RenderTargetStack.Top();
+		RenderTargetStack.Push(top);
+		CommitRenderTargetAndViewport();
 	}
 
 	public void PushSelectionName(int name) {
@@ -1096,12 +1235,13 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void ResetOcclusionQueryObject(OcclusionQueryObjectHandle_t handle) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void ResetOcclusionQueryObject(OcclusionQueryObjectHandle_t handle) => materials.OcclusionQueryMgr.ResetOcclusionQueryObject(handle);
 
 	public void ResetToneMappingScale(float monoscale) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
+		CurToneMapScale = monoscale;
+		SetToneMappingScaleLinear(new(CurToneMapScale, CurToneMapScale, CurToneMapScale));
+		LastSetToneMapScale = new(CurToneMapScale, CurToneMapScale, CurToneMapScale);
+		GoalToneMapScale = 1;
 	}
 
 	public void Rotate(float angle, float x, float y, float z) {
@@ -1122,20 +1262,16 @@ public class MatRenderContext : IMatRenderContextInternal
 
 	public void SetFloatRenderingParameter(int parm_number, float value) => shaderAPI.SetFloatRenderingParameter(parm_number, value);
 
-	public void SetFogZ(float fogZ) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void SetFogZ(float fogZ) => shaderAPI.SetFogZ(fogZ);
 
 	public void SetFullScreenDepthTextureValidityFlag(bool isValid) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
 	public void SetGoalToneMappingScale(float monoscale) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public void SetHeightClipZ(float z) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
+		Assert(float.IsFinite(monoscale));
+		if (float.IsFinite(monoscale))
+			GoalToneMapScale = monoscale;
 	}
 
 	public void SetIntRenderingParameter(int parm_number, int value) => shaderAPI.SetIntRenderingParameter(parm_number, value);
@@ -1152,12 +1288,50 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void SetRenderTarget(ITexture? texture) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void SetRenderTarget(ITexture? texture) => SetRenderTargetEx(0, texture);
 
-	public void SetRenderTargetEx(int renderTargetID, ITexture? texture) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
+	public void SetRenderTargetEx(int renderTargetID, ITexture? newTarget) {
+		Assert(RenderTargetStack.Count > 0);
+
+		ITexture? oldTarget = RenderTargetStack.Top()[renderTargetID];
+
+		RenderTargetStackElement newTOS = RenderTargetStack.Top();
+		newTOS[renderTargetID] = newTarget;
+		RenderTargetStack.Pop();
+		RenderTargetStack.Push(newTOS);
+
+		if (newTarget != oldTarget) {
+			if (newTarget == null) {
+				if (renderTargetID == 0) {
+					ActiveViewport.TopLeftX = 0;
+					ActiveViewport.TopLeftY = 0;
+					shaderAPI.GetBackBufferDimensions(out ActiveViewport.Width, out ActiveViewport.Height);
+					shaderAPI.SetViewports(new Span<ShaderViewport>(ref ActiveViewport));
+				}
+				shaderAPI.SetRenderTargetEx(renderTargetID);
+			}
+			else {
+				bool reset = true;
+				if (renderTargetID == 0) {
+					ActiveViewport.TopLeftX = 0;
+					ActiveViewport.TopLeftY = 0;
+					ActiveViewport.Width = newTarget.GetActualWidth();
+					ActiveViewport.Height = newTarget.GetActualHeight();
+					shaderAPI.SetViewports(new Span<ShaderViewport>(ref ActiveViewport));
+				}
+				if (newTarget is ITextureInternal texInt) {
+					reset = !texInt.SetRenderTarget(renderTargetID);
+					if (reset)
+						shaderAPI.SetRenderTargetEx(renderTargetID);
+				}
+
+				if (newTarget.GetImageFormat() == ImageFormat.RGBA16161616F)
+					shaderAPI.EnableLinearColorSpaceFrameBuffer(true);
+				else
+					shaderAPI.EnableLinearColorSpaceFrameBuffer(false);
+			}
+		}
+		CommitRenderTargetAndViewport();
 	}
 
 	public void SetResetable(ColorCorrectionHandle_t handle, bool resetable) {

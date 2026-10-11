@@ -28,12 +28,6 @@ struct PixelShaderLightInfo
 };
 
 #define cOverbright 2.0
-#define cOOOverbright 0.5
-
-#define LIGHTTYPE_NONE				0
-#define LIGHTTYPE_SPOT				1
-#define LIGHTTYPE_POINT				2
-#define LIGHTTYPE_DIRECTIONAL		3
 
 // Better suited to Pixel shader models, 11 instructions in pixel shader
 // ... actually, now only 9: mul, cmp, cmp, mul, mad, mad, mad, mad, mad
@@ -345,13 +339,6 @@ void PixelShaderDoSpecularLighting(vec3 worldPos, vec3 worldNormal, float fSpecu
         specularLighting += localSpecularTerm;		// Accumulate specular and rim terms
         rimLighting += localRimTerm;
     }
-}
-
-vec3 PixelShaderDoRimLighting(vec3 worldNormal, vec3 vEyeDir, vec3 cAmbientCube[6], float fFresnel)
-{
-    vec3 vReflect = reflect(-vEyeDir, worldNormal);			// Reflect view through normal
-
-    return fFresnel * PixelShaderAmbientLight(vEyeDir, cAmbientCube);
 }
 
 // Called directly by newer shaders or through the following wrapper for older shaders

@@ -496,6 +496,9 @@ public interface IMaterialInternal : IMaterial
 	IMaterialInternal GetRealTimeVersion();
 	bool IsManuallyCreated();
 	bool IsPrecached();
+	bool IsPrecachedVars();
+	int GetReferenceCount();
+	void ReloadTextures();
 	bool IsUsingVertexID();
 	void Precache();
 	bool PrecacheVars(KeyValues? inVmtKeyValues = null, KeyValues? inPatchKeyValues = null, List<FileNameHandle_t>? includes = null, MaterialFindContext findContext = 0);

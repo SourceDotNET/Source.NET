@@ -24,6 +24,7 @@
 
 // DYNAMIC: "LIGHTING_PREVIEW"          "0..2"
 // DYNAMIC: "FLASHLIGHTSHADOWS"			"0..1"
+// DYNAMIC: "PIXELFOGTYPE"				"0..2"
 
 #if SEAMLESS_BASE
 in vec3 vs_SeamlessTexCoord;
@@ -46,7 +47,6 @@ in vec3 vs_WorldVertToEyeVector;
 in vec3 vs_WorldSpaceNormal;
 in vec4 vs_ProjPos;
 in vec4 vs_WorldPos_ProjPosZ;
-in vec4 vs_FogFactorW;
 #if SEAMLESS_DETAIL || SEAMLESS_BASE
 in vec3 vs_SeamlessWeights;
 #endif
@@ -94,7 +94,6 @@ out vec4 fragColor;
 #define OUTER_GLOW_MAX_DVALUE		g_GlowParameters.w
 #define OUTER_GLOW_COLOR			g_GlowColor
 
-#define g_fPixelFogType					g_ShaderControls.x
 #define g_fWriteDepthToAlpha			g_ShaderControls.y
 #define g_fWriteWaterFogToDestAlpha		g_ShaderControls.z
 #define g_fVertexAlpha					g_ShaderControls.w
@@ -104,14 +103,9 @@ out vec4 fragColor;
 #define SOFT_MASK_MIN				g_DistanceAlphaParams.y
 
 #define g_OutlineColor				ps_const[8]
-#define OUTLINE_COLOR				g_OutlineColor
 
 // these are ordered this way for optimal ps20 swizzling
 #define g_OutlineParams				ps_const[9]
-#define OUTLINE_MIN_VALUE0			g_OutlineParams.x
-#define OUTLINE_MAX_VALUE1			g_OutlineParams.y
-#define OUTLINE_MAX_VALUE0			g_OutlineParams.z
-#define OUTLINE_MIN_VALUE1			g_OutlineParams.w
 
 #if DETAILTEXTURE
 #define g_DetailTint				ps_const[10].rgb
@@ -127,44 +121,6 @@ layout(binding = 8) uniform sampler2DShadow ShadowDepthSampler;	// Flashlight sh
 layout(binding = 8) uniform sampler2D ShadowDepthSamplerRaw;
 layout(binding = 10) uniform sampler2D DepthSampler;			//depth buffer sampler for depth blending
 layout(binding = 11) uniform sampler2D SelfIllumMaskSampler;	// selfillummask
-
-// Calculate unified fog
-float CalcPixelFogFactorConst(float fPixelFogType, vec4 fogParams, float flEyePosZ, float flWorldPosZ, float flProjPosZ)
-{
-    float flDepthBelowWater = fPixelFogType * fogParams.y - flWorldPosZ;  // above water = negative, below water = positive
-    float flDepthBelowEye = fPixelFogType * flEyePosZ - flWorldPosZ;	  // above eye = negative, below eye = positive
-    // if fPixelFogType == 0, then flDepthBelowWater == flDepthBelowEye and frac will be 1
-    float frac = (flDepthBelowEye == 0.0) ? 1.0 : clamp(flDepthBelowWater / flDepthBelowEye, 0.0, 1.0);
-    return clamp(min(fogParams.z, flProjPosZ * fogParams.w * frac - fogParams.x), 0.0, 1.0);
-}
-
-// Blend both types of Fog and lerp to get result
-vec3 BlendPixelFogConst(vec3 vShaderColor, float pixelFogFactor, vec3 vFogColor, float fPixelFogType)
-{
-    pixelFogFactor = mix(pixelFogFactor * pixelFogFactor, pixelFogFactor, fPixelFogType);
-    return mix(vShaderColor.rgb, vFogColor.rgb, pixelFogFactor);
-}
-
-vec4 FinalOutputConst(vec4 vShaderColor, float pixelFogFactor, float fPixelFogType, int iTONEMAP_SCALE_TYPE, float fWriteDepthToDestAlpha, float flProjZ)
-{
-    vec4 result = vShaderColor;
-    if (iTONEMAP_SCALE_TYPE == TONEMAP_SCALE_LINEAR)
-    {
-        result.rgb *= LINEAR_LIGHT_SCALE;
-    }
-    else if (iTONEMAP_SCALE_TYPE == TONEMAP_SCALE_GAMMA)
-    {
-        result.rgb *= GAMMA_LIGHT_SCALE;
-    }
-
-    result.a = mix(result.a, DepthToDestAlpha(flProjZ), fWriteDepthToDestAlpha);
-
-    // todo FOG
-    // result.rgb = BlendPixelFogConst(result.rgb, pixelFogFactor, g_LinearFogColor.rgb, fPixelFogType);
-    result.rgb = SRGBOutput(result.rgb); //SRGB in pixel shader conversion
-
-    return result;
-}
 
 void main()
 {
@@ -403,9 +359,11 @@ void main()
     }
 #endif
 
-    float fogFactor = CalcPixelFogFactorConst(g_fPixelFogType, g_FogParams, g_EyePos.z, vs_WorldPos_ProjPosZ.z, vs_ProjPos.z);
-    alpha = mix(alpha, fogFactor, g_fWriteWaterFogToDestAlpha); // Use the fog factor if it's height fog
-    fragColor = FinalOutputConst(vec4(result.rgb, alpha), fogFactor, g_fPixelFogType, TONEMAP_SCALE_LINEAR, g_fWriteDepthToAlpha, vs_ProjPos.z);
+    float fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos.xyz, vs_WorldPos_ProjPosZ.xyz, vs_ProjPos.z);
+#if (PIXELFOGTYPE == PIXEL_FOG_TYPE_HEIGHT)
+    alpha = mix(alpha, fogFactor, g_fWriteWaterFogToDestAlpha);
+#endif
+    fragColor = FinalOutput(vec4(result.rgb, alpha), fogFactor, PIXELFOGTYPE, TONEMAP_SCALE_LINEAR, g_fWriteDepthToAlpha != 0.0, vs_ProjPos.z);
 
 #endif
 }

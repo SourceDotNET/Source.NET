@@ -5,12 +5,10 @@
 //  STATIC: "DIFFUSEBUMPMAP"			"0..1"
 //  STATIC: "VERTEXCOLOR"				"0..1"
 //  STATIC: "VERTEXALPHATEXBLENDFACTOR"	"0..1"
-//  STATIC: "RELIEF_MAPPING"            "0..0"
 //  STATIC: "SEAMLESS"                  "0..1"
 //  STATIC: "BUMPMASK"                  "0..1"
 
 //  DYNAMIC: "FASTPATH"					"0..1"
-//	DYNAMIC: "DOWATERFOG"				"0..1"
 //  DYNAMIC: "LIGHTING_PREVIEW"			"0..1"
 
 layout(location = 0) in vec3 v_Position;
@@ -28,25 +26,10 @@ layout(std140, binding = 0) uniform source_matrices {
     mat4 modelMatrix;
 };
 
-layout(std140, binding = 2) uniform source_vertex_sharedUBO {
-    int numBones;
-    int lightCount;
-    int vertexSharedPad0;
-    int vertexSharedPad1;
-    vec4 lightEnabled;
-};
-
-layout(std140, binding = 4) uniform source_bone_matrices {
-    mat4 bones[256];
-};
-
 layout(std140, binding = 5) uniform source_vs_constants {
     vec4 vs_const[256];
 };
 
-const int VERTEX_SHADER_CAMERA_POS = 2;
-const int VERTEX_SHADER_AMBIENT_LIGHT = 21;
-const int VERTEX_SHADER_LIGHT_INFO = 27;
 const int VERTEX_SHADER_MODULATION_COLOR = 47;
 const int SHADER_SPECIFIC_CONST_0 = 48;
 const int SHADER_SPECIFIC_CONST_2 = 50;
@@ -72,9 +55,7 @@ const int SHADER_SPECIFIC_CONST_10 = 58;
 #define cBlendMaskTexCoordTransform0		vs_const[SHADER_SPECIFIC_CONST_10 + 0]	// not contiguous with the rest!
 #define cBlendMaskTexCoordTransform1		vs_const[SHADER_SPECIFIC_CONST_10 + 1]
 
-const int  g_FogType						= DOWATERFOG;
 const bool g_UseSeparateEnvmapMask			= ENVMAP_MASK != 0;
-const bool g_bTangentSpace					= TANGENTSPACE != 0;
 const bool g_bBumpmap						= BUMPMAP != 0;
 const bool g_bBumpmapDiffuseLighting		= DIFFUSEBUMPMAP != 0;
 const bool g_bVertexColor					= VERTEXCOLOR != 0;
@@ -87,11 +68,7 @@ out vec4 vs_DetailOrBumpAndEnvmapMaskTexCoord;		// envmap mask
 #else
 out vec2 vs_BaseTexCoord;
 // detail textures and bumpmaps are mutually exclusive so that we have enough texcoords.
-#if RELIEF_MAPPING
-out vec3 vs_TangentSpaceViewRay;
-#else
 out vec4 vs_DetailOrBumpAndEnvmapMaskTexCoord;
-#endif
 #endif
 centroid out vec4 vs_LightmapTexCoord1And2;
 centroid out vec4 vs_LightmapTexCoord3;						// and basetexcoord*mask_scale
@@ -102,7 +79,9 @@ out mat3 vs_TangentSpaceTranspose;
 #endif
 
 out vec4 vs_Color;									// in seamless, r g b = blend weights
-out vec4 vs_VertexBlendX_FogFactorW;
+out float vs_VertexBlendX;
+
+#include "common_clipplanes_gl460.vs"
 
 void main()
 {
@@ -111,11 +90,7 @@ void main()
     vs_DetailOrBumpAndEnvmapMaskTexCoord = vec4(0.0);
 #else
     vs_BaseTexCoord = vec2(0.0);
-#if RELIEF_MAPPING
-    vs_TangentSpaceViewRay = vec3(0.0);
-#else
     vs_DetailOrBumpAndEnvmapMaskTexCoord = vec4(0.0);
-#endif
 #endif
     vs_LightmapTexCoord1And2 = vec4(0.0);
     vs_LightmapTexCoord3 = vec4(0.0);
@@ -127,6 +102,7 @@ void main()
 
     vec4 vProjPos = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);
     gl_Position = vProjPos;
+    WriteUserClipDistances(gl_Position);
 
     vs_WorldPos_ProjPosZ = vec4(worldPos, vProjPos.z);
 
@@ -157,7 +133,6 @@ void main()
             vs_BaseTexCoord.x = dot(v_TexCoord0, cBaseTexCoordTransform0.xy) + cBaseTexCoordTransform0.w;
             vs_BaseTexCoord.y = dot(v_TexCoord0, cBaseTexCoordTransform1.xy) + cBaseTexCoordTransform1.w;
         }
-#if ( RELIEF_MAPPING == 0 )
         {
             // calculate detailorbumptexcoord
             if (FASTPATH != 0)
@@ -168,7 +143,6 @@ void main()
                 vs_DetailOrBumpAndEnvmapMaskTexCoord.y = dot(v_TexCoord0, cDetailOrBumpTexCoordTransform1.xy) + cDetailOrBumpTexCoordTransform1.w;
             }
         }
-#endif
     }
 #endif
     if (FASTPATH != 0)
@@ -200,7 +174,6 @@ void main()
         vs_LightmapTexCoord1And2.xy = v_TexCoord1;
     }
 
-#if ( RELIEF_MAPPING == 0)
     if (g_UseSeparateEnvmapMask || g_BumpMask)
     {
         // reversed component order
@@ -211,9 +184,8 @@ void main()
         vs_DetailOrBumpAndEnvmapMaskTexCoord.z = dot(v_TexCoord0, cEnvmapMaskTexCoordTransform1.xy) + cEnvmapMaskTexCoordTransform1.w;
 #	endif
     }
-#endif
 
-    vs_VertexBlendX_FogFactorW = vec4(CalcFog(worldPos, vProjPos.xyz, g_FogType));
+    vs_VertexBlendX = 0.0;
 
     if (!g_bVertexColor)
     {
@@ -244,6 +216,6 @@ void main()
 
     if (g_bVertexAlphaTexBlendFactor)
     {
-        vs_VertexBlendX_FogFactorW.r = v_Color.a;
+        vs_VertexBlendX = v_Color.a;
     }
 }

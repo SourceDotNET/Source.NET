@@ -30,16 +30,21 @@ public class HardwareConfig : IMaterialSystemHardwareConfig
 		throw new NotImplementedException();
 	}
 
-	// HDR todo fixme
+	public HDRType HDRTypeCap = HDRType.Integer;
+	public HDRType MaxHDRType = HDRType.Float;
+	bool HDREnabled;
+
 	public HDRType GetHardwareHDRType() {
-		return HDRType.None;
+		return HDRTypeCap;
 	}
 
 	public bool GetHDREnabled() {
-		return false;
+		return HDREnabled;
 	}
 
 	public HDRType GetHDRType() {
+		if (HDREnabled)
+			return HDRTypeCap;
 		return HDRType.None;
 	}
 
@@ -154,8 +159,10 @@ public class HardwareConfig : IMaterialSystemHardwareConfig
 		return *maxTextureSize;
 	}
 
+	public const int MAXUSERCLIPPLANES = 2;
+
 	public int MaxUserClipPlanes() {
-		throw new NotImplementedException();
+		return MAXUSERCLIPPLANES;
 	}
 
 	public int MaxVertexShaderBlendMatrices() {
@@ -203,7 +210,7 @@ public class HardwareConfig : IMaterialSystemHardwareConfig
 	}
 
 	public void SetHDREnabled(bool bEnable) {
-		throw new NotImplementedException();
+		HDREnabled = bEnable;
 	}
 
 	public bool SpecifiesFogColorInLinearSpace() {
@@ -252,7 +259,15 @@ public class HardwareConfig : IMaterialSystemHardwareConfig
 	}
 
 	public bool SupportsHDRMode(HDRType nHDRMode) {
-		throw new NotImplementedException();
+		switch (nHDRMode) {
+			case HDRType.None:
+				return true;
+			case HDRType.Integer:
+				return MaxHDRType == HDRType.Integer || MaxHDRType == HDRType.Float;
+			case HDRType.Float:
+				return MaxHDRType == HDRType.Float;
+		}
+		return false;
 	}
 
 	public bool SupportsMipmappedCubemaps() {
@@ -315,7 +330,7 @@ public class HardwareConfig : IMaterialSystemHardwareConfig
 	}
 
 	public bool UseFastClipping() {
-		throw new NotImplementedException();
+		return false;
 	}
 
 	static readonly ConVar r_shader_srgb = new("r_shader_srgb", "0", 0, "-1 = use hardware caps. 0 = use hardware srgb. 1 = use shader srgb(software lookup)");

@@ -16,6 +16,7 @@
 // DYNAMIC: "NUM_LIGHTS"				"0..4"
 // DYNAMIC: "AMBIENT_LIGHT"				"0..1"
 // DYNAMIC: "FLASHLIGHTSHADOWS"			"0..1"
+// DYNAMIC: "PIXELFOGTYPE"				"0..2"
 
 in vec4 vs_BaseTexCoord2_TangentSpaceVertToEyeVectorXY;
 in vec3 vs_LightAtten;
@@ -25,7 +26,6 @@ in vec4 vs_WorldTangent;
 in vec4 vs_ProjPos;
 in vec4 vs_WorldPos_ProjPosZ;
 in vec3 vs_DetailTexCoord_Atten3;
-in vec4 vs_FogFactorW;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];
@@ -48,7 +48,6 @@ out vec4 fragColor;
 #define g_SelfIllumScaleBiasExpBrightness	ps_const[11]
 
 #define g_ShaderControls					ps_const[12]
-#define g_fPixelFogType					g_ShaderControls.x
 #define g_fWriteDepthToAlpha			g_ShaderControls.y
 #define g_fWriteWaterFogToDestAlpha		g_ShaderControls.z
 
@@ -63,51 +62,11 @@ layout(binding = 0) uniform sampler2D BaseTextureSampler;
 layout(binding = 1) uniform samplerCube EnvmapSampler;
 layout(binding = 2) uniform sampler2D DetailSampler;
 layout(binding = 3) uniform sampler2D BumpmapSampler;
-layout(binding = 4) uniform sampler2D EnvmapMaskSampler;
-layout(binding = 5) uniform sampler2D NormalizeSampler;
 layout(binding = 6) uniform sampler2D RandRotSampler;			// RandomRotation sampler
 layout(binding = 7) uniform sampler2D FlashlightSampler;
 layout(binding = 8) uniform sampler2DShadow ShadowDepthSampler;	// Flashlight shadow depth map sampler
 layout(binding = 8) uniform sampler2D ShadowDepthSamplerRaw;
 layout(binding = 9) uniform sampler2D DiffuseWarpSampler;		// Lighting warp sampler (1D texture for diffuse lighting modification)
-
-// Calculate both types of Fog and lerp to get result
-float CalcPixelFogFactorConst(float fPixelFogType, vec4 fogParams, float flEyePosZ, float flWorldPosZ, float flProjPosZ)
-{
-    float fRangeFog = CalcRangeFog(flProjPosZ, fogParams.x, fogParams.z, fogParams.w);
-    float fHeightFog = CalcWaterFogAlpha(fogParams.y, flEyePosZ, flWorldPosZ, flProjPosZ, fogParams.w);
-    return mix(fRangeFog, fHeightFog, fPixelFogType);
-}
-
-// Blend both types of Fog and lerp to get result
-vec3 BlendPixelFogConst(vec3 vShaderColor, float pixelFogFactor, vec3 vFogColor, float fPixelFogType)
-{
-    pixelFogFactor = clamp(pixelFogFactor, 0.0, 1.0);
-    vec3 fRangeResult = mix(vShaderColor.rgb, vFogColor.rgb, pixelFogFactor * pixelFogFactor); //squaring the factor will get the middle range mixing closer to hardware fog
-    vec3 fHeightResult = mix(vShaderColor.rgb, vFogColor.rgb, clamp(pixelFogFactor, 0.0, 1.0));
-    return mix(fRangeResult, fHeightResult, fPixelFogType);
-}
-
-vec4 FinalOutputConst(vec4 vShaderColor, float pixelFogFactor, float fPixelFogType, int iTONEMAP_SCALE_TYPE, float fWriteDepthToDestAlpha, float flProjZ)
-{
-    vec4 result = vShaderColor;
-    if (iTONEMAP_SCALE_TYPE == TONEMAP_SCALE_LINEAR)
-    {
-        result.rgb *= LINEAR_LIGHT_SCALE;
-    }
-    else if (iTONEMAP_SCALE_TYPE == TONEMAP_SCALE_GAMMA)
-    {
-        result.rgb *= GAMMA_LIGHT_SCALE;
-    }
-
-    result.a = mix(result.a, DepthToDestAlpha(flProjZ), fWriteDepthToDestAlpha);
-
-    // TODO! fog
-    // result.rgb = BlendPixelFogConst(result.rgb, pixelFogFactor, g_LinearFogColor.rgb, fPixelFogType);
-    result.rgb = SRGBOutput(result.rgb); //SRGB in pixel shader conversion
-
-    return result;
-}
 
 void main()
 {
@@ -253,9 +212,11 @@ void main()
 
     vec3 result = diffuseComponent + specularLighting;
 
-    float fogFactor = CalcPixelFogFactorConst(g_fPixelFogType, g_FogParams, g_EyePos.z, vs_WorldPos_ProjPosZ.z, vs_WorldPos_ProjPosZ.w);
+    float fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos.xyz, vs_WorldPos_ProjPosZ.xyz, vs_WorldPos_ProjPosZ.w);
 
-    alpha = mix(alpha, fogFactor, g_fPixelFogType * g_fWriteWaterFogToDestAlpha); // Use the fog factor if it's height fog
+#if (PIXELFOGTYPE == PIXEL_FOG_TYPE_HEIGHT)
+    alpha = mix(alpha, fogFactor, g_fWriteWaterFogToDestAlpha);
+#endif
 
-    fragColor = FinalOutputConst(vec4(result.rgb, alpha), fogFactor, g_fPixelFogType, TONEMAP_SCALE_LINEAR, g_fWriteDepthToAlpha, vs_WorldPos_ProjPosZ.w);
+    fragColor = FinalOutput(vec4(result.rgb, alpha), fogFactor, PIXELFOGTYPE, TONEMAP_SCALE_LINEAR, g_fWriteDepthToAlpha != 0.0, vs_WorldPos_ProjPosZ.w);
 }

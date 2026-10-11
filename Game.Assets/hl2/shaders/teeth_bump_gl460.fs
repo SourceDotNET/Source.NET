@@ -1,5 +1,5 @@
 #version 460
-// DYNAMIC: "PIXELFOGTYPE"				"0..1"
+// DYNAMIC: "PIXELFOGTYPE"				"0..2"
 // DYNAMIC: "NUM_LIGHTS"				"0..4"
 // DYNAMIC: "AMBIENT_LIGHT"				"0..1"
 // DYNAMIC: "WRITE_DEPTH_TO_DESTALPHA"	"0..1"
@@ -10,7 +10,6 @@ in mat3 vs_TangentSpace;
 in vec4 vs_WorldPos_ProjPosZ;
 in vec2 vs_LightAtten01;
 in vec2 vs_LightAtten23;
-in vec4 vs_FogFactorW;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];
@@ -22,7 +21,6 @@ out vec4 fragColor;
 
 layout(binding = 0) uniform sampler2D BaseTextureSampler;
 layout(binding = 1) uniform sampler2D BumpTextureSampler;
-layout(binding = 2) uniform samplerCube NormalizeSampler;
 
 #define g_EyePos_SpecExponent	ps_const[11]
 #define g_FogParams				ps_const[12]
@@ -73,6 +71,6 @@ void main()
 
     bool bWriteDepthToAlpha = WRITE_DEPTH_TO_DESTALPHA != 0;
 
-    float fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos_SpecExponent.z, vs_WorldPos_ProjPosZ.z, vs_WorldPos_ProjPosZ.w);
+    float fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos_SpecExponent.xyz, vs_WorldPos_ProjPosZ.xyz, vs_WorldPos_ProjPosZ.w);
     fragColor = FinalOutput(vec4(result, 1.0), fogFactor, PIXELFOGTYPE, TONEMAP_SCALE_LINEAR, bWriteDepthToAlpha, vs_WorldPos_ProjPosZ.w);
 }

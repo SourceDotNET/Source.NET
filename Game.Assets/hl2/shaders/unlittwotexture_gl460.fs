@@ -5,7 +5,6 @@
 in vec2 vs_BaseTexCoord;
 in vec2 vs_BaseTexCoord2;
 in vec4 vs_WorldPos_ProjPosZ;
-in vec4 vs_FogFactorW;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];

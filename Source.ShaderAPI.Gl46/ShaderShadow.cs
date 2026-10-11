@@ -345,8 +345,12 @@ public class ShadowStateGl46 : IShaderShadow
 		}
 	}
 
+	public ShaderFogMode FogModeState;
+	public bool DisableFogGammaCorrectionState;
+
 	public void FogMode(ShaderFogMode fogMode) {
-		throw new NotImplementedException();
+		Assert(fogMode >= 0 && fogMode < ShaderFogMode.Num);
+		FogModeState = fogMode;
 	}
 
 	public void SetDiffuseMaterialSource(ShaderMaterialSource materialSource) {
@@ -354,7 +358,7 @@ public class ShadowStateGl46 : IShaderShadow
 	}
 
 	public void DisableFogGammaCorrection(bool bDisable) {
-		throw new NotImplementedException();
+		DisableFogGammaCorrectionState = bDisable;
 	}
 
 	public void EnableAlphaToCoverage(bool enable) {
@@ -393,6 +397,8 @@ public class ShadowStateGl46 : IShaderShadow
 		EnableAlphaToCoverage(false);
 		EnableSRGBWrite(false);
 		EnablePolyOffset(PolygonOffsetMode.Disable);
+		FogMode(ShaderFogMode.Disabled);
+		DisableFogGammaCorrection(false);
 
 		int samplerCount = HardwareConfig.GetSamplerCount();
 		for (int i = 0; i < samplerCount; i++) {
