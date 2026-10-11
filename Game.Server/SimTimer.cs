@@ -75,6 +75,8 @@ public class StopwatchBase : SimpleSimTimer
 
 	public void Stop() => IsRunning = false;
 
+	public new bool Expired() => IsRunning && base.Expired();
+
 	protected bool IsRunning;
 
 	public static readonly new DataMap DataDesc = new(typeof(StopwatchBase), SimpleSimTimer.DataDesc, [
