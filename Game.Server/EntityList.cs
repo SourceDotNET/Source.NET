@@ -724,7 +724,7 @@ public class EntityListSystem : AutoGameSystemPerFrame
 			engine.AllowImmediateEdictReuse();
 
 			// Reset node counter used during load
-			// NodeEnt.m_nNodeCount = 0; todo
+			NodeEnt.NodeCount = 0;
 
 			RespawnEntitiesFilter filter = new();
 			MapEntity_ParseAllEntities(engine.GetMapEntitiesString(), filter, true);

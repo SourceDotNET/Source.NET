@@ -18,6 +18,7 @@ public static class AI_NetworkManagerGlobals
 public class AI_NetworkEditTools
 {
 	public int[]? NodeIndexTable;
+	public int NextWCIndex;
 }
 
 [LinkEntityToClass("ai_network")]
@@ -35,6 +36,8 @@ public class AI_NetworkManager : PointEntity
 		network.SetName("BigNet");
 		network.Spawn();
 		network.LoadNetworkGraph();
+
+		NodeEnt.NodeCount = 0;
 
 		network.SetThink(network.DelayedInit);
 		network.SetNextThink(gpGlobals.CurTime);
