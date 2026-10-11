@@ -1798,6 +1798,23 @@ public static class MathLib
 		AngleQuaternion(in angles, out q);
 	}
 
+	public static QAngle TransformAnglesToLocalSpace(in QAngle angles, in Matrix3x4 parentMatrix) {
+		MatrixInvert(parentMatrix, out Matrix3x4 worldToParent);
+		AngleMatrix(angles, out Matrix3x4 angToWorld);
+		ConcatTransforms(worldToParent, angToWorld, out Matrix3x4 localMatrix);
+
+		MatrixAngles(localMatrix, out QAngle outAngles);
+		return outAngles;
+	}
+
+	// transform a set of angles in the input space of parentMatrix to the output space
+	public static QAngle TransformAnglesToWorldSpace(in QAngle angles, in Matrix3x4 parentMatrix) {
+		AngleMatrix(angles, out Matrix3x4 angToParent);
+		ConcatTransforms(parentMatrix, angToParent, out Matrix3x4 angToWorld);
+		MatrixAngles(angToWorld, out QAngle outAngles);
+		return outAngles;
+	}
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static void MatrixAngles(in Matrix3x4 matrix, out QAngle angles, out Vector3 position) {
 		MatrixAngles(matrix, out angles);
