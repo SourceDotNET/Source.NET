@@ -1,5 +1,7 @@
 ﻿global using static Game.Server.ItemConstants;
 
+using Game.Shared;
+
 using Source.Common.Mathematics;
 using Source.Common.Physics;
 
@@ -43,6 +45,15 @@ public class Item : BaseAnimating, IPlayerPickupVPhysics
 	public Vector3 PhysGunLaunchVelocity(in Vector3 forward, float flMass) => ((IPlayerPickupVPhysics)pickup).PhysGunLaunchVelocity(forward, flMass);
 	public QAngle PreferredCarryAngles() => ((IPlayerPickupVPhysics)pickup).PreferredCarryAngles();
 	public bool ShouldPuntUseLaunchForces(PhysGunForce reason) => ((IPlayerPickupVPhysics)pickup).ShouldPuntUseLaunchForces(reason);
+
+	public override EntityCapabilities ObjectCaps() => base.ObjectCaps() | EntityCapabilities.ImpulseUse | EntityCapabilities.WCEditPosition;
+
+	public override void Use(BaseEntity? activator, BaseEntity? caller, UseType useType, float value) {
+		BasePlayer? player = ToBasePlayer(activator);
+
+		if (player != null)
+			player.PickupObject(this);
+	}
 
 	// todoOutputEvent OnPlayerTouch;
 	// todoOutputEvent OnCacheInteraction;
