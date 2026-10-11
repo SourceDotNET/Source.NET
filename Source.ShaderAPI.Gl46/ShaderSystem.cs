@@ -467,18 +467,42 @@ public class ShaderSystem : IShaderSystemInternal
 		}
 	}
 
+	private byte[]? LoadVcs(ReadOnlySpan<char> name) {
+		int ext = name.LastIndexOf("_gl");
+		if (ext < 0)
+			return null;
+
+		using IFileHandle? handle = FileSystem.Open($"shaders/fxc/{name[..ext]}.vcs", FileOpenOptions.Read, "game");
+		if (handle == null)
+			return null;
+
+		byte[] vcs = new byte[handle.Stream.Length];
+		handle.Stream.ReadExactly(vcs);
+		string? source = VcsTranslator.Load(vcs);
+		if (source == null) {
+			Warning($"WARNING: Failed to translate shader shaders/fxc/{name[..ext]}.vcs\n");
+			return null;
+		}
+		return Encoding.ASCII.GetBytes(source);
+	}
+
 	private unsafe uint CompileShader(int glType, ReadOnlySpan<char> name, ReadOnlySpan<char> defines, string typeName) {
 		using IFileHandle? handle = FileSystem.Open($"shaders/{name}", FileOpenOptions.Read, "game");
-		if (handle == null)
-			return 0;
-
-		Span<byte> source = stackalloc byte[(int)handle.Stream.Length];
-		handle.Stream.Read(source);
-
 		List<string> sourceFiles = [];
-		byte[]? built = BuildShaderSource(source, defines, new string(name), sourceFiles);
-		if (built == null)
-			return 0;
+		byte[]? built;
+		if (handle == null) {
+			if ((built = LoadVcs(name)) == null)
+				return 0;
+			sourceFiles.Add(new(name));
+		}
+		else {
+			Span<byte> source = stackalloc byte[(int)handle.Stream.Length];
+			handle.Stream.Read(source);
+
+			built = BuildShaderSource(source, defines, new string(name), sourceFiles);
+			if (built == null)
+				return 0;
+		}
 
 		uint pShader = glCreateShader(glType);
 		int len = built.Length;
