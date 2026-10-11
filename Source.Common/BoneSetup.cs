@@ -1648,9 +1648,125 @@ public ref struct BoneSetup
 		float flFrame = cycle * (anim.NumFrames - 1);
 
 		for (int i = 0; i < anim.NumMovements; i++) {
-			// todo
+			MStudioMovement pmove = anim.Movement(i);
+
+			if (pmove.EndFrame >= flFrame) {
+				float f = (flFrame - prevframe) / (pmove.EndFrame - prevframe);
+
+				float d = pmove.V0 * f + 0.5f * (pmove.V1 - pmove.V0) * f * f;
+
+				vecPos = vecPos + d * pmove.Vector;
+				vecAngle.Y = vecAngle.Y * (1 - f) + pmove.Angle * f;
+				if (iLoops != 0) {
+					MStudioMovement lastMove = anim.Movement(anim.NumMovements - 1);
+					vecPos = vecPos + iLoops * lastMove.Position;
+					vecAngle.Y = vecAngle.Y + iLoops * lastMove.Angle;
+				}
+				return true;
+			}
+			else {
+				prevframe = pmove.EndFrame;
+				vecPos = pmove.Position;
+				vecAngle.Y = pmove.Angle;
+			}
 		}
 
 		return false;
+	}
+
+	private static bool Studio_AnimVelocity(MStudioAnimDesc anim, float cycle, out Vector3 vecVelocity) {
+		float prevframe = 0;
+		vecVelocity = default;
+
+		float flFrame = cycle * (anim.NumFrames - 1);
+		flFrame = flFrame - (int)(flFrame / (anim.NumFrames - 1));
+
+		for (int i = 0; i < anim.NumMovements; i++) {
+			MStudioMovement pmove = anim.Movement(i);
+
+			if (pmove.EndFrame >= flFrame) {
+				float f = (flFrame - prevframe) / (pmove.EndFrame - prevframe);
+
+				float vel = pmove.V0 * (1 - f) + pmove.V1 * f;
+				vel = vel * anim.FPS / (pmove.EndFrame - prevframe);
+
+				vecVelocity = pmove.Vector * vel;
+				return true;
+			}
+			else
+				prevframe = pmove.EndFrame;
+		}
+		return false;
+	}
+
+	private static float Studio_FindAnimDistance(MStudioAnimDesc anim, float dist) {
+		float prevframe = 0;
+
+		if (dist <= 0)
+			return 0.0f;
+
+		for (int i = 0; i < anim.NumMovements; i++) {
+			MStudioMovement pmove = anim.Movement(i);
+
+			float move = (pmove.V0 + pmove.V1) * 0.5f;
+
+			if (move >= dist) {
+				if (MathLib.SolveQuadratic(0.5f * (pmove.V1 - pmove.V0), pmove.V0, -dist, out float root1, out _)) {
+					float cpf = 1.0f / (anim.NumFrames - 1);
+
+					return (prevframe + root1 * (pmove.EndFrame - prevframe)) * cpf;
+				}
+				return 0.0f;
+			}
+			else {
+				dist -= move;
+				prevframe = pmove.EndFrame;
+			}
+		}
+		return 1.0f;
+	}
+
+	public static bool Studio_SeqVelocity(StudioHdr studioHdr, int sequence, float cycle, ReadOnlySpan<float> poseParameter, out Vector3 vecVelocity) {
+		MStudioAnimDesc[] panim = ArrayPool<MStudioAnimDesc>.Shared.Rent(4);
+		Span<float> weight = stackalloc float[4];
+
+		MStudioSeqDesc seqdesc = studioHdr.Seqdesc(sequence);
+		Studio_SeqAnims(studioHdr, seqdesc, sequence, poseParameter, panim, weight);
+
+		vecVelocity = default;
+
+		bool found = false;
+
+		for (int i = 0; i < 4; i++) {
+			if (weight[i] != 0) {
+				if (Studio_AnimVelocity(panim[i], cycle, out Vector3 localVelocity)) {
+					vecVelocity = vecVelocity + localVelocity * weight[i];
+					found = true;
+				}
+			}
+		}
+
+		ArrayPool<MStudioAnimDesc>.Shared.Return(panim, true);
+		return found;
+	}
+
+	public static float Studio_FindSeqDistance(StudioHdr studioHdr, int sequence, ReadOnlySpan<float> poseParameter, float dist) {
+		MStudioAnimDesc[] panim = ArrayPool<MStudioAnimDesc>.Shared.Rent(4);
+		Span<float> weight = stackalloc float[4];
+
+		MStudioSeqDesc seqdesc = studioHdr.Seqdesc(sequence);
+		Studio_SeqAnims(studioHdr, seqdesc, sequence, poseParameter, panim, weight);
+
+		float cycle = 0;
+
+		for (int i = 0; i < 4; i++) {
+			if (weight[i] != 0) {
+				float localCycle = Studio_FindAnimDistance(panim[i], dist);
+				cycle = cycle + localCycle * weight[i];
+			}
+		}
+
+		ArrayPool<MStudioAnimDesc>.Shared.Return(panim, true);
+		return cycle;
 	}
 }
