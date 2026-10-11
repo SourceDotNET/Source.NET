@@ -674,6 +674,32 @@ public static class MathLib
 	public static float Lerp(float f1, float f2, float i1, float i2, float x) {
 		return f1 + (f2 - f1) * (x - i1) / (i2 - i1);
 	}
+	public static bool SolveQuadratic(float a, float b, float c, out float root1, out float root2) {
+		if (a == 0) {
+			if (b != 0) {
+				root1 = root2 = -c / b;
+				return true;
+			}
+			if (c == 0) {
+				root1 = root2 = 0;
+				return true;
+			}
+			root1 = root2 = 0;
+			return false;
+		}
+
+		float tmp = b * b - 4.0f * a * c;
+
+		if (tmp < 0) {
+			root1 = root2 = 0;
+			return false;
+		}
+
+		tmp = MathF.Sqrt(tmp);
+		root1 = (-b + tmp) / (2.0f * a);
+		root2 = (-b - tmp) / (2.0f * a);
+		return true;
+	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static double Fmod(double x, double y) {
 		return x - y * Math.Truncate(x / y);
@@ -2143,6 +2169,15 @@ public static class MathLib
 		return random;
 	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static float Vector2DNormalize(ref Vector2 v) {
+		float l = v.Length();
+		if (l != 0.0f)
+			v /= l;
+		else
+			v.X = v.Y = 0.0f;
+		return l;
+	}
+
 	public static float VectorNormalize(ref Vector3 vec) {
 		float radius = MathF.Sqrt(vec.X * vec.X + vec.Y * vec.Y + vec.Z * vec.Z);
 

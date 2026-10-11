@@ -9,6 +9,31 @@ namespace Source.Common;
 
 public static class CollisionUtils
 {
+	public static bool IntersectInfiniteRayWithSphere(in Vector3 rayOrigin, in Vector3 rayDelta, in Vector3 sphereCenter, float radius, out float t1, out float t2) {
+		Vector3 sphereToRay = rayOrigin - sphereCenter;
+
+		float a = Vector3.Dot(rayDelta, rayDelta);
+
+		if (a == 0.0f) {
+			t1 = t2 = 0.0f;
+			return sphereToRay.LengthSquared() <= radius * radius;
+		}
+
+		float b = 2 * Vector3.Dot(sphereToRay, rayDelta);
+		float c = Vector3.Dot(sphereToRay, sphereToRay) - radius * radius;
+		float discrim = b * b - 4 * a * c;
+		if (discrim < 0.0f) {
+			t1 = t2 = 0.0f;
+			return false;
+		}
+
+		discrim = MathF.Sqrt(discrim);
+		float oo2a = 0.5f / a;
+		t1 = (-b - discrim) * oo2a;
+		t2 = (-b + discrim) * oo2a;
+		return true;
+	}
+
 	public static bool IsSphereIntersectingCone(in Vector3 sphereCenter, float sphereRadius, in Vector3 coneOrigin, in Vector3 coneNormal, float coneSine, float coneCosine) {
 		Vector3 backCenter = coneOrigin - (sphereRadius / coneSine) * coneNormal;
 		Vector3 delta = sphereCenter - backCenter;
