@@ -60,6 +60,13 @@ public enum AI_DebugFlags
 	StepAI = 0x00000002
 }
 
+public struct UnreachableEnt
+{
+	public EHANDLE UnreachableEntity;
+	public TimeUnit_t ExpireTime;
+	public Vector3 LocationWhenUnreachable;
+}
+
 public static class AI_BaseNPCGlobals
 {
 	// TODO: Enum these
@@ -105,6 +112,8 @@ public static class AI_BaseNPCGlobals
 	public static readonly ConVar g_IgnorePlayers = new("ai_ignoreplayers", "0", FCvar.Notify);
 	public static readonly ConVar ai_LOS_mode = new("ai_LOS_mode", "0", FCvar.Replicated);
 	public static readonly ConVar ai_auto_contact_solver = new("ai_auto_contact_solver", "1");
+	public static readonly ConVar ai_reaction_delay_idle = new("ai_reaction_delay_idle", "0.3");
+	public static readonly ConVar ai_reaction_delay_alert = new("ai_reaction_delay_alert", "0.1");
 
 	public static bool ShouldUseEfficiency() => ai_use_think_optimizations.GetBool() && ai_use_efficiency.GetBool();
 	public static bool ShouldUseFrameThinkLimits() => ai_use_think_optimizations.GetBool() && ai_use_frame_think_limits.GetBool();
@@ -308,11 +317,17 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		DEFINE.KEYFIELD(nameof(SpawnEquipment), FieldType.String, "additionalequipment"),
 		DEFINE.KEYFIELD(nameof(HintGroup), FieldType.String, "hintgroup"),
 		DEFINE.KEYFIELD(nameof(HintGroupNavLimiting), FieldType.Boolean, "hintlimiting"),
+		DEFINE.KEYFIELD(nameof(IgnoreUnseenEnemies), FieldType.Boolean, "ignoreunseenenemies"),
+		DEFINE.KEYFIELD(nameof(EnemyFilterName), FieldType.String, "enemyfilter"),
 
 		DEFINE.OUTPUT(nameof(OnHearWorld), "OnHearWorld", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnHearPlayer), "OnHearPlayer", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnHearCombat), "OnHearCombat", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnFoundEnemy), "OnFoundEnemy", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnLostEnemyLOS), "OnLostEnemyLOS", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnLostEnemy), "OnLostEnemy", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnFoundPlayer), "OnFoundPlayer", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnLostPlayerLOS), "OnLostPlayerLOS", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnLostPlayer), "OnLostPlayer", eventFuncs),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
@@ -464,8 +479,23 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public OutputEvent OnHearCombat = new();
 	public OutputEvent OnLostEnemy = new();
 	public OutputEvent OnLostPlayer = new();
+	public OutputEHANDLE OnFoundEnemy = new();
+	public OutputEvent OnLostEnemyLOS = new();
+	public OutputEHANDLE OnFoundPlayer = new();
+	public OutputEvent OnLostPlayerLOS = new();
 
+	public readonly AI_Enemies Enemies = new();
+	public bool IgnoreUnseenEnemies;
+	public TimeUnit_t AcceptableTimeSeenEnemy;
+	public readonly SimpleSimTimer FailChooseEnemyTimer = new();
+	public readonly SimpleSimTimer UpdateEnemyPosTimer = new();
+	public bool SkippedChooseEnemy;
 	public WorldSoundInstance LockedBestSound = new();
+	public Handle<BaseFilter> EnemyFilter = new();
+	public string? EnemyFilterName;
+	public EHANDLE EnemyOccluder = new();
+	public SquadSlot MySquadSlot = SquadSlot.None;
+	public readonly List<UnreachableEnt> UnreachableEnts = [];
 
 	static readonly BASEPTR CallNPCThinkPtr = static self => ((AI_BaseNPC)self).CallNPCThink();
 
@@ -2720,7 +2750,41 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		SetPoseParameter(PoseAim_Yaw, newYaw);
 	}
 
-	public Vector3 GetEnemyLKP() => throw new NotImplementedException();
+	public AI_Enemies GetEnemies() => Enemies;
+
+	public Vector3 GetEnemyLKP() => GetEnemies().LastKnownPosition(GetEnemy());
+	public TimeUnit_t GetEnemyLastTimeSeen() => GetEnemies().LastTimeSeen(GetEnemy());
+	public void MarkEnemyAsEluded() => GetEnemies().MarkAsEluded(GetEnemy());
+	public void ClearEnemyMemory() => GetEnemies().ClearMemory(GetEnemy());
+	public bool EnemyHasEludedMe() => GetEnemies().HasEludedMe(GetEnemy());
+
+	public virtual float GetReactionDelay(BaseEntity? enemy) {
+		return (NPCState == NPCState.Alert || NPCState == NPCState.Combat) ?
+					ai_reaction_delay_alert.GetFloat() :
+					ai_reaction_delay_idle.GetFloat();
+	}
+
+	public bool UpdateEnemyMemory(BaseEntity? enemy, in Vector3 position, BaseEntity? informer = null) {
+		bool firstHand = (informer == null || informer == this);
+
+		if (GetEnemies() != null) {
+			if (GetEnemies().HasEludedMe(enemy))
+				FoundEnemySound();
+			float reactionDelay = (informer == null || informer == this) ? GetReactionDelay(enemy) : 0.0f;
+			bool result = GetEnemies().UpdateMemory(GetNavigator()!.GetNetwork(), enemy, position, reactionDelay, firstHand);
+
+			if (!firstHand && enemy != null && result && GetState() == NPCState.Idle)
+				ForceDecisionThink();
+
+			if (firstHand && enemy != null && Squad != null)
+				Squad.UpdateEnemyMemory(this, enemy, position);
+			return result;
+		}
+		return true;
+	}
+
+	public void SetEnemyOccluder(BaseEntity? blocker) => EnemyOccluder.Set(blocker);
+	public BaseEntity? GetEnemyOccluder() => EnemyOccluder.Get();
 
 	public virtual Vector3 GetShootEnemyDir(in Vector3 shootOrigin, bool noisy = true) {
 		BaseEntity? enemy = GetEnemy();
@@ -5048,6 +5112,9 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 				PerformSensing();
 
+				GetEnemies().RefreshMemories();
+				ChooseEnemy();
+
 				if (Weapon_IsBetterAvailable())
 					SetCondition((int)SCOND_t.COND_BETTER_WEAPON_AVAILABLE);
 
@@ -5072,15 +5139,566 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 					SetEnemy(null);
 			}
 
+			if (GetTarget() != null)
+				CheckTarget(GetTarget()!);
+
 			CheckAmmo();
 
 			CheckFlinches();
+
+			CheckSquad();
 		}
 		else
 			ClearCondition((int)SCOND_t.COND_IN_PVS);
 	}
 
-	public virtual void GatherEnemyConditions(BaseEntity enemy) => throw new NotImplementedException();
+	public virtual void GatherEnemyConditions(BaseEntity enemy) {
+		ClearCondition((int)SCOND_t.COND_ENEMY_FACING_ME);
+		ClearCondition((int)SCOND_t.COND_BEHIND_ENEMY);
+
+		if (HasCondition((int)SCOND_t.COND_NEW_ENEMY) || GetSenses()!.GetTimeLastUpdate(GetEnemy()) == gpGlobals.CurTime) {
+			ClearCondition((int)SCOND_t.COND_HAVE_ENEMY_LOS);
+			ClearCondition((int)SCOND_t.COND_ENEMY_OCCLUDED);
+
+			BaseEntity? blocker = null;
+			SetEnemyOccluder(null);
+
+			bool sensesDidSee = GetSenses()!.DidSeeEntity(enemy);
+
+			if (!sensesDidSee && ((EnemyDistance(enemy) >= GetSenses()!.GetDistLook()) || !FVisible(enemy, Mask.BlockLOS, out blocker))) {
+				SetEnemyOccluder(blocker);
+				SetCondition((int)SCOND_t.COND_ENEMY_OCCLUDED);
+				ClearCondition((int)SCOND_t.COND_SEE_ENEMY);
+
+				if (HasMemory(AI_MemoryFlags.HadLOS)) {
+					if (GetEnemy()!.IsPlayer())
+						OnLostPlayerLOS.FireOutput(GetEnemy(), this);
+					OnLostEnemyLOS.FireOutput(GetEnemy(), this);
+				}
+				Forget(AI_MemoryFlags.HadLOS);
+			}
+			else {
+				SetCondition((int)SCOND_t.COND_HAVE_ENEMY_LOS);
+
+				if (sensesDidSee)
+					SetCondition((int)SCOND_t.COND_SEE_ENEMY);
+				else
+					ClearCondition((int)SCOND_t.COND_SEE_ENEMY);
+
+				if (!HasMemory(AI_MemoryFlags.HadLOS)) {
+					EHANDLE hEnemy = new();
+					hEnemy.Set(GetEnemy());
+
+					if (GetEnemy()!.IsPlayer()) {
+						OnFoundPlayer.Set(hEnemy, this, this);
+						OnFoundEnemy.Set(hEnemy, this, this);
+					}
+					else
+						OnFoundEnemy.Set(hEnemy, this, this);
+				}
+				Remember(AI_MemoryFlags.HadLOS);
+			}
+		}
+
+		if (!enemy.IsAlive()) {
+			SetCondition((int)SCOND_t.COND_ENEMY_DEAD);
+			ClearCondition((int)SCOND_t.COND_SEE_ENEMY);
+			ClearCondition((int)SCOND_t.COND_ENEMY_OCCLUDED);
+			return;
+		}
+
+		float distToEnemy = EnemyDistance(enemy);
+
+		if (HasCondition((int)SCOND_t.COND_SEE_ENEMY)) {
+			if (enemy.GetSmoothedVelocity() != vec3_origin) {
+				Vector3 trailPos = enemy.GetAbsOrigin() - enemy.GetSmoothedVelocity() * random.RandomFloat(-0.05f, 0);
+				UpdateEnemyMemory(enemy, trailPos);
+			}
+			else
+				UpdateEnemyMemory(enemy, enemy.GetAbsOrigin());
+
+			if (enemy is BaseCombatCharacter enemyBCC && enemyBCC.FInViewCone(this)) {
+				SetCondition((int)SCOND_t.COND_ENEMY_FACING_ME);
+				ClearCondition((int)SCOND_t.COND_BEHIND_ENEMY);
+			}
+			else {
+				ClearCondition((int)SCOND_t.COND_ENEMY_FACING_ME);
+				SetCondition((int)SCOND_t.COND_BEHIND_ENEMY);
+			}
+		}
+		else if ((!HasCondition((int)SCOND_t.COND_ENEMY_OCCLUDED) && !HasCondition((int)SCOND_t.COND_SEE_ENEMY)) && (distToEnemy <= 256))
+			UpdateEnemyMemory(enemy, enemy.GetAbsOrigin(), enemy);
+
+		float tooFar = DistTooFar;
+		if (GetActiveWeapon() != null && HasCondition((int)SCOND_t.COND_SEE_ENEMY))
+			tooFar = Math.Max(DistTooFar, GetActiveWeapon()!.MaxRange1);
+
+		if (distToEnemy >= tooFar)
+			SetCondition((int)SCOND_t.COND_ENEMY_TOO_FAR);
+		else
+			ClearCondition((int)SCOND_t.COND_ENEMY_TOO_FAR);
+
+		if (FCanCheckAttacks())
+			GatherAttackConditions(GetEnemy()!, distToEnemy);
+		else
+			ClearAttackConditions();
+
+		UpdateEnemyPos();
+
+		UpdateTargetPos();
+
+		if (GetNavigator()!.IsOnNetwork()) {
+			if (IsUnreachable(GetEnemy()))
+				SetCondition((int)SCOND_t.COND_ENEMY_UNREACHABLE);
+		}
+
+		if (gpGlobals.CurTime - GetEnemyLastTimeSeen() > 8) {
+			Vector3 enemyLKP = GetEnemyLKP();
+			if (((enemyLKP - GetAbsOrigin()).AsVector2D().Length() < 48) &&
+				!HasCondition((int)SCOND_t.COND_SEE_ENEMY)) {
+				MarkEnemyAsEluded();
+			}
+
+			if (!HasCondition((int)SCOND_t.COND_SEE_ENEMY) && HasCondition((int)SCOND_t.COND_ENEMY_UNREACHABLE)) {
+				if (!FVisible(enemyLKP))
+					MarkEnemyAsEluded();
+			}
+		}
+	}
+
+	public virtual void GatherAttackConditions(BaseEntity target, float dist) => throw new NotImplementedException();
+
+	public virtual bool FCanCheckAttacks() {
+		if (GetNavType() == Navigation.Climb || GetNavType() == Navigation.Jump)
+			return false;
+
+		if (HasCondition((int)SCOND_t.COND_SEE_ENEMY) && !HasCondition((int)SCOND_t.COND_ENEMY_TOO_FAR))
+			return true;
+
+		return false;
+	}
+
+	public virtual float GetGoalRepathTolerance(BaseEntity goalEnt, NavGoalType type, in Vector3 curGoal, in Vector3 curTargetPos) {
+		float distToGoal = (GetAbsOrigin() - curTargetPos).Length() - GetNavigator()!.GetArrivalDistance();
+		float distMoved1Sec = GetSmoothedVelocity().Length();
+		float result = 120;
+
+		if (distMoved1Sec > 0.0) {
+			float t = distToGoal / distMoved1Sec;
+
+			result = Math.Clamp(120.0f * t, 0.0f, 120.0f);
+		}
+
+		if (!goalEnt.IsPlayer())
+			result *= 1.20f;
+
+		return result;
+	}
+
+	public void UpdateEnemyPos() {
+		if (!GetNavigator()!.IsInterruptable())
+			return;
+
+		if (AnyUpdateEnemyPosTimer.Expired() && UpdateEnemyPosTimer.Expired()) {
+			if (GetNavigator()!.GetGoalType() == NavGoalType.Enemy) {
+				if (Enemy.Get() != GetNavigator()!.GetGoalTarget())
+					GetNavigator()!.SetGoalTarget(Enemy.Get(), vec3_origin);
+				else {
+					Vector3 enemyLKP = GetEnemyLKP();
+					TranslateNavGoal(GetEnemy(), ref enemyLKP);
+					float tolerance = GetGoalRepathTolerance(GetEnemy()!, NavGoalType.Enemy, GetNavigator()!.GetGoalPos(), enemyLKP);
+					if ((GetNavigator()!.GetGoalPos() - enemyLKP).Length() > tolerance) {
+						AnyUpdateEnemyPosTimer.Set(0.1f);
+						if (!GetNavigator()!.RefindPathToGoal(false))
+							TaskFail(AI_TaskFailureCode.NoRoute);
+					}
+				}
+			}
+		}
+	}
+
+	public void UpdateTargetPos() {
+		if (!GetNavigator()!.IsInterruptable())
+			return;
+
+		if (GetNavigator()!.GetGoalType() == NavGoalType.TargetEnt) {
+			if (TargetEnt.Get() != GetNavigator()!.GetGoalTarget())
+				GetNavigator()!.SetGoalTarget(TargetEnt.Get(), vec3_origin);
+			else if ((GetNavigator()!.GetGoalFlags() & AI_NavGoalFlags.UpdateTargetPos) != 0) {
+				if (GetTarget() == null || (GetNavigator()!.GetGoalPos() - GetTarget()!.GetAbsOrigin()).Length() > GetGoalRepathTolerance(GetTarget()!, NavGoalType.TargetEnt, GetNavigator()!.GetGoalPos(), GetTarget()!.GetAbsOrigin())) {
+					if (!GetNavigator()!.RefindPathToGoal(false))
+						TaskFail(AI_TaskFailureCode.NoRoute);
+				}
+			}
+		}
+	}
+
+	public void CheckTarget(BaseEntity target) {
+		ClearCondition((int)SCOND_t.COND_HAVE_TARGET_LOS);
+		ClearCondition((int)SCOND_t.COND_TARGET_OCCLUDED);
+
+		if ((EnemyDistance(target) >= GetSenses()!.GetDistLook()) || !FVisible(target))
+			SetCondition((int)SCOND_t.COND_TARGET_OCCLUDED);
+		else
+			SetCondition((int)SCOND_t.COND_HAVE_TARGET_LOS);
+
+		UpdateTargetPos();
+	}
+
+	public void RememberUnreachable(BaseEntity entity, float duration = -1) {
+		if (entity == GetEnemy())
+			ForceChooseNewEnemy();
+
+		float NPC_UNREACHABLE_TIMEOUT = (duration > 0.0) ? duration : 3;
+		for (int i = UnreachableEnts.Count - 1; i >= 0; i--) {
+			if (entity == UnreachableEnts[i].UnreachableEntity.Get()) {
+				UnreachableEnt existing = UnreachableEnts[i];
+				existing.ExpireTime = gpGlobals.CurTime + NPC_UNREACHABLE_TIMEOUT;
+				existing.LocationWhenUnreachable = entity.GetAbsOrigin();
+				UnreachableEnts[i] = existing;
+				return;
+			}
+		}
+
+		UnreachableEnt added = new() {
+			ExpireTime = gpGlobals.CurTime + NPC_UNREACHABLE_TIMEOUT,
+			LocationWhenUnreachable = entity.GetAbsOrigin()
+		};
+		added.UnreachableEntity.Set(entity);
+		UnreachableEnts.Add(added);
+	}
+
+	public bool IsUnreachable(BaseEntity? entity) {
+		float UNREACHABLE_DIST_TOLERANCE_SQ = 120 * 120;
+
+		for (int i = UnreachableEnts.Count - 1; i >= 0; i--) {
+			if (UnreachableEnts[i].UnreachableEntity.Get() == null)
+				FastRemoveUnreachable(i);
+			else if (entity == UnreachableEnts[i].UnreachableEntity.Get()) {
+				if (gpGlobals.CurTime > UnreachableEnts[i].ExpireTime ||
+					  Vector3.DistanceSquared(entity.GetAbsOrigin(), UnreachableEnts[i].LocationWhenUnreachable) > UNREACHABLE_DIST_TOLERANCE_SQ) {
+					FastRemoveUnreachable(i);
+					return false;
+				}
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void FastRemoveUnreachable(int i) {
+		UnreachableEnts[i] = UnreachableEnts[^1];
+		UnreachableEnts.RemoveAt(UnreachableEnts.Count - 1);
+	}
+
+	public void ForceChooseNewEnemy() => EnemiesSerialNumber = -1;
+
+	public bool DidChooseEnemy() => !SkippedChooseEnemy;
+
+	public TimeUnit_t GetAcceptableTimeSeenEnemy() => AcceptableTimeSeenEnemy;
+
+	public virtual float EnemyDistTolerance() => 0;
+
+	public virtual bool ShouldChooseNewEnemy() {
+		BaseEntity? enemy = GetEnemy();
+		if (enemy != null) {
+			if (GetEnemies().GetSerialNumber() != EnemiesSerialNumber)
+				return true;
+
+			EnemiesSerialNumber = GetEnemies().GetSerialNumber();
+
+			if (EnemyHasEludedMe() || (IRelationType(enemy) != Disposition.HT && IRelationType(enemy) != Disposition.FR) || !IsValidEnemy(enemy))
+				return true;
+			if (HasCondition((int)SCOND_t.COND_SEE_HATE) || HasCondition((int)SCOND_t.COND_SEE_DISLIKE) || HasCondition((int)SCOND_t.COND_SEE_NEMESIS) || HasCondition((int)SCOND_t.COND_SEE_FEAR))
+				return true;
+			if (!enemy.IsAlive()) {
+				if (GiveUpOnDeadEnemyTimer.IsRunning()) {
+					if (GiveUpOnDeadEnemyTimer.Expired())
+						return true;
+				}
+				else
+					GiveUpOnDeadEnemyTimer.Start();
+			}
+
+			AI_EnemyInfo? info = GetEnemies().Find(enemy);
+
+			if (FailChooseEnemyTimer.Expired()) {
+				FailChooseEnemyTimer.Set(1.5f);
+				if (HasCondition((int)SCOND_t.COND_TASK_FAILED) ||
+					 (info != null && (info.TimeAtFirstHand == AI_INVALID_TIME || gpGlobals.CurTime - info.TimeLastSeen > 10))) {
+					return true;
+				}
+			}
+
+			if (info != null && info.TimeValidEnemy < gpGlobals.CurTime)
+				return false;
+		}
+
+		EnemiesSerialNumber = GetEnemies().GetSerialNumber();
+
+		return true;
+	}
+
+	public bool ChooseEnemy() {
+		BaseEntity? initialEnemy = GetEnemy();
+		BaseEntity? chosenEnemy = initialEnemy;
+
+		bool hadEnemy = HasMemory(AI_MemoryFlags.HadEnemy | AI_MemoryFlags.HadPlayer);
+		bool enemyWasPlayer = HasMemory(AI_MemoryFlags.HadPlayer);
+		bool enemyWentNull = (hadEnemy && initialEnemy == null);
+		bool enemyEluded = (enemyWentNull || (initialEnemy != null && GetEnemies().HasEludedMe(initialEnemy)));
+
+		bool haveCondNewEnemy;
+		bool haveCondLostEnemy;
+
+		if (!ScheduleState.ScheduleWasInterrupted && GetCurSchedule() != null && !FScheduleDone()) {
+			Assert(InterruptFromCondition((int)SCOND_t.COND_NEW_ENEMY) == (int)SCOND_t.COND_NEW_ENEMY && InterruptFromCondition((int)SCOND_t.COND_LOST_ENEMY) == (int)SCOND_t.COND_LOST_ENEMY);
+			haveCondNewEnemy = GetCurSchedule()!.HasInterrupt((int)SCOND_t.COND_NEW_ENEMY);
+			haveCondLostEnemy = GetCurSchedule()!.HasInterrupt((int)SCOND_t.COND_LOST_ENEMY);
+
+			if (!haveCondNewEnemy)
+				haveCondNewEnemy = IsCustomInterruptConditionSet((int)SCOND_t.COND_NEW_ENEMY);
+			if (!haveCondLostEnemy)
+				haveCondLostEnemy = IsCustomInterruptConditionSet((int)SCOND_t.COND_LOST_ENEMY);
+		}
+		else {
+			haveCondNewEnemy = true;
+			haveCondLostEnemy = true;
+		}
+
+		if (!enemyWentNull) {
+			if (!haveCondNewEnemy && !(haveCondLostEnemy && enemyEluded)) {
+				SkippedChooseEnemy = true;
+
+				return (chosenEnemy != null);
+			}
+		}
+		else if (!haveCondNewEnemy && !haveCondLostEnemy && GetCurSchedule() != null)
+			DevMsg(2, $"WARNING: AI enemy went NULL but schedule ({GetCurSchedule()!.GetName()}) is not interested\n");
+
+		SkippedChooseEnemy = false;
+
+		if (ShouldChooseNewEnemy())
+			chosenEnemy = BestEnemy();
+
+		bool changingEnemy = (chosenEnemy != initialEnemy);
+
+		if (changingEnemy || enemyWentNull) {
+			Forget(AI_MemoryFlags.HadEnemy | AI_MemoryFlags.HadPlayer);
+
+			if (initialEnemy != null && !initialEnemy.IsAlive())
+				SetCondition((int)SCOND_t.COND_ENEMY_DEAD);
+
+			SetEnemy(chosenEnemy);
+
+			if (hadEnemy) {
+				VacateStrategySlot();
+
+				Forget(AI_MemoryFlags.HadLOS);
+			}
+
+			if (chosenEnemy == null) {
+				if (!HasCondition((int)SCOND_t.COND_ENEMY_DEAD))
+					SetCondition((int)SCOND_t.COND_ENEMY_WENT_NULL);
+
+				if (enemyEluded) {
+					SetCondition((int)SCOND_t.COND_LOST_ENEMY);
+					LostEnemySound();
+				}
+
+				if (enemyWasPlayer)
+					OnLostPlayer.FireOutput(initialEnemy, this);
+				OnLostEnemy.FireOutput(initialEnemy, this);
+			}
+			else
+				Remember((chosenEnemy.IsPlayer()) ? AI_MemoryFlags.HadPlayer : AI_MemoryFlags.HadEnemy);
+		}
+
+		return (chosenEnemy != null);
+	}
+
+	public virtual BaseEntity? BestEnemy() {
+		BaseEntity? bestEnemy = null;
+		int bestDistSq = (int)(MAX_COORD_RANGE * MAX_COORD_RANGE);
+		int bestPriority = -1000;
+		bool bestUnreachable = true;
+		ThreeState bestSeen = ThreeState.None;
+		ThreeState bestVisible = ThreeState.None;
+		int distSq;
+		bool unreachable = false;
+
+		for (AI_EnemyInfo? eMemory = GetEnemies().GetFirst(out int iter); eMemory != null; eMemory = GetEnemies().GetNext(ref iter)) {
+			BaseEntity? enemy = eMemory.Enemy.Get();
+
+			if (enemy == null || !enemy.IsAlive())
+				continue;
+
+			if (g_IgnorePlayers.GetBool() && enemy.IsPlayer())
+				continue;
+
+			if ((enemy.GetFlags() & EntityFlags.NoTarget) != 0)
+				continue;
+
+			if (IgnoreUnseenEnemies) {
+				const float TIME_CONSIDER_ENEMY_UNSEEN = .4f;
+				if (eMemory.TimeLastSeen < gpGlobals.CurTime - TIME_CONSIDER_ENEMY_UNSEEN)
+					continue;
+			}
+
+			Disposition relation = IRelationType(enemy);
+			if (relation != Disposition.HT && relation != Disposition.FR)
+				continue;
+
+			if (AcceptableTimeSeenEnemy > 0.0 && eMemory.TimeLastSeen < AcceptableTimeSeenEnemy)
+				continue;
+
+			if (eMemory.TimeValidEnemy > gpGlobals.CurTime)
+				continue;
+
+			if (eMemory.EludedMe)
+				continue;
+
+			if (relation == Disposition.FR && !eMemory.Unforgettable && eMemory.TimeFirstSeen == AI_INVALID_TIME)
+				continue;
+
+			if (!IsValidEnemy(enemy))
+				continue;
+
+			unreachable = IsUnreachable(enemy);
+
+			if (!bestUnreachable && unreachable)
+				continue;
+
+			if (bestUnreachable && !unreachable) {
+				bestPriority = IRelationPriority(enemy);
+				bestDistSq = (int)(enemy.GetAbsOrigin() - GetAbsOrigin()).LengthSquared();
+				bestEnemy = enemy;
+				bestUnreachable = unreachable;
+				bestSeen = ThreeState.None;
+				bestVisible = ThreeState.None;
+			}
+			else if (IRelationPriority(enemy) > bestPriority) {
+				bestPriority = IRelationPriority(enemy);
+				bestDistSq = (int)(enemy.GetAbsOrigin() - GetAbsOrigin()).LengthSquared();
+				bestEnemy = enemy;
+				bestUnreachable = unreachable;
+				bestSeen = ThreeState.None;
+				bestVisible = ThreeState.None;
+			}
+			else if (IRelationPriority(enemy) == bestPriority) {
+				distSq = (int)(enemy.GetAbsOrigin() - GetAbsOrigin()).LengthSquared();
+
+				bool acceptCurrent = false;
+				bool closer = ((bestDistSq - distSq) > EnemyDistTolerance());
+				ThreeState curSeen = ThreeState.None;
+				ThreeState curVisible = ThreeState.None;
+
+				if (!closer) {
+					if (bestSeen == ThreeState.True || bestVisible == ThreeState.True)
+						continue;
+				}
+
+				if (closer) {
+					if (bestSeen == ThreeState.False && bestVisible == ThreeState.False)
+						acceptCurrent = true;
+				}
+
+				if (!acceptCurrent) {
+					if (closer) {
+						curSeen = (GetSenses()!.DidSeeEntity(enemy)) ? ThreeState.True : ThreeState.False;
+
+						acceptCurrent = (curSeen == ThreeState.True);
+					}
+				}
+
+				if (!acceptCurrent) {
+					if (!closer) {
+						if (bestSeen == ThreeState.None)
+							bestSeen = (GetSenses()!.DidSeeEntity(bestEnemy)) ? ThreeState.True : ThreeState.False;
+
+						if (bestSeen == ThreeState.True)
+							continue;
+					}
+
+					if (closer && bestVisible == ThreeState.None) {
+						curVisible = ((EnemyDistance(enemy) < GetSenses()!.GetDistLook()) && FVisible(enemy)) ? ThreeState.True : ThreeState.False;
+
+						acceptCurrent = (curVisible == ThreeState.True);
+					}
+
+					if (!acceptCurrent) {
+						if (bestSeen == ThreeState.None)
+							bestSeen = (GetSenses()!.DidSeeEntity(bestEnemy)) ? ThreeState.True : ThreeState.False;
+
+						if (bestVisible == ThreeState.None)
+							bestVisible = ((EnemyDistance(bestEnemy!) < GetSenses()!.GetDistLook()) && FVisible(bestEnemy!)) ? ThreeState.True : ThreeState.False;
+
+						if (curSeen == ThreeState.None)
+							curSeen = (GetSenses()!.DidSeeEntity(enemy)) ? ThreeState.True : ThreeState.False;
+
+						if (curVisible == ThreeState.None)
+							curVisible = ((EnemyDistance(enemy) < GetSenses()!.GetDistLook()) && FVisible(enemy)) ? ThreeState.True : ThreeState.False;
+
+						bool bestSeenOrVisible = (bestSeen == ThreeState.True || bestVisible == ThreeState.True);
+						bool curSeenOrVisible = (curSeen == ThreeState.True || curVisible == ThreeState.True);
+
+						if (!closer) {
+							if (bestSeenOrVisible)
+								continue;
+							else if (!curSeenOrVisible)
+								continue;
+						}
+						else {
+							if (!curSeenOrVisible && bestSeenOrVisible)
+								continue;
+						}
+					}
+				}
+
+				bestSeen = curSeen;
+				bestVisible = curVisible;
+				bestDistSq = distSq;
+				bestPriority = IRelationPriority(enemy);
+				bestEnemy = enemy;
+				bestUnreachable = unreachable;
+			}
+		}
+
+		return bestEnemy;
+	}
+
+	public bool IsInSquad() => Squad != null;
+	public AI_Squad? GetSquad() => Squad;
+
+	public void CheckSquad() {
+		if (!IsInSquad())
+			return;
+
+		if (!GetSquad()!.IsLeader(this))
+			return;
+
+		if (VPhysicsGetObject() != null && (VPhysicsGetObject()!.GetGameFlags() & PhysicsFlags.PlayerHeld) != 0)
+			return;
+
+		AI_BaseNPC? squadmate = Squad!.GetFirstMember(out int iter);
+		while (squadmate != null) {
+			if (IRelationType(squadmate) < Disposition.LI) {
+				bool warn = true;
+
+				if (squadmate.VPhysicsGetObject() != null) {
+					if ((squadmate.VPhysicsGetObject()!.GetGameFlags() & PhysicsFlags.PlayerHeld) != 0)
+						warn = false;
+				}
+
+				if (warn) {
+					Warning($"ERROR: Squad '{GetSquad()!.GetName()}' has enemies in it!\n");
+					Warning($"{GetDebugName()} doesn't like {squadmate.GetDebugName()}\n\n");
+				}
+			}
+
+			squadmate = Squad.GetNextMember(ref iter);
+		}
+	}
 
 	public virtual void CheckAmmo() { }
 
@@ -5284,7 +5902,26 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		SetEfficiency(AI_Efficiency.Normal);
 	}
 
-	public virtual bool IsValidEnemy(BaseEntity enemy) => throw new NotImplementedException();
+	public override void Activate() {
+		base.Activate();
+
+		if (EnemyFilterName != null) {
+			BaseEntity? filter = gEntList.FindEntityByName(null, EnemyFilterName);
+			if (filter != null)
+				EnemyFilter.Set(filter as BaseFilter);
+		}
+	}
+
+	public virtual bool IsValidEnemy(BaseEntity enemy) {
+		AI_BaseNPC? enemyNPC = enemy.MyNPCPointer();
+		if (enemyNPC != null && enemyNPC.CanBeAnEnemyOf(this) == false)
+			return false;
+
+		if (EnemyFilter.Get() != null && EnemyFilter.Get()!.PassesFilter(this, enemy) == false)
+			return false;
+
+		return true;
+	}
 
 	public virtual bool CanBeAnEnemyOf(BaseEntity enemy) {
 		if (GetSleepState() > AI_SleepState.WaitingForThreat)
@@ -5410,7 +6047,12 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return 0.0f;
 	}
 
-	public void VacateStrategySlot() => throw new NotImplementedException();
+	public void VacateStrategySlot() {
+		if (Squad != null) {
+			Squad.VacateStrategySlot(GetEnemy(), MySquadSlot);
+			MySquadSlot = SquadSlot.None;
+		}
+	}
 
 	public virtual bool CreateVPhysics() {
 		if (IsAlive() && VPhysicsGetObject() == null)

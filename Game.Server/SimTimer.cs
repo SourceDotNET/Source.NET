@@ -70,17 +70,19 @@ public class SimTimer : SimpleSimTimer
 public class StopwatchBase : SimpleSimTimer
 {
 	public StopwatchBase() {
-		IsRunning = false;
+		IsRunningValue = false;
 	}
 
-	public void Stop() => IsRunning = false;
+	public bool IsRunning() => IsRunningValue;
 
-	public new bool Expired() => IsRunning && base.Expired();
+	public void Stop() => IsRunningValue = false;
 
-	protected bool IsRunning;
+	public new bool Expired() => IsRunningValue && base.Expired();
+
+	protected bool IsRunningValue;
 
 	public static readonly new DataMap DataDesc = new(typeof(StopwatchBase), SimpleSimTimer.DataDesc, [
-		DEFINE<StopwatchBase>.FIELD(nameof(IsRunning), FieldType.Boolean),
+		DEFINE<StopwatchBase>.FIELD(nameof(IsRunningValue), FieldType.Boolean),
 	]);
 }
 
@@ -94,6 +96,16 @@ public class RandStopwatch : StopwatchBase
 		MinInterval = minInterval;
 		MaxInterval = maxInterval;
 	}
+
+	public void Start(float minOverride, float maxOverride = 0.0f) {
+		IsRunningValue = true;
+		if (maxOverride == 0)
+			Next = gpGlobals.CurTime + minOverride;
+		else
+			Next = gpGlobals.CurTime + RandomFloat(minOverride, maxOverride);
+	}
+
+	public void Start() => Start(MinInterval, MaxInterval);
 
 	float MinInterval;
 	float MaxInterval;
