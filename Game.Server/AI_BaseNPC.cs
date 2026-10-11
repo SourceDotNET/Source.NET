@@ -3865,7 +3865,15 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public virtual void OnScheduleChange() {
 		EndTaskOverlay();
 
+		Navigator!.OnScheduleChange();
+
 		MoveWaitFinished = 0;
+
+		VacateStrategySlot();
+
+		GetNavigator()!.ClearGoal();
+
+		UnlockBestSound();
 
 		if (HasMemory(AI_MemoryFlags.LockedHint) && GetHintNode() != null) {
 			float hintDelay = GetHintDelay(GetHintNode()!.HintType());
