@@ -1,3 +1,5 @@
+using Game.Shared;
+
 namespace Game.Server;
 
 public class AI_BehaviorHost_AI_BaseNPC : AI_BaseNPC, IBehaviorBackBridge
@@ -16,6 +18,18 @@ public class AI_BehaviorHost_AI_BaseNPC : AI_BaseNPC, IBehaviorBackBridge
 
 	public virtual bool CreateBehaviors() => true;
 
+	public override bool ScheduledMoveToGoalEntity(int scheduleType, BaseEntity goalEntity, Activity movementActivity) {
+		ChangeBehaviorTo(null);
+
+		return base.ScheduledMoveToGoalEntity(scheduleType, goalEntity, movementActivity);
+	}
+
+	public override bool ScheduledFollowPath(int scheduleType, BaseEntity pathStart, Activity movementActivity) {
+		ChangeBehaviorTo(null);
+
+		return base.ScheduledFollowPath(scheduleType, pathStart, movementActivity);
+	}
+
 	public override void Precache() {
 		base.Precache();
 		for (int i = 0; i < Behaviors.Count; i++)
@@ -28,6 +42,51 @@ public class AI_BehaviorHost_AI_BaseNPC : AI_BaseNPC, IBehaviorBackBridge
 			Behaviors[i].BridgeSpawn();
 	}
 
+	public override void UpdateOnRemove() {
+		for (int i = 0; i < Behaviors.Count; i++)
+			Behaviors[i].BridgeUpdateOnRemove();
+		base.UpdateOnRemove();
+	}
+
+	public override void Event_Killed(in TakeDamageInfo info) {
+		for (int i = 0; i < Behaviors.Count; i++)
+			Behaviors[i].BridgeEvent_Killed(info);
+		base.Event_Killed(info);
+	}
+
+	public override void GatherConditions() {
+		for (int i = 0; i < Behaviors.Count; i++) {
+			if (Behaviors[i] != CurBehavior)
+				Behaviors[i].GatherConditionsNotActive();
+		}
+
+		if (CurBehavior != null)
+			CurBehavior.BridgeGatherConditions();
+		else
+			base.GatherConditions();
+	}
+
+	public override void OnScheduleChange() {
+		CurBehavior?.BridgeOnScheduleChange();
+		base.OnScheduleChange();
+	}
+
+	public override void OnStartSchedule(int scheduleType) {
+		CurBehavior?.BridgeOnStartSchedule(scheduleType);
+		base.OnStartSchedule(scheduleType);
+	}
+
+	public override int TranslateSchedule(int scheduleType) {
+		if (CurBehavior != null)
+			return CurBehavior.BridgeTranslateSchedule(scheduleType);
+		return base.TranslateSchedule(scheduleType);
+	}
+
+	public override void PrescheduleThink() {
+		base.PrescheduleThink();
+		CurBehavior?.BridgePrescheduleThink();
+	}
+
 	public override int SelectSchedule() {
 		CalledBehaviorSelectSchedule = true;
 		if (CurBehavior != null)
@@ -36,10 +95,80 @@ public class AI_BehaviorHost_AI_BaseNPC : AI_BaseNPC, IBehaviorBackBridge
 		return base.SelectSchedule();
 	}
 
+	public void KeepRunningBehavior() {
+		if (CurBehavior != null)
+			CalledBehaviorSelectSchedule = true;
+	}
+
+	public override int SelectFailSchedule(int failedSchedule, int failedTask, AI_TaskFailureCode taskFailCode) {
+		CalledBehaviorSelectSchedule = true;
+		if (CurBehavior != null && CurBehavior.BridgeSelectFailSchedule(failedSchedule, failedTask, taskFailCode, out int result))
+			return result;
+		return base.SelectFailSchedule(failedSchedule, failedTask, taskFailCode);
+	}
+
+	public override void StartTask(in Task_t task) {
+		if (CurBehavior != null && CurBehavior.BridgeStartTask(task))
+			return;
+		base.StartTask(task);
+	}
+
+	public override void RunTask(in Task_t task) {
+		if (CurBehavior != null && CurBehavior.BridgeRunTask(task))
+			return;
+		base.RunTask(task);
+	}
+
+	public override void AimGun() {
+		if (CurBehavior != null && CurBehavior.BridgeAimGun())
+			return;
+		base.AimGun();
+	}
+
+	public override AI_Schedule? GetSchedule(int localScheduleID) {
+		if (CurBehavior != null && CurBehavior.BridgeGetSchedule(localScheduleID, out AI_Schedule? result))
+			return result;
+		return base.GetSchedule(localScheduleID);
+	}
+
+	public override void BuildScheduleTestBits() {
+		CurBehavior?.BridgeBuildScheduleTestBits();
+		base.BuildScheduleTestBits();
+	}
+
 	public override Activity NPC_TranslateActivity(Activity activity) {
 		if (CurBehavior != null)
 			return CurBehavior.BridgeNPC_TranslateActivity(activity);
 		return base.NPC_TranslateActivity(activity);
+	}
+
+	public override bool IsCurTaskContinuousMove() {
+		if (CurBehavior != null && CurBehavior.BridgeIsCurTaskContinuousMove(out bool result))
+			return result;
+		return base.IsCurTaskContinuousMove();
+	}
+
+	public override void OnMovementFailed() {
+		CurBehavior?.BridgeOnMovementFailed();
+		base.OnMovementFailed();
+	}
+
+	public override void OnMovementComplete() {
+		CurBehavior?.BridgeOnMovementComplete();
+		base.OnMovementComplete();
+	}
+
+	public override float GetDefaultNavGoalTolerance() {
+		if (CurBehavior != null)
+			return CurBehavior.BridgeGetDefaultNavGoalTolerance();
+		return base.GetDefaultNavGoalTolerance();
+	}
+
+	public override bool IsNavigationUrgent() {
+		if (CurBehavior != null)
+			return CurBehavior.BridgeIsNavigationUrgent();
+
+		return base.IsNavigationUrgent();
 	}
 
 	public override bool ShouldPlayerAvoid() {
@@ -54,6 +183,21 @@ public class AI_BehaviorHost_AI_BaseNPC : AI_BaseNPC, IBehaviorBackBridge
 			return CurBehavior.BridgeIsCrouching();
 
 		return base.IsCrouching();
+	}
+
+	public override bool OnCalcBaseMove(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) {
+		if (CurBehavior != null)
+			return CurBehavior.BridgeOnCalcBaseMove(ref moveGoal, distClear, ref result);
+
+		return base.OnCalcBaseMove(ref moveGoal, distClear, ref result);
+	}
+
+	public virtual bool OnBehaviorChangeStatus(AI_BehaviorBase behavior, bool canFinishSchedule) {
+		if (behavior == GetRunningBehavior() && !behavior.CanSelectSchedule() && !canFinishSchedule) {
+			DeferSchedulingToBehavior(null);
+			return true;
+		}
+		return false;
 	}
 
 	public virtual void OnChangeRunningBehavior(AI_BehaviorBase? oldBehavior, AI_BehaviorBase? newBehavior) { }
@@ -111,6 +255,22 @@ public class AI_BehaviorHost_AI_BaseNPC : AI_BaseNPC, IBehaviorBackBridge
 		}
 	}
 
+	public override AI_Schedule? GetNewSchedule() {
+		CalledBehaviorSelectSchedule = false;
+		AI_Schedule? result = base.GetNewSchedule();
+		if (!CalledBehaviorSelectSchedule && CurBehavior != null)
+			DeferSchedulingToBehavior(null);
+		return result;
+	}
+
+	public override AI_Schedule? GetFailSchedule() {
+		CalledBehaviorSelectSchedule = false;
+		AI_Schedule? result = base.GetFailSchedule();
+		if (!CalledBehaviorSelectSchedule && CurBehavior != null)
+			DeferSchedulingToBehavior(null);
+		return result;
+	}
+
 	void IBehaviorBackBridge.BackBridge_GatherConditions() {
 		if (g_bBehaviorHost_PreventBaseClassGatherConditions)
 			return;
@@ -119,6 +279,13 @@ public class AI_BehaviorHost_AI_BaseNPC : AI_BaseNPC, IBehaviorBackBridge
 	}
 
 	int IBehaviorBackBridge.BackBridge_SelectSchedule() => base.SelectSchedule();
+	int IBehaviorBackBridge.BackBridge_TranslateSchedule(int scheduleType) => base.TranslateSchedule(scheduleType);
+	Activity IBehaviorBackBridge.BackBridge_NPC_TranslateActivity(Activity activity) => base.NPC_TranslateActivity(activity);
+	bool IBehaviorBackBridge.BackBridge_IsNavigationUrgent() => base.IsNavigationUrgent();
+	bool IBehaviorBackBridge.BackBridge_ShouldPlayerAvoid() => base.ShouldPlayerAvoid();
+	float IBehaviorBackBridge.BackBridge_GetDefaultNavGoalTolerance() => base.GetDefaultNavGoalTolerance();
+	bool IBehaviorBackBridge.BackBridge_IsCrouching() => base.IsCrouching();
+	bool IBehaviorBackBridge.BackBridge_OnCalcBaseMove(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) => base.OnCalcBaseMove(ref moveGoal, distClear, ref result);
 
 	AI_BehaviorBase? CurBehavior;
 	readonly List<AI_BehaviorBase> Behaviors = [];
