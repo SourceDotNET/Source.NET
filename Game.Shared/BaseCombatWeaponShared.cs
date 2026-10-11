@@ -255,7 +255,7 @@ public partial class
 	public virtual bool CanBePickedUpByNPCs() => true;
 
 	TimeUnit_t UnlockTime;
-	readonly EHANDLE Locker = new();
+	EHANDLE Locker = new();
 
 	public void Lock(TimeUnit_t lockTime, BaseEntity? locker) {
 		UnlockTime = gpGlobals.CurTime + lockTime;
