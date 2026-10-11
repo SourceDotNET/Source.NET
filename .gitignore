@@ -4,7 +4,7 @@
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
 # Source .VPK files. Mklink them if you want them.
-Game.Assets/hl2/*.vpk
+Game.Assets/sdn/*.vpk
 datatables_dump/*
 
 # User-specific files
@@ -400,18 +400,18 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
-Game.Assets/hl2/steam.inf
-Game.Assets/hl2/maps/*
-Game.Assets/hl2/scripts
-Game.Assets/hl2/maps
+Game.Assets/sdn/steam.inf
+Game.Assets/sdn/maps/*
+Game.Assets/sdn/scripts
+Game.Assets/sdn/maps
 Game.Assets/platform
 Game.Assets/sourceengine
-Game.Assets/hl2/cfg/autoexec.cfg
+Game.Assets/sdn/cfg/autoexec.cfg
 Game.Assets/**/*_bak/
-Game.Assets/hl2/resource
+Game.Assets/sdn/resource
 Source.Launcher/Properties/launchSettings.json
 /.idea
 Source.DataDescGen/
-Game.Assets/hl2/cache/workshop
-Game.Assets/hl2/gamemodes
-Game.Assets/hl2/lua
+Game.Assets/sdn/cache/workshop
+Game.Assets/sdn/gamemodes
+Game.Assets/sdn/lua
