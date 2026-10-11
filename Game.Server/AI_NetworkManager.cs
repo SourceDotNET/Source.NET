@@ -13,12 +13,83 @@ namespace Game.Server;
 public static class AI_NetworkManagerGlobals
 {
 	public static AI_NetworkManager? g_pAINetworkManager;
+	public static readonly AI_NetworkBuilder g_AINetworkBuilder = new();
 }
 
-public class AI_NetworkEditTools
+public class AI_NetworkBuilder
+{
+	void FloodFillZone(AI_Node?[] nodes, AI_Node node, int zone) {
+		node.SetZone(zone);
+
+		for (int link = 0; link < node.NumLinks(); link++) {
+			ref AI_Link nodeLink = ref node.GetLinkByIndex(link);
+			AI_Node linkedNode = (nodeLink.DestID == node.GetId()) ? nodes[nodeLink.SrcID]! : nodes[nodeLink.DestID]!;
+			if (linkedNode.GetZone() == (int)AI_ZoneIds.Unknown)
+				FloodFillZone(nodes, linkedNode, zone);
+
+			Assert(linkedNode.GetZone() == node.GetZone() && node.GetZone() == zone);
+		}
+	}
+
+	public void InitZones(AI_Network network) {
+		int nodeCount = network.NumNodes();
+		AI_Node?[]? nodes = network.AccessNodes();
+
+		if (nodeCount == 0)
+			return;
+
+		int i;
+
+		for (i = 0; i < nodeCount; i++)
+			nodes![i]!.SetZone((int)AI_ZoneIds.Unknown);
+
+		for (i = 0; i < nodeCount; i++) {
+			if (nodes![i]!.NumLinks() == 0)
+				nodes[i]!.SetZone((int)AI_ZoneIds.Solo);
+		}
+
+		int curZone = (int)AI_ZoneIds.FirstZone;
+
+		for (i = 0; i < nodeCount; i++) {
+			if (nodes![i]!.GetZone() == (int)AI_ZoneIds.Unknown) {
+				FloodFillZone(nodes, nodes[i]!, curZone);
+				curZone++;
+			}
+		}
+	}
+}
+
+public class AI_NetworkEditTools(AI_Network network)
 {
 	public int[]? NodeIndexTable;
 	public int NextWCIndex;
+
+	public int GetNodeIdFromWCId(int wcId) {
+		if (wcId == -1)
+			return -1;
+
+		if (NodeIndexTable == null) {
+			DevMsg("ERROR: Trying to get WC ID with no table!\n");
+			return -1;
+		}
+
+		if (network.NumNodes() == 0) {
+			DevMsg("ERROR: Trying to get WC ID with no network!\n");
+			return -1;
+		}
+
+		for (int i = 0; i < network.NumNodes(); i++) {
+			if (NodeIndexTable[i] == wcId)
+				return i;
+		}
+		return -1;
+	}
+
+	public int GetWCIdFromNodeId(int nodeId) {
+		if (nodeId == -1 || nodeId >= network.NumNodes())
+			return -1;
+		return NodeIndexTable![nodeId];
+	}
 }
 
 [LinkEntityToClass("ai_network")]
@@ -27,6 +98,11 @@ public class AI_NetworkManager : PointEntity
 	const int AINET_VERSION_NUMBER = 37;
 
 	static readonly ConVar g_ai_norebuildgraph = new("ai_norebuildgraph", "0");
+
+	public AI_NetworkManager() {
+		EditOps = new(Network);
+		AI_DynamicLink.gm_bInitialized = false;
+	}
 
 	public static void InitializeAINetworks() {
 		AI_NetworkManager network = (AI_NetworkManager)CreateEntityByName("ai_network")!;
@@ -161,9 +237,11 @@ public class AI_NetworkManager : PointEntity
 			DevMsg("\n** Should run \"Check For Problems\" on the VMF then verify dynamic links\n");
 
 		gm_fNetworksLoaded = true;
+		AI_DynamicLink.gm_bInitialized = false;
 	}
 
 	public static void DeleteAllAINetworks() {
+		AI_DynamicLink.gm_bInitialized = false;
 		gm_fNetworksLoaded = false;
 		g_pBigAINet = null;
 	}
@@ -184,6 +262,8 @@ public class AI_NetworkManager : PointEntity
 			return;
 		}
 
+		AI_DynamicLink.InitDynamicLinks();
+
 		Initalized = true;
 
 		if (g_AI_Manager.NumAIs() != 0 && g_pBigAINet!.NumNodes() == 0)
@@ -199,6 +279,6 @@ public class AI_NetworkManager : PointEntity
 	static bool gm_fNetworksLoaded;
 
 	readonly AI_Network Network = new();
-	readonly AI_NetworkEditTools EditOps = new();
+	readonly AI_NetworkEditTools EditOps;
 	bool Initalized;
 }

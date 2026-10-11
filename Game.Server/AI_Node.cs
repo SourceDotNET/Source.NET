@@ -45,6 +45,11 @@ public class AI_Node(AI_Network network, int id, Vector3 origin, float yaw)
 {
 	public const int NODE_ENT_FLAGS_SHIFT = 5;
 
+	public const float MAX_NODE_LINK_DIST = 60 * 12;
+	public const float MAX_NODE_LINK_DIST_SQ = MAX_NODE_LINK_DIST * MAX_NODE_LINK_DIST;
+	public const float MAX_AIR_NODE_LINK_DIST = 120 * 12;
+	public const float MAX_AIR_NODE_LINK_DIST_SQ = MAX_AIR_NODE_LINK_DIST * MAX_AIR_NODE_LINK_DIST;
+
 	public int NumLinks() => Links.Count;
 	public ref AI_Link GetLink(int destNodeId) {
 		for (int link = 0; link < NumLinks(); link++) {

@@ -21,4 +21,6 @@ public struct AI_Link
 	public LinkInfo LinkInfo;
 
 	public TimeUnit_t TimeStaleExpires;
+
+	public AI_DynamicLink? DynamicLink;
 }
