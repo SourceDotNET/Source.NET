@@ -2,6 +2,10 @@ global using static Game.Server.AI_NavigatorGlobals;
 
 using Game.Shared;
 
+using Source;
+using Source.Common;
+using Source.Common.Formats.BSP;
+
 using System.Numerics;
 
 namespace Game.Server;
@@ -77,6 +81,47 @@ public class AI_Navigator : AI_Component, IAI_MovementSink
 	public bool IsGoalActive() => GetPath() != null && !GetPath().IsEmpty();
 
 	public BaseEntity? GetGoalTarget() => GetPath().GetTarget();
+
+	public bool CanFitAtNode(int nodeNum, Mask collisionMask = Mask.NPCSolidBrushOnly) {
+		if (GetNetwork() == null) {
+			DevMsg("CanFitAtNode() called with no network!\n");
+			return false;
+		}
+
+		AI_Node testNode = GetNetwork()!.GetNode(nodeNum)!;
+		Vector3 startPos = testNode.GetPosition(GetOuter()!.GetHullType());
+
+		if (testNode.NodeType == NodeType.Ground) {
+			if (!GetMoveProbe()!.CheckStandPosition(startPos, collisionMask))
+				return false;
+		}
+
+		if (testNode.NodeType == NodeType.Climb &&
+			(testNode.NodeInfo & (NodeInfoBits.ClimbBottom | NodeInfoBits.ClimbExit)) != 0) {
+			if (!GetMoveProbe()!.CheckStandPosition(startPos, collisionMask))
+				return false;
+		}
+
+		if (!CanFitAtPosition(startPos, collisionMask)) {
+			startPos.Z += GetOuter()!.StepHeight();
+			if (!CanFitAtPosition(startPos, collisionMask))
+				return false;
+		}
+
+		return true;
+	}
+
+	public bool CanFitAtPosition(in Vector3 startPos, Mask collisionMask, bool ignoreTransients = false, bool allowPlayerAvoid = true) {
+		TraceFilterNav traceFilter = new(GetOuter()!, ignoreTransients, GetOuter(), CollisionGroup.None, allowPlayerAvoid);
+
+		Vector3 endPos = startPos;
+		endPos.Z += 0.01f;
+		Util.TraceHull(startPos, endPos, GetOuter()!.GetHullMins(), GetOuter()!.GetHullMaxs(), collisionMask, ref traceFilter, out Trace tr);
+
+		if (tr.StartSolid)
+			return false;
+		return true;
+	}
 
 	public float GetStepDownMultiplier() {
 		BaseEntity? bigStepGroundEnt = BigStepGroundEnt.Get();
