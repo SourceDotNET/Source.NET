@@ -46,7 +46,7 @@ public class Item : BaseAnimating, IPlayerPickupVPhysics
 	public QAngle PreferredCarryAngles() => ((IPlayerPickupVPhysics)pickup).PreferredCarryAngles();
 	public bool ShouldPuntUseLaunchForces(PhysGunForce reason) => ((IPlayerPickupVPhysics)pickup).ShouldPuntUseLaunchForces(reason);
 
-	public override EntityCapabilities ObjectCaps() => base.ObjectCaps() | EntityCapabilities.ImpulseUse | EntityCapabilities.WCEditPosition;
+	public override EntityCapabilities ObjectCaps() => base.ObjectCaps() | EntityCapabilities.ImpulseUse | EntityCapabilities.WorldcraftEditPosition;
 
 	public override void Use(BaseEntity? activator, BaseEntity? caller, UseType useType, float value) {
 		BasePlayer? player = ToBasePlayer(activator);
