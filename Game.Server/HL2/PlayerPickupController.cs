@@ -497,7 +497,7 @@ public class GrabController : IMotionEvent
 	float LoadWeight;
 	readonly float[] SavedRotDamping = new float[VPHYSICS_MAX_OBJECT_LIST_COUNT];
 	readonly float[] SavedMass = new float[VPHYSICS_MAX_OBJECT_LIST_COUNT];
-	readonly EHANDLE AttachedEntity = new();
+	EHANDLE AttachedEntity = new();
 	QAngle PreferredCarryAngles;
 	bool HasPreferredCarryAngles;
 	float DistanceOffset;
