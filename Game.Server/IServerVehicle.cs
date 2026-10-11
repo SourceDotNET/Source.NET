@@ -40,7 +40,7 @@ public interface IServerVehicle : IVehicle
 	int GetEntryAnimForPoint(out Vector3 point);
 	int GetExitAnimToUse(out Vector3 eyeExitEndpoint, out bool allPointsBlocked);
 	void HandleEntryExitFinish(bool exitAnimOn, bool resetAnim);
-	// TODO: Class_T ClassifyPassenger(CBaseCombatCharacter? passenger, Class_T defaultClassification);
+	Class_T ClassifyPassenger(BaseCombatCharacter? passenger, Class_T defaultClassification);
 	// float PassengerDamageModifier(in TakeDamageInfo info );
 	// const vehicleparams_t* GetVehicleParams();
 	// IPhysicsVehicleController GetVehicleController();

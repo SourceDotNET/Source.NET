@@ -255,6 +255,7 @@ public partial class BasePlayer : BaseCombatCharacter
 	]);
 
 	public override bool IsPlayer() => true;
+	public override Class_T Classify() => Class_T.Player;
 	public virtual bool IsBot() => (GetFlags() & EntityFlags.FakeClient) != 0;
 	public virtual bool IsFakeClient() => (GetFlags() & EntityFlags.FakeClient) != 0;
 	public virtual bool IsBotOfType(int botType) => (GetBotType() != 0) && (GetBotType() == botType);

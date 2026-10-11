@@ -95,7 +95,7 @@ public class World : BaseEntity
 
 		AI_NetworkManager.InitializeAINetworks();
 		g_AI_SchedulesManager.LoadAllSchedules();
-		// g_pGameRules.InitDefaultAIRelationships();
+		g_pGameRules.InitDefaultAIRelationships();
 
 		// BaseCombatCharacter.InitInteractionSystem();
 
