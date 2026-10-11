@@ -339,6 +339,18 @@ public static class PhysicsSharedGlobals
 	}
 #endif
 
+	public static bool PhysModelParseSolidByIndex(ref Solid solid, BaseEntity entity, int modelIndex, int solidIndex) {
+		VCollide? collide = modelinfo.GetVCollide(modelIndex);
+		if (collide == null)
+			return false;
+
+		return PhysModelParseSolidByIndex(ref solid, entity, collide, solidIndex);
+	}
+
+	public static bool PhysModelParseSolid(ref Solid solid, BaseEntity entity, int modelIndex) {
+		return PhysModelParseSolidByIndex(ref solid, entity, modelIndex, -1);
+	}
+
 	public static bool PhysModelParseSolidByIndex(ref Solid solid, BaseEntity entity, VCollide? collide, int solidIndex) {
 		if (collide == null || collide.KeyValues == null)
 			return false;

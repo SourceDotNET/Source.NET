@@ -879,6 +879,11 @@ public partial class BaseAnimating : BaseEntity
 	public TimeUnit_t LastEventCheck;
 	public TimeUnit_t GetCycle() => Cycle;
 	public void SetCycle(TimeUnit_t cycle) => Cycle = cycle;
+
+	public void SetFadeDistance(float minFadeDist, float maxFadeDist) {
+		FadeMinDist = minFadeDist;
+		FadeMaxDist = maxFadeDist;
+	}
 	public float GetSequenceMoveDist(StudioHdr? studioHdr, int sequence) {
 		Animation.GetSequenceLinearMotion(studioHdr, sequence, GetPoseParameterArray(), out Vector3 ret);
 
