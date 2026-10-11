@@ -3248,6 +3248,14 @@ public partial class BaseEntity : IServerEntity
 
 	public TimeUnit_t NavIgnoreUntilTime;
 
+	public void SetNavIgnore(float duration = float.MaxValue) {
+		TimeUnit_t navIgnoreUntilTime = (duration == float.MaxValue) ? float.MaxValue : gpGlobals.CurTime + duration;
+		if (navIgnoreUntilTime > NavIgnoreUntilTime)
+			NavIgnoreUntilTime = navIgnoreUntilTime;
+	}
+
+	public void ClearNavIgnore() => NavIgnoreUntilTime = 0;
+
 	public bool IsNavIgnored() => gpGlobals.CurTime <= NavIgnoreUntilTime;
 
 	public BasePlayer? AI_GetClosestPlayer() {

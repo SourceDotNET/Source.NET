@@ -2818,6 +2818,33 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public virtual float StepHeight() => 18.0f;
 	public float GetStepDownMultiplier() => Navigator!.GetStepDownMultiplier();
+	public virtual float GetMaxJumpSpeed() => 350.0f;
+	public virtual float GetJumpGravity() => 1.0f;
+
+	public float GetHullHeight() => NAI_Hull.Height(GetHullType());
+
+	public bool IsJumpLegal(in Vector3 startPos, in Vector3 apex, in Vector3 endPos, float maxUp, float maxDown, float maxDist) {
+		if ((endPos.Z - startPos.Z) > maxUp + 0.1f)
+			return false;
+		if ((startPos.Z - endPos.Z) > maxDown + 0.1f)
+			return false;
+
+		if ((apex.Z - startPos.Z) > maxUp * 1.25f)
+			return false;
+
+		float dist = (startPos - endPos).Length();
+		if (dist > maxDist + 0.1f)
+			return false;
+		return true;
+	}
+
+	public virtual bool IsJumpLegal(in Vector3 startPos, in Vector3 apex, in Vector3 endPos) {
+		const float MAX_JUMP_RISE = 80.0f;
+		const float MAX_JUMP_DISTANCE = 250.0f;
+		const float MAX_JUMP_DROP = 192.0f;
+
+		return IsJumpLegal(startPos, apex, endPos, MAX_JUMP_RISE, MAX_JUMP_DROP, MAX_JUMP_DISTANCE);
+	}
 
 	public override bool CanStandOn(BaseEntity? surface) {
 		if (!surface!.IsAIWalkable())
