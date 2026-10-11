@@ -213,8 +213,8 @@ public partial class HL2MP_Player : HL2_Player
 		// Ready = true;
 	}
 
-	void PickupObject(BaseEntity obj, bool limitMassAndSize) {
-		throw new NotImplementedException();
+	public override void PickupObject(BaseEntity obj, bool limitMassAndSize = true) {
+
 	}
 
 	bool ValidatePlayerModel(ReadOnlySpan<char> model) {

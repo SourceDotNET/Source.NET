@@ -36,6 +36,9 @@ public class HL2_Player : BaseMultiplayerPlayer
 	TimeUnit_t MoveTime;
 	TimeUnit_t LastDamageTime;
 	TimeUnit_t TargetFindTime;
+	TimeUnit_t TimeUseSuspended;
+
+	public virtual void SuspendUse(TimeUnit_t duration) { TimeUseSuspended = gpGlobals.CurTime + duration; }
 
 	bool SprintEnabled;
 
@@ -391,7 +394,111 @@ public class HL2_Player : BaseMultiplayerPlayer
 		throw new NotImplementedException();
 	}
 
-	void PlayerUse() { }
+	public override void PlayerUse() {
+		// Was use pressed or released?
+		if (((Buttons | AfButtonPressed | AfButtonReleased) & InButtons.Use) == 0)
+			return;
+
+		if ((AfButtonPressed & InButtons.Use) != 0) {
+			// Currently using a latched entity?
+			if (ClearUseEntity()) {
+				return;
+			}
+			else {
+				if ((PhysicsFlags & PlayerPhysFlag.DirOverride) != 0) {
+					PhysicsFlags &= ~PlayerPhysFlag.DirOverride;
+					Train = FuncTrackTrain.TRAIN_NEW | FuncTrackTrain.TRAIN_OFF;
+					return;
+				}
+				else {  // Start controlling the train!
+					BaseEntity? train = GetGroundEntity();
+					if (train != null && (Buttons & InButtons.Jump) == 0 && (GetFlags() & EntityFlags.OnGround) != 0 && (train.ObjectCaps() & EntityCapabilities.DirectionalUse) != 0 && train.OnControls(this)) {
+						PhysicsFlags |= PlayerPhysFlag.DirOverride;
+						Train = TrainSpeed((int)train.Speed, (int)((FuncTrackTrain)train).GetMaxSpeed());
+						Train |= FuncTrackTrain.TRAIN_NEW;
+						EmitSound("HL2Player.TrainUse");
+						return;
+					}
+				}
+			}
+
+			// Tracker 3926:  We can't +USE something if we're climbing a ladder
+			if (GetMoveType() == Source.MoveType.Ladder)
+				return;
+		}
+
+		if (TimeUseSuspended > gpGlobals.CurTime) {
+			// Something has temporarily stopped us being able to USE things.
+			// Obviously, this should be used very carefully.(sjb)
+			return;
+		}
+
+		BaseEntity? useEntity = FindUseEntity();
+
+		bool usedSomething = false;
+
+		// Found an object
+		if (useEntity != null) {
+			//!!!UNDONE: traceline here to prevent +USEing buttons through walls
+			EntityCapabilities caps = useEntity.ObjectCaps();
+			Variant_t emptyVariant = default;
+
+			if ((AfButtonPressed & InButtons.Use) != 0) {
+				// Robin: Don't play sounds for NPCs, because NPCs will allow respond with speech.
+				if (useEntity.MyNPCPointer() == null)
+					EmitSound("HL2Player.Use");
+			}
+
+			if (((Buttons & InButtons.Use) != 0 && (caps & EntityCapabilities.ContinuousUse) != 0) ||
+				 ((AfButtonPressed & InButtons.Use) != 0 && (caps & (EntityCapabilities.ImpulseUse | EntityCapabilities.OnOffUse)) != 0)) {
+				if ((caps & EntityCapabilities.ContinuousUse) != 0)
+					PhysicsFlags |= PlayerPhysFlag.Using;
+
+				useEntity.AcceptInput("Use", this, this, emptyVariant, (int)UseType.Toggle);
+
+				usedSomething = true;
+			}
+			// UNDONE: Send different USE codes for ON/OFF.  Cache last ONOFF_USE object to send 'off' if you turn away
+			else if ((AfButtonReleased & InButtons.Use) != 0 && (useEntity.ObjectCaps() & EntityCapabilities.OnOffUse) != 0) {    // BUGBUG This is an "off" use
+				useEntity.AcceptInput("Use", this, this, emptyVariant, (int)UseType.Toggle);
+
+				usedSomething = true;
+			}
+
+#if HL2_SINGLE_PRIMARY_WEAPON_MODE
+
+			//Check for weapon pick-up
+			if ((AfButtonPressed & InButtons.Use) != 0) {
+				BaseCombatWeapon? weapon = useEntity as BaseCombatWeapon;
+
+				if ((weapon != null) && (Weapon_CanSwitchTo(weapon))) {
+					//Try to take ammo or swap the weapon
+					if (Weapon_OwnsThisType(weapon.GetClassname(), weapon.GetSubType()) != null) {
+						Weapon_EquipAmmoOnly(weapon);
+					}
+					else {
+						Weapon_DropSlot(weapon.GetSlot());
+						Weapon_Equip(weapon);
+					}
+
+					usedSomething = true;
+				}
+			}
+#endif
+		}
+		else if ((AfButtonPressed & InButtons.Use) != 0) {
+			// Signal that we want to play the deny sound, unless the user is +USEing on a ladder!
+			// The sound is emitted in ItemPostFrame, since that occurs after GameMovement::ProcessMove which
+			// lets the ladder code unset this flag.
+			m_bPlayUseDenySound = true;
+		}
+
+		// Debounce the use key
+		if (usedSomething && useEntity != null) {
+			Local.OldButtons |= (int)InButtons.Use;
+			AfButtonPressed &= ~InButtons.Use;
+		}
+	}
 
 	void UpdateWeaponPosture() { }
 
@@ -407,7 +514,7 @@ public class HL2_Player : BaseMultiplayerPlayer
 		throw new NotImplementedException();
 	}
 
-	void PickupObject(BaseEntity Object, bool limitMassAndSize) { }
+	public override void PickupObject(BaseEntity Object, bool limitMassAndSize = true) { }
 
 	bool IsHoldingEntity(BaseEntity ent) {
 		throw new NotImplementedException();
@@ -461,9 +568,21 @@ public class HL2_Player : BaseMultiplayerPlayer
 		throw new NotImplementedException();
 	}
 
-	void PlayUseDenySound() { }
+	/// <summary>
+	/// Queues up a use deny sound, played in ItemPostFrame.
+	/// </summary>
+	public override void PlayUseDenySound() {
+		m_bPlayUseDenySound = true;
+	}
 
-	void ItemPostFrame() { }
+	public override void ItemPostFrame() {
+		base.ItemPostFrame();
+
+		if (m_bPlayUseDenySound) {
+			m_bPlayUseDenySound = false;
+			EmitSound("HL2Player.UseDeny");
+		}
+	}
 
 	void StartWaterDeathSounds() { }
 
