@@ -4,6 +4,7 @@ using Game.Shared;
 
 using Source;
 using Source.Common;
+using Source.Common.Commands;
 using Source.Common.Formats.BSP;
 
 using System.Numerics;
@@ -13,6 +14,8 @@ namespace Game.Server;
 public static class AI_MoveProbeGlobals
 {
 	public static float MOVE_HEIGHT_EPSILON = 0.0625f;
+
+	public static readonly ConVar ai_strong_optimizations_no_checkstand = new("ai_strong_optimizations_no_checkstand", "0");
 }
 
 public class AI_MoveProbe : AI_Component
@@ -89,6 +92,70 @@ public class AI_MoveProbe : AI_Component
 		result = trace.EndPos;
 		return true;
 	}
+
+	public bool CheckStandPosition(in Vector3 start, Mask collisionMask) {
+		if ((GetOuter()!.CapabilitiesGet() & Capability.SkipNavGroundCheck) != 0)
+			return true;
+
+		if (ai_strong_optimizations_no_checkstand.GetBool())
+			return true;
+
+		Vector3 contactMin, contactMax;
+
+		Vector3 vecUp = new(start.X, start.Y, start.Z + 0.1f);
+		Vector3 vecDown = new(start.X, start.Y, start.Z - StepHeight() * GetOuter()!.GetStepDownMultiplier());
+
+		Vector3 hullMins = GetOuter()!.WorldAlignMins();
+		Vector3 hullMaxs = GetOuter()!.WorldAlignMaxs();
+
+		if (hullMaxs == vec3_origin && hullMins == hullMaxs) {
+			hullMins = GetOuter()!.GetHullMins();
+			hullMaxs = GetOuter()!.GetHullMaxs();
+		}
+
+		contactMin.X = hullMins.X * 0.75f + hullMaxs.X * 0.25f;
+		contactMax.X = hullMins.X * 0.25f + hullMaxs.X * 0.75f;
+		contactMin.Y = hullMins.Y * 0.75f + hullMaxs.Y * 0.25f;
+		contactMax.Y = hullMins.Y * 0.25f + hullMaxs.Y * 0.75f;
+		contactMin.Z = hullMins.Z;
+		contactMax.Z = hullMins.Z;
+
+		Trace trace1, trace2;
+
+		if (!GetOuter()!.IsFlaggedEfficient()) {
+			Vector3 hullBottomCenter = new(0, 0, hullMins.Z);
+
+			TraceHull(vecUp, vecDown, contactMin, hullBottomCenter, collisionMask, out trace1);
+			if (trace1.Fraction != 1.0f && CanStandOn(trace1.Ent)) {
+				TraceHull(vecUp, vecDown, hullBottomCenter, contactMax, collisionMask, out trace2);
+				if (trace2.Fraction != 1.0f && (trace1.Ent == trace2.Ent || CanStandOn(trace2.Ent)))
+					return true;
+			}
+
+			Vector3 testMin = new(contactMin.X, 0, hullMins.Z);
+			Vector3 testMax = new(0, contactMax.Y, hullMins.Z);
+
+			TraceHull(vecUp, vecDown, testMin, testMax, collisionMask, out trace1);
+			if (trace1.Fraction != 1.0f && CanStandOn(trace1.Ent)) {
+				testMin = new(0, contactMin.Y, hullMins.Z);
+				testMax = new(contactMax.X, 0, hullMins.Z);
+				TraceHull(vecUp, vecDown, testMin, testMax, collisionMask, out trace2);
+				if (trace2.Fraction != 1.0f && (trace1.Ent == trace2.Ent || CanStandOn(trace2.Ent)))
+					return true;
+			}
+		}
+		else {
+			TraceHull(vecUp, vecDown, contactMin, contactMax, collisionMask, out trace1);
+			if (trace1.Fraction != 1.0f && CanStandOn(trace1.Ent))
+				return true;
+		}
+
+		return false;
+	}
+
+	public bool CanStandOn(BaseEntity? surface) => GetOuter()!.CanStandOn(surface);
+
+	public float StepHeight() => GetOuter()!.StepHeight();
 
 	public void ClearBlockingEntity() => LastBlockingEnt.Set(null);
 	public BaseEntity? GetBlockingEntity() => LastBlockingEnt.Get();
