@@ -799,6 +799,20 @@ public partial class BaseAnimating : BaseEntity
 	public int SelectWeightedSequence(Activity activity) {
 		return Animation.SelectWeightedSequence(GetModelPtr(), activity, GetSequence());
 	}
+	public int SelectWeightedSequence(Activity activity, int curSequence) {
+		Assert(activity != Activity.ACT_INVALID);
+		Assert(GetModelPtr() != null);
+		return Animation.SelectWeightedSequence(GetModelPtr(), activity, curSequence);
+	}
+	public string GetSequenceName(int sequence) {
+		if (sequence == -1)
+			return "Not Found!";
+
+		if (GetModelPtr() == null)
+			return "No model!";
+
+		return Animation.GetSequenceName(GetModelPtr(), sequence);
+	}
 	public int SelectHeaviestSequence(Activity activity) {
 		Assert(GetModelPtr() != null);
 		return Animation.SelectHeaviestSequence(GetModelPtr(), activity);
@@ -896,6 +910,74 @@ public partial class BaseAnimating : BaseEntity
 			return (GetSequenceMoveDist(studioHdr, sequence) / (float)t);
 		else
 			return 0;
+	}
+	public float GetSequenceMoveYaw(int sequence) {
+		Assert(GetModelPtr() != null);
+		Animation.GetSequenceLinearMotion(GetModelPtr(), sequence, GetPoseParameterArray(), out Vector3 vecReturn);
+
+		if (vecReturn.Length() > 0)
+			return Util.VecToYaw(vecReturn);
+
+		return Animation.NOMOTION;
+	}
+	public void GetSequenceLinearMotion(int sequence, out Vector3 vec) {
+		Assert(GetModelPtr() != null);
+		Animation.GetSequenceLinearMotion(GetModelPtr(), sequence, GetPoseParameterArray(), out vec);
+	}
+	public virtual float GetIdealSpeed() => GroundSpeed;
+	public virtual float GetIdealAccel() => GetIdealSpeed() + 50;
+	public bool HasPoseParameter(int sequence, ReadOnlySpan<char> name) {
+		int parameter = LookupPoseParameter(name);
+		if (parameter == -1)
+			return false;
+
+		return HasPoseParameter(sequence, parameter);
+	}
+	public bool HasPoseParameter(int sequence, int parameter) {
+		StudioHdr? studioHdr = GetModelPtr();
+
+		if (studioHdr == null)
+			return false;
+
+		if (!studioHdr.SequencesAvailable())
+			return false;
+
+		if (sequence < 0 || sequence >= studioHdr.GetNumSeq())
+			return false;
+
+		MStudioSeqDesc seqdesc = studioHdr.Seqdesc(sequence);
+		if (studioHdr.GetSharedPoseParameter(sequence, seqdesc.ParamIndex[0]) == parameter ||
+			studioHdr.GetSharedPoseParameter(sequence, seqdesc.ParamIndex[1]) == parameter)
+			return true;
+		return false;
+	}
+	public float GetInstantaneousVelocity(float interval = 0.0f) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return 0;
+
+		float nextCycle = (float)(GetCycle() + interval * GetSequenceCycleRate(GetSequence()) * PlaybackRate);
+
+		BoneSetup.Studio_SeqVelocity(studioHdr, GetSequence(), nextCycle, GetPoseParameterArray(), out Vector3 vecVelocity);
+		vecVelocity *= (float)PlaybackRate;
+
+		return vecVelocity.Length();
+	}
+	public float GetEntryVelocity(int sequence) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return 0;
+
+		BoneSetup.Studio_SeqVelocity(studioHdr, sequence, 0.0f, GetPoseParameterArray(), out Vector3 vecVelocity);
+
+		return vecVelocity.Length();
+	}
+	public float GetMovementFrame(float dist) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return 0;
+
+		return BoneSetup.Studio_FindSeqDistance(studioHdr, GetSequence(), GetPoseParameterArray(), dist);
 	}
 	public void ResetSequenceInfo() {
 		if (GetSequence() == -1)

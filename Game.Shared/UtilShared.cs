@@ -403,6 +403,19 @@ public static partial class Util
 		// todo: visualize
 	}
 
+	public static void TraceModel(in Vector3 vecStart, in Vector3 vecEnd, in Vector3 hullMin, in Vector3 hullMax, BaseEntity? entModel, CollisionGroup collisionGroup, out Trace ptr) {
+		if (entModel != null && entModel.ShouldCollide(collisionGroup, unchecked((Contents)Mask.All))) {
+			Ray ray = default;
+			ray.Init(vecStart, vecEnd, hullMin, hullMax);
+			ptr = default;
+			enginetrace.ClipRayToEntity(ray, Mask.All, entModel, ref ptr);
+		}
+		else {
+			ptr = default;
+			ptr.Fraction = 1.0f;
+		}
+	}
+
 	public static void TraceHull(in Vector3 vecAbsStart, in Vector3 vecAbsEnd, in Vector3 hullMin, in Vector3 hullMax, Mask mask, IHandleEntity? ignore, CollisionGroup collisionGroup, out Trace ptr) {
 		Ray ray = default;
 		ray.Init(vecAbsStart, vecAbsEnd, hullMin, hullMax);

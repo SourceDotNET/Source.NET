@@ -1186,6 +1186,24 @@ public partial class BaseEntity : IServerEntity
 		}
 	}
 
+	public bool AddStepDiscontinuity(TimeUnit_t time, in Vector3 origin, in QAngle angles) {
+		if ((GetMoveType() != Source.MoveType.Step) || !HasDataObjectType(DataObjectType.StepSimulation))
+			return false;
+
+		ref StepSimulationData step = ref GetDataObject<StepSimulationData>(DataObjectType.StepSimulation);
+
+		if (Unsafe.IsNullRef(ref step)) {
+			Assert(false);
+			return false;
+		}
+
+		step.Discontinuity.TickCount = TIME_TO_TICKS(time);
+		step.Discontinuity.Origin = origin;
+		MathLib.AngleQuaternion(angles, out step.Discontinuity.Rotation);
+
+		return true;
+	}
+
 	public void TransformStepData_ParentToWorld(BaseEntity? parent) {
 		// Fix up our step simulation points to be in the proper local space
 		ref StepSimulationData step = ref GetDataObject<StepSimulationData>(DataObjectType.StepSimulation);

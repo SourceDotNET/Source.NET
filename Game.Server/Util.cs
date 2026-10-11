@@ -334,6 +334,13 @@ public static partial class Util
 		ent.SetCollisionBounds(mins, maxs);
 	}
 
+	public static float DistApprox2D(in Vector3 vec1, in Vector3 vec2) {
+		float dx = vec1.X - vec2.X;
+		float dy = vec1.Y - vec2.Y;
+
+		return MathF.Abs(dx) + MathF.Abs(dy);
+	}
+
 	public static BasePlayer? GetLocalPlayer() {
 		if (gpGlobals.MaxClients > 1) {
 			if (developer.GetBool()) {
