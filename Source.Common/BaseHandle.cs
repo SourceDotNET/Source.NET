@@ -5,10 +5,10 @@
 /// </summary>
 public struct BaseHandle : IEquatable<BaseHandle>, IBaseHandle
 {
-	public bool Equals(BaseHandle otherHandle) => Index == otherHandle.Index;
+	public readonly bool Equals(BaseHandle otherHandle) => Index == otherHandle.Index;
 	public uint Index;
 
-	public uint Unpack() => Index;
+	public readonly uint Unpack() => Index;
 
 
 	public void Invalidate() => Index = (uint)Constants.INVALID_EHANDLE_INDEX;
@@ -22,21 +22,21 @@ public struct BaseHandle : IEquatable<BaseHandle>, IBaseHandle
 	public void Init(ulong entindex) => Index = (uint)entindex;
 	public void Init(int entry, int serial) => Index = (uint)(entry | (serial << Constants.NUM_ENT_ENTRY_BITS));
 
-	public int GetEntryIndex() => (int)(Index & Constants.ENT_ENTRY_MASK);
-	public int GetSerialNumber() => (int)(Index >> Constants.NUM_ENT_ENTRY_BITS);
+	public readonly int GetEntryIndex() => (int)(Index & Constants.ENT_ENTRY_MASK);
+	public readonly int GetSerialNumber() => (int)(Index >> Constants.NUM_ENT_ENTRY_BITS);
 
 	public static bool operator ==(BaseHandle a, BaseHandle b) => a.Index == b.Index;
 	public static bool operator !=(BaseHandle a, BaseHandle b) => a.Index != b.Index;
 	public static bool operator <(BaseHandle a, BaseHandle b) => a.Index < b.Index;
 	public static bool operator >(BaseHandle a, BaseHandle b) => a.Index > b.Index;
-	public override bool Equals(object? obj) {
+	public override readonly bool Equals(object? obj) {
 		return obj switch {
 			BaseHandle b => Index == b.Index,
 			_ => false
 		};
 	}
-	public override int GetHashCode() => (int)Index;
-	public bool IsValid() => Index != Constants.INVALID_EHANDLE_INDEX;
+	public override readonly int GetHashCode() => (int)Index;
+	public readonly bool IsValid() => Index != Constants.INVALID_EHANDLE_INDEX;
 
 	public BaseHandle Set(IHandleEntity? entity) {
 		if (entity != null)
@@ -54,10 +54,10 @@ public struct BaseHandle : IEquatable<BaseHandle>, IBaseHandle
 /// <typeparam name="T"></typeparam>
 public struct Handle<T> : IEquatable<Handle<T>>, IEquatable<BaseHandle>, IBaseHandle
 {
-	public uint Unpack() => Index;
+	public readonly uint Unpack() => Index;
 
-	public bool Equals(Handle<T> otherHandle) => Index == otherHandle.Index;
-	public bool Equals(BaseHandle otherHandle) => Index == otherHandle.Index;
+	public readonly bool Equals(Handle<T> otherHandle) => Index == otherHandle.Index;
+	public readonly bool Equals(BaseHandle otherHandle) => Index == otherHandle.Index;
 	public uint Index;
 
 	public void Invalidate() => Index = (uint)Constants.INVALID_EHANDLE_INDEX;
@@ -71,8 +71,8 @@ public struct Handle<T> : IEquatable<Handle<T>>, IEquatable<BaseHandle>, IBaseHa
 	public void Init(ulong entindex) => Index = (uint)entindex;
 	public void Init(int entry, int serial) => Index = (uint)(entry | (serial << Constants.NUM_ENT_ENTRY_BITS));
 
-	public int GetEntryIndex() => (int)(Index & Constants.ENT_ENTRY_MASK);
-	public int GetSerialNumber() => (int)(Index >> Constants.NUM_ENT_ENTRY_BITS);
+	public readonly int GetEntryIndex() => (int)(Index & Constants.ENT_ENTRY_MASK);
+	public readonly int GetSerialNumber() => (int)(Index >> Constants.NUM_ENT_ENTRY_BITS);
 
 	public static bool operator ==(BaseHandle a, Handle<T> b) => a.Index == b.Index;
 	public static bool operator !=(BaseHandle a, Handle<T> b) => a.Index != b.Index;
@@ -89,7 +89,7 @@ public struct Handle<T> : IEquatable<Handle<T>>, IEquatable<BaseHandle>, IBaseHa
 	public static bool operator <(Handle<T> a, Handle<T> b) => a.Index < b.Index;
 	public static bool operator >(Handle<T> a, Handle<T> b) => a.Index > b.Index;
 
-	public override bool Equals(object? obj) {
+	public override readonly bool Equals(object? obj) {
 		return obj switch {
 			BaseHandle b => Index == b.Index,
 			Handle<T> b => Index == b.Index,
@@ -101,8 +101,8 @@ public struct Handle<T> : IEquatable<Handle<T>>, IEquatable<BaseHandle>, IBaseHa
 	public static implicit operator Handle<T>(BaseHandle handle) => new(handle.Index);
 	public static implicit operator BaseHandle(Handle<T> handle) => new(handle.Index);
 
-	public override int GetHashCode() => (int)Index;
-	public bool IsValid() => Index != Constants.INVALID_EHANDLE_INDEX;
+	public override readonly int GetHashCode() => (int)Index;
+	public readonly bool IsValid() => Index != Constants.INVALID_EHANDLE_INDEX;
 
 	public Handle<T> Set(IHandleEntity? entity) {
 		if (entity != null)
