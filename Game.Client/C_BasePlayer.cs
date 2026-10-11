@@ -253,6 +253,9 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	}
 	public C_BaseEntity? GetVehicleEntity() => Vehicle.Get();
 	public bool IsInAVehicle() => Vehicle.Get() != null;
+#if GMOD_DLL
+	public virtual bool RestrictPlayerPitch() => false;
+#endif
 	public virtual void SetAnimation(PlayerAnim playerAnim) { } // todo
 
 	public virtual Vector3 GetAutoaimVector(float scale) {
@@ -571,6 +574,7 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	EHANDLE ColorCorrectionCtrl = new();
 	[NetworkName("m_bUseWeaponsInVehicle")]
 	bool UseWeaponsInVehicle;
+	public bool GetAllowWeaponsInVehicle() => UseWeaponsInVehicle;
 	public bool OnTarget;
 	[NetworkName("m_flDeathTime")]
 	public double DeathTime;

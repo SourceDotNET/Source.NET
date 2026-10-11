@@ -57,6 +57,17 @@ public static partial class LuaEntity
 	public static readonly LuaEntityClass LC_Vehicle = new("Vehicle", LuaType.Entity, null, "Entity");
 	public static readonly LuaEntityClass LC_Weapon = new("Weapon", LuaType.Entity, null, "Entity");
 
+	// todo
+	static readonly List<Handle<BaseEntity>> RemoveList = [];
+
+	static bool IsQueuedForRemoval(BaseEntity ent) {
+		foreach (Handle<BaseEntity> handle in RemoveList) {
+			if (handle.Get() == ent)
+				return true;
+		}
+		return false;
+	}
+
 	static bool bWarning;
 
 	public static BaseEntity? GetEntityFromHandle(uint handle) {
@@ -443,6 +454,201 @@ public static partial class LuaEntity
 		BaseEntity ent = Get_Entity(1, false)!;
 		LuaVector.Push_Vector(ent.GetAbsOrigin());
 		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetMoveType(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber((int)ent.GetMoveType());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__WaterLevel(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (!ent.IsPlayer())
+			ent.UpdateWaterState();
+		lua.PushNumber((int)ent.GetWaterLevel());
+		return 1;
+	}
+
+	[LuaMethod]
+	[LuaMethod("IsOnGround")]
+	static int Entity__OnGround(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushBool((ent.GetFlags() & EntityFlags.OnGround) != 0);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__IsFlagSet(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushBool(((int)ent.GetFlags() & (int)lua.CheckNumber(2)) != 0);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetParent(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Push_Entity(ent.GetMoveParent());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetAngles(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaAngle.Push_Angle(ent.GetAbsAngles());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetUp(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.GetVectors(out _, out _, out Vector3 up);
+		LuaVector.Push_Vector(up);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetVelocity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Vector3 velocity;
+#if CLIENT_DLL
+		ent.EstimateAbsVelocity(out velocity);
+		if (ent.GetMoveType() == MoveType.VPhysics && ent.VPhysicsGetObject() != null)
+			ent.VPhysicsGetObject()!.GetVelocity(out velocity, out _);
+#else
+		if (ent.GetMoveType() == MoveType.VPhysics) {
+			velocity = default;
+			ent.VPhysicsGetObject()?.GetVelocity(out velocity, out _);
+		}
+		else
+			velocity = ent.GetAbsVelocity();
+#endif
+		LuaVector.Push_Vector(velocity);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__LookupSequence(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsMarkedForDeletion())
+			return 0;
+
+		int sequence = animating.LookupSequence(lua.CheckString(2));
+		lua.PushNumber(sequence);
+		if (sequence == -1) {
+			lua.PushNil();
+			return 2;
+		}
+
+		lua.PushNumber((float)animating.SequenceDuration(sequence));
+		return 2;
+	}
+
+	static int GetPoseParameterIndex(ILuaInterface lua, BaseAnimating animating) {
+		if (lua.GetType(2) == LuaType.Number)
+			return (int)lua.CheckNumber(2);
+		return animating.LookupPoseParameter(lua.CheckString(2));
+	}
+
+	[LuaMethod]
+	static int Entity__GetPoseParameter(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsMarkedForDeletion())
+			return 0;
+
+		lua.PushNumber(animating.GetPoseParameter(GetPoseParameterIndex(lua, animating)));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetPoseParameter(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || IsQueuedForRemoval(ent) || ent.IsMarkedForDeletion())
+			return 0;
+
+		int index = GetPoseParameterIndex(lua, animating);
+		animating.SetPoseParameter(index, (float)lua.CheckNumber(3));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetPlaybackRate(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || IsQueuedForRemoval(ent) || ent.IsMarkedForDeletion())
+			return 0;
+
+		float rate = (float)lua.CheckNumber(2);
+		if (!float.IsFinite(rate))
+			rate = 1.0f;
+		animating.SetPlaybackRate(rate);
+		return 0;
+	}
+
+#if CLIENT_DLL
+	[LuaMethod]
+	static int Entity__SetIK(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (lua.GetBool(2))
+			ent.EntClientFlags &= ~EntClientFlags.DontUseIK;
+		else
+			ent.EntClientFlags |= EntClientFlags.DontUseIK;
+		return 0;
+	}
+#else
+	// todo: Entity:SetIK
+#endif
+
+	[LuaMethod]
+	static int Entity__GetFlexIDByName(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsMarkedForDeletion())
+			return 0;
+
+		StudioHdr? studioHdr = animating.GetModelPtr();
+		if (studioHdr == null)
+			return 0;
+
+		string name = lua.CheckString(2);
+		for (int i = 0; i < (int)studioHdr.NumFlexControllers(); i++) {
+			if (strnicmp(studioHdr.FlexController((LocalFlexController)i).Name(), name, name.Length) == 0) {
+				lua.PushNumber(i);
+				return 1;
+			}
+		}
+
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetFlexWeight(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || IsQueuedForRemoval(ent) || ent.IsMarkedForDeletion())
+			return 0;
+
+		int index = Math.Clamp((int)lua.CheckNumber(2), 0, 95);
+		float weight = (float)lua.CheckNumber(3);
+
+#if CLIENT_DLL
+		if (animating.GetFlexManipulator(false) == null && animating is C_BaseFlex flex) {
+			flex.SetFlexWeight((LocalFlexController)index, weight, false);
+			return 0;
+		}
+
+		if (animating.GetFlexManipulator(true) is C_FlexManipulate manipulator)
+			manipulator.SetFlexWeight((byte)index, weight);
+#else
+		if (animating.GetFlexManipulator(true) is FlexManipulate manipulator)
+			manipulator.SetFlexWeight((byte)index, weight);
+#endif
+		return 0;
 	}
 
 	[LuaMethod]

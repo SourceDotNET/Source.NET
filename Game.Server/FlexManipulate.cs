@@ -21,4 +21,11 @@ public class FlexManipulate : BaseEntity
 	public Vector3 EyesLocalTarget;
 	[NetworkName("m_iFlexWeights")]
 	public InlineArray96<float> FlexWeights;
+
+	public void SetFlexWeight(byte index, float weight) {
+		if (index < 96 && FlexWeights[index] != weight) {
+			NetworkStateChanged();
+			FlexWeights[index] = weight;
+		}
+	}
 }

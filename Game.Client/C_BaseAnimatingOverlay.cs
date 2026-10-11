@@ -79,7 +79,7 @@ public partial class C_BaseAnimatingOverlay : C_BaseAnimating
 	[NetworkName("m_AnimOverlay")]
 	readonly List<AnimationLayerRef> AnimOverlay = [];
 	readonly List<InterpolatedVar<AnimationLayer>> iv_AnimOverlay = [];
-	readonly float[] OverlayPrevEventCycle = new float[MAX_OVERLAYS];
+	public readonly float[] OverlayPrevEventCycle = new float[MAX_OVERLAYS];
 
 	public AnimationLayerRef GetAnimOverlay(int i) => AnimOverlay[i];
 
@@ -199,17 +199,5 @@ public partial class C_BaseAnimatingOverlay : C_BaseAnimating
 			AnimOverlay[i].Order = MAX_OVERLAYS;
 		}
 		return hdr;
-	}
-
-	public void EstimateAbsVelocity(out Vector3 vel) {
-		if (this == C_BasePlayer.GetLocalPlayer()) {
-			// This is interpolated and networked
-			vel = GetAbsVelocity();
-			return;
-		}
-		vel = default;
-		using InterpolationContext context = new();
-		InterpolationContext.EnableExtrapolation(true);
-		IV_Origin.GetDerivative_SmoothVelocity(new Span<Vector3>(ref vel), gpGlobals.CurTime);
 	}
 }

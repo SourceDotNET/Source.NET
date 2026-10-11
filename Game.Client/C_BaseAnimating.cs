@@ -1733,6 +1733,9 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 	int PrevNewSequenceParity;
 	int PrevResetEventsParity;
+#if GMOD_DLL
+	public virtual void ClearPrevResetEventsParity() => PrevResetEventsParity = -1;
+#endif
 
 	public int GetSequence() => Sequence;
 	public override void UpdateVisibility() {
@@ -1807,6 +1810,31 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	public EHANDLE BoneManipulator = new();
 	[NetworkName("m_pFlexManipulator")]
 	public EHANDLE FlexManipulator = new();
+	public EHANDLE ClientFlexManipulator = new();
+
+	public virtual C_BaseEntity? GetFlexManipulator(bool create) {
+		if (FlexManipulator.IsValid())
+			return FlexManipulator.Get();
+
+		if (ClientFlexManipulator.Get() != null)
+			return ClientFlexManipulator.Get();
+
+		if (create) {
+			C_FlexManipulate manipulator = new();
+			if (!manipulator.InitializeAsClientEntity(null, RenderGroup.OpaqueEntity))
+				return null;
+
+			manipulator.SetParent(this, 0);
+			manipulator.SetOwnerEntity(this);
+			manipulator.SetLocalOrigin(default);
+			manipulator.Spawn();
+			ClientFlexManipulator.Set(manipulator);
+			return ClientFlexManipulator.Get();
+		}
+
+		return null;
+	}
+
 	[NetworkName("m_OverrideViewTarget")]
 	public Vector3 OverrideViewTarget;
 	[NetworkName("m_fadeMinDist")]

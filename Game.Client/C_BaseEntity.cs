@@ -2755,6 +2755,22 @@ public partial class C_BaseEntity : IClientEntity
 		CalcAbsoluteVelocity();
 		return ref AbsVelocity;
 	}
+
+	public virtual void EstimateAbsVelocity(out Vector3 vel) {
+#if GMOD_DLL
+		if (this != C_BasePlayer.GetLocalPlayer() && GetMoveType() != Source.MoveType.Fly && GetMoveType() != Source.MoveType.FlyGravity && (!IsPlayer() || GetMoveType() == Source.MoveType.None)) {
+#else
+		if (this != C_BasePlayer.GetLocalPlayer()) {
+#endif
+			vel = default;
+			using InterpolationContext context = new();
+			InterpolationContext.EnableExtrapolation(true);
+			IV_Origin.GetDerivative_SmoothVelocity(new Span<Vector3>(ref vel), gpGlobals.CurTime);
+			return;
+		}
+
+		vel = GetAbsVelocity();
+	}
 	public void SetAbsVelocity(in Vector3 absVelocity) {
 		if (AbsVelocity == absVelocity)
 			return;

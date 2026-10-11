@@ -384,15 +384,101 @@ public class MultiPlayerAnimState
 
 		return GestureSlots[gestureSlot].Activity == gestureActivity;
 	}
-	protected virtual void RestartGesture(int gestureSlot, Activity gestureActivity, bool autoKill = true) => throw new NotImplementedException();
-	protected void AddToGestureSlot(int gestureSlot, Activity gestureActivity, bool autoKill) => throw new NotImplementedException();
+	public virtual void RestartGesture(int gestureSlot, Activity gestureActivity, bool autoKill = true) {
+		Assert(gestureSlot >= 0 && gestureSlot < (int)GestureSlotIndex.Count);
+
+		if (!VerifyAnimLayerInSlot(gestureSlot))
+			return;
+
+		if (!IsGestureSlotPlaying(gestureSlot, gestureActivity)) {
+#if CLIENT_DLL
+			if (IsGestureSlotActive(gestureSlot)) {
+				GestureSlot gesture = GestureSlots[gestureSlot];
+				if (gesture != null && gesture.AnimLayer != null) {
+					gesture.AnimLayer.Cycle = 1.0;
+					RunGestureSlotAnimEventsToCompletion(GestureSlots[gestureSlot]);
+				}
+			}
+#endif
+
+			Activity idealGestureActivity = TranslateActivity(gestureActivity);
+			AddToGestureSlot(gestureSlot, idealGestureActivity, autoKill);
+			return;
+		}
+
+		GestureSlots[gestureSlot].AnimLayer!.Cycle = 0.0f;
+		GestureSlots[gestureSlot].AnimLayer!.PrevCycle = 0.0f;
+	}
+
+	protected void AddToGestureSlot(int gestureSlot, Activity gestureActivity, bool autoKill) {
+		Assert(gestureSlot >= 0 && gestureSlot < (int)GestureSlotIndex.Count);
+
+		BasePlayer player = GetBasePlayer();
+		if (player == null)
+			return;
+
+		if (GestureSlots[gestureSlot].AnimLayer == null)
+			return;
+
+		if (!VerifyAnimLayerInSlot(gestureSlot))
+			return;
+
+		int gestureSequence = player.SelectWeightedSequence(gestureActivity);
+		if (gestureSequence <= 0)
+			return;
+
+		GestureSlot slot = GestureSlots[gestureSlot];
+		AnimationLayerRef layer = slot.AnimLayer!;
+
+#if CLIENT_DLL
+		slot.GestureSlotIndex = gestureSlot;
+		slot.Activity = gestureActivity;
+		slot.AutoKill = autoKill;
+		slot.Active = true;
+		layer.Sequence = gestureSequence;
+		layer.Order = gestureSlot;
+		layer.Weight = 1.0f;
+		layer.PlaybackRate = 1.0f;
+		layer.Cycle = 0.0f;
+		layer.PrevCycle = 0.0f;
+		layer.LayerAnimtime = 0.0f;
+		layer.LayerFadeOuttime = 0.0f;
+
+		player.OverlayPrevEventCycle[gestureSlot] = -1.0f;
+#else
+		slot.GestureSlotIndex = gestureSlot;
+		slot.Activity = gestureActivity;
+		slot.AutoKill = autoKill;
+		slot.Active = true;
+		layer.Activity = gestureActivity;
+		layer.Order = gestureSlot;
+		layer.Priority = 0;
+		layer.Cycle = 0.0f;
+		layer.PrevCycle = 0.0f;
+		layer.PlaybackRate = 1.0f;
+		layer.Activity = gestureActivity;
+		layer.Sequence = gestureSequence;
+		layer.Weight = 1.0f;
+		layer.BlendIn = 0.0f;
+		layer.BlendOut = 0.0f;
+		layer.SequenceFinished = false;
+		layer.LastEventCheck = 0.0f;
+		layer.LastEventCheck = gpGlobals.CurTime;
+		layer.Looping = false;
+		if (autoKill)
+			layer.Flags |= AnimLayerFlags.AutoKill;
+		else
+			layer.Flags &= ~AnimLayerFlags.AutoKill;
+		layer.Flags |= AnimLayerFlags.Active;
+#endif
+	}
 	public void AddVCDSequenceToGestureSlot(int gestureSlot, int gestureSequence, TimeUnit_t cycle = 0.0f, bool autoKill = true) => throw new NotImplementedException();
-	public AnimationLayerRef? GetGestureSlotLayer(int gestureSlot) => throw new NotImplementedException();
+	public AnimationLayerRef? GetGestureSlotLayer(int gestureSlot) => GestureSlots[gestureSlot].AnimLayer;
 	public virtual void ShowDebugInfo() {
 		if (anim_showstate.GetInt() == GetBasePlayer().EntIndex())
 			DebugShowAnimStateForPlayer(GetBasePlayer().IsServer());
 	}
-	protected virtual void RestartMainSequence() {
+	public virtual void RestartMainSequence() {
 		BaseAnimatingOverlay player = GetBasePlayer();
 		if (player != null) {
 			player.AnimTime = gpGlobals.CurTime;

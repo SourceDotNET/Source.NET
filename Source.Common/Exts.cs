@@ -1141,6 +1141,7 @@ public static class UnmanagedUtils
 				case '/':
 				case '\\':
 					lastSlashIdx = i;
+					lastDotIdx = -1;
 					if (!slashSeparators.IsEmpty && slashSepIdx < slashSeparators.Length) {
 						slashSeparators[slashSepIdx++] = new(lastMetRange, i - 1);
 						lastMetRange = i + 1;
