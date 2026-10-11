@@ -35,6 +35,53 @@ public struct AIMoveTrace
 	public float StepUpDistance;
 }
 
+[Flags]
+public enum AILocalMoveGoalFlags
+{
+	None,
+	TargetIsGoal = 0x01,
+	ConsumeInterval = 0x02,
+	TargetIsTransition = 0x04,
+	NoSteer = 0x08,
+	NoAvoidancePaths = 0x10,
+}
+
+public struct AILocalMoveGoal
+{
+	public Vector3 Target;
+
+	public Vector3 Dir;
+	public Vector3 Facing;
+	public float Speed;
+
+	public float MaxDist;
+
+	public float CurExpectedDist;
+
+	public Navigation NavType;
+	public BaseEntity? MoveTarget;
+
+	public AILocalMoveGoalFlags Flags;
+
+	public AI_Path? Path;
+
+	public bool HasTraced;
+	public AIMoveTrace DirectTrace;
+	public AIMoveTrace ThinkTrace;
+}
+
+public enum AIMotorMoveResult
+{
+	Failed,
+	Success,
+
+	PartialHitNPC,
+	PartialHitWorld,
+	PartialHitTarget,
+
+	NumResults
+}
+
 public static class AI_MoveTypesGlobals
 {
 	public static bool IsMoveBlocked(AIMoveResult moveResult) => moveResult < AIMoveResult.Ok;
