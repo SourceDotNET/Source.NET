@@ -2958,6 +2958,10 @@ public partial class BaseEntity : IServerEntity
 			Parent.Get()?.Use(activator, caller, useType, value);
 	}
 
+	public bool IsFollowingEntity() => IsEffectActive(EntityEffects.BoneMerge) && (GetMoveType() == Source.MoveType.None) && GetMoveParent() != null;
+
+	public virtual bool OnControls(BaseEntity controls) => false;
+
 	public int ShouldToggle(UseType useType, int currentState) {
 		if (useType != UseType.Toggle && useType != UseType.Set) {
 			if ((currentState != 0 && useType == UseType.On) || (currentState == 0 && useType == UseType.Off))
