@@ -16,11 +16,13 @@ public partial class BaseCombatWeapon : BaseAnimating
 {
 	public static readonly ConVar weapon_showproficiency = new("weapon_showproficiency", "0");
 
+	public OutputEvent OnPlayerUse = new();
 	public OutputEvent OnPlayerPickup = new();
 	public OutputEvent OnNPCPickup = new();
 	public OutputEvent OnCacheInteraction = new();
 
 	public static readonly new DataMap DataDesc = new(typeof(BaseCombatWeapon), BaseEntity.DataDesc, [
+		DEFINE.OUTPUT(nameof(OnPlayerUse), "OnPlayerUse", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnPlayerPickup), "OnPlayerPickup", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnNPCPickup), "OnNPCPickup", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnCacheInteraction), "OnCacheInteraction", eventFuncs),
@@ -65,6 +67,30 @@ public partial class BaseCombatWeapon : BaseAnimating
 		}
 
 		return count;
+	}
+
+	public override EntityCapabilities ObjectCaps() {
+		EntityCapabilities caps = base.ObjectCaps();
+		if (!IsFollowingEntity() && !HasSpawnFlags(SF_WEAPON_NO_PLAYER_PICKUP))
+			caps |= EntityCapabilities.ImpulseUse;
+
+		return caps;
+	}
+
+	public override void Use(BaseEntity? activator, BaseEntity? caller, UseType useType, float value) {
+		BasePlayer? player = ToBasePlayer(activator);
+
+		if (player != null) {
+			OnPlayerUse.FireOutput(activator, caller);
+
+			// Bump the weapon to try equipping it before picking it up physically. This is
+			// important in a few spots in the game where the player could potentially +use pickup
+			// and then THROW AWAY a vital weapon, rendering them unable to continue the game.
+			if (player.BumpWeapon(this))
+				OnPickedUp(player);
+			else
+				player.PickupObject(this);
+		}
 	}
 
 	public bool IsConstrained() => false;

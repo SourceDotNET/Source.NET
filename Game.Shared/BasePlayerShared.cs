@@ -54,6 +54,24 @@ public static class BasePlayerGlobals
 
 	public const TimeUnit_t DEATH_ANIMATION_TIME = 3.0f;
 
+	// PlayerUse defines
+	public const float PLAYER_USE_RADIUS = 80.0f;
+
+	public static float IntervalDistance(float x, float x0, float x1) {
+		// swap so x0 < x1
+		if (x0 > x1) {
+			float tmp = x0;
+			x0 = x1;
+			x1 = tmp;
+		}
+
+		if (x < x0)
+			return x0 - x;
+		else if (x > x1)
+			return x - x1;
+		return 0;
+	}
+
 	public static void CopySoundNameWithModifierToken(Span<char> dest, ReadOnlySpan<char> source, int maxLenInChars, ReadOnlySpan<char> token) {
 		source = source.SliceNullTerminatedString();
 		token = token.SliceNullTerminatedString();
@@ -656,6 +674,267 @@ public partial class
 		}
 	}
 
+
+#if !CLIENT_DLL
+	/// <summary>
+	/// Called every usercmd by the player PreThink
+	/// </summary>
+	public virtual void ItemPreFrame() {
+		// Handle use events
+		PlayerUse();
+
+		BaseCombatWeapon? active = GetActiveWeapon();
+
+		// Allow all the holstered weapons to update
+		for (int i = 0; i < WeaponCount(); ++i) {
+			BaseCombatWeapon? weapon = GetWeapon(i);
+
+			if (weapon == null)
+				continue;
+
+			if (active == weapon)
+				continue;
+
+			weapon.ItemHolsterFrame();
+		}
+
+		if (gpGlobals.CurTime < NextAttack)
+			return;
+
+		if (active == null)
+			return;
+
+		active.ItemPreFrame();
+	}
+
+	static readonly ConVar sv_debug_player_use = new("sv_debug_player_use", "0", FCvar.Replicated, "Visualizes +use logic. Green cross=trace success, Red cross=trace too far, Green box=radius success");
+
+	const int NUM_TANGENTS = 8;
+	// trace a box at successive angles down
+	//							forward, 45 deg, 30 deg, 20 deg, 15 deg, 10 deg, -10, -15
+	static readonly float[] tangents = [0, 1, 0.57735026919f, 0.3639702342f, 0.267949192431f, 0.1763269807f, -0.1763269807f, -0.267949192431f];
+
+	public virtual BaseEntity? FindUseEntity() {
+		EyeVectors(out Vector3 forward, out _, out Vector3 up);
+
+		Trace tr = default;
+		// Search for objects in a sphere (tests for entities that are not solid, yet still useable)
+		Vector3 searchCenter = EyePosition();
+
+		// NOTE: Some debris objects are useable too, so hit those as well
+		// A button, etc. can be made out of clip brushes, make sure it's +useable via a traceline, too.
+		Mask useableContents = Mask.Solid | (Mask)Contents.Debris | (Mask)Contents.PlayerClip;
+
+		BaseEntity? foundByTrace = null;
+
+		// UNDONE: Might be faster to just fold this range into the sphere query
+		BaseEntity? obj = null;
+
+		float nearestDist = float.MaxValue;
+		// try the hit entity if there is one, or the ground entity if there isn't.
+		BaseEntity? nearest = null;
+
+		for (int i = 0; i < NUM_TANGENTS; i++) {
+			if (i == 0) {
+				Util.TraceLine(searchCenter, searchCenter + forward * 1024, useableContents, this, Source.CollisionGroup.None, out tr);
+			}
+			else {
+				Vector3 down = forward - tangents[i] * up;
+				MathLib.VectorNormalize(ref down);
+				Util.TraceHull(searchCenter, searchCenter + down * 72, -new Vector3(16, 16, 16), new Vector3(16, 16, 16), useableContents, this, Source.CollisionGroup.None, out tr);
+			}
+			obj = tr.Ent;
+
+			foundByTrace = obj;
+
+			bool usable = IsUseableEntity(obj, 0);
+			while (obj != null && !usable && obj.GetMoveParent() != null) {
+				obj = obj.GetMoveParent();
+				usable = IsUseableEntity(obj, 0);
+			}
+
+			if (usable) {
+				Vector3 delta = tr.EndPos - tr.StartPos;
+				float centerZ = CollisionProp().WorldSpaceCenter().Z;
+				delta.Z = IntervalDistance(tr.EndPos.Z, centerZ + CollisionProp().OBBMins().Z, centerZ + CollisionProp().OBBMaxs().Z);
+				float dist = delta.Length();
+				if (dist < PLAYER_USE_RADIUS) {
+					if (sv_debug_player_use.GetBool()) {
+						DebugOverlay.Line(searchCenter, tr.EndPos, 0, 255, 0, true, 30);
+						DebugOverlay.Cross3D(tr.EndPos, 16, 0, 255, 0, true, 30);
+					}
+
+					if (obj!.MyNPCPointer() != null && obj.MyNPCPointer()!.IsPlayerAlly(this)) {
+						// If about to select an NPC, do a more thorough check to ensure
+						// that we're selecting the right one from a group.
+						obj = DoubleCheckUseNPC(obj, searchCenter, forward);
+					}
+
+					if (sv_debug_player_use.GetBool())
+						Msg($"Trace using: {(obj != null ? obj.GetDebugName() : "no usable entity found")}\n");
+
+					nearest = obj;
+
+					// if this is directly under the cursor just return it now
+					if (i == 0)
+						return obj;
+				}
+			}
+		}
+
+		// check ground entity first
+		// if you've got a useable ground entity, then shrink the cone of this search to 45 degrees
+		// otherwise, search out in a 90 degree cone (hemisphere)
+		if (GetGroundEntity() != null && IsUseableEntity(GetGroundEntity(), EntityCapabilities.UseOnGround))
+			nearest = GetGroundEntity();
+
+		if (nearest != null) {
+			// estimate nearest object by distance from the view vector
+			nearest.CollisionProp().CalcNearestPoint(searchCenter, out Vector3 point);
+			nearestDist = MathLib.CalcDistanceToLine(point, searchCenter, forward, out _);
+			if (sv_debug_player_use.GetBool())
+				Msg($"Trace found {nearest.GetClassname()}, dist {nearestDist:F2}\n");
+		}
+
+		for (EntitySphereQuery sphere = new(searchCenter, PLAYER_USE_RADIUS); (obj = sphere.GetCurrentEntity()) != null; sphere.NextEntity()) {
+			if (obj == null)
+				continue;
+
+			if (!IsUseableEntity(obj, EntityCapabilities.UseInRadius))
+				continue;
+
+			// see if it's more roughly in front of the player than previous guess
+			obj.CollisionProp().CalcNearestPoint(searchCenter, out Vector3 point);
+
+			Vector3 dir = point - searchCenter;
+			MathLib.VectorNormalize(ref dir);
+			float dot = Vector3.Dot(dir, forward);
+
+			// Need to be looking at the object more or less
+			if (dot < 0.8)
+				continue;
+
+			float dist = MathLib.CalcDistanceToLine(point, searchCenter, forward, out _);
+
+			if (sv_debug_player_use.GetBool())
+				Msg($"Radius found {obj.GetClassname()}, dist {dist:F2}\n");
+
+			if (dist < nearestDist) {
+				// Since this has purely been a radius search to this point, we now
+				// make sure the object isn't behind glass or a grate.
+				Util.TraceLine(searchCenter, point, useableContents, this, Source.CollisionGroup.None, out Trace trCheckOccluded);
+
+				if (trCheckOccluded.Fraction == 1.0 || trCheckOccluded.Ent == obj) {
+					nearest = obj;
+					nearestDist = dist;
+				}
+			}
+		}
+
+		if (nearest == null) {
+			// Haven't found anything near the player to use, nor any NPC's at distance.
+			// Check to see if the player is trying to select an NPC through a rail, fence, or other 'see-though' volume.
+			Util.TraceLine(searchCenter, searchCenter + forward * PLAYER_USE_RADIUS, Mask.OpaqueAndNPCs, this, Source.CollisionGroup.None, out Trace trAllies);
+
+			if (trAllies.Ent != null && IsUseableEntity(trAllies.Ent, 0) && trAllies.Ent.MyNPCPointer() != null && trAllies.Ent.MyNPCPointer()!.IsPlayerAlly(this)) {
+				// This is an NPC, take it!
+				nearest = trAllies.Ent;
+			}
+		}
+
+		if (nearest != null && nearest.MyNPCPointer() != null && nearest.MyNPCPointer()!.IsPlayerAlly(this))
+			nearest = DoubleCheckUseNPC(nearest, searchCenter, forward);
+
+		if (sv_debug_player_use.GetBool()) {
+			if (nearest == null) {
+				DebugOverlay.Line(searchCenter, tr.EndPos, 255, 0, 0, true, 30);
+				DebugOverlay.Cross3D(tr.EndPos, 16, 255, 0, 0, true, 30);
+			}
+			else if (nearest == foundByTrace) {
+				DebugOverlay.Line(searchCenter, tr.EndPos, 0, 255, 0, true, 30);
+				DebugOverlay.Cross3D(tr.EndPos, 16, 0, 255, 0, true, 30);
+			}
+			else {
+				DebugOverlay.Box(nearest.WorldSpaceCenter(), new Vector3(-8, -8, -8), new Vector3(8, 8, 8), 0, 255, 0, 1, 30);
+			}
+		}
+
+		if (sv_debug_player_use.GetBool())
+			Msg($"Radial using: {(nearest != null ? nearest.GetDebugName() : "no usable entity found")}\n");
+
+		return nearest;
+	}
+
+	/// <summary>
+	/// Handles USE keypress
+	/// </summary>
+	public virtual void PlayerUse() {
+		// Was use pressed or released?
+		if (((Buttons | AfButtonPressed | AfButtonReleased) & InButtons.Use) == 0)
+			return;
+
+		if (IsObserver()) {
+			// do special use operation in oberserver mode
+			if ((AfButtonPressed & InButtons.Use) != 0)
+				ObserverUse(true);
+			else if ((AfButtonReleased & InButtons.Use) != 0)
+				ObserverUse(false);
+
+			return;
+		}
+
+		if ((AfButtonPressed & InButtons.Use) != 0) {
+			// Controlling some latched entity?
+			if (ClearUseEntity()) {
+				return;
+			}
+			else {
+				if ((PhysicsFlags & PlayerPhysFlag.DirOverride) != 0) {
+					PhysicsFlags &= ~PlayerPhysFlag.DirOverride;
+					Train = FuncTrackTrain.TRAIN_NEW | FuncTrackTrain.TRAIN_OFF;
+					return;
+				}
+				else {  // Start controlling the train!
+					BaseEntity? train = GetGroundEntity();
+					if (train != null && (Buttons & InButtons.Jump) == 0 && (GetFlags() & EntityFlags.OnGround) != 0 && (train.ObjectCaps() & EntityCapabilities.DirectionalUse) != 0 && train.OnControls(this)) {
+						PhysicsFlags |= PlayerPhysFlag.DirOverride;
+						Train = TrainSpeed((int)train.Speed, (int)((FuncTrackTrain)train).GetMaxSpeed());
+						Train |= FuncTrackTrain.TRAIN_NEW;
+						EmitSound("Player.UseTrain");
+						return;
+					}
+				}
+			}
+		}
+
+		BaseEntity? useEntity = FindUseEntity();
+
+		// Found an object
+		if (useEntity != null) {
+
+			//!!!UNDONE: traceline here to prevent +USEing buttons through walls
+
+			EntityCapabilities caps = useEntity.ObjectCaps();
+			Variant_t emptyVariant = default;
+			if (((Buttons & InButtons.Use) != 0 && (caps & EntityCapabilities.ContinuousUse) != 0) || ((AfButtonPressed & InButtons.Use) != 0 && (caps & (EntityCapabilities.ImpulseUse | EntityCapabilities.OnOffUse)) != 0)) {
+				if ((caps & EntityCapabilities.ContinuousUse) != 0)
+					PhysicsFlags |= PlayerPhysFlag.Using;
+
+				if ((useEntity.ObjectCaps() & EntityCapabilities.OnOffUse) != 0)
+					useEntity.AcceptInput("Use", this, this, emptyVariant, (int)UseType.On);
+				else
+					useEntity.AcceptInput("Use", this, this, emptyVariant, (int)UseType.Toggle);
+			}
+			// UNDONE: Send different USE codes for ON/OFF.  Cache last ONOFF_USE object to send 'off' if you turn away
+			else if ((AfButtonReleased & InButtons.Use) != 0 && (useEntity.ObjectCaps() & EntityCapabilities.OnOffUse) != 0) {    // BUGBUG This is an "off" use
+				useEntity.AcceptInput("Use", this, this, emptyVariant, (int)UseType.Off);
+			}
+		}
+		else if ((AfButtonPressed & InButtons.Use) != 0) {
+			PlayUseDenySound();
+		}
+	}
+#endif
 
 	public void ViewPunch(in QAngle angleOffset) {
 		//See if we're suppressing the view punching

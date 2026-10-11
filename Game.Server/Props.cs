@@ -57,10 +57,56 @@ public class BaseProp : BaseAnimating
 }
 
 [NetworkName("CBreakableProp")]
-public class BreakableProp : BaseProp
+public class BreakableProp : BaseProp, IBreakableWithPropData
 {
 	public static readonly SendTable DT_BreakableProp = new(DT_BaseAnimating, []);
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_BreakableProp);
+
+	public void SetDmgModBullet(float dmgMod) => DmgModBullet = dmgMod;
+	public void SetDmgModClub(float dmgMod) => DmgModClub = dmgMod;
+	public void SetDmgModExplosive(float dmgMod) => DmgModExplosive = dmgMod;
+	public float GetDmgModBullet() => DmgModBullet;
+	public float GetDmgModClub() => DmgModClub;
+	public float GetDmgModExplosive() => DmgModExplosive;
+	public void SetExplosiveRadius(float radius) => ExplodeRadius = radius;
+	public void SetExplosiveDamage(float damage) => ExplodeDamage = damage;
+	public float GetExplosiveRadius() => ExplodeRadius;
+	public float GetExplosiveDamage() => ExplodeDamage;
+	public void SetPhysicsDamageTable(ReadOnlySpan<char> tableName) => PhysicsDamageTableName = tableName.IsEmpty ? null : new(tableName);
+	public ReadOnlySpan<char> GetPhysicsDamageTable() => PhysicsDamageTableName;
+	public void SetBreakableModel(ReadOnlySpan<char> model) => BreakableModel = model.IsEmpty ? null : new(model);
+	public ReadOnlySpan<char> GetBreakableModel() => BreakableModel;
+	public void SetBreakableSkin(int skin) => BreakableSkin = skin;
+	public int GetBreakableSkin() => BreakableSkin;
+	public void SetBreakableCount(int count) => BreakableCount = count;
+	public int GetBreakableCount() => BreakableCount;
+	public void SetMaxBreakableSize(int size) => MaxBreakableSize = size;
+	public int GetMaxBreakableSize() => MaxBreakableSize;
+	public void SetPropDataBlocksLOS(bool blocksLOS) => SetBlocksLOS(blocksLOS);
+	public void SetPropDataIsAIWalkable(bool blocksLOS) => SetAIWalkable(blocksLOS);
+	public void SetBasePropData(ReadOnlySpan<char> propdata) => BasePropData = propdata.IsEmpty ? null : new(propdata);
+	public ReadOnlySpan<char> GetBasePropData() => BasePropData;
+	public void SetInteraction(PropDataInteractions interaction) => Interactions |= (1 << (int)interaction);
+	public bool HasInteraction(PropDataInteractions interaction) => (Interactions & (1 << (int)interaction)) != 0;
+	public void SetPhysicsMode(PhysicsMultiplayerMode mode) => m_iPhysicsMode = mode;
+	public PhysicsMultiplayerMode GetPhysicsMode() => m_iPhysicsMode;
+	public void SetMultiplayerBreakMode(MultiplayerBreak mode) => MpBreakMode = mode;
+	public MultiplayerBreak GetMultiplayerBreakMode() => MpBreakMode;
+
+	protected float DmgModBullet;
+	protected float DmgModClub;
+	protected float DmgModExplosive;
+	protected string? PhysicsDamageTableName;
+	protected string? BreakableModel;
+	protected int BreakableSkin;
+	protected int BreakableCount;
+	protected int MaxBreakableSize;
+	protected string? BasePropData;
+	protected int Interactions;
+	protected float ExplodeDamage;
+	protected float ExplodeRadius;
+	protected PhysicsMultiplayerMode m_iPhysicsMode;
+	protected MultiplayerBreak MpBreakMode;
 }
 
 [LinkEntityToClass("func_physbox_multiplayer")]
@@ -76,6 +122,10 @@ public class PhysBoxMultiplayer : PhysBox, IMultiplayerPhysics
 	public int PhysicsMode;
 	[NetworkName("m_fMass")]
 	public float Mass;
+
+	public PhysicsMultiplayerMode GetMultiplayerPhysicsMode() => (PhysicsMultiplayerMode)PhysicsMode;
+	public float GetMass() => Mass;
+	public bool IsAsleep() => VPhysicsGetObject()!.IsAsleep();
 }
 
 [LinkEntityToClass("physics_prop")]
@@ -139,6 +189,40 @@ public class PhysicsProp : BreakableProp
 
 		return true;
 	}
+
+	public override EntityCapabilities ObjectCaps() {
+		EntityCapabilities caps = base.ObjectCaps() | EntityCapabilities.WorldcraftEditPosition;
+
+		if (HasSpawnFlags(SF_PHYSPROP_ENABLE_PICKUP_OUTPUT)) 
+			caps |= EntityCapabilities.ImpulseUse;
+		else if (BasePlayer.CanPickupObject(this, 35, 128)) {
+			caps |= EntityCapabilities.ImpulseUse;
+
+			if (hl2_episodic.GetBool() && HasInteraction(PropDataInteractions.PhysgunCreateFlare)) {
+				caps |= EntityCapabilities.UseInRadius;
+			}
+		}
+
+		if (HasSpawnFlags(SF_PHYSPROP_RADIUS_PICKUP)) {
+			caps |= EntityCapabilities.UseInRadius;
+		}
+
+		return caps;
+	}
+
+	public override void Use(BaseEntity? activator, BaseEntity? caller, UseType useType, float value) {
+		BasePlayer? player = ToBasePlayer(activator);
+		if (player != null) {
+			// if (HasSpawnFlags(SF_PHYSPROP_ENABLE_PICKUP_OUTPUT))
+			// 	OnPlayerUse.FireOutput(this, this);
+
+			player.PickupObject(this);
+		}
+	}
+
+	public float GetCarryDistanceOffset() => CarryDistanceOffset;
+
+	float CarryDistanceOffset;
 }
 
 [LinkEntityToClass("dynamic_prop")]

@@ -10,6 +10,7 @@ using Game.Shared.HL2;
 
 namespace Game.Server.HL2;
 
+using DEFINE = Source.DEFINE<HL2_Player>;
 using FIELD = Source.FIELD<HL2_Player>;
 
 [PrecacheRegister("player")]
@@ -22,12 +23,17 @@ public class HL2_Player : BaseMultiplayerPlayer
 	]);
 	public static new readonly ServerClass ServerClass = new ServerClass(DT_HL2_Player);
 
+	public static readonly new DataMap DataDesc = new(typeof(HL2_Player), BasePlayer.DataDesc, [
+		DEFINE.INPUTFUNC(FieldType.Void, "ForceDropPhysObjects", nameof(InputForceDropPhysObjects), (INPUTFUNCPTR)((self, data) => ((HL2_Player)self).InputForceDropPhysObjects(data))),
+	]);
+	public override DataMap? GetDataDescMap() => DataDesc;
+
 	[NetworkName("m_HL2Local")]
 	public readonly HL2PlayerLocalData HL2Local = new();
 
 #if HL2MP
 	const int HL2_WALK_SPEED = 150;
-	const int HL2_NORM_SPEED = 190;
+	public const int HL2_NORM_SPEED = 190;
 	const int HL2_SPRINT_SPEED = 320;
 #else
 #endif
@@ -36,6 +42,9 @@ public class HL2_Player : BaseMultiplayerPlayer
 	TimeUnit_t MoveTime;
 	TimeUnit_t LastDamageTime;
 	TimeUnit_t TargetFindTime;
+	TimeUnit_t TimeUseSuspended;
+
+	public virtual void SuspendUse(TimeUnit_t duration) { TimeUseSuspended = gpGlobals.CurTime + duration; }
 
 	bool SprintEnabled;
 
@@ -188,7 +197,7 @@ public class HL2_Player : BaseMultiplayerPlayer
 
 	void StopSprinting() { }
 
-	void EnableSprint(bool enable) {
+	public void EnableSprint(bool enable) {
 		if (!enable && IsSprinting())
 			StopSprinting();
 
@@ -391,7 +400,111 @@ public class HL2_Player : BaseMultiplayerPlayer
 		throw new NotImplementedException();
 	}
 
-	void PlayerUse() { }
+	public override void PlayerUse() {
+		// Was use pressed or released?
+		if (((Buttons | AfButtonPressed | AfButtonReleased) & InButtons.Use) == 0)
+			return;
+
+		if ((AfButtonPressed & InButtons.Use) != 0) {
+			// Currently using a latched entity?
+			if (ClearUseEntity()) {
+				return;
+			}
+			else {
+				if ((PhysicsFlags & PlayerPhysFlag.DirOverride) != 0) {
+					PhysicsFlags &= ~PlayerPhysFlag.DirOverride;
+					Train = FuncTrackTrain.TRAIN_NEW | FuncTrackTrain.TRAIN_OFF;
+					return;
+				}
+				else {  // Start controlling the train!
+					BaseEntity? train = GetGroundEntity();
+					if (train != null && (Buttons & InButtons.Jump) == 0 && (GetFlags() & EntityFlags.OnGround) != 0 && (train.ObjectCaps() & EntityCapabilities.DirectionalUse) != 0 && train.OnControls(this)) {
+						PhysicsFlags |= PlayerPhysFlag.DirOverride;
+						Train = TrainSpeed((int)train.Speed, (int)((FuncTrackTrain)train).GetMaxSpeed());
+						Train |= FuncTrackTrain.TRAIN_NEW;
+						EmitSound("HL2Player.TrainUse");
+						return;
+					}
+				}
+			}
+
+			// Tracker 3926:  We can't +USE something if we're climbing a ladder
+			if (GetMoveType() == Source.MoveType.Ladder)
+				return;
+		}
+
+		if (TimeUseSuspended > gpGlobals.CurTime) {
+			// Something has temporarily stopped us being able to USE things.
+			// Obviously, this should be used very carefully.(sjb)
+			return;
+		}
+
+		BaseEntity? useEntity = FindUseEntity();
+
+		bool usedSomething = false;
+
+		// Found an object
+		if (useEntity != null) {
+			//!!!UNDONE: traceline here to prevent +USEing buttons through walls
+			EntityCapabilities caps = useEntity.ObjectCaps();
+			Variant_t emptyVariant = default;
+
+			if ((AfButtonPressed & InButtons.Use) != 0) {
+				// Robin: Don't play sounds for NPCs, because NPCs will allow respond with speech.
+				if (useEntity.MyNPCPointer() == null)
+					EmitSound("HL2Player.Use");
+			}
+
+			if (((Buttons & InButtons.Use) != 0 && (caps & EntityCapabilities.ContinuousUse) != 0) ||
+				 ((AfButtonPressed & InButtons.Use) != 0 && (caps & (EntityCapabilities.ImpulseUse | EntityCapabilities.OnOffUse)) != 0)) {
+				if ((caps & EntityCapabilities.ContinuousUse) != 0)
+					PhysicsFlags |= PlayerPhysFlag.Using;
+
+				useEntity.AcceptInput("Use", this, this, emptyVariant, (int)UseType.Toggle);
+
+				usedSomething = true;
+			}
+			// UNDONE: Send different USE codes for ON/OFF.  Cache last ONOFF_USE object to send 'off' if you turn away
+			else if ((AfButtonReleased & InButtons.Use) != 0 && (useEntity.ObjectCaps() & EntityCapabilities.OnOffUse) != 0) {    // BUGBUG This is an "off" use
+				useEntity.AcceptInput("Use", this, this, emptyVariant, (int)UseType.Toggle);
+
+				usedSomething = true;
+			}
+
+#if HL2_SINGLE_PRIMARY_WEAPON_MODE
+
+			//Check for weapon pick-up
+			if ((AfButtonPressed & InButtons.Use) != 0) {
+				BaseCombatWeapon? weapon = useEntity as BaseCombatWeapon;
+
+				if ((weapon != null) && (Weapon_CanSwitchTo(weapon))) {
+					//Try to take ammo or swap the weapon
+					if (Weapon_OwnsThisType(weapon.GetClassname(), weapon.GetSubType()) != null) {
+						Weapon_EquipAmmoOnly(weapon);
+					}
+					else {
+						Weapon_DropSlot(weapon.GetSlot());
+						Weapon_Equip(weapon);
+					}
+
+					usedSomething = true;
+				}
+			}
+#endif
+		}
+		else if ((AfButtonPressed & InButtons.Use) != 0) {
+			// Signal that we want to play the deny sound, unless the user is +USEing on a ladder!
+			// The sound is emitted in ItemPostFrame, since that occurs after GameMovement::ProcessMove which
+			// lets the ladder code unset this flag.
+			m_bPlayUseDenySound = true;
+		}
+
+		// Debounce the use key
+		if (usedSomething && useEntity != null) {
+			Local.OldButtons |= (int)InButtons.Use;
+			AfButtonPressed &= ~InButtons.Use;
+		}
+	}
 
 	void UpdateWeaponPosture() { }
 
@@ -407,19 +520,56 @@ public class HL2_Player : BaseMultiplayerPlayer
 		throw new NotImplementedException();
 	}
 
-	void PickupObject(BaseEntity Object, bool limitMassAndSize) { }
+	public override void PickupObject(BaseEntity obj, bool limitMassAndSize = true) => HL2_PickupObject(obj, limitMassAndSize);
 
-	bool IsHoldingEntity(BaseEntity ent) {
-		throw new NotImplementedException();
+	protected void HL2_PickupObject(BaseEntity obj, bool limitMassAndSize) {
+		// can't pick up what you're standing on
+		if (GetGroundEntity() == obj)
+			return;
+
+		if (limitMassAndSize == true) {
+			if (CanPickupObject(obj, 35, 128) == false)
+				return;
+		}
+
+		// Can't be picked up if NPCs are on me
+		// if ( pObject->HasNPCsOnIt() )
+		// 	return;
+
+		PlayerPickupController.PlayerPickupObject(this, obj);
 	}
 
-	float GetHeldObjectMass(IPhysicsObject heldObject) {
-		throw new NotImplementedException();
+	public bool IsHoldingEntity(BaseEntity? ent) {
+		return PlayerPickupController.PlayerPickupControllerIsHoldingEntity(UseEntity.Get(), ent);
 	}
 
-	void ForceDropOfCarriedPhysObjects(BaseEntity onlyIfHoldingThis) { }
+	public override float GetHeldObjectMass(IPhysicsObject? heldObject) {
+		float mass = PlayerPickupController.PlayerPickupGetHeldObjectMass(UseEntity.Get(), heldObject!);
+		// if ( mass == 0.0f )
+		// 	mass = PhysCannonGetHeldObjectMass( GetActiveWeapon(), pHeldObject );
+		return mass;
+	}
 
-	// void InputForceDropPhysObjects(inputdata_t data ) { }
+	/// <summary>
+	/// Force the player to drop any physics objects he's carrying
+	/// </summary>
+	public override void ForceDropOfCarriedPhysObjects(BaseEntity? onlyIfHoldingThis) {
+		if (PhysIsInCallback()) {
+			Variant_t value = default;
+			g_EventQueue.AddEvent(this, "ForceDropPhysObjects", value, 0.01f, onlyIfHoldingThis, this);
+			return;
+		}
+
+		// Drop any objects being handheld.
+		ClearUseEntity();
+
+		// Then force the physcannon to drop anything it's holding, if it's our active weapon
+		// PhysCannonForceDrop( GetActiveWeapon(), NULL );
+	}
+
+	public void InputForceDropPhysObjects(InputData data) {
+		ForceDropOfCarriedPhysObjects(data.Activator);
+	}
 
 	void UpdateClientData() { }
 
@@ -461,9 +611,21 @@ public class HL2_Player : BaseMultiplayerPlayer
 		throw new NotImplementedException();
 	}
 
-	void PlayUseDenySound() { }
+	/// <summary>
+	/// Queues up a use deny sound, played in ItemPostFrame.
+	/// </summary>
+	public override void PlayUseDenySound() {
+		m_bPlayUseDenySound = true;
+	}
 
-	void ItemPostFrame() { }
+	public override void ItemPostFrame() {
+		base.ItemPostFrame();
+
+		if (m_bPlayUseDenySound) {
+			m_bPlayUseDenySound = false;
+			EmitSound("HL2Player.UseDeny");
+		}
+	}
 
 	void StartWaterDeathSounds() { }
 

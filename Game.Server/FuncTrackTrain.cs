@@ -40,6 +40,15 @@ public class FuncTrackTrain : BaseEntity
 	public const int SF_TRACKTRAIN_USE_MAXSPEED_FOR_PITCH = 0x0100;
 	public const int SF_TRACKTRAIN_UNBLOCKABLE_BY_PLAYER = 0x0200;
 
+	public const int TRAIN_ACTIVE = 0x80;
+	public const int TRAIN_NEW = 0xc0;
+	public const int TRAIN_OFF = 0x00;
+	public const int TRAIN_NEUTRAL = 0x01;
+	public const int TRAIN_SLOW = 0x02;
+	public const int TRAIN_MEDIUM = 0x03;
+	public const int TRAIN_FAST = 0x04;
+	public const int TRAIN_BACK = 0x05;
+
 	const float TRAIN_MAXSPEED = 1000;
 
 	public static readonly SendTable DT_FuncTrackTrain = new(DT_BaseEntity, []);
@@ -890,7 +899,7 @@ public class FuncTrackTrain : BaseEntity
 		ControlMaxs = controls.WorldAlignMaxs() + offset;
 	}
 
-	public bool OnControls(BaseEntity test) {
+	public override bool OnControls(BaseEntity test) {
 		Vector3 offset = test.GetLocalOrigin() - GetLocalOrigin();
 
 		if ((SpawnFlags & SF_TRACKTRAIN_NOCONTROL) != 0)

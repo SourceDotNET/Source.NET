@@ -2262,6 +2262,15 @@ public partial class BaseEntity : IServerEntity
 
 	public bool BlocksLOS() => !IsEFlagSet(EFL.DontBlockLOS);
 
+	public void SetAIWalkable(bool blocksLOS) {
+		if (blocksLOS)
+			RemoveEFlags(EFL.DontWalkOn);
+		else
+			AddEFlags(EFL.DontWalkOn);
+	}
+
+	public bool IsAIWalkable() => !IsEFlagSet(EFL.DontWalkOn);
+
 	public Vector3 AbsVelocity;
 	public QAngle AngVelocity;
 
@@ -2957,6 +2966,10 @@ public partial class BaseEntity : IServerEntity
 		else
 			Parent.Get()?.Use(activator, caller, useType, value);
 	}
+
+	public bool IsFollowingEntity() => IsEffectActive(EntityEffects.BoneMerge) && (GetMoveType() == Source.MoveType.None) && GetMoveParent() != null;
+
+	public virtual bool OnControls(BaseEntity controls) => false;
 
 	public int ShouldToggle(UseType useType, int currentState) {
 		if (useType != UseType.Toggle && useType != UseType.Set) {
