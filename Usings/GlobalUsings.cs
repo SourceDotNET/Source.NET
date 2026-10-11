@@ -25,6 +25,7 @@ global using static Source.Common.CoordSize;
 global using static Source.Common.DataMapConstants;
 global using static Source.Common.PartitionConstants;
 global using static Source.Common.DispCollCommon;
+global using static Source.Common.BaseHandleExts;
 global using CRC32_t = uint;
 global using HCursor = nint;
 global using UtlSymId_t = ulong;

@@ -11,16 +11,10 @@ public struct BaseHandle : IEquatable<BaseHandle>, IBaseHandle
 	public readonly uint Unpack() => Index;
 
 
-	public void Invalidate() => Index = (uint)Constants.INVALID_EHANDLE_INDEX;
-	public BaseHandle() => Invalidate();
+	public BaseHandle() => Index = (uint)Constants.INVALID_EHANDLE_INDEX;
 	public BaseHandle(uint value) => Index = value;
 	public BaseHandle(in BaseHandle handle) => Index = handle.Index;
-	public BaseHandle(int entry, int serial) => Init(entry, serial);
-
-	public void Init(in BaseHandle otherHandle) => Index = otherHandle.Index;
-	public void Init(uint entindex) => Index = entindex;
-	public void Init(ulong entindex) => Index = (uint)entindex;
-	public void Init(int entry, int serial) => Index = (uint)(entry | (serial << Constants.NUM_ENT_ENTRY_BITS));
+	public BaseHandle(int entry, int serial) => Index = (uint)(entry | (serial << Constants.NUM_ENT_ENTRY_BITS));
 
 	public readonly int GetEntryIndex() => (int)(Index & Constants.ENT_ENTRY_MASK);
 	public readonly int GetSerialNumber() => (int)(Index >> Constants.NUM_ENT_ENTRY_BITS);
@@ -37,14 +31,6 @@ public struct BaseHandle : IEquatable<BaseHandle>, IBaseHandle
 	}
 	public override readonly int GetHashCode() => (int)Index;
 	public readonly bool IsValid() => Index != Constants.INVALID_EHANDLE_INDEX;
-
-	public BaseHandle Set(IHandleEntity? entity) {
-		if (entity != null)
-			this.Index = entity.GetRefEHandle().Index;
-		else
-			Index = Constants.INVALID_EHANDLE_INDEX;
-		return this;
-	}
 }
 
 
@@ -60,16 +46,10 @@ public struct Handle<T> : IEquatable<Handle<T>>, IEquatable<BaseHandle>, IBaseHa
 	public readonly bool Equals(BaseHandle otherHandle) => Index == otherHandle.Index;
 	public uint Index;
 
-	public void Invalidate() => Index = (uint)Constants.INVALID_EHANDLE_INDEX;
-	public Handle() => Invalidate();
+	public Handle() => Index = (uint)Constants.INVALID_EHANDLE_INDEX;
 	public Handle(uint value) => Index = value;
 	public Handle(in BaseHandle handle) => Index = handle.Index;
-	public Handle(int entry, int serial) => Init(entry, serial);
-
-	public void Init(in BaseHandle otherHandle) => Index = otherHandle.Index;
-	public void Init(uint entindex) => Index = entindex;
-	public void Init(ulong entindex) => Index = (uint)entindex;
-	public void Init(int entry, int serial) => Index = (uint)(entry | (serial << Constants.NUM_ENT_ENTRY_BITS));
+	public Handle(int entry, int serial) => Index = (uint)(entry | (serial << Constants.NUM_ENT_ENTRY_BITS));
 
 	public readonly int GetEntryIndex() => (int)(Index & Constants.ENT_ENTRY_MASK);
 	public readonly int GetSerialNumber() => (int)(Index >> Constants.NUM_ENT_ENTRY_BITS);
@@ -103,12 +83,37 @@ public struct Handle<T> : IEquatable<Handle<T>>, IEquatable<BaseHandle>, IBaseHa
 
 	public override readonly int GetHashCode() => (int)Index;
 	public readonly bool IsValid() => Index != Constants.INVALID_EHANDLE_INDEX;
+}
 
-	public Handle<T> Set(IHandleEntity? entity) {
+public static class BaseHandleExts
+{
+	public static void Invalidate(ref this BaseHandle handle) => handle.Index = (uint)Constants.INVALID_EHANDLE_INDEX;
+
+	public static void Init(ref this BaseHandle handle, in BaseHandle otherHandle) => handle.Index = otherHandle.Index;
+	public static void Init(ref this BaseHandle handle, uint entindex) => handle.Index = entindex;
+	public static void Init(ref this BaseHandle handle, ulong entindex) => handle.Index = (uint)entindex;
+	public static void Init(ref this BaseHandle handle, int entry, int serial) => handle.Index = (uint)(entry | (serial << Constants.NUM_ENT_ENTRY_BITS));
+
+	public static BaseHandle Set(ref this BaseHandle handle, IHandleEntity? entity) {
 		if (entity != null)
-			this.Index = entity.GetRefEHandle().Index;
+			handle.Index = entity.GetRefEHandle().Index;
 		else
-			Index = Constants.INVALID_EHANDLE_INDEX;
-		return this;
+			handle.Index = Constants.INVALID_EHANDLE_INDEX;
+		return handle;
+	}
+
+	public static void Invalidate<T>(ref this Handle<T> handle) => handle.Index = (uint)Constants.INVALID_EHANDLE_INDEX;
+
+	public static void Init<T>(ref this Handle<T> handle, in BaseHandle otherHandle) => handle.Index = otherHandle.Index;
+	public static void Init<T>(ref this Handle<T> handle, uint entindex) => handle.Index = entindex;
+	public static void Init<T>(ref this Handle<T> handle, ulong entindex) => handle.Index = (uint)entindex;
+	public static void Init<T>(ref this Handle<T> handle, int entry, int serial) => handle.Index = (uint)(entry | (serial << Constants.NUM_ENT_ENTRY_BITS));
+
+	public static Handle<T> Set<T>(ref this Handle<T> handle, IHandleEntity? entity) {
+		if (entity != null)
+			handle.Index = entity.GetRefEHandle().Index;
+		else
+			handle.Index = Constants.INVALID_EHANDLE_INDEX;
+		return handle;
 	}
 }
