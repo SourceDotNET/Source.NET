@@ -428,6 +428,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public Handle<AI_BaseNPC> ForcedInteractionPartner = new();
 	public NPCInteractionState InteractionState;
 	public Vector3 SavePosition;
+	public Vector3 LastPosition;
 	public Vector3 EyeLookTarget;
 	public Vector3 CurEyeTarget;
 	public float EyeIntegRate = 0.95f;
@@ -2852,6 +2853,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return IsJumpLegal(startPos, apex, endPos, MAX_JUMP_RISE, MAX_JUMP_DROP, MAX_JUMP_DISTANCE);
 	}
 
+	public virtual bool MovementCost(Capability moveType, in Vector3 start, in Vector3 end, ref float cost) => false;
+
 	public override bool CanStandOn(BaseEntity? surface) {
 		if (!surface!.IsAIWalkable())
 			return false;
@@ -2884,6 +2887,51 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public override bool IsMoving() => GetNavigator()!.IsGoalSet();
 
 	public virtual float CalcYawSpeed() => -1.0f;
+
+	public virtual bool OnCalcBaseMove(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) {
+		if (moveGoal.DirectTrace.Obstruction != null) {
+			if (moveGoal.DirectTrace.Obstruction is BasePropDoor propDoor && OnUpcomingPropDoor(ref moveGoal, propDoor, distClear, ref result))
+				return true;
+		}
+
+		return false;
+	}
+
+	public virtual bool OnObstructionPreSteer(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) {
+		if (moveGoal.DirectTrace.Obstruction != null) {
+			if (moveGoal.DirectTrace.Obstruction is BaseDoor door && OnObstructingDoor(ref moveGoal, door, distClear, ref result))
+				return true;
+		}
+
+		return false;
+	}
+
+	public virtual bool OnFailedSteer(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) => false;
+	public virtual bool OnFailedLocalNavigation(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) => false;
+	public virtual bool OnInsufficientStopDist(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) => false;
+	public virtual bool OnMoveBlocked(ref AIMoveResult result) => false;
+	public virtual bool OnMoveStalled(in AILocalMoveGoal move) => false;
+	public virtual bool OnMoveExecuteFailed(in AILocalMoveGoal move, in AIMoveTrace trace, AIMotorMoveResult motorResult, ref AIMoveResult result) => false;
+
+	public virtual bool OnObstructingDoor(ref AILocalMoveGoal moveGoal, BaseDoor door, float distClear, ref AIMoveResult result) {
+		if (moveGoal.MaxDist < distClear)
+			return false;
+
+		if (door.ToggleState == Game.Shared.ToggleState.AtBottom || door.ToggleState == Game.Shared.ToggleState.GoingDown) {
+			if (distClear < 0.1)
+				result = AIMoveResult.BlockedEntity;
+			else {
+				moveGoal.MaxDist = distClear;
+				result = AIMoveResult.Ok;
+			}
+
+			return true;
+		}
+
+		return false;
+	}
+
+	public virtual bool OnUpcomingPropDoor(ref AILocalMoveGoal moveGoal, BasePropDoor door, float distClear, ref AIMoveResult result) => throw new NotImplementedException();
 
 	public virtual float HearingSensitivity() => 1.0f;
 
@@ -3485,6 +3533,28 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 	}
 
+	public bool ValidateNavGoal() {
+		if (GetNavigator()!.GetGoalType() == NavGoalType.Cover) {
+			if (GetEnemy() != null) {
+				Activity coverActivity = GetCoverActivity(GetHintNode());
+				Vector3 coverLocation = GetNavigator()!.GetGoalPos();
+
+				float floorZ = GetFloorZ(coverLocation);
+				coverLocation.Z = floorZ;
+
+				Vector3 eyePos = coverLocation + EyeOffset(coverActivity);
+
+				if (!IsCoverPosition(GetEnemy()!.EyePosition(), eyePos)) {
+					TaskFail(AI_TaskFailureCode.BadPathGoal);
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	public virtual bool IsCoverPosition(in Vector3 threat, in Vector3 position) => throw new NotImplementedException();
+
 	public bool ShouldMoveWait() => MoveWaitFinished > gpGlobals.CurTime;
 
 	public virtual bool ShouldMoveAndShoot() => (CapabilitiesGet() & Server.Capability.MoveShoot) != 0;
@@ -3666,7 +3736,172 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				break;
 
 			case TASK_STOP_MOVING:
-				SetIdealActivity(GetStoppedActivity());
+				if ((GetNavigator()!.IsGoalSet() && GetNavigator()!.IsGoalActive()) || GetNavType() == Navigation.Jump) {
+					if (task.TaskData == 1)
+						GetNavigator()!.StopMoving(false);
+					else
+						GetNavigator()!.ClearGoal();
+
+					if (HasPoseMoveYaw())
+						SetPoseParameter(PoseMove_Yaw, 0);
+				}
+				else {
+					if (!(task.TaskData == 1 && GetNavigator()!.SetGoalFromStoppingPath())) {
+						GetNavigator()!.ClearGoal();
+						SetIdealActivity(GetStoppedActivity());
+						TaskComplete();
+					}
+				}
+				break;
+
+			case TASK_STORE_LASTPOSITION:
+				LastPosition = GetLocalOrigin();
+				TaskComplete();
+				break;
+
+			case TASK_CLEAR_LASTPOSITION:
+				LastPosition = vec3_origin;
+				TaskComplete();
+				break;
+
+			case TASK_STORE_POSITION_IN_SAVEPOSITION:
+				SavePosition = GetLocalOrigin();
+				TaskComplete();
+				break;
+
+			case TASK_GET_PATH_TO_PLAYER: {
+					BaseEntity? player = AI_GetClosestPlayer();
+					if (player == null)
+						break;
+
+					AI_NavGoal goal = new() {
+						Type = NavGoalType.Location,
+						Dest = player.WorldSpaceCenter(),
+						Target = player,
+						DefTarget = false
+					};
+
+					GetNavigator()!.SetGoal(goal);
+					break;
+				}
+
+			case TASK_GET_PATH_TO_TARGET: {
+					if (TargetEnt.Get() == null)
+						TaskFail(AI_TaskFailureCode.NoTarget);
+					else {
+						AI_NavGoal goal = new(TargetEnt.Get()!.EyePosition()) {
+							Target = TargetEnt.Get(),
+							DefTarget = false
+						};
+						GetNavigator()!.SetGoal(goal);
+					}
+					break;
+				}
+
+			case TASK_GET_PATH_TO_LASTPOSITION: {
+					if (!GetNavigator()!.SetGoal(new AI_NavGoal(LastPosition)))
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					else
+						GetNavigator()!.SetGoalTolerance(48);
+					break;
+				}
+
+			case TASK_GET_PATH_TO_SAVEPOSITION:
+				GetNavigator()!.SetGoal(new AI_NavGoal(SavePosition));
+				break;
+
+			case TASK_GET_PATH_TO_RANDOM_NODE: {
+					if (GetNavigator()!.SetRandomGoal(task.TaskData))
+						TaskComplete();
+					else
+						TaskFail(AI_TaskFailureCode.NoReachableNode);
+					break;
+				}
+
+			case TASK_RUN_PATH: {
+					if (TranslateActivity(Activity.ACT_RUN) != Activity.ACT_INVALID)
+						GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+					else
+						GetNavigator()!.SetMovementActivity(Activity.ACT_WALK);
+					Forget(AI_MemoryFlags.Incover);
+					TaskComplete();
+					break;
+				}
+
+			case TASK_WALK_PATH_FOR_UNITS:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_WALK);
+				break;
+
+			case TASK_RUN_PATH_FOR_UNITS:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+				break;
+
+			case TASK_WALK_PATH: {
+					bool isFlying = (GetMoveType() == Source.MoveType.Fly) || (GetMoveType() == Source.MoveType.FlyGravity);
+					if (isFlying && (TranslateActivity(Activity.ACT_FLY) != Activity.ACT_INVALID))
+						GetNavigator()!.SetMovementActivity(Activity.ACT_FLY);
+					else if (TranslateActivity(Activity.ACT_WALK) != Activity.ACT_INVALID)
+						GetNavigator()!.SetMovementActivity(Activity.ACT_WALK);
+					else
+						GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+					Forget(AI_MemoryFlags.Incover);
+					TaskComplete();
+					break;
+				}
+
+			case TASK_WALK_PATH_WITHIN_DIST:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_WALK);
+				GetNavigator()!.SetArrivalDistance(task.TaskData);
+				break;
+
+			case TASK_RUN_PATH_WITHIN_DIST:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+				GetNavigator()!.SetArrivalDistance(task.TaskData);
+				break;
+
+			case TASK_RUN_PATH_FLEE: {
+					Vector3 diff = GetLocalOrigin() - GetNavigator()!.GetGoalPos();
+
+					if (diff.Length() <= task.TaskData) {
+						GetNavigator()!.StopMoving();
+						TaskFail("Flee path shorter than task parameter");
+					}
+					else
+						GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+					break;
+				}
+
+			case TASK_WALK_PATH_TIMED:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_WALK);
+				SetWait(task.TaskData);
+				break;
+
+			case TASK_RUN_PATH_TIMED:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+				SetWait(task.TaskData);
+				break;
+
+			case TASK_WAIT_FOR_MOVEMENT_STEP: {
+					if (!GetNavigator()!.IsGoalActive()) {
+						TaskComplete();
+						return;
+					}
+
+					if (IsActivityFinished()) {
+						TaskComplete();
+						return;
+					}
+					ValidateNavGoal();
+					break;
+				}
+
+			case TASK_SET_TOLERANCE_DISTANCE:
+				GetNavigator()!.SetGoalTolerance((int)task.TaskData);
+				TaskComplete();
+				break;
+
+			case TASK_SET_ROUTE_SEARCH_TIME:
+				GetNavigator()!.SetMaxRouteRebuildTime((int)task.TaskData);
 				TaskComplete();
 				break;
 
@@ -3703,7 +3938,14 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				}
 
 			case TASK_WAIT_FOR_MOVEMENT:
-				TaskComplete();
+				if (GetNavigator()!.GetGoalType() == NavGoalType.None) {
+					TaskComplete();
+					GetNavigator()!.ClearGoal();
+				}
+				else if (!GetNavigator()!.IsGoalActive())
+					SetIdealActivity(GetStoppedActivity());
+				else
+					ValidateNavGoal();
 				break;
 
 			case TASK_PLAY_SCENE:
@@ -3748,9 +3990,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_FIND_HINTNODE:
 			case TASK_FIND_LOCK_HINTNODE:
 			case TASK_LOCK_HINTNODE:
-			case TASK_STORE_LASTPOSITION:
-			case TASK_CLEAR_LASTPOSITION:
-			case TASK_STORE_POSITION_IN_SAVEPOSITION:
 			case TASK_STORE_BESTSOUND_IN_SAVEPOSITION:
 			case TASK_STORE_ENEMY_POSITION_IN_SAVEPOSITION:
 			case TASK_CLEAR_HINTNODE:
@@ -3804,34 +4043,19 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_GET_PATH_TO_GOAL:
 			case TASK_GET_PATH_TO_ENEMY:
 			case TASK_GET_PATH_TO_ENEMY_CORPSE:
-			case TASK_GET_PATH_TO_PLAYER:
 			case TASK_GET_PATH_TO_SAVEPOSITION_LOS:
 			case TASK_GET_PATH_TO_TARGET_WEAPON:
-			case TASK_GET_PATH_TO_TARGET:
 			case TASK_GET_PATH_TO_HINTNODE:
 			case TASK_GET_PATH_TO_COMMAND_GOAL:
 			case TASK_MARK_COMMAND_GOAL_POS:
 			case TASK_CLEAR_COMMAND_GOAL:
-			case TASK_GET_PATH_TO_LASTPOSITION:
-			case TASK_GET_PATH_TO_SAVEPOSITION:
-			case TASK_GET_PATH_TO_RANDOM_NODE:
 			case TASK_GET_PATH_TO_BESTSOUND:
 			case TASK_GET_PATH_TO_BESTSCENT:
 			case TASK_GET_PATH_AWAY_FROM_BEST_SOUND:
 			case TASK_MOVE_AWAY_PATH:
 			case TASK_WEAPON_RUN_PATH:
 			case TASK_ITEM_RUN_PATH:
-			case TASK_RUN_PATH:
-			case TASK_WALK_PATH_FOR_UNITS:
-			case TASK_RUN_PATH_FOR_UNITS:
-			case TASK_WALK_PATH:
-			case TASK_WALK_PATH_WITHIN_DIST:
-			case TASK_RUN_PATH_WITHIN_DIST:
-			case TASK_RUN_PATH_FLEE:
-			case TASK_WALK_PATH_TIMED:
-			case TASK_RUN_PATH_TIMED:
 			case TASK_STRAFE_PATH:
-			case TASK_WAIT_FOR_MOVEMENT_STEP:
 			case TASK_SMALL_FLINCH:
 			case TASK_BIG_FLINCH:
 			case TASK_DIE:
@@ -3850,8 +4074,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_ENABLE_SCRIPT:
 			case TASK_PLANT_ON_SCRIPT:
 			case TASK_FACE_SCRIPT:
-			case TASK_SET_TOLERANCE_DISTANCE:
-			case TASK_SET_ROUTE_SEARCH_TIME:
 			case TASK_WEAPON_FIND:
 			case TASK_ITEM_PICKUP:
 			case TASK_WEAPON_PICKUP:
@@ -3873,6 +4095,20 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 					if (task.TaskData == 1)
 						ChainRunTask(TASK_WAIT_FOR_MOVEMENT);
 					else {
+						if (GetNavType() == Navigation.Jump) {
+							if ((GetFlags() & EntityFlags.OnGround) != 0)
+								SetNavType(Navigation.Ground);
+							else if (GetSmoothedVelocity().Length() > 0.01)
+								break;
+							else {
+								SetNavType(Navigation.Ground);
+								TaskFail(AI_TaskFailureCode.StuckOnTop);
+							}
+						}
+
+						if (GetNavType() == Navigation.Climb)
+							break;
+
 						SetIdealActivity(GetStoppedActivity());
 
 						TaskComplete();
@@ -3927,9 +4163,53 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 			case TASK_WAIT_FOR_MOVEMENT_STEP:
 			case TASK_WAIT_FOR_MOVEMENT: {
-					TaskComplete();
+					bool timeExpired = task.TaskData != 0 && task.TaskData < gpGlobals.CurTime - GetTimeTaskStarted();
+
+					if (timeExpired || GetNavigator()!.GetGoalType() == NavGoalType.None) {
+						TaskComplete();
+						GetNavigator()!.StopMoving();
+					}
+					else if (!GetNavigator()!.IsGoalActive())
+						SetIdealActivity(GetStoppedActivity());
+					else
+						ValidateNavGoal();
 					break;
 				}
+
+			case TASK_RUN_PATH_FOR_UNITS:
+			case TASK_WALK_PATH_FOR_UNITS: {
+					float distance = (LastPosition - GetLocalOrigin()).Length2D();
+
+					if (distance > task.TaskData ||
+						 GetNavigator()!.GetGoalType() == NavGoalType.None)
+						TaskComplete();
+					break;
+				}
+
+			case TASK_RUN_PATH_FLEE: {
+					Vector3 diff = GetLocalOrigin() - GetNavigator()!.GetGoalPos();
+
+					if (diff.Length() <= task.TaskData)
+						TaskComplete();
+					break;
+				}
+
+			case TASK_WALK_PATH_WITHIN_DIST:
+			case TASK_RUN_PATH_WITHIN_DIST: {
+					Vector3 diff = GetLocalOrigin() - GetNavigator()!.GetGoalPos();
+
+					if (diff.Length() <= task.TaskData)
+						TaskComplete();
+					break;
+				}
+
+			case TASK_WALK_PATH_TIMED:
+			case TASK_RUN_PATH_TIMED: {
+					if (IsWaitFinished() ||
+						 GetNavigator()!.GetGoalType() == NavGoalType.None)
+						TaskComplete();
+				}
+				break;
 
 			case TASK_PLAY_SCENE: {
 					if (!IsInLockedScene())
@@ -4020,13 +4300,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_PLAY_SCRIPT:
 			case TASK_PLAY_SCRIPT_POST_IDLE:
 			case TASK_ENABLE_SCRIPT:
-			case TASK_RUN_PATH_FOR_UNITS:
-			case TASK_WALK_PATH_FOR_UNITS:
-			case TASK_RUN_PATH_FLEE:
-			case TASK_WALK_PATH_WITHIN_DIST:
-			case TASK_RUN_PATH_WITHIN_DIST:
-			case TASK_WALK_PATH_TIMED:
-			case TASK_RUN_PATH_TIMED:
 			case TASK_WEAPON_PICKUP:
 			case TASK_ITEM_PICKUP:
 				throw new NotImplementedException();
@@ -4085,7 +4358,76 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		ClearCondition((int)SCOND_t.COND_WEAPON_SIGHT_OCCLUDED);
 	}
 
-	public virtual bool IsNavigationUrgent() => throw new NotImplementedException();
+	public virtual bool IsNavigationUrgent() {
+		if (IsCurSchedule(SCHED_SCRIPTED_WALK, false) ||
+			 IsCurSchedule(SCHED_SCRIPTED_RUN, false) ||
+			 IsCurSchedule(SCHED_SCRIPTED_CUSTOM_MOVE, false) ||
+			 (IsCurSchedule(SCHED_SCENE_GENERIC, false) && IsInLockedScene()))
+			return true;
+		return false;
+	}
+
+	public virtual bool ShouldFailNav(bool movementFailed) {
+#if HL2_EPISODIC
+		if (ai_vehicle_avoidance.GetBool()) {
+			BaseEntity? entity = GetNavigator()!.GetBlockingEntity();
+			if (entity != null && entity.GetServerVehicle() != null) {
+				if (Classify() == Class_T.PlayerAllyVital || IsNavigationUrgent())
+					return false;
+			}
+		}
+#endif
+
+		if (IsNavigationUrgent())
+			return false;
+
+		return true;
+	}
+
+	public virtual bool ShouldBruteForceFailedNav() => false;
+
+	public virtual void OnMovementFailed() { }
+	public virtual void OnMovementComplete() { }
+
+	public virtual float GetDefaultNavGoalTolerance() => GetHullWidth() * 2.0f;
+
+	public virtual void TranslateNavGoal(BaseEntity enemy, ref Vector3 chasePosition) {
+		if (GetNavType() == Navigation.Fly) {
+			Vector3 offset = enemy.EyePosition() - enemy.GetAbsOrigin();
+			chasePosition += offset;
+		}
+	}
+
+	public void OpenPropDoorBegin(BasePropDoor door) => throw new NotImplementedException();
+
+	public void TaskMovementComplete() {
+		switch (GetTaskStatus()) {
+			case TaskStatus.New:
+			case TaskStatus.RunMoveAndTask:
+				SetTaskStatus(TaskStatus.RunTask);
+				break;
+
+			case TaskStatus.RunMove:
+				TaskComplete();
+				break;
+
+			case TaskStatus.RunTask:
+				break;
+
+			case TaskStatus.Complete:
+				break;
+		}
+
+		if (ScriptState != ScriptStateType.CustomMoveToMark)
+			SetIdealActivity(GetStoppedActivity());
+
+		if (GetNavigator()!.IsGoalActive())
+			GetNavigator()!.AdvancePath();
+
+		GetNavigator()!.ClearGoal();
+
+		OnMovementComplete();
+	}
 
 	public virtual bool ShouldProbeCollideAgainstEntity(BaseEntity entity) {
 		if (entity.GetMoveType() == Source.MoveType.VPhysics) {
@@ -4578,6 +4920,14 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public BaseEntity? GetTarget() => TargetEnt.Get();
 
+	public virtual BaseEntity? GetNavTargetEntity() {
+		if (GetNavigator()!.GetGoalType() == NavGoalType.Enemy)
+			return Enemy.Get();
+		else if (GetNavigator()!.GetGoalType() == NavGoalType.TargetEnt)
+			return TargetEnt.Get();
+		return null;
+	}
+
 	public float EnemyDistance(BaseEntity enemy) {
 		Vector3 enemyDelta = enemy.WorldSpaceCenter() - WorldSpaceCenter();
 
@@ -4647,6 +4997,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public Navigation GetNavType() => Navigator!.GetNavType();
+	public void SetNavType(Navigation navType) => Navigator!.SetNavType(navType);
 
 	public virtual bool ShouldPlayIdleSound() {
 		if ((NPCState == NPCState.Idle || NPCState == NPCState.Alert) &&
@@ -4795,7 +5146,47 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return 45;
 	}
 
-	public virtual float GetTimeToNavGoal() => throw new NotImplementedException();
+	public virtual bool ScheduledMoveToGoalEntity(int scheduleType, BaseEntity goalEntity, Activity movementActivity) {
+		if (NPCState == NPCState.None)
+			NPCState = IdealNPCState;
+
+		SetSchedule(scheduleType);
+
+		SetGoalEnt(goalEntity);
+
+		AI_NavGoal goal = new(goalEntity.GetAbsOrigin(), movementActivity, AIN_DEF_TOLERANCE, AI_NavGoalFlags.YawToDest);
+
+		TranslateNavGoal(goalEntity, ref goal.Dest);
+
+		return GetNavigator()!.SetGoal(goal);
+	}
+
+	public virtual bool ScheduledFollowPath(int scheduleType, BaseEntity pathStart, Activity movementActivity) {
+		if (NPCState == NPCState.None)
+			NPCState = IdealNPCState;
+
+		SetSchedule(scheduleType);
+
+		SetGoalEnt(pathStart);
+
+		AI_NavGoal goal = new(NavGoalType.PathCorner, pathStart.GetLocalOrigin(), movementActivity, AIN_DEF_TOLERANCE, AI_NavGoalFlags.YawToDest);
+
+		TranslateNavGoal(pathStart, ref goal.Dest);
+
+		return GetNavigator()!.SetGoal(goal);
+	}
+
+	public virtual float GetTimeToNavGoal() {
+		float dist = GetNavigator()!.BuildAndGetPathDistToGoal();
+		if (dist < 0)
+			return -1.0f;
+
+		float speed = GetIdealSpeed();
+
+		if (speed > 0 && dist > 0)
+			return dist / speed;
+		return 0.0f;
+	}
 
 	public void VacateStrategySlot() => throw new NotImplementedException();
 
@@ -5176,6 +5567,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public virtual Activity GetCoverActivity(AI_Hint? hint) => throw new NotImplementedException();
 
 	static readonly List<Activity> sUniqueActivities = [];
+
+	public Activity TranslateActivity(Activity idealActivity) => TranslateActivity(idealActivity, out _);
 
 	public Activity TranslateActivity(Activity idealActivity, out Activity idealWeaponActivityOut) {
 		const int MAX_TRIES = 5;
@@ -6267,11 +6660,18 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public virtual bool OverrideMove(float interval) => false;
+	public virtual bool OverrideMoveFacing(in AILocalMoveGoal move, float interval) => false;
+
+	public bool HasPoseMoveYaw() => PoseMove_Yaw >= 0;
+	public int LookupPoseMoveYaw() => PoseMove_Yaw;
 
 	public virtual void PerformMovement() {
 		if (!IsAlive())
 			return;
 
+		TimeUnit_t interval = (TimeLastMovement != float.MaxValue) ? gpGlobals.CurTime - TimeLastMovement : 0.1;
+
+		Navigator!.Move((float)(TICK_INTERVAL * TIME_TO_TICKS(interval)));
 		TimeLastMovement = gpGlobals.CurTime;
 	}
 
