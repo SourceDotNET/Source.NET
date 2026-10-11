@@ -646,7 +646,7 @@ public partial class
 		Effects |= (int)effects;
 		if ((effects & EntityEffects.NoDraw) != 0) {
 #if !CLIENT_DLL
-			// DispatchUpdateTransmitState();
+			DispatchUpdateTransmitState();
 #else
 			UpdateVisibility();
 #endif
@@ -664,7 +664,7 @@ public partial class
 		if ((effects & EntityEffects.NoDraw) != 0) {
 #if !CLIENT_DLL
 			NetworkProp().MarkPVSInformationDirty();
-			// DispatchUpdateTransmitState();
+			DispatchUpdateTransmitState();
 #else
 			UpdateVisibility();
 #endif
