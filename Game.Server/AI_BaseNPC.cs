@@ -5584,6 +5584,14 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return capability;
 	}
 
+	public EntityCapabilities UsableNPCObjectCaps(EntityCapabilities baseCaps) {
+		if (IsAlive())
+			baseCaps |= EntityCapabilities.ImpulseUse;
+		return baseCaps;
+	}
+
+	public override EntityCapabilities ObjectCaps() => base.ObjectCaps() | EntityCapabilities.NotifyOnTransition;
+
 	public void NPCUse(BaseEntity? activator, BaseEntity? caller, UseType useType, float value) {
 		return;
 	}
