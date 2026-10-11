@@ -58,6 +58,7 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 	public IShaderAPI ShaderAPI;
 	public readonly IMeshMgr MeshMgr;
 	public readonly IMaterialSystemHardwareConfig HardwareConfig;
+	public readonly ICommandLine CommandLine;
 	public readonly MaterialSystem_Config Config;
 
 	readonly static ConVar mat_vsync = new("mat_vsync", "0", 0, "Force sync to vertical retrace", 0, 1);
@@ -123,6 +124,7 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 		HardwareConfig = services.GetRequiredService<IMaterialSystemHardwareConfig>(); // todo: interface
 		ShaderSystem = services.GetRequiredService<IShaderSystem>();
 		Config = services.GetRequiredService<MaterialSystem_Config>()!;
+		CommandLine = services.GetRequiredService<ICommandLine>()!;
 		HardwareRenderContext = new(this);
 
 		// Link up
@@ -1098,7 +1100,7 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 
 		while (!findFileName.IsEmpty) {
 			if (FileSystem.FindIsDirectory(findHandle)) {
-				if (!findFileName.SequenceEqual(".") && !findFileName.SequenceEqual(".."))
+				if (strcmp(findFileName, ".") != 0 && strcmp(findFileName, "..") != 0)
 					ScanDirForReplacements($"{pathName}/{findFileName}");
 			}
 
@@ -1108,10 +1110,47 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 		FileSystem.FindClose(findHandle);
 	}
 
+	void LoadReplacementMaterials() {
+		const string location = "materials";
+
+		if (CommandLine.FindParm("-matscan") != 0)
+			ScanDirForReplacements(location);
+		else
+			InitReplacementsFromFile(location);
+	}
+
+	void InitReplacementsFromFile(ReadOnlySpan<char> pathName) {
+		List<string> replacementFiles = [];
+
+		ReadListFromFile(replacementFiles, $"{pathName}/replacements.txt");
+		foreach (string file in replacementFiles) {
+			string baseName = $"{pathName}/{file}/replacements.vmt";
+			if (FileSystem.FileExists(baseName)) {
+				KeyValues? kv = FileSystem.LoadKeyValues(IFileSystem.KeyValuesPreloadType.VMT, baseName);
+				if (kv != null)
+					Replacements.TryAdd($"{pathName}/{file}/", kv);
+			}
+		}
+	}
+
+	int ReadListFromFile(List<string> outReplacementMaterials, string pathName) {
+		long size = FileSystem.Size(pathName);
+		if (size <= 0)
+			return 0;
+
+		char[] fileContents = new char[size];
+		if (!FileSystem.ReadFile(pathName, null, fileContents, 0))
+			return 0;
+
+		outReplacementMaterials.AddRange(new string(fileContents).Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries));
+
+		return outReplacementMaterials.Count;
+	}
+
 	void PreloadReplacements() {
 		Replacements.Clear();
 
-		ScanDirForReplacements("materials");
+		LoadReplacementMaterials();
 
 		ReplacementFilesValid = true;
 	}
