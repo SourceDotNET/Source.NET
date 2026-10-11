@@ -76,6 +76,19 @@ public class AI_Navigator : AI_Component, IAI_MovementSink
 
 	public bool IsGoalActive() => GetPath() != null && !GetPath().IsEmpty();
 
+	public BaseEntity? GetGoalTarget() => GetPath().GetTarget();
+
+	public float GetStepDownMultiplier() {
+		BaseEntity? bigStepGroundEnt = BigStepGroundEnt.Get();
+		if (bigStepGroundEnt != null) {
+			if (!bigStepGroundEnt.IsPlayer())
+				return 2.6f;
+			else
+				return 10.0f;
+		}
+		return 1.0f;
+	}
+
 	public float GetIdealSpeed() => throw new NotImplementedException();
 
 	public virtual float CalcYawSpeed() {

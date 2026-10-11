@@ -48,6 +48,8 @@ public class AI_Path
 
 	public NavGoalType GoalType() => GoalTypeValue;
 
+	public BaseEntity? GetTarget() => Target.Get();
+
 	public void Clear() {
 		Waypoints.RemoveAll();
 

@@ -2814,6 +2814,21 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public ref readonly Vector3 GetHullMins() => ref NAI_Hull.Mins(GetHullType());
 	public ref readonly Vector3 GetHullMaxs() => ref NAI_Hull.Maxs(GetHullType());
 
+	public virtual float StepHeight() => 18.0f;
+	public float GetStepDownMultiplier() => Navigator!.GetStepDownMultiplier();
+
+	public override bool CanStandOn(BaseEntity? surface) {
+		if (!surface!.IsAIWalkable())
+			return false;
+
+		AI_Navigator navigator = GetNavigator()!;
+
+		if (navigator.IsGoalActive() && surface == navigator.GetGoalTarget())
+			return false;
+
+		return base.CanStandOn(surface);
+	}
+
 	public virtual Vector3 GetCrouchEyeOffset() => new(0, 0, 40);
 
 	public override bool IsMoving() => GetNavigator()!.IsGoalSet();
