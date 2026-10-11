@@ -3202,6 +3202,9 @@ public partial class BaseEntity : IServerEntity
 		if ((entity.GetFlags() & EntityFlags.NoTarget) != 0)
 			return false;
 
+		if (IsNPC() && entity.IsPlayer() && AI_BaseNPCGlobals.g_IgnorePlayers.GetBool())
+			return false;
+
 		Vector3 vecLookerOrigin = EyePosition();
 		Vector3 vecTargetOrigin = entity.EyePosition();
 
