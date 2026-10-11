@@ -1,9 +1,35 @@
+global using static Game.Server.AI_NodeGlobals;
+
+using Game.Shared;
+
+using Source;
+using Source.Common;
+using Source.Common.Formats.BSP;
 using Source.Common.Mathematics;
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace Game.Server;
+
+public static class AI_NodeGlobals
+{
+	public static float GetFloorZ(in Vector3 origin, float maxDrop) {
+		Util.TraceLine(origin, origin - new Vector3(0, 0, maxDrop), Mask.NPCSolidBrushOnly, null, CollisionGroup.None, out Trace tr);
+
+		Util.TraceLine(origin, origin - new Vector3(0, 0, maxDrop), Mask.NPCSolid, null, CollisionGroup.None, out Trace trEnt);
+
+		if (trEnt.Fraction < tr.Fraction) {
+			BaseEntity? e = trEnt.Ent;
+			if (e != null && (e.GetFlags() & EntityFlags.WorldBrush) != 0)
+				tr.EndPos = trEnt.EndPos;
+		}
+
+		return tr.EndPos.Z;
+	}
+
+	public static float GetFloorZ(in Vector3 origin) => GetFloorZ(origin, 384);
+}
 
 public enum AI_ZoneIds
 {
@@ -67,6 +93,19 @@ public class AI_Node(AI_Network network, int id, Vector3 origin, float yaw)
 		return ref Unsafe.NullRef<AI_Link>();
 	}
 	public ref AI_Link GetLinkByIndex(int i) => ref Network.GetLink(Links[i]);
+
+	public void ShuffleLinks() {
+		FirstShuffledLink++;
+		if (FirstShuffledLink >= NumLinks())
+			FirstShuffledLink = 0;
+	}
+
+	public ref AI_Link GetShuffledLink(int num) {
+		int linkID = FirstShuffledLink + num;
+		if (linkID >= NumLinks())
+			linkID -= NumLinks();
+		return ref GetLinkByIndex(linkID);
+	}
 
 	public bool IsLocked() => NextUseTime > gpGlobals.CurTime;
 	public void Lock(TimeUnit_t duration) => NextUseTime = gpGlobals.CurTime + duration;

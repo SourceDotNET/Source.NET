@@ -85,6 +85,18 @@ public class AI_Network
 		}
 	}
 
+	public static int FindBSSmallest(ReadOnlySpan<bool> bitString, ReadOnlySpan<float> floatArray, int arraySize) {
+		int winIndex = -1;
+		float winSize = float.MaxValue;
+		for (int i = 0; i < arraySize; i++) {
+			if (bitString[i] && (floatArray[i] < winSize)) {
+				winIndex = i;
+				winSize = floatArray[i];
+			}
+		}
+		return winIndex;
+	}
+
 	int ListNodesInBox(Span<AI_NearNode> list, in Vector3 mins, in Vector3 maxs, in NodeFilter filter) {
 		int count = 0;
 
@@ -349,6 +361,34 @@ public class AI_Network
 	}
 
 	public ref AI_Link GetLink(short link) => ref CollectionsMarshal.AsSpan(AILinks)[link];
+
+	public bool IsConnected(int srcID, int destID) {
+		if (srcID > NodeCount || destID > NodeCount) {
+			DevMsg("IsConnected called with invalid node IDs!\n");
+			return false;
+		}
+
+		if (srcID == destID)
+			return true;
+
+		int srcZone = AINode![srcID]!.GetZone();
+		int destZone = AINode[destID]!.GetZone();
+
+		if (srcZone == (int)AI_ZoneIds.Solo || destZone == (int)AI_ZoneIds.Solo)
+			return false;
+
+		if (srcZone == (int)AI_ZoneIds.Universal || destZone == (int)AI_ZoneIds.Universal)
+			return true;
+
+#if DEBUG
+		if (srcZone == (int)AI_ZoneIds.Unknown || destZone == (int)AI_ZoneIds.Unknown) {
+			DevMsg("Warning: Node found in unknown zone\n");
+			return true;
+		}
+#endif
+
+		return srcZone == destZone;
+	}
 
 	public int NumNodes() => NodeCount;
 

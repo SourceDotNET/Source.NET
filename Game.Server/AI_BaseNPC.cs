@@ -3517,7 +3517,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 	}
 
-	public virtual float GetHintDelay(short hintType) => 0;
+	public virtual float GetHintDelay(Hint hintType) => 0;
 
 	public Activity GetIdealActivity() => IdealActivity;
 
