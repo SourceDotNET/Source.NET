@@ -67,6 +67,12 @@ public struct UnreachableEnt
 	public Vector3 LocationWhenUnreachable;
 }
 
+public struct AI_SchedLoadStatus
+{
+	public bool Valid;
+	public int Signature;
+}
+
 public static class AI_BaseNPCGlobals
 {
 	// TODO: Enum these
@@ -144,6 +150,27 @@ public static class AI_BaseNPCGlobals
 			}
 		}
 		return false;
+	}
+
+	public static bool AI_DoLoadSchedules(Func<bool> baseLoad, Action initCustomSchedules, ref AI_SchedLoadStatus loadStatus) {
+		baseLoad();
+
+		if (loadStatus.Signature != g_AI_SchedulesManager.GetScheduleLoadSignature()) {
+			initCustomSchedules();
+			loadStatus.Valid = true;
+			loadStatus.Signature = g_AI_SchedulesManager.GetScheduleLoadSignature();
+		}
+		return loadStatus.Valid;
+	}
+
+	public static bool ValidateConditionLimits(string newCondition) {
+		int globalConditions = AI_BaseNPC.GetSchedulingSymbols().NumConditions();
+		if (globalConditions >= MAX_CONDITIONS) {
+			AssertMsg(false, $"Exceeded max number of conditions ({MAX_CONDITIONS}), ignoring condition {newCondition}\n");
+			DevWarning($"Exceeded max number of conditions ({MAX_CONDITIONS}), ignoring condition {newCondition}\n");
+			return false;
+		}
+		return true;
 	}
 
 	public static readonly Stopwatch g_AIRunTimer = new();

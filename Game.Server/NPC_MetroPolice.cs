@@ -1,4 +1,5 @@
 using Game.Shared;
+using Game.Shared.GarrysMod;
 
 using Source;
 using Source.Common;
@@ -33,6 +34,8 @@ public class NPC_MetroPolice : AI_BaseActor
 
 		DEFINE.OUTPUT(nameof(OnStunnedPlayer), "OnStunnedPlayer", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnCupCopped), "OnCupCopped", eventFuncs),
+
+		DEFINE.INPUTFUNC(FieldType.String, "SetPoliceGoal", nameof(InputSetPoliceGoal), (INPUTFUNCPTR)((self, data) => ((NPC_MetroPolice)self).InputSetPoliceGoal(data))),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
@@ -43,6 +46,9 @@ public class NPC_MetroPolice : AI_BaseActor
 
 	public OutputEvent OnStunnedPlayer = new();
 	public OutputEvent OnCupCopped = new();
+
+	readonly AI_PolicingBehavior PolicingBehavior = new();
+	readonly AI_Sentence_NPC_MetroPolice Sentences = new();
 
 	public override void Precache() {
 		if (HasSpawnFlags(SF_NPC_START_EFFICIENT))
@@ -156,6 +162,39 @@ public class NPC_MetroPolice : AI_BaseActor
 				return 45;
 		}
 	}
+
+	public override bool CreateBehaviors() {
+		AddBehavior(PolicingBehavior);
+
+		return base.CreateBehaviors();
+	}
+
+	public void InputSetPoliceGoal(InputData inputdata) {
+		BaseEntity? goal = gEntList.FindEntityByName(null, inputdata.Value.String());
+
+		if (goal == null) {
+			DevMsg($"SetPoliceGoal: {GetClassname()} ({GetDebugName()}) unable to find ai_goal_police: {inputdata.Value.String()}\n");
+			return;
+		}
+
+		if (goal is not AI_PoliceGoal policeGoal) {
+			DevMsg($"SetPoliceGoal: {GetClassname()} ({GetDebugName()})'s target {inputdata.Value.String()} is not an ai_goal_police entity!\n");
+			return;
+		}
+
+		PolicingBehavior.Enable(policeGoal);
+	}
+
+	public bool BatonActive() {
+		if (GetActiveWeapon() is WeaponStunStick stick)
+			return stick.GetStunState();
+
+		return false;
+	}
+
+	public void SetBatonState(bool state) => throw new NotImplementedException();
+
+	public AI_Sentence_NPC_MetroPolice GetSentences() => Sentences;
 
 	public override Class_T Classify() => Class_T.MetroPolice;
 

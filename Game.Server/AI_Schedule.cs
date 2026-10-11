@@ -184,6 +184,58 @@ public readonly struct AI_ScheduleCondition(int condition)
 
 public readonly record struct AI_ScheduleDef(int Schedule, AI_TaskDef[] Tasks, AI_ScheduleCondition[]? Interrupts = null);
 
+public sealed class AI_CustomSchedules
+{
+	public required string ClassName { get; init; }
+	public required AI_ClassScheduleIdSpace IdSpace { get; init; }
+	public required AI_ClassScheduleIdSpace ParentIdSpace { get; init; }
+
+	public (string Name, int LocalId)[] Schedules { get; init; } = [];
+	public (string Name, int LocalId)[] Tasks { get; init; } = [];
+	public (string Name, int LocalId)[] Conditions { get; init; } = [];
+
+	public Action? Declare { get; init; }
+	public AI_ScheduleDef[] Definitions { get; init; } = [];
+
+	AI_SchedLoadStatus LoadStatus = new() { Valid = true, Signature = -1 };
+
+	public bool Valid => LoadStatus.Valid;
+
+	public bool Load(Func<bool> baseLoad) => AI_DoLoadSchedules(baseLoad, Init, ref LoadStatus);
+
+	void Init() {
+		Declare?.Invoke();
+
+		IdSpace.Init(ClassName, AI_BaseNPC.GetSchedulingSymbols(), ParentIdSpace);
+
+		foreach ((string name, int localId) in SortedByLocalId(Schedules)) {
+			if (!IdSpace.AddSchedule(name, localId, ClassName))
+				return;
+		}
+
+		foreach ((string name, int localId) in SortedByLocalId(Tasks)) {
+			if (!IdSpace.AddTask(name, localId, ClassName))
+				return;
+		}
+
+		foreach ((string name, int localId) in SortedByLocalId(Conditions)) {
+			if (ValidateConditionLimits(name)) {
+				if (!IdSpace.AddCondition(name, localId, ClassName))
+					return;
+			}
+		}
+
+		if (LoadStatus.Valid)
+			LoadStatus.Valid = g_AI_SchedulesManager.DefineSchedules(ClassName, IdSpace, Definitions);
+	}
+
+	static (string Name, int LocalId)[] SortedByLocalId((string Name, int LocalId)[] symbols) {
+		(string Name, int LocalId)[] sorted = [.. symbols];
+		Array.Sort(sorted, static (left, right) => left.LocalId - right.LocalId);
+		return sorted;
+	}
+}
+
 public class AI_Schedule
 {
 	public int GetId() => ScheduleID;
