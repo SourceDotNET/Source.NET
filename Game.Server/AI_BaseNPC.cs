@@ -3519,7 +3519,16 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public bool IsActivityFinished() => IsSequenceFinished() && (GetSequence() == IdealSequence);
 
-	public Activity GetStoppedActivity() => Activity.ACT_IDLE;
+	public Activity GetStoppedActivity() {
+		if (GetNavigator()!.IsGoalActive()) {
+			Activity activity = GetNavigator()!.GetArrivalActivity();
+
+			if (activity > Activity.ACT_RESET)
+				return activity;
+		}
+
+		return Activity.ACT_IDLE;
+	}
 
 	public void MaintainActivity() {
 		if (LifeState == (int)Source.LifeState.Dead)
