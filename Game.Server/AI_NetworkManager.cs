@@ -3,9 +3,10 @@ global using static Game.Server.AI_NetworkManagerGlobals;
 using Game.Shared;
 
 using Source.Common.Commands;
-using Source.Common.Utilities;
+using Source.Common.Filesystem;
 
 using System.Numerics;
+using System.Text;
 
 namespace Game.Server;
 
@@ -40,37 +41,42 @@ public class AI_NetworkManager : PointEntity
 
 		string nrpFilename = $"maps/graphs/{gpGlobals.MapName}.ain";
 
-		long fileSize = filesystem.Size(nrpFilename, "GAME");
-		byte[]? data = fileSize > 0 ? new byte[fileSize] : null;
-		if (data == null || !filesystem.ReadFile(nrpFilename, "GAME", data, 0)) {
+		using IFileHandle? handle = filesystem.Open(nrpFilename, FileOpenOptions.Read | FileOpenOptions.Binary, "GAME");
+		if (handle == null) {
 			DevWarning(2, $"Couldn't read {nrpFilename}!\n");
 			return;
 		}
 
-		UtlBuffer buf = new(data, UtlBuffer.BufferFlags.ReadOnly);
+		LoadNetworkGraph(handle.Stream, nrpFilename, gpGlobals.MapVersion);
+	}
 
-		if (buf.GetChar() == 'V' && buf.GetChar() == 'e' && buf.GetChar() == 'r') {
-			DevMsg($"AI node graph {nrpFilename} is out of date\n");
-			return;
+	public void LoadNetworkGraph(Stream stream, ReadOnlySpan<char> nrpFilename, int currentMapVersion) {
+		using BinaryReader reader = new(stream, Encoding.ASCII, true);
+
+		try {
+			LoadNetworkGraph(reader, nrpFilename, currentMapVersion);
 		}
+		catch (EndOfStreamException) {
+			Warning($"AI node graph {nrpFilename} is truncated\n");
+		}
+	}
 
-		buf.SeekGet(SeekOrigin.Begin, 0);
-
-		int version = buf.GetInt();
+	void LoadNetworkGraph(BinaryReader reader, ReadOnlySpan<char> nrpFilename, int currentMapVersion) {
+		int version = reader.ReadInt32();
 
 		if (version != AINET_VERSION_NUMBER) {
 			DevMsg($"AI node graph {nrpFilename} is out of date\n");
 			return;
 		}
 
-		int mapversion = buf.GetInt();
+		int mapversion = reader.ReadInt32();
 
-		if (mapversion != gpGlobals.MapVersion && !g_ai_norebuildgraph.GetBool()) {
+		if (mapversion != currentMapVersion && !g_ai_norebuildgraph.GetBool()) {
 			DevMsg($"AI node graph {nrpFilename} is out of date (map version changed)\n");
 			return;
 		}
 
-		int numNodes = buf.GetInt();
+		int numNodes = reader.ReadInt32();
 
 		if (numNodes > AI_Network.MAX_NODES || numNodes < 0) {
 			Error($"AI node graph {nrpFilename} is corrupt\n");
@@ -82,44 +88,42 @@ public class AI_NetworkManager : PointEntity
 		for (node = 0; node < numNodes; node++) {
 			Vector3 origin;
 			float yaw;
-			origin.X = buf.GetFloat();
-			origin.Y = buf.GetFloat();
-			origin.Z = buf.GetFloat();
-			yaw = buf.GetFloat();
+			origin.X = reader.ReadSingle();
+			origin.Y = reader.ReadSingle();
+			origin.Z = reader.ReadSingle();
+			yaw = reader.ReadSingle();
 
 			AI_Node newNode = Network.AddNode(origin, yaw);
 
 			for (int hull = 0; hull < newNode.VOffset.Length; hull++)
-				newNode.VOffset[hull] = buf.GetFloat();
-			newNode.NodeType = (NodeType)buf.GetUnsignedChar();
+				newNode.VOffset[hull] = reader.ReadSingle();
+			newNode.NodeType = (NodeType)reader.ReadByte();
 
-			newNode.NodeInfo = (NodeInfoBits)buf.GetUnsignedShort();
-			newNode.Zone = buf.GetShort();
+			newNode.NodeInfo = (NodeInfoBits)reader.ReadUInt16();
+			newNode.Zone = reader.ReadInt16();
 		}
 
-		int totalNumLinks = buf.GetInt();
+		int totalNumLinks = reader.ReadInt32();
 
-		Span<byte> moveTypes = stackalloc byte[(int)AI_HullType.NumHulls];
 		for (int link = 0; link < totalNumLinks; link++) {
 			int srcID, destID;
 
-			srcID = buf.GetShort();
-			destID = buf.GetShort();
+			srcID = reader.ReadInt16();
+			destID = reader.ReadInt16();
 
 			short newLink = Network.CreateLink(srcID, destID);
 
-			buf.Get(moveTypes);
-			if (newLink != AI_Network.NO_LINK) {
-				ref AI_Link loadedLink = ref Network.GetLink(newLink);
-				for (int hull = 0; hull < moveTypes.Length; hull++)
-					loadedLink.AcceptedMoveTypes[hull] = (Capability)moveTypes[hull];
+			for (int hull = 0; hull < (int)AI_HullType.NumHulls; hull++) {
+				Capability moveTypes = (Capability)reader.ReadByte();
+				if (newLink != AI_Network.NO_LINK)
+					Network.GetLink(newLink).AcceptedMoveTypes[hull] = moveTypes;
 			}
 		}
 
 		GetEditOps().NodeIndexTable = new int[Math.Max(Network.NumNodes(), 1)];
 
 		for (node = 0; node < Network.NumNodes(); node++)
-			GetEditOps().NodeIndexTable![node] = buf.GetInt();
+			GetEditOps().NodeIndexTable![node] = reader.ReadInt32();
 
 		HashSet<int> usedIds = [];
 		HashSet<int> reportedIds = [];
