@@ -2104,6 +2104,10 @@ public partial class BaseEntity : IServerEntity
 		return 1;
 	}
 
+	public virtual void DeathNotice(BaseEntity victim) { }
+
+	public IPhysicsObject? VPhysicsInitStatic() => throw new NotImplementedException();
+
 	public virtual void Event_KilledOther(BaseEntity killed, in TakeDamageInfo info) {
 
 	}
@@ -2977,6 +2981,8 @@ public partial class BaseEntity : IServerEntity
 				ReportPositionChanged(this);
 		}
 	}
+
+	public bool IsOnFire() => (GetFlags() & EntityFlags.OnFire) != 0;
 
 	public virtual void Use(BaseEntity? activator, BaseEntity? caller, UseType useType, float value) {
 		if (FnUse != null)

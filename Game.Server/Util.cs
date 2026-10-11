@@ -334,6 +334,14 @@ public static partial class Util
 		ent.SetCollisionBounds(mins, maxs);
 	}
 
+	public static float DistApprox(in Vector3 vec1, in Vector3 vec2) {
+		float dx = vec1.X - vec2.X;
+		float dy = vec1.Y - vec2.Y;
+		float dz = vec1.Z - vec2.Z;
+
+		return MathF.Abs(dx) + MathF.Abs(dy) + MathF.Abs(dz);
+	}
+
 	public static float DistApprox2D(in Vector3 vec1, in Vector3 vec2) {
 		float dx = vec1.X - vec2.X;
 		float dy = vec1.Y - vec2.Y;

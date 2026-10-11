@@ -43,6 +43,7 @@ public class AI_SchedulesManager
 
 	public void DestroyStringRegistries() {
 		AI_BaseNPC.GetSchedulingSymbols().Clear();
+		AI_BaseNPC.SquadSlotNamespace.Clear();
 
 		AI_BaseNPC.ActivitySR = null;
 		AI_BaseNPC.NumActivities = 0;
@@ -50,6 +51,7 @@ public class AI_SchedulesManager
 
 	public void CreateStringRegistries() {
 		AI_BaseNPC.GetSchedulingSymbols().Clear();
+		AI_BaseNPC.SquadSlotNamespace.Clear();
 
 		AI_BaseNPC.ActivitySR = new();
 		AI_BaseNPC.EventSR = new();
@@ -189,10 +191,12 @@ public sealed class AI_CustomSchedules
 	public required string ClassName { get; init; }
 	public required AI_ClassScheduleIdSpace IdSpace { get; init; }
 	public required AI_ClassScheduleIdSpace ParentIdSpace { get; init; }
+	public AI_LocalIdSpace? SquadSlotIdSpace { get; init; }
 
 	public (string Name, int LocalId)[] Schedules { get; init; } = [];
 	public (string Name, int LocalId)[] Tasks { get; init; } = [];
 	public (string Name, int LocalId)[] Conditions { get; init; } = [];
+	public (string Name, int LocalId)[] SquadSlots { get; init; } = [];
 
 	public Action? Declare { get; init; }
 	public AI_ScheduleDef[] Definitions { get; init; } = [];
@@ -207,6 +211,7 @@ public sealed class AI_CustomSchedules
 		Declare?.Invoke();
 
 		IdSpace.Init(ClassName, AI_BaseNPC.GetSchedulingSymbols(), ParentIdSpace);
+		SquadSlotIdSpace?.Init(AI_BaseNPC.SquadSlotNamespace, AI_BaseNPC.SquadSlotIdSpace);
 
 		foreach ((string name, int localId) in SortedByLocalId(Schedules)) {
 			if (!IdSpace.AddSchedule(name, localId, ClassName))
@@ -223,6 +228,11 @@ public sealed class AI_CustomSchedules
 				if (!IdSpace.AddCondition(name, localId, ClassName))
 					return;
 			}
+		}
+
+		foreach ((string name, int localId) in SortedByLocalId(SquadSlots)) {
+			if (!SquadSlotIdSpace!.AddSymbol(name, localId, "squadslot", ClassName))
+				return;
 		}
 
 		if (LoadStatus.Valid)

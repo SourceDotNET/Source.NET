@@ -438,6 +438,10 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public static AI_DebugFlags DebugBits = 0;
 	public static int DebugPauseIndex = -1;
 
+	public const int NEXT_SCHEDULE = LAST_SHARED_SCHEDULE;
+	public const int NEXT_TASK = LAST_SHARED_TASK;
+	public const int NEXT_CONDITION = (int)SCOND_t.LAST_SHARED_CONDITION;
+
 	public static readonly AI_ClassScheduleIdSpace ClassScheduleIdSpace = new(true);
 	public static readonly AI_GlobalScheduleNamespace SchedulingSymbols = new();
 
@@ -613,6 +617,34 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public static StringRegistry? ActivitySR;
 	public static StringRegistry? EventSR;
+	public static int NumEvents;
+
+	public static readonly AI_GlobalNamespace SquadSlotNamespace = new();
+	public static readonly AI_LocalIdSpace SquadSlotIdSpace = new(true);
+
+	public static void AddEventToSR(ReadOnlySpan<char> eventName, int eventID) {
+		Assert(EventSR != null);
+
+		EventSR!.AddString(eventName, eventID);
+		NumEvents++;
+	}
+
+	public static Animevent DeclareAnimEvent(ReadOnlySpan<char> name) {
+		Animevent animEvent = EventList.RegisterPrivateEvent(name);
+		AddEventToSR(name, (int)animEvent);
+		return animEvent;
+	}
+
+	public static void InitDefaultSquadSlotSR() {
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_ATTACK1", AI_RemapToGlobal((int)SquadSlot.Attack1));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_ATTACK2", AI_RemapToGlobal((int)SquadSlot.Attack2));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_INVESTIGATE_SOUND", AI_RemapToGlobal((int)SquadSlot.InvestigateSound));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_EXCLUSIVE_HANDSIGN", AI_RemapToGlobal((int)SquadSlot.ExclusiveHandsign));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_EXCLUSIVE_RELOAD", AI_RemapToGlobal((int)SquadSlot.ExclusiveReload));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_PICKUP_WEAPON1", AI_RemapToGlobal((int)SquadSlot.PickupWeapon1));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_PICKUP_WEAPON2", AI_RemapToGlobal((int)SquadSlot.PickupWeapon2));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_SPECIAL_ATTACK", AI_RemapToGlobal((int)SquadSlot.SpecialAttack));
+	}
 
 	public static int GetScheduleID(ReadOnlySpan<char> schedName) => GetSchedulingSymbols().ScheduleSymbolToId(schedName);
 	public static int GetTaskID(ReadOnlySpan<char> taskName) => GetSchedulingSymbols().TaskSymbolToId(taskName);
@@ -960,6 +992,12 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 		ActivitySR.AddString(actName, actID);
 		NumActivities++;
+	}
+
+	public static Activity DeclareActivity(ReadOnlySpan<char> name) {
+		Activity activity = ActivityList.RegisterPrivateActivity(name);
+		AddActivityToSR(name, (int)activity);
+		return activity;
 	}
 
 	public static void InitDefaultActivitySR() {
@@ -2570,6 +2608,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		InitDefaultConditionSR();
 		InitDefaultTaskSR();
 		InitDefaultActivitySR();
+		InitDefaultSquadSlotSR();
 	}
 
 	public static bool LoadDefaultSchedules() => g_AI_SchedulesManager.DefineSchedules("CAI_BaseNPC", ClassScheduleIdSpace, DefaultSchedules);
@@ -6278,6 +6317,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public virtual void IdleSound() { }
+	public virtual void DeathSound(in TakeDamageInfo info) { }
 	public virtual void LostEnemySound() { }
 	public virtual void FoundEnemySound() { }
 
@@ -6475,6 +6515,22 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			return dist / speed;
 		return 0.0f;
 	}
+
+	public bool OccupyStrategySlot(SquadSlot squadSlotID) => OccupyStrategySlotRange(squadSlotID, squadSlotID);
+
+	public bool OccupyStrategySlotRange(SquadSlot slotIDStart, SquadSlot slotIDEnd) {
+		return Squad == null || Squad.OccupyStrategySlotRange(GetEnemy(), slotIDStart, slotIDEnd, ref MySquadSlot);
+	}
+
+	public bool HasStrategySlot(SquadSlot squadSlotID) => MySquadSlot == squadSlotID;
+
+	public bool HasStrategySlotRange(SquadSlot slotIDStart, SquadSlot slotIDEnd) {
+		if (MySquadSlot < slotIDStart || MySquadSlot > slotIDEnd)
+			return false;
+		return true;
+	}
+
+	public void SetLastAttackTime(TimeUnit_t time) => LastAttackTime = time;
 
 	public void VacateStrategySlot() {
 		if (Squad != null) {
