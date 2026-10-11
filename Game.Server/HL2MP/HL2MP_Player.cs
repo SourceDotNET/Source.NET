@@ -526,6 +526,7 @@ public partial class HL2MP_Player : HL2_Player
 		return true;
 	}
 
+#if !GMOD_DLL
 	public override void ChangeTeam(int team, bool autoTeam = false, bool silent = false, bool autoBalance = false) {
 		bool kill = false;
 
@@ -554,6 +555,7 @@ public partial class HL2MP_Player : HL2_Player
 		if (kill == true)
 			CommitSuicide();
 	}
+#endif
 
 	bool HandleCommand_JoinTeam(int team) {
 		throw new NotImplementedException();
@@ -725,7 +727,10 @@ public partial class HL2MP_Player : HL2_Player
 		throw new NotImplementedException();
 	}
 
-	void StopObserverMode() { }
+	public override void StopObserverMode() {
+		// todo
+		base.StopObserverMode();
+	}
 
 	void State_Enter_OBSERVER_MODE() { }
 

@@ -581,6 +581,10 @@ public partial class BasePlayer : BaseCombatCharacter
 	[NetworkName("m_bUseWeaponsInVehicle")]
 	bool UseWeaponsInVehicle;
 	public bool GetAllowWeaponsInVehicle() => UseWeaponsInVehicle;
+
+	public virtual void StopObserverMode() {
+		// todo
+	}
 	public bool OnTarget;
 	[NetworkName("m_flDeathTime")]
 	public TimeUnit_t DeathTime;

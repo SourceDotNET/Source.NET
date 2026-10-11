@@ -695,8 +695,16 @@ public static partial class Util
 
 	internal static void SetModel(BaseEntity baseEntity, ReadOnlySpan<char> modelName) {
 		int i = modelinfo.GetModelIndex(modelName);
+#if GMOD_DLL
+		if (i == -1) {
+			i = BaseEntity.PrecacheModel(modelName, true);
+			if (i < 0)
+				return;
+		}
+#else
 		if (i == -1)
 			Error($"{baseEntity.EntIndex()}/{baseEntity/*.GetEntityName()*/} - {baseEntity.GetClassname()}:  Util.SetModel:  not precached: {modelName}\n");
+#endif
 
 		BaseAnimating? animating = baseEntity.GetBaseAnimating();
 		animating?.ForceBone = 0;

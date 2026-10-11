@@ -1,3 +1,4 @@
+using Source;
 #if CLIENT_DLL || GAME_DLL
 using Game.Shared;
 
@@ -121,6 +122,41 @@ public static partial class LuaPlayer
 			act = (int)weapon.ActivityOverride((Activity)act, ref required);
 		}
 		lua.PushNumber(act);
+		return 1;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Player__UnSpectate(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.StopObserverMode();
+		player.ResetObserverMode();
+		player.RemoveEFlags(EFL.NoClipActive);
+		player.SetMoveType(MoveType.Walk);
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
+	static int Player__SetClassID(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		int classID = (int)lua.CheckNumber(2);
+		if (gpGlobals.MaxClients > 1 && (uint)(classID + 16384) > 32767)
+			lua.ErrorNoHalt($"Out of bounds value {classID} for networking in range {-16384} to {16383}\n");
+
+		GMOD_Player gmodPlayer = (GMOD_Player)player;
+#if GAME_DLL
+		if (gmodPlayer.PlayerClass != classID)
+			gmodPlayer.NetworkStateChanged();
+#endif
+		gmodPlayer.PlayerClass = classID;
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetClassID(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber(((GMOD_Player)player).PlayerClass);
 		return 1;
 	}
 
