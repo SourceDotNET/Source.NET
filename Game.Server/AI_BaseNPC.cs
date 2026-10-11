@@ -284,6 +284,12 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		DEFINE.KEYFIELD(nameof(SpawnEquipment), FieldType.String, "additionalequipment"),
 		DEFINE.KEYFIELD(nameof(HintGroup), FieldType.String, "hintgroup"),
 		DEFINE.KEYFIELD(nameof(HintGroupNavLimiting), FieldType.Boolean, "hintlimiting"),
+
+		DEFINE.OUTPUT(nameof(OnHearWorld), "OnHearWorld", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnHearPlayer), "OnHearPlayer", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnHearCombat), "OnHearCombat", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnLostEnemy), "OnLostEnemy", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnLostPlayer), "OnLostPlayer", eventFuncs),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
