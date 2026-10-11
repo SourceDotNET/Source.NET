@@ -249,6 +249,7 @@ public enum PlayerPhysFlag
 public partial class BasePlayer : BaseCombatCharacter
 {
 	public const int SF_NORESPAWN = 1 << 30;
+	public const float DOT_30DEGREE = 0.866025403784f;
 	public static readonly SendTable DT_PlayerState = new(nameof(DT_PlayerState), [
 		SendPropInt(FIELD<PlayerState>.OF(nameof(PlayerState.DeadFlag)), 1, PropFlags.Unsigned)
 	]);

@@ -152,6 +152,16 @@ public static class AI_BaseNPCGlobals
 		return false;
 	}
 
+	public static void AI_TraceLOS(in Vector3 absStart, in Vector3 absEnd, BaseEntity? looker, out Trace tr) {
+		if (ai_LOS_mode.GetBool()) {
+			Util.TraceLine(absStart, absEnd, Mask.BlockLOS, looker, CollisionGroup.None, out tr);
+			return;
+		}
+
+		TraceFilterLOS traceFilter = new(looker, CollisionGroup.None);
+		Util.TraceLine(absStart, absEnd, Mask.BlockLOSAndNPCs, ref traceFilter, out tr);
+	}
+
 	public static bool AI_DoLoadSchedules(Func<bool> baseLoad, Action initCustomSchedules, ref AI_SchedLoadStatus loadStatus) {
 		baseLoad();
 
@@ -3989,6 +3999,113 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		SetIdealActivity(newIdealActivity);
 	}
 
+	public void StartTurn(float deltaYaw) {
+		float currentYaw = Util.AngleMod(GetLocalAngles().Y);
+		GetMotor()!.SetIdealYaw(Util.AngleMod(currentYaw + deltaYaw));
+		SetTurnActivity();
+	}
+
+	public float CalcReasonableFacing(bool ignoreOriginalFacing = false) {
+		float reasonableYaw;
+
+		if (!ignoreOriginalFacing && !HasMemory(AI_MemoryFlags.MovedFromSpawn) && !HasCondition((int)SCOND_t.COND_SEE_ENEMY))
+			reasonableYaw = OriginalYaw;
+		else {
+			QAngle angles = new(0, 0, 0);
+
+			float idealYaw = GetMotor()!.GetIdealYaw();
+
+			reasonableYaw = idealYaw;
+
+			float MIN_DIST = GetReasonableFacingDist();
+			float longestTrace = 0;
+
+			if (MIN_DIST == 0)
+				return reasonableYaw;
+
+			const float SLICES = 8.0f;
+			const float SIZE_SLICE = 360.0f / SLICES;
+			const int SEARCH_MAX = (int)SLICES / 2;
+
+			float zEye = GetAbsOrigin().Z + DefaultEyeOffset.Z;
+
+			for (int i = 0; i <= SEARCH_MAX; i++) {
+				float offset = i * SIZE_SLICE;
+				for (int j = -1; j <= 1; j += 2) {
+					angles.Y = idealYaw + (offset * j);
+					MathLib.AngleVectors(angles, out Vector3 forward);
+					float curTrace;
+					if ((curTrace = LineOfSightDist(forward, zEye)) > longestTrace && IsValidReasonableFacing(forward, curTrace)) {
+						reasonableYaw = angles.Y;
+						longestTrace = curTrace;
+					}
+
+					if (longestTrace > MIN_DIST)
+						break;
+
+					if (i == 0 || i == SEARCH_MAX)
+						break;
+				}
+
+				if (longestTrace > MIN_DIST)
+					break;
+			}
+		}
+
+		return reasonableYaw;
+	}
+
+	public virtual float GetReasonableFacingDist() {
+		if (GetTask() != null && GetTask()!.Value.Task == TASK_FACE_ENEMY) {
+			const float dist = 3.5f * 12;
+			if (GetEnemy() != null) {
+				float distEnemy = (GetEnemy()!.GetAbsOrigin().AsVector2D() - GetAbsOrigin().AsVector2D()).Length() - 1.0f;
+				return MathF.Min(distEnemy, dist);
+			}
+
+			return dist;
+		}
+		return 5 * 12;
+	}
+
+	public virtual bool IsValidReasonableFacing(in Vector3 sightDir, float sightDist) => true;
+
+	public float LineOfSightDist(in Vector3 dir, float zEye = float.MaxValue) {
+		Vector3 testDir;
+		if (dir == vec3_invalid)
+			testDir = EyeDirection3D();
+		else
+			testDir = dir;
+
+		if (zEye == float.MaxValue)
+			zEye = EyePosition().Z;
+
+		Vector3 testPos = new(GetAbsOrigin().X, GetAbsOrigin().Y, zEye);
+		AI_TraceLOS(testPos, testPos + testDir * MAX_COORD_RANGE, this, out Trace tr);
+		return (tr.StartPos - tr.EndPos).Length();
+	}
+
+	public bool FInAimCone(in Vector3 spot) {
+		Vector3 los = spot - GetAbsOrigin();
+
+		los.Z = 0;
+		MathLib.VectorNormalize(ref los);
+
+		Vector3 facingDir = BodyDirection2D();
+
+		float dot = Vector3.Dot(los, facingDir);
+
+		if ((CapabilitiesGet() & Capability.AimGun) != 0)
+			return dot > BasePlayer.DOT_30DEGREE;
+
+		if (dot > 0.994)
+			return true;
+
+		return false;
+	}
+
+	public virtual void SpeakSentence(int sentenceType) { }
+
 	public bool FacingIdeal() {
 		if (MathF.Abs(GetMotor()!.DeltaIdealYaw()) <= 0.006)
 			return true;
@@ -4301,25 +4418,216 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				TaskComplete();
 				break;
 
-			case TASK_CREATE_PENDING_WEAPON:
-			case TASK_RANDOMIZE_FRAMERATE:
-			case TASK_DEFER_DODGE:
-			case TASK_ANNOUNCE_ATTACK:
 			case TASK_TURN_RIGHT:
+				StartTurn(-task.TaskData);
+				break;
+
 			case TASK_TURN_LEFT:
+				StartTurn(task.TaskData);
+				break;
+
 			case TASK_REMEMBER:
+				Remember((AI_MemoryFlags)(int)task.TaskData);
+				TaskComplete();
+				break;
+
 			case TASK_FORGET:
-			case TASK_FIND_HINTNODE:
-			case TASK_FIND_LOCK_HINTNODE:
-			case TASK_LOCK_HINTNODE:
-			case TASK_STORE_BESTSOUND_IN_SAVEPOSITION:
-			case TASK_STORE_ENEMY_POSITION_IN_SAVEPOSITION:
-			case TASK_CLEAR_HINTNODE:
+				Forget((AI_MemoryFlags)(int)task.TaskData);
+				TaskComplete();
+				break;
+
+			case TASK_STORE_BESTSOUND_IN_SAVEPOSITION: {
+					ref WorldSoundInstance bestSound = ref GetBestSound();
+					if (!Unsafe.IsNullRef(ref bestSound)) {
+						SavePosition = bestSound.GetSoundOrigin();
+						BaseEntity? soundEnt = bestSound.Owner.Get();
+						if (soundEnt != null) {
+							soundEnt.GetVelocity(out Vector3 vel, out _);
+							SavePosition += vel * 2;
+						}
+						TaskComplete();
+					}
+					else {
+						TaskFail("No Sound!");
+						return;
+					}
+				}
+				break;
+
+			case TASK_STORE_BESTSOUND_REACTORIGIN_IN_SAVEPOSITION: {
+					ref WorldSoundInstance bestSound = ref GetBestSound();
+					if (!Unsafe.IsNullRef(ref bestSound)) {
+						SavePosition = bestSound.GetSoundReactOrigin();
+						TaskComplete();
+					}
+					else {
+						TaskFail("No Sound!");
+						return;
+					}
+				}
+				break;
+
 			case TASK_PLAY_PRIVATE_SEQUENCE:
 			case TASK_PLAY_PRIVATE_SEQUENCE_FACE_ENEMY:
 			case TASK_PLAY_SEQUENCE_FACE_ENEMY:
 			case TASK_PLAY_SEQUENCE_FACE_TARGET:
 			case TASK_PLAY_SEQUENCE:
+				SetIdealActivity((Activity)(int)task.TaskData);
+				break;
+
+			case TASK_FACE_LASTPOSITION:
+				GetMotor()!.SetIdealYawToTarget(LastPosition);
+				GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+				SetTurnActivity();
+				break;
+
+			case TASK_FACE_SAVEPOSITION:
+				GetMotor()!.SetIdealYawToTarget(SavePosition);
+				GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+				SetTurnActivity();
+				break;
+
+			case TASK_FACE_AWAY_FROM_SAVEPOSITION:
+				GetMotor()!.SetIdealYawToTarget(SavePosition, 0, 180.0f);
+				GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+				SetTurnActivity();
+				break;
+
+			case TASK_SET_IDEAL_YAW_TO_CURRENT:
+				GetMotor()!.SetIdealYaw(Util.AngleMod(GetLocalAngles().Y));
+				TaskComplete();
+				break;
+
+			case TASK_FACE_TARGET:
+				if (TargetEnt.Get() != null) {
+					GetMotor()!.SetIdealYawToTarget(TargetEnt.Get()!.GetAbsOrigin());
+					SetTurnActivity();
+				}
+				else
+					TaskFail(AI_TaskFailureCode.NoTarget);
+				break;
+
+			case TASK_FACE_PLAYER:
+				SetWait(task.TaskData);
+				break;
+
+			case TASK_FACE_ENEMY: {
+					Vector3 enemyLKP = GetEnemyLKP();
+					if (!FInAimCone(enemyLKP)) {
+						GetMotor()!.SetIdealYawToTarget(enemyLKP);
+						GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+						SetTurnActivity();
+					}
+					else {
+						float reasonableFacing = CalcReasonableFacing(true);
+						if (MathF.Abs(reasonableFacing - GetMotor()!.GetIdealYaw()) < 1)
+							TaskComplete();
+						else {
+							GetMotor()!.SetIdealYaw(reasonableFacing);
+							SetTurnActivity();
+						}
+					}
+					break;
+				}
+
+			case TASK_FACE_REASONABLE:
+				GetMotor()!.SetIdealYaw(CalcReasonableFacing());
+				SetTurnActivity();
+				break;
+
+			case TASK_FACE_PATH: {
+					if (!GetNavigator()!.IsGoalActive()) {
+						DevWarning(2, "No route to face!\n");
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					}
+					else {
+						const float NPC_TRIVIAL_TURN = 15;
+
+						GetMotor()!.SetIdealYawToTarget(GetNavigator()!.GetCurWaypointPos());
+
+						if (MathF.Abs(GetMotor()!.DeltaIdealYaw()) <= NPC_TRIVIAL_TURN) {
+							TaskComplete();
+							break;
+						}
+						SetTurnActivity();
+					}
+				}
+				break;
+
+			case TASK_SPEAK_SENTENCE:
+				SpeakSentence((int)task.TaskData);
+				TaskComplete();
+				break;
+
+			case TASK_GET_CHASE_PATH_TO_ENEMY: {
+					BaseEntity? enemy = GetEnemy();
+					if (enemy == null) {
+						TaskFail(AI_TaskFailureCode.NoRoute);
+						return;
+					}
+
+					if ((enemy.GetAbsOrigin() - GetEnemyLKP()).LengthSquared() < task.TaskData * task.TaskData)
+						ChainStartTask(TASK_GET_PATH_TO_ENEMY);
+					else
+						ChainStartTask(TASK_GET_PATH_TO_ENEMY_LKP);
+
+					if (!TaskIsComplete() && !HasCondition((int)SCOND_t.COND_TASK_FAILED))
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					break;
+				}
+
+			case TASK_GET_PATH_TO_ENEMY_LKP: {
+					BaseEntity? enemy = GetEnemy();
+					if (enemy == null || IsUnreachable(enemy)) {
+						TaskFail(AI_TaskFailureCode.NoRoute);
+						return;
+					}
+					AI_NavGoal goal = new(GetEnemyLKP());
+
+					TranslateNavGoal(enemy, ref goal.Dest);
+
+					if (GetNavigator()!.SetGoal(goal, AI_NavSetGoalFlags.ClearTarget))
+						TaskComplete();
+					else {
+						DevWarning(2, "GetPathToEnemyLKP failed!!\n");
+						RememberUnreachable(GetEnemy()!);
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					}
+					break;
+				}
+
+			case TASK_GET_PATH_TO_ENEMY: {
+					if (IsUnreachable(GetEnemy())) {
+						TaskFail(AI_TaskFailureCode.NoRoute);
+						return;
+					}
+
+					BaseEntity? enemy = GetEnemy();
+
+					if (enemy == null) {
+						TaskFail(AI_TaskFailureCode.NoEnemy);
+						return;
+					}
+
+					if (GetNavigator()!.SetGoal(new AI_NavGoal(NavGoalType.Enemy)))
+						TaskComplete();
+					else {
+						DevWarning(2, "GetPathToEnemy failed!!\n");
+						RememberUnreachable(GetEnemy()!);
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					}
+					break;
+				}
+
+			case TASK_CREATE_PENDING_WEAPON:
+			case TASK_RANDOMIZE_FRAMERATE:
+			case TASK_DEFER_DODGE:
+			case TASK_ANNOUNCE_ATTACK:
+			case TASK_FIND_HINTNODE:
+			case TASK_FIND_LOCK_HINTNODE:
+			case TASK_LOCK_HINTNODE:
+			case TASK_STORE_ENEMY_POSITION_IN_SAVEPOSITION:
+			case TASK_CLEAR_HINTNODE:
 			case TASK_ADD_GESTURE_WAIT:
 			case TASK_ADD_GESTURE:
 			case TASK_PLAY_HINT_ACTIVITY:
@@ -4331,13 +4639,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_FIND_COVER_FROM_ORIGIN:
 			case TASK_FIND_COVER_FROM_BEST_SOUND:
 			case TASK_FACE_HINTNODE:
-			case TASK_FACE_LASTPOSITION:
-			case TASK_FACE_AWAY_FROM_SAVEPOSITION:
-			case TASK_SET_IDEAL_YAW_TO_CURRENT:
-			case TASK_FACE_TARGET:
-			case TASK_FACE_PLAYER:
-			case TASK_FACE_ENEMY:
-			case TASK_FACE_PATH:
 			case TASK_MOVE_TO_TARGET_RANGE:
 			case TASK_MOVE_TO_GOAL_RANGE:
 			case TASK_WAIT_UNTIL_NO_DANGER_SOUND:
@@ -4353,8 +4654,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_RELOAD:
 			case TASK_SPECIAL_ATTACK1:
 			case TASK_SPECIAL_ATTACK2:
-			case TASK_GET_CHASE_PATH_TO_ENEMY:
-			case TASK_GET_PATH_TO_ENEMY_LKP:
 			case TASK_GET_PATH_TO_INTERACTION_PARTNER:
 			case TASK_GET_PATH_TO_RANGE_ENEMY_LKP_LOS:
 			case TASK_GET_PATH_TO_ENEMY_LOS:
@@ -4363,7 +4662,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_GET_PATH_TO_ENEMY_LKP_LOS:
 			case TASK_SET_GOAL:
 			case TASK_GET_PATH_TO_GOAL:
-			case TASK_GET_PATH_TO_ENEMY:
 			case TASK_GET_PATH_TO_ENEMY_CORPSE:
 			case TASK_GET_PATH_TO_SAVEPOSITION_LOS:
 			case TASK_GET_PATH_TO_TARGET_WEAPON:
@@ -4386,7 +4684,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_SOUND_IDLE:
 			case TASK_SOUND_PAIN:
 			case TASK_SOUND_ANGRY:
-			case TASK_SPEAK_SENTENCE:
 			case TASK_WAIT_FOR_SPEAK_FINISH:
 			case TASK_WAIT_FOR_SCRIPT:
 			case TASK_PUSH_SCRIPT_ARRIVAL_ACTIVITY:
@@ -4574,23 +4871,93 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				break;
 
 			case TASK_TURN_RIGHT:
-			case TASK_TURN_LEFT:
+			case TASK_TURN_LEFT: {
+					Assert(GetMotor()!.IsYawLocked() == false);
+
+					GetMotor()!.UpdateYaw();
+
+					if (FacingIdeal())
+						TaskComplete();
+					break;
+				}
+
 			case TASK_PLAY_PRIVATE_SEQUENCE_FACE_ENEMY:
 			case TASK_PLAY_SEQUENCE_FACE_ENEMY:
-			case TASK_PLAY_SEQUENCE_FACE_TARGET:
-			case TASK_PLAY_HINT_ACTIVITY:
+			case TASK_PLAY_SEQUENCE_FACE_TARGET: {
+					BaseEntity? target;
+
+					if (task.Task == TASK_PLAY_SEQUENCE_FACE_TARGET)
+						target = TargetEnt.Get();
+					else
+						target = GetEnemy();
+					if (target != null)
+						GetMotor()!.SetIdealYawAndUpdate(target.GetAbsOrigin() - GetLocalOrigin(), AI_Motor.AI_KEEP_YAW_SPEED);
+
+					if (IsActivityFinished())
+						TaskComplete();
+				}
+				break;
+
 			case TASK_PLAY_SEQUENCE:
-			case TASK_PLAY_PRIVATE_SEQUENCE:
-			case TASK_ADD_GESTURE_WAIT:
-			case TASK_FACE_ENEMY:
-			case TASK_FACE_PLAYER:
-			case TASK_FIND_COVER_FROM_BEST_SOUND:
-			case TASK_FACE_HINTNODE:
+			case TASK_PLAY_PRIVATE_SEQUENCE: {
+					AutoMovement();
+					if (IsActivityFinished())
+						TaskComplete();
+					break;
+				}
+
+			case TASK_FACE_ENEMY: {
+					Assert(GetMotor()!.IsYawLocked() == false);
+
+					Vector3 enemyLKP = GetEnemyLKP();
+					if (!FInAimCone(enemyLKP)) {
+						GetMotor()!.SetIdealYawToTarget(enemyLKP);
+						GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+					}
+					else {
+						float reasonableFacing = CalcReasonableFacing(true);
+						if (MathF.Abs(reasonableFacing - GetMotor()!.GetIdealYaw()) > 1)
+							GetMotor()!.SetIdealYaw(reasonableFacing);
+					}
+
+					GetMotor()!.UpdateYaw();
+
+					if (FacingIdeal())
+						TaskComplete();
+					break;
+				}
+
+			case TASK_FACE_PLAYER: {
+					BasePlayer? player = AI_GetClosestPlayer();
+					if (player != null) {
+						GetMotor()!.SetIdealYawToTargetAndUpdate(player.GetAbsOrigin(), AI_Motor.AI_KEEP_YAW_SPEED);
+						SetTurnActivity();
+						if (IsWaitFinished() && GetMotor()!.DeltaIdealYaw() < 10)
+							TaskComplete();
+					}
+					else
+						TaskFail(AI_TaskFailureCode.NoPlayer);
+				}
+				break;
+
 			case TASK_FACE_LASTPOSITION:
 			case TASK_FACE_AWAY_FROM_SAVEPOSITION:
+			case TASK_FACE_HINTNODE:
 			case TASK_FACE_TARGET:
 			case TASK_FACE_SCRIPT:
-			case TASK_FACE_PATH:
+			case TASK_FACE_PATH: {
+					Assert(GetMotor()!.IsYawLocked() == false);
+
+					GetMotor()!.UpdateYaw();
+
+					if (FacingIdeal())
+						TaskComplete();
+					break;
+				}
+
+			case TASK_PLAY_HINT_ACTIVITY:
+			case TASK_ADD_GESTURE_WAIT:
+			case TASK_FIND_COVER_FROM_BEST_SOUND:
 			case TASK_WAIT_FACE_ENEMY:
 			case TASK_WAIT_FACE_ENEMY_RANDOM:
 			case TASK_WAIT_UNTIL_NO_DANGER_SOUND:
@@ -7534,7 +7901,41 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		g_AIRunTimer.Stop();
 	}
 
-	public virtual bool AutoMovement(BaseEntity? target = null) => throw new NotImplementedException();
+	public virtual bool AutoMovement(BaseEntity? target = null) => AutoMovement(GetAnimTimeInterval(), target, out _);
+	public virtual bool AutoMovement(BaseEntity? target, out AIMoveTrace traceResult) => AutoMovement(GetAnimTimeInterval(), target, out traceResult);
+
+	public virtual bool AutoMovement(TimeUnit_t interval, BaseEntity? target, out AIMoveTrace traceResult) {
+		traceResult = default;
+
+		if (interval <= 0.0)
+			return true;
+
+		ScheduleState.TaskRanAutomovement = true;
+
+		if (GetIntervalMovement(interval, out _, out Vector3 newPos, out QAngle newAngles)) {
+			if (GetMoveType() == Source.MoveType.Step) {
+				if ((GetFlags() & EntityFlags.Fly) == 0) {
+					target ??= GetNavTargetEntity();
+
+					return GetMotor()!.MoveGroundStep(newPos, target, newAngles.Y, false, true, out traceResult) == AIMotorMoveResult.Success;
+				}
+				else {
+					SetLocalOrigin(newPos);
+					SetLocalAngles(newAngles);
+					return true;
+				}
+			}
+			else if (GetMoveType() == Source.MoveType.Fly) {
+				Vector3 dist = newPos - GetLocalOrigin();
+
+				dist *= (float)(1.0 / interval);
+
+				SetLocalVelocity(dist);
+				return true;
+			}
+		}
+		return false;
+	}
 
 	public virtual void PostRun() {
 		if (!IsMoving()) {

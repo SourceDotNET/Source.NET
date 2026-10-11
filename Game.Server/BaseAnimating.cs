@@ -742,6 +742,42 @@ public partial class BaseAnimating : BaseEntity
 		return interval;
 	}
 
+	public bool GetIntervalMovement(TimeUnit_t intervalUsed, out bool moveSeqFinished, out Vector3 newPosition, out QAngle newAngles) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null || !studioHdr.SequencesAvailable()) {
+			moveSeqFinished = default;
+			newPosition = default;
+			newAngles = default;
+			return false;
+		}
+
+		float computedCycleRate = GetSequenceCycleRate(GetSequence());
+
+		TimeUnit_t nextCycle = GetCycle() + intervalUsed * computedCycleRate * PlaybackRate;
+
+		if (!SequenceLoops && nextCycle > 1.0) {
+			intervalUsed = GetCycle() / (computedCycleRate * PlaybackRate);
+			nextCycle = 1.0;
+			moveSeqFinished = true;
+		}
+		else {
+			moveSeqFinished = false;
+		}
+
+		if (BoneSetup.Studio_SeqMovement(studioHdr, GetSequence(), (float)GetCycle(), (float)nextCycle, GetPoseParameterArray(), out Vector3 deltaPos, out QAngle deltaAngles)) {
+			MathLib.VectorYawRotate(deltaPos, GetLocalAngles().Y, out deltaPos);
+			newPosition = GetLocalOrigin() + deltaPos;
+			newAngles = default;
+			newAngles.Y = GetLocalAngles().Y + deltaAngles.Y;
+			return true;
+		}
+		else {
+			newPosition = GetLocalOrigin();
+			newAngles = GetLocalAngles();
+			return false;
+		}
+	}
+
 	public void InvalidateBoneCache() => Studio.InvalidateBoneCache(BoneCacheHandle);
 
 	public void InvalidateBoneCacheIfOlderThan(TimeUnit_t deltaTime) {

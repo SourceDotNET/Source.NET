@@ -4,6 +4,7 @@ using System.Numerics;
 
 using Source.Common;
 using Source.Common.Commands;
+using Source.Common.Mathematics;
 using Source.Common.Physics;
 using Source;
 using Game.Shared.HL2;
@@ -576,7 +577,15 @@ public class HL2_Player : BaseMultiplayerPlayer
 	void OnRestore() { }
 
 	public override Vector3 EyeDirection2D() {
-		throw new NotImplementedException();
+		Vector3 vecReturn = EyeDirection3D();
+		vecReturn.Z = 0;
+
+		Vector2 vecReturn2D = new(vecReturn.X, vecReturn.Y);
+		MathLib.VectorNormalize(ref vecReturn2D);
+		vecReturn.X = vecReturn2D.X;
+		vecReturn.Y = vecReturn2D.Y;
+
+		return vecReturn;
 	}
 
 	public override Vector3 EyeDirection3D() {
