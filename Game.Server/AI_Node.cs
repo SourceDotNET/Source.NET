@@ -1,3 +1,5 @@
+using Source.Common.Mathematics;
+
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -44,11 +46,15 @@ public enum NodeInfoBits : uint
 public class AI_Node(AI_Network network, int id, Vector3 origin, float yaw)
 {
 	public const int NODE_ENT_FLAGS_SHIFT = 5;
+	public const float NODE_CLIMB_OFFSET = 8;
 
 	public const float MAX_NODE_LINK_DIST = 60 * 12;
 	public const float MAX_NODE_LINK_DIST_SQ = MAX_NODE_LINK_DIST * MAX_NODE_LINK_DIST;
 	public const float MAX_AIR_NODE_LINK_DIST = 120 * 12;
 	public const float MAX_AIR_NODE_LINK_DIST_SQ = MAX_AIR_NODE_LINK_DIST * MAX_AIR_NODE_LINK_DIST;
+
+	public AI_Hint? GetHint() => Hint;
+	public void SetHint(AI_Hint? hint) => Hint = hint;
 
 	public int NumLinks() => Links.Count;
 	public ref AI_Link GetLink(int destNodeId) {
@@ -70,6 +76,34 @@ public class AI_Node(AI_Network network, int id, Vector3 origin, float yaw)
 	public void SetZone(int zone) => Zone = zone;
 
 	public int GetId() => ID;
+
+	public Vector3 GetPosition(AI_HullType hull) {
+		if (NodeType == NodeType.Climb) {
+			float shift = (0.5f * NAI_Hull.Length(hull)) + NODE_CLIMB_OFFSET;
+
+			Vector3 offsetDir = new(MathF.Cos(MathLib.DEG2RAD(Yaw)), MathF.Sin(MathLib.DEG2RAD(Yaw)), 0);
+
+			Vector3 origin;
+			if ((NodeInfo & NodeInfoBits.ClimbOffForward) != 0)
+				origin = Origin + (shift * offsetDir);
+			else if ((NodeInfo & NodeInfoBits.ClimbOffLeft) != 0) {
+				Vector3 leftDir = Vector3.Cross(offsetDir, Vector3.UnitZ);
+				origin = Origin - (2 * shift * leftDir) - (shift * offsetDir);
+			}
+			else if ((NodeInfo & NodeInfoBits.ClimbOffRight) != 0) {
+				Vector3 leftDir = Vector3.Cross(offsetDir, Vector3.UnitZ);
+				origin = Origin + (2 * shift * leftDir) - (shift * offsetDir);
+			}
+			else
+				origin = Origin - (shift * offsetDir);
+
+			return new(origin.X, origin.Y, origin.Z + VOffset[(int)hull]);
+		}
+		else if (NodeType == NodeType.Ground)
+			return new(Origin.X, Origin.Y, Origin.Z + VOffset[(int)hull]);
+		else
+			return Origin;
+	}
 
 	public ref readonly Vector3 GetOrigin() => ref Origin;
 	public float GetYaw() => Yaw;
@@ -111,5 +145,6 @@ public class AI_Node(AI_Network network, int id, Vector3 origin, float yaw)
 	public readonly List<short> Links = new(4);
 
 	public TimeUnit_t NextUseTime;
+	public AI_Hint? Hint;
 	public int FirstShuffledLink;
 }
