@@ -28,9 +28,16 @@ public class AI_NetworkManager : PointEntity
 	static readonly ConVar g_ai_norebuildgraph = new("ai_norebuildgraph", "0");
 
 	public static void InitializeAINetworks() {
-		g_pAINetworkManager = (AI_NetworkManager)CreateEntityByName("ai_network")!;
-		g_pBigAINet = g_pAINetworkManager.GetNetwork();
-		g_pAINetworkManager.LoadNetworkGraph();
+		AI_NetworkManager network = (AI_NetworkManager)CreateEntityByName("ai_network")!;
+		g_pAINetworkManager = network;
+		network.AddEFlags(EFL.KeepOnRecreateEntities);
+		g_pBigAINet = network.GetNetwork();
+		network.SetName("BigNet");
+		network.Spawn();
+		network.LoadNetworkGraph();
+
+		network.SetThink(network.DelayedInit);
+		network.SetNextThink(gpGlobals.CurTime);
 	}
 
 	public void LoadNetworkGraph() {
@@ -153,15 +160,42 @@ public class AI_NetworkManager : PointEntity
 		gm_fNetworksLoaded = true;
 	}
 
+	public static void DeleteAllAINetworks() {
+		gm_fNetworksLoaded = false;
+		g_pBigAINet = null;
+	}
+
+	public override void Spawn() {
+		SetSolid(Source.SolidType.None);
+		SetMoveType(Source.MoveType.None);
+	}
+
+	void DelayedInit() {
+		if (!g_pGameRules.FAllowNPCs()) {
+			SetThink(null);
+			return;
+		}
+
+		if (!g_ai_norebuildgraph.GetBool() && !NetworksLoaded()) {
+			SetThink(null);
+			return;
+		}
+
+		Initalized = true;
+
+		if (g_AI_Manager.NumAIs() != 0 && g_pBigAINet!.NumNodes() == 0)
+			DevMsg("WARNING: Level contains NPCs but has no path nodes\n");
+	}
+
 	public static bool NetworksLoaded() => gm_fNetworksLoaded;
 	public bool IsInitialized() => Initalized;
 
 	public AI_NetworkEditTools GetEditOps() => EditOps;
 	public AI_Network GetNetwork() => Network;
 
-	static bool gm_fNetworksLoaded = true;
+	static bool gm_fNetworksLoaded;
 
 	readonly AI_Network Network = new();
 	readonly AI_NetworkEditTools EditOps = new();
-	bool Initalized = true;
+	bool Initalized;
 }

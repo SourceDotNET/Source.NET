@@ -1320,6 +1320,7 @@ public class AI_SystemHook(ReadOnlySpan<char> name) : AutoGameSystem(name)
 	}
 
 	public override void LevelShutdownPostEntity() {
+		AI_NetworkManager.DeleteAllAINetworks();
 		g_AI_SchedulesManager.DeleteAllSchedules();
 		g_AI_SchedulesManager.DestroyStringRegistries();
 	}
