@@ -14,21 +14,21 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
 
 `█░░░░░░░░░░░░░░░░░░░` **51 / 788 classnames complete (6.5%)**
 
-`████░░░░░░░░░░░░░░░░` **2,744 / 15,450 boxes checked (17.8%)**
+`████░░░░░░░░░░░░░░░░` **2,823 / 15,450 boxes checked (18.3%)**
 
-- 259 / 691 GMod C++ classes have a C# class (37.5%)
+- 260 / 691 GMod C++ classes have a C# class (37.6%)
 - 1 / 49 base classes complete
-- 469 classnames have no boxes checked
+- 468 classnames have no boxes checked
 
 | Kind                      | Checked |  Total |   Done |
 | ------------------------- | ------: | -----: | -----: |
-| Linked                    |     318 |    788 |  40.4% |
+| Linked                    |     319 |    788 |  40.5% |
 | Networked                 |     244 |    244 | 100.0% |
 | KeyValues                 |     227 |  1,590 |  14.3% |
-| Inputs                    |     176 |  1,382 |  12.7% |
+| Inputs                    |     177 |  1,382 |  12.8% |
 | Outputs                   |     107 |    543 |  19.7% |
 | Think/Touch/Use functions |      32 |    409 |   7.8% |
-| Methods                   |   1,640 | 10,494 |  15.6% |
+| Methods                   |   1,717 | 10,494 |  16.4% |
 
 ### Closest to done
 
@@ -50,8 +50,8 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
 | Entry                | Checked |  Done | Left |
 | -------------------- | ------: | ----: | ---: |
 | CAI_BaseNPC          | 209/578 | 36.2% |  369 |
-| CBaseEntity          | 314/535 | 58.7% |  221 |
-| CBasePlayer          | 145/324 | 44.8% |  179 |
+| CBaseEntity          | 316/535 | 59.1% |  219 |
+| CBasePlayer          | 146/324 | 45.1% |  178 |
 | npc_strider          |   2/157 |  1.3% |  155 |
 | npc_hunter           |   0/142 |  0.0% |  142 |
 | npc_metropolice      |  13/150 |  8.7% |  137 |
@@ -68,13 +68,13 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
 | logic_*   |    10/23 |       177/320 | 55.3% |
 | trigger_* |    11/34 |       104/286 | 36.4% |
 | cycler_*  |      1/6 |          7/25 | 28.0% |
+| func_*    |     4/69 |       232/942 | 24.6% |
 | weapon_*  |     0/37 |       162/737 | 22.0% |
-| func_*    |     4/69 |       199/942 | 21.1% |
+| player_*  |      0/6 |         19/91 | 20.9% |
 | light_*   |      0/6 |          7/36 | 19.4% |
 | env_*     |     6/82 |       179/956 | 18.7% |
 | ai_*      |     1/24 |        58/391 | 14.8% |
-| player_*  |      0/6 |         12/91 | 13.2% |
-| prop_*    |     0/50 |        86/793 | 10.8% |
+| prop_*    |     0/50 |        89/793 | 11.2% |
 | info_*    |     0/40 |        26/245 | 10.6% |
 | point_*   |     0/29 |        29/432 |  6.7% |
 | physics_* |      0/5 |          4/62 |  6.5% |
@@ -2798,20 +2798,20 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [ ] `DamageSound`
     - [ ] `Die`
     - [ ] `DrawDebugTextOverlays`
-    - [ ] `GetBasePropData`
-    - [ ] `GetBreakableCount`
-    - [ ] `GetBreakableModel`
-    - [ ] `GetBreakableSkin`
-    - [ ] `GetDmgModBullet`
-    - [ ] `GetDmgModClub`
-    - [ ] `GetDmgModExplosive`
-    - [ ] `GetExplosiveDamage`
-    - [ ] `GetExplosiveRadius`
-    - [ ] `GetMaxBreakableSize`
-    - [ ] `GetMultiplayerBreakMode`
-    - [ ] `GetPhysicsDamageTable`
-    - [ ] `GetPhysicsMode`
-    - [ ] `HasInteraction`
+    - [x] `GetBasePropData`
+    - [x] `GetBreakableCount`
+    - [x] `GetBreakableModel`
+    - [x] `GetBreakableSkin`
+    - [x] `GetDmgModBullet`
+    - [x] `GetDmgModClub`
+    - [x] `GetDmgModExplosive`
+    - [x] `GetExplosiveDamage`
+    - [x] `GetExplosiveRadius`
+    - [x] `GetMaxBreakableSize`
+    - [x] `GetMultiplayerBreakMode`
+    - [x] `GetPhysicsDamageTable`
+    - [x] `GetPhysicsMode`
+    - [x] `HasInteraction`
     - [ ] `HasPhysicsAttacker`
     - [ ] `IsBreakable`
     - [ ] `KeyValue`
@@ -2823,23 +2823,23 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [ ] `ParsePropData`
     - [ ] `Precache`
     - [ ] `ResetOnGroundFlags`
-    - [ ] `SetBasePropData`
-    - [ ] `SetBreakableCount`
-    - [ ] `SetBreakableModel`
-    - [ ] `SetBreakableSkin`
-    - [ ] `SetDmgModBullet`
-    - [ ] `SetDmgModClub`
-    - [ ] `SetDmgModExplosive`
-    - [ ] `SetExplosiveDamage`
-    - [ ] `SetExplosiveRadius`
-    - [ ] `SetInteraction`
-    - [ ] `SetMaxBreakableSize`
-    - [ ] `SetMultiplayerBreakMode`
+    - [x] `SetBasePropData`
+    - [x] `SetBreakableCount`
+    - [x] `SetBreakableModel`
+    - [x] `SetBreakableSkin`
+    - [x] `SetDmgModBullet`
+    - [x] `SetDmgModClub`
+    - [x] `SetDmgModExplosive`
+    - [x] `SetExplosiveDamage`
+    - [x] `SetExplosiveRadius`
+    - [x] `SetInteraction`
+    - [x] `SetMaxBreakableSize`
+    - [x] `SetMultiplayerBreakMode`
     - [ ] `SetPhysicsAttacker`
-    - [ ] `SetPhysicsDamageTable`
-    - [ ] `SetPhysicsMode`
-    - [ ] `SetPropDataBlocksLOS`
-    - [ ] `SetPropDataIsAIWalkable`
+    - [x] `SetPhysicsDamageTable`
+    - [x] `SetPhysicsMode`
+    - [x] `SetPropDataBlocksLOS`
+    - [x] `SetPropDataIsAIWalkable`
     - [ ] `Spawn`
     - [ ] `TraceAttack`
     - [ ] `UpdateHealth`
@@ -3397,9 +3397,9 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
   - [x] Networked (SendTable for `CPhysBoxMultiplayer`)
   - Methods
     - [ ] `Activate`
-    - [ ] `GetMass`
-    - [ ] `GetMultiplayerPhysicsMode`
-    - [ ] `IsAsleep`
+    - [x] `GetMass`
+    - [x] `GetMultiplayerPhysicsMode`
+    - [x] `IsAsleep`
 - [ ] **func_plat** · `CFuncPlat` · `game/server/trains.cpp` · C#: *none*
   - [ ] Linked (`func_plat`)
   - Inputs
@@ -10863,7 +10863,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [ ] `KillSilent`
     - [ ] `OnDamagedByExplosion`
     - [ ] `OnPlayerSay`
-    - [ ] `PickupObject`
+    - [x] `PickupObject`
     - [ ] `PlayGesture`
     - [ ] `PlayerDeathThink`
     - [x] `PlayerRunCommand`
@@ -10912,16 +10912,16 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `Spawn`
     - [x] `UpdatePlayerData`
     - [x] `UpdateTransmitState`
-- [ ] **player_pickup** · `CPlayerPickupController` · `game/server/hl1/hl1_player.cpp` · C#: *none*
-  - [ ] Linked (`player_pickup`)
+- [ ] **player_pickup** · `CPlayerPickupController` · `game/server/hl1/hl1_player.cpp` · C# `PlayerPickupController` ([Game.Server/HL2/PlayerPickupController.cs](Game.Server/HL2/PlayerPickupController.cs))
+  - [x] Linked (`player_pickup`)
   - Methods
-    - [ ] `Init`
-    - [ ] `IsHoldingEntity`
-    - [ ] `OnControls`
+    - [x] `Init`
+    - [x] `IsHoldingEntity`
+    - [x] `OnControls`
     - [ ] `OnRestore`
-    - [ ] `Shutdown`
+    - [x] `Shutdown`
     - [ ] `UpdateOnRemove`
-    - [ ] `Use`
+    - [x] `Use`
     - [ ] `VPhysicsShadowUpdate`
     - [ ] `VPhysicsUpdate`
 - [ ] **player_speedmod** · `CMovementSpeedMod` · `game/server/player.cpp` · C#: *none*
@@ -11788,7 +11788,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `CreateVPhysics`
     - [ ] `DrawDebugTextOverlays`
     - [ ] `EnableMotion`
-    - [ ] `GetCarryDistanceOffset`
+    - [x] `GetCarryDistanceOffset`
     - [ ] `GetMass`
     - [ ] `GetMassCenter`
     - [ ] `GetNavObstructionHeight`
@@ -11797,7 +11797,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [ ] `HandleAnyCollisionInteractions`
     - [x] `IsGib`
     - [ ] `IsPotentiallyAbleToObstructNavAreas`
-    - [ ] `ObjectCaps`
+    - [x] `ObjectCaps`
     - [ ] `OnNavMeshLoaded`
     - [ ] `OnPhysGunDrop`
     - [ ] `OnPhysGunPickup`
@@ -11806,7 +11806,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [ ] `Precache`
     - [x] `Spawn`
     - [ ] `TestCollision`
-    - [ ] `Use`
+    - [x] `Use`
     - [ ] `VPhysicsCollision`
     - [ ] `VPhysicsUpdate`
   - Also linked as: `item_crate`, `physics_prop`, `prop_exploding_barrel`, `prop_flare`, `prop_physics_multiplayer`, `prop_physics_override`, `prop_weighted_cube`
@@ -16526,7 +16526,7 @@ Datadesc and methods that the entities above inherit.
     - [x] `Instance`
     - [x] `Intersects`
     - [x] `InvalidatePhysicsRecursive`
-    - [ ] `IsAIWalkable`
+    - [x] `IsAIWalkable`
     - [ ] `IsARagdoll`
     - [x] `IsAlive`
     - [x] `IsBSPModel`
@@ -16672,7 +16672,7 @@ Datadesc and methods that the entities above inherit.
     - [ ] `SaveLua`
     - [ ] `SendDebugPivotOverlay`
     - [ ] `SendOnKilledGameEvent`
-    - [ ] `SetAIWalkable`
+    - [x] `SetAIWalkable`
     - [x] `SetAbsAngles`
     - [x] `SetAbsOrigin`
     - [x] `SetAbsVelocity`
@@ -17167,7 +17167,7 @@ Datadesc and methods that the entities above inherit.
     - [x] `CanBreatheUnderwater`
     - [ ] `CanEnterVehicle`
     - [ ] `CanHearAndReadChatFrom`
-    - [ ] `CanPickupObject`
+    - [x] `CanPickupObject`
     - [x] `CanSpeak`
     - [x] `ChangeTeam`
     - [x] `CheatImpulseCommands`
@@ -17639,24 +17639,24 @@ Datadesc and methods that the entities above inherit.
     - [ ] `FindEnableMotionFixup`
     - [ ] `ForceFadeScaleToAlwaysVisible`
     - [ ] `GetAutoAimRadius`
-    - [ ] `GetBasePropData`
-    - [ ] `GetBreakableCount`
-    - [ ] `GetBreakableModel`
-    - [ ] `GetBreakableSkin`
-    - [ ] `GetDmgModBullet`
-    - [ ] `GetDmgModClub`
-    - [ ] `GetDmgModExplosive`
+    - [x] `GetBasePropData`
+    - [x] `GetBreakableCount`
+    - [x] `GetBreakableModel`
+    - [x] `GetBreakableSkin`
+    - [x] `GetDmgModBullet`
+    - [x] `GetDmgModClub`
+    - [x] `GetDmgModExplosive`
     - [ ] `GetEnableMotionPosition`
-    - [ ] `GetExplosiveDamage`
-    - [ ] `GetExplosiveRadius`
-    - [ ] `GetMaxBreakableSize`
-    - [ ] `GetMultiplayerBreakMode`
-    - [ ] `GetPhysicsDamageTable`
-    - [ ] `GetPhysicsMode`
+    - [x] `GetExplosiveDamage`
+    - [x] `GetExplosiveRadius`
+    - [x] `GetMaxBreakableSize`
+    - [x] `GetMultiplayerBreakMode`
+    - [x] `GetPhysicsDamageTable`
+    - [x] `GetPhysicsMode`
     - [ ] `GetRootPhysicsObjectForBreak`
     - [ ] `HandleFirstCollisionInteractions`
     - [ ] `HandleInteractionStick`
-    - [ ] `HasInteraction`
+    - [x] `HasInteraction`
     - [ ] `HasPhysicsAttacker`
     - [ ] `HasPreferredCarryAnglesForPlayer`
     - [ ] `Ignite`
@@ -17671,24 +17671,24 @@ Datadesc and methods that the entities above inherit.
     - [ ] `Precache`
     - [ ] `PreferredCarryAngles`
     - [ ] `RampToDefaultFadeScale`
-    - [ ] `SetBasePropData`
-    - [ ] `SetBreakableCount`
-    - [ ] `SetBreakableModel`
-    - [ ] `SetBreakableSkin`
-    - [ ] `SetDmgModBullet`
-    - [ ] `SetDmgModClub`
-    - [ ] `SetDmgModExplosive`
+    - [x] `SetBasePropData`
+    - [x] `SetBreakableCount`
+    - [x] `SetBreakableModel`
+    - [x] `SetBreakableSkin`
+    - [x] `SetDmgModBullet`
+    - [x] `SetDmgModClub`
+    - [x] `SetDmgModExplosive`
     - [ ] `SetEnableMotionPosition`
-    - [ ] `SetExplosiveDamage`
-    - [ ] `SetExplosiveRadius`
-    - [ ] `SetInteraction`
-    - [ ] `SetMaxBreakableSize`
-    - [ ] `SetMultiplayerBreakMode`
+    - [x] `SetExplosiveDamage`
+    - [x] `SetExplosiveRadius`
+    - [x] `SetInteraction`
+    - [x] `SetMaxBreakableSize`
+    - [x] `SetMultiplayerBreakMode`
     - [ ] `SetPhysicsAttacker`
-    - [ ] `SetPhysicsDamageTable`
-    - [ ] `SetPhysicsMode`
-    - [ ] `SetPropDataBlocksLOS`
-    - [ ] `SetPropDataIsAIWalkable`
+    - [x] `SetPhysicsDamageTable`
+    - [x] `SetPhysicsMode`
+    - [x] `SetPropDataBlocksLOS`
+    - [x] `SetPropDataIsAIWalkable`
     - [ ] `Spawn`
     - [ ] `StickAtPosition`
     - [ ] `UpdateHealth`
@@ -17928,7 +17928,7 @@ Datadesc and methods that the entities above inherit.
     - [ ] `OnSquadMemberKilled`
     - [ ] `DisableFlashlight`
     - [ ] `EnableFlashlight`
-    - [ ] `ForceDropPhysObjects`
+    - [x] `ForceDropPhysObjects`
   - Methods
     - [x] `Activate`
     - [ ] `ApplyBattery`
@@ -17960,7 +17960,7 @@ Datadesc and methods that the entities above inherit.
     - [x] `FlashlightTurnOff`
     - [x] `FlashlightTurnOn`
     - [x] `ForceDropOfCarriedPhysObjects`
-    - [ ] `GetHeldObjectMass`
+    - [x] `GetHeldObjectMass`
     - [ ] `GetIdleTime`
     - [ ] `GetLadderSurface`
     - [ ] `GetLastDamageTime`
@@ -17979,7 +17979,7 @@ Datadesc and methods that the entities above inherit.
     - [x] `InitVCollision`
     - [x] `IsDucking`
     - [ ] `IsFollowingPhysics`
-    - [ ] `IsHoldingEntity`
+    - [x] `IsHoldingEntity`
     - [ ] `IsIlluminatedByFlashlight`
     - [ ] `IsZooming`
     - [x] `ItemPostFrame`
@@ -18740,6 +18740,7 @@ Datadesc and methods that the entities above inherit.
 [ ] [L - K I O - _] EnvFade (aka env_fade)
 [ ] [L N - - - T _] PlayerResource (aka player_manager)
 [ ] [L - K I - - _] EnvZoom (aka env_zoom)
+[ ] [L N - - - - _] PhysBoxMultiplayer (aka func_physbox_multiplayer)
 [ ] [L N - - - - _] TriggerPlayerMovement (aka trigger_playermovement)
 [ ] [L - K I O _ _] TriggerImpact (aka trigger_impact)
 [ ] [L N - - - - _] WeaponStunStick (aka weapon_stunstick)
@@ -18762,6 +18763,7 @@ Datadesc and methods that the entities above inherit.
 [ ] [- N - - - - _] HL2MP_Player
 [ ] [L - _ I - - _] LogicCollisionPair (aka logic_collision_pair)
 [ ] [L N - - - - _] BaseViewModel (aka viewmodel)
+[ ] [L - - - - - _] PlayerPickupController (aka player_pickup)
 [ ] [L - _ _ - - _] TriggerPush (aka trigger_push)
 [ ] [L N _ _ O _ _] BaseEntity (aka func_proprrespawnzone)
 [ ] [L N _ _ _ _ _] DynamicProp (aka asw_door, dod_control_point, dynamic_prop, env_portal_laser, npc_personality_core, npc_wheatley_boss, prop_button, prop_car_alarm, prop_car_glass, prop_dropper, prop_dynamic, prop_dynamic_glow, prop_dynamic_override, prop_floor_ball_button, prop_floor_button, prop_floor_cube_button, prop_health_cabinet, prop_indicator_panel, prop_laser_catcher, prop_laser_relay, prop_portal_stats_display, prop_testchamber_door, prop_tractor_beam, prop_under_button, prop_under_floor_button, prop_wall_projector, team_control_point)
@@ -18780,6 +18782,7 @@ Datadesc and methods that the entities above inherit.
 [ ] [L - - - - - _] FuncNavPrefer (aka func_nav_prefer)
 [ ] [L - _ _ - - _] FuncBrush (aka func_brush, func_simpleladder)
 [ ] [L N _ _ _ - _] FuncLadder (aka func_useableladder)
+[ ] [L - _ _ _ _ _] Breakable (aka func_breakable)
 [ ] [- N - _ - - _] BasePlayer
 [ ] [L N - _ - - _] PropScalable (aka prop_coreball, prop_scalable)
 [ ] [L N - - - - _] WeaponShotgun (aka weapon_shotgun)
@@ -18794,18 +18797,18 @@ Datadesc and methods that the entities above inherit.
 [ ] [- N _ _ _ _ _] AI_BaseNPC
 [ ] [L N - - - - _] WeaponHL2MPBase (aka weapon_hl2mp_base)
 [ ] [L N - - - - _] WeaponSMG1 (aka weapon_smg1)
+[ ] [- N _ _ _ _ _] BreakableProp
+[ ] [L N _ _ _ _ _] PhysicsProp (aka item_crate, physics_prop, prop_exploding_barrel, prop_flare, prop_physics, prop_physics_multiplayer, prop_physics_override, prop_weighted_cube)
 [ ] [L N - - - - _] BaseHL1MPCombatWeapon (aka basehl1mpcombatweapon)
 [ ] [L N _ _ - - _] EnvAmbientLight (aka env_ambient_light)
 [ ] [L N _ - - - _] InfoLightingRelative (aka info_lighting_relative)
 [ ] [L N - - - - _] ParticleSmokeGrenade (aka env_particlesmokegrenade)
 [ ] [L N - - - - _] PhysBeam (aka physgun_beam)
-[ ] [L N - - - - _] PhysBoxMultiplayer (aka func_physbox_multiplayer)
 [ ] [L N - - - - _] RagdollPropAttached (aka prop_ragdoll_attached)
 [ ] [L N - - - _ _] WaterBullet (aka waterbullet)
 [ ] [L N - - - - _] WeaponCitizenPackage (aka weapon_citizenpackage)
 [ ] [L - - - - - _] EnvLight (aka light_environment)
 [ ] [_ - _ _ _ - M] Message (aka env_message)
-[ ] [L N _ _ _ _ _] PhysicsProp (aka item_crate, physics_prop, prop_exploding_barrel, prop_flare, prop_physics, prop_physics_multiplayer, prop_physics_override, prop_weighted_cube)
 [ ] [- N _ _ _ - _] BaseAnimating
 [ ] [L N - - - - _] FireSmoke (aka _firesmoke)
 [ ] [L N - _ - - _] FuncMonitor (aka func_monitor)
@@ -18874,6 +18877,7 @@ Datadesc and methods that the entities above inherit.
 [ ] [L N - - - - _] BoneManipulate (aka manipulate_bone)
 [ ] [L N _ _ - - _] FuncSmokeVolume (aka func_smokevolume)
 [ ] [L N - - - - _] WeaponEgon (aka weapon_egon)
+[ ] [L N - - - - _] GMOD_Player (aka player)
 [ ] [L N _ _ - _ _] Tesla (aka point_tesla)
 [ ] [L N - - - - _] WeaponAR2 (aka weapon_ar2)
 [ ] [L N _ _ _ _ _] EnvWind (aka env_wind)
@@ -18886,7 +18890,6 @@ Datadesc and methods that the entities above inherit.
 [ ] [L N - - - - _] WeaponFrag (aka weapon_frag)
 [ ] [L N - - - - _] WeaponGlock (aka weapon_glock_hl1)
 [ ] [L N - - - - _] WeaponMP5 (aka weapon_mp5_hl1)
-[ ] [L N - - - - _] GMOD_Player (aka player)
 [ ] [L N - - - - _] WeaponAlyxGun (aka weapon_alyxgun)
 [ ] [L - _ _ - - _] FuncNavPrerequisite (aka func_nav_prerequisite)
 [ ] [L N - - _ _ _] NPC_Barney (aka npc_barney)
@@ -18947,11 +18950,9 @@ Datadesc and methods that the entities above inherit.
 [ ] [L N _ _ _ _ _] NPC_Manhack (aka npc_manhack)
 [ ] [L N _ _ _ - _] NPC_Vortigaunt (aka npc_vortigaunt)
 [ ] [- N _ _ _ - _] BasePropDoor
-[ ] [L - _ _ _ _ _] Breakable (aka func_breakable)
 [ ] [- N _ _ - _ _] BaseHelicopter
 [ ] [- - _ _ - - _] AI_PlayerAlly
 [ ] [L N _ _ - _ _] NPC_Strider (aka npc_strider)
-[ ] [- N _ _ _ _ _] BreakableProp
 [ ] [_ - _ _ - _ _] NPC_Hunter (aka npc_hunter)
 [ ] [_ - _ _ _ _ _] NPC_AttackHelicopter (aka npc_helicopter)
 [ ] [- - _ _ _ - _] NPC_PlayerCompanion
@@ -19153,7 +19154,6 @@ Datadesc and methods that the entities above inherit.
 [ ] [_ - _ _ _ - _] LogicEventListenerItemEquip (aka logic_eventlistener_itemequip)
 [ ] [_ - _ _ _ _ _] MultiManager (aka multi_manager)
 [ ] [_ - - - - - _] NewNPC (aka npc_newnpc)
-[ ] [_ - - - - - _] PlayerPickupController (aka player_pickup)
 [ ] [_ - _ _ _ - _] PointEntityFinder (aka point_entity_finder)
 [ ] [_ - _ _ _ _ _] PointPlayerMoveConstraint (aka point_playermoveconstraint)
 [ ] [_ - _ _ _ - _] PointVelocitySensor (aka point_velocitysensor)
