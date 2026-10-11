@@ -489,6 +489,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public TimeUnit_t AcceptableTimeSeenEnemy;
 	public readonly SimpleSimTimer FailChooseEnemyTimer = new();
 	public readonly SimpleSimTimer UpdateEnemyPosTimer = new();
+	public TimeUnit_t SoundWaitTime;
+	public SentencePriority SoundPriorityValue;
 	public bool SkippedChooseEnemy;
 	public WorldSoundInstance LockedBestSound = new();
 	public Handle<BaseFilter> EnemyFilter = new();
@@ -5846,6 +5848,31 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 
 		return false;
+	}
+
+	public bool FOkToMakeSound(SentencePriority soundPriority = SentencePriority.Normal) {
+		if (Squad != null) {
+			if (!Squad.FOkToMakeSound(soundPriority))
+				return false;
+		}
+		else {
+			if (gpGlobals.CurTime <= SoundWaitTime) {
+				if (soundPriority <= SoundPriorityValue)
+					return false;
+			}
+		}
+
+		if (HasSpawnFlags(SF_NPC_GAG) && (NPCState != NPCState.Combat))
+			return false;
+
+		return true;
+	}
+
+	public void JustMadeSound(SentencePriority soundPriority = SentencePriority.Normal, float soundLength = 0.0f) {
+		SoundWaitTime = gpGlobals.CurTime + soundLength + random.RandomFloat(1.5f, 2.0f);
+		SoundPriorityValue = soundPriority;
+
+		Squad?.JustMadeSound(soundPriority, gpGlobals.CurTime + soundLength + random.RandomFloat(1.5f, 2.0f));
 	}
 
 	public virtual void IdleSound() { }

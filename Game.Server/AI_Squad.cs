@@ -25,6 +25,9 @@ public enum SquadSlot
 public class AI_Squad
 {
 	public string GetName() => throw new NotImplementedException();
+	public int NumMembers(bool ignoreSilentMembers = true) => throw new NotImplementedException();
+	public bool FOkToMakeSound(SentencePriority soundPriority) => throw new NotImplementedException();
+	public void JustMadeSound(SentencePriority soundPriority, TimeUnit_t time) => throw new NotImplementedException();
 	public bool IsLeader(AI_BaseNPC npc) => throw new NotImplementedException();
 	public AI_BaseNPC? GetFirstMember(out int iter) => throw new NotImplementedException();
 	public AI_BaseNPC? GetNextMember(ref int iter) => throw new NotImplementedException();
