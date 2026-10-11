@@ -3216,7 +3216,11 @@ public partial class BaseEntity : IServerEntity
 
 	public virtual bool CanBeHitByMeleeAttack(BaseEntity? attacker) => true;
 
-	public virtual bool FVisible(BaseEntity entity, Mask traceMask = Mask.BlockLOS) {
+	public bool FVisible(BaseEntity entity, Mask traceMask = Mask.BlockLOS) => FVisible(entity, traceMask, out _);
+
+	public virtual bool FVisible(BaseEntity entity, Mask traceMask, out BaseEntity? blocker) {
+		blocker = null;
+
 		if ((entity.GetFlags() & EntityFlags.NoTarget) != 0)
 			return false;
 
@@ -3250,6 +3254,39 @@ public partial class BaseEntity : IServerEntity
 					return true;
 			}
 
+			blocker = tr.Ent;
+
+			return false;
+		}
+
+		return true;
+	}
+
+	public virtual bool FVisible(in Vector3 vecTarget, Mask traceMask = Mask.BlockLOS) => FVisible(vecTarget, traceMask, out _);
+
+	public virtual bool FVisible(in Vector3 vecTarget, Mask traceMask, out BaseEntity? blocker) {
+		blocker = null;
+
+		Trace tr;
+		Vector3 vecLookerOrigin = EyePosition();
+
+		if (AI_BaseNPCGlobals.ai_LOS_mode.GetBool())
+			Util.TraceLine(vecLookerOrigin, vecTarget, traceMask, this, Source.CollisionGroup.None, out tr);
+		else {
+			if (traceMask == Mask.BlockLOS)
+				traceMask = Mask.BlockLOSAndNPCs;
+
+			if (IsPlayer()) {
+				traceMask |= (Mask)Contents.IgnoreNoDrawOpaque;
+				traceMask &= ~(Mask)Contents.BlockLOS;
+			}
+
+			TraceFilterLOS traceFilter = new(this, Source.CollisionGroup.None);
+			Util.TraceLine(vecLookerOrigin, vecTarget, traceMask, ref traceFilter, out tr);
+		}
+
+		if (tr.Fraction != 1.0) {
+			blocker = tr.Ent;
 			return false;
 		}
 

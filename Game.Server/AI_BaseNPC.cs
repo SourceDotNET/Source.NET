@@ -113,6 +113,30 @@ public static class AI_BaseNPCGlobals
 
 	public static readonly AI_Manager g_AI_Manager = new();
 
+	public static bool FBoxVisible(BaseEntity looker, BaseEntity target, out Vector3 targetOrigin, float size = 0.0f) {
+		targetOrigin = default;
+
+		if (((int)looker.GetWaterLevel() != 3 && (int)target.GetWaterLevel() == 3)
+			|| ((int)looker.GetWaterLevel() == 3 && (int)target.GetWaterLevel() == 0))
+			return false;
+
+		Vector3 lookerOrigin = looker.EyePosition();
+		for (int i = 0; i < 5; i++) {
+			Vector3 vecTarget = target.GetAbsOrigin();
+			vecTarget.X += random.RandomFloat(target.WorldAlignMins().X + size, target.WorldAlignMaxs().X - size);
+			vecTarget.Y += random.RandomFloat(target.WorldAlignMins().Y + size, target.WorldAlignMaxs().Y - size);
+			vecTarget.Z += random.RandomFloat(target.WorldAlignMins().Z + size, target.WorldAlignMaxs().Z - size);
+
+			Util.TraceLine(lookerOrigin, vecTarget, Mask.BlockLOS, looker, CollisionGroup.None, out Trace tr);
+
+			if (tr.Fraction == 1.0) {
+				targetOrigin = vecTarget;
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public static readonly Stopwatch g_AIRunTimer = new();
 
 	public static float g_NpcTimeThisFrame;
@@ -440,6 +464,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public OutputEvent OnHearCombat = new();
 	public OutputEvent OnLostEnemy = new();
 	public OutputEvent OnLostPlayer = new();
+
+	public WorldSoundInstance LockedBestSound = new();
 
 	static readonly BASEPTR CallNPCThinkPtr = static self => ((AI_BaseNPC)self).CallNPCThink();
 
@@ -2799,6 +2825,201 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return true;
 	}
 
+	public virtual bool QueryHearSound(ref WorldSoundInstance sound) {
+		if ((sound.SoundContext() & SoundInstanceType.ContextCombineOnly) != 0)
+			return false;
+
+		if ((sound.SoundContext() & SoundInstanceType.ContextAlliesOnly) != 0) {
+			if (!IsPlayerAlly())
+				return false;
+		}
+
+		if (sound.IsSoundType(SoundInstanceType.Player) && GetState() == NPCState.Idle && !FVisible(sound.GetSoundReactOrigin()))
+			return false;
+
+		if (sound.IsSoundType(SoundInstanceType.Combat) && sound.SoundChannel() == SoundEntChannel.NPCFootstep) {
+			if (sound.Owner.Get() != null && sound.Owner.Get()!.ClassMatches(GetClassname()))
+				return false;
+		}
+
+		if (ShouldIgnoreSound(ref sound))
+			return false;
+
+		return true;
+	}
+
+	static readonly int[] LookConditionsToClear = [
+		(int)SCOND_t.COND_SEE_HATE,
+		(int)SCOND_t.COND_SEE_DISLIKE,
+		(int)SCOND_t.COND_SEE_ENEMY,
+		(int)SCOND_t.COND_SEE_FEAR,
+		(int)SCOND_t.COND_SEE_NEMESIS,
+		(int)SCOND_t.COND_SEE_PLAYER,
+		(int)SCOND_t.COND_LOST_PLAYER,
+		(int)SCOND_t.COND_ENEMY_WENT_NULL,
+	];
+
+	public virtual void OnLooked(int distance) {
+		bool hadSeePlayer = HasCondition((int)SCOND_t.COND_SEE_PLAYER);
+
+		ClearConditions(LookConditionsToClear);
+
+		BaseEntity? sightEnt = GetSenses()!.GetFirstSeenEntity(out AISightIter iter);
+
+		while (sightEnt != null) {
+			if (sightEnt.IsPlayer()) {
+				SetCondition((int)SCOND_t.COND_SEE_PLAYER);
+				LastSawPlayerTime = gpGlobals.CurTime;
+			}
+
+			Disposition relation = IRelationType(sightEnt);
+
+			if (relation != Disposition.NU) {
+				if (sightEnt == GetEnemy())
+					SetCondition((int)SCOND_t.COND_SEE_ENEMY);
+
+				switch (relation) {
+					case Disposition.HT: {
+							int priority = IRelationPriority(sightEnt);
+							if (priority < 0)
+								SetCondition((int)SCOND_t.COND_SEE_DISLIKE);
+							else if (priority > 10)
+								SetCondition((int)SCOND_t.COND_SEE_NEMESIS);
+							else
+								SetCondition((int)SCOND_t.COND_SEE_HATE);
+							UpdateEnemyMemory(sightEnt, sightEnt.GetAbsOrigin());
+							break;
+						}
+					case Disposition.FR:
+						UpdateEnemyMemory(sightEnt, sightEnt.GetAbsOrigin());
+						SetCondition((int)SCOND_t.COND_SEE_FEAR);
+						break;
+					case Disposition.LI:
+					case Disposition.NU:
+						break;
+					default:
+						DevWarning(2, $"{GetClassname()} can't assess {sightEnt.GetClassname()}\n");
+						break;
+				}
+			}
+
+			sightEnt = GetSenses()!.GetNextSeenEntity(ref iter);
+		}
+
+		if (hadSeePlayer && !HasCondition((int)SCOND_t.COND_SEE_PLAYER))
+			SetCondition((int)SCOND_t.COND_LOST_PLAYER);
+	}
+
+	static readonly int[] ListenConditionsToClear = [
+		(int)SCOND_t.COND_HEAR_DANGER,
+		(int)SCOND_t.COND_HEAR_COMBAT,
+		(int)SCOND_t.COND_HEAR_WORLD,
+		(int)SCOND_t.COND_HEAR_PLAYER,
+		(int)SCOND_t.COND_HEAR_THUMPER,
+		(int)SCOND_t.COND_HEAR_BUGBAIT,
+		(int)SCOND_t.COND_HEAR_PHYSICS_DANGER,
+		(int)SCOND_t.COND_HEAR_BULLET_IMPACT,
+		(int)SCOND_t.COND_HEAR_MOVE_AWAY,
+
+		(int)SCOND_t.COND_NO_HEAR_DANGER,
+
+		(int)SCOND_t.COND_SMELL,
+	];
+
+	public virtual void OnListened() {
+		ClearConditions(ListenConditionsToClear);
+
+		ref WorldSoundInstance currentSound = ref GetSenses()!.GetFirstHeardSound(out int iter);
+
+		while (!Unsafe.IsNullRef(ref currentSound)) {
+			int condition = (int)SCOND_t.COND_NONE;
+
+			if (currentSound.FIsSound()) {
+				switch (currentSound.SoundTypeNoContext()) {
+					case SoundInstanceType.Danger:
+						if (gpGlobals.CurTime > IgnoreDangerSoundsUntil)
+							condition = (int)SCOND_t.COND_HEAR_DANGER;
+						break;
+
+					case SoundInstanceType.Thumper: condition = (int)SCOND_t.COND_HEAR_THUMPER; break;
+					case SoundInstanceType.Bugbait: condition = (int)SCOND_t.COND_HEAR_BUGBAIT; break;
+					case SoundInstanceType.Combat:
+						if (currentSound.SoundChannel() == SoundEntChannel.SpookyNoise)
+							condition = (int)SCOND_t.COND_HEAR_SPOOKY;
+						else
+							condition = (int)SCOND_t.COND_HEAR_COMBAT;
+						break;
+
+					case SoundInstanceType.World: condition = (int)SCOND_t.COND_HEAR_WORLD; break;
+					case SoundInstanceType.Player: condition = (int)SCOND_t.COND_HEAR_PLAYER; break;
+					case SoundInstanceType.BulletImpact: condition = (int)SCOND_t.COND_HEAR_BULLET_IMPACT; break;
+					case SoundInstanceType.PhysicsDanger: condition = (int)SCOND_t.COND_HEAR_PHYSICS_DANGER; break;
+					case SoundInstanceType.DangerSniperOnly: break;
+					case SoundInstanceType.MoveAway: condition = (int)SCOND_t.COND_HEAR_MOVE_AWAY; break;
+					case SoundInstanceType.PlayerVehicle: condition = (int)SCOND_t.COND_HEAR_PLAYER; break;
+
+					default:
+						DevMsg($"**ERROR: NPC {GetClassname()} hearing sound of unknown type {(int)currentSound.SoundType()}!\n");
+						break;
+				}
+			}
+			else
+				condition = (int)SCOND_t.COND_SMELL;
+
+			if (condition != (int)SCOND_t.COND_NONE)
+				SetCondition(condition);
+
+			currentSound = ref GetSenses()!.GetNextHeardSound(ref iter);
+		}
+
+		if (!HasCondition((int)SCOND_t.COND_HEAR_DANGER))
+			SetCondition((int)SCOND_t.COND_NO_HEAR_DANGER);
+
+		if (HasCondition((int)SCOND_t.COND_HEAR_WORLD))
+			OnHearWorld.FireOutput(this, this);
+
+		if (HasCondition((int)SCOND_t.COND_HEAR_PLAYER))
+			OnHearPlayer.FireOutput(this, this);
+
+		if (HasCondition((int)SCOND_t.COND_HEAR_COMBAT) ||
+			 HasCondition((int)SCOND_t.COND_HEAR_BULLET_IMPACT) ||
+			 HasCondition((int)SCOND_t.COND_HEAR_DANGER)) {
+			OnHearCombat.FireOutput(this, this);
+		}
+	}
+
+	public virtual ref WorldSoundInstance GetBestSound(SoundInstanceType validTypes = SoundInstanceType.AllSounds) {
+		if (LockedBestSound.Type != SoundInstanceType.None)
+			return ref LockedBestSound;
+		ref WorldSoundInstance result = ref GetSenses()!.GetClosestSound(false, validTypes);
+		if (Unsafe.IsNullRef(ref result))
+			DevMsg("Warning: NULL Return from GetBestSound\n");
+		return ref result;
+	}
+
+	public ref WorldSoundInstance GetBestScent() {
+		ref WorldSoundInstance result = ref GetSenses()!.GetClosestSound(true);
+		if (Unsafe.IsNullRef(ref result))
+			DevMsg("Warning: NULL Return from GetBestScent\n");
+		return ref result;
+	}
+
+	public void LockBestSound() {
+		UnlockBestSound();
+		ref WorldSoundInstance bestSound = ref GetBestSound();
+		if (!Unsafe.IsNullRef(ref bestSound))
+			LockedBestSound = bestSound;
+	}
+
+	public void UnlockBestSound() {
+		if (LockedBestSound.Type != SoundInstanceType.None) {
+			LockedBestSound.Type = SoundInstanceType.None;
+			OnListened();
+		}
+	}
+
+	public void PerformSensing() => GetSenses()!.PerformSensing();
+
 	public void SetTarget(BaseEntity? target) => TargetEnt.Set(target);
 
 	public float GetHullWidth() => NAI_Hull.Width(GetHullType());
@@ -4825,6 +5046,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				if (ShouldPlayIdleSound())
 					IdleSound();
 
+				PerformSensing();
 
 				if (Weapon_IsBetterAvailable())
 					SetCondition((int)SCOND_t.COND_BETTER_WEAPON_AVAILABLE);

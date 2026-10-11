@@ -1319,7 +1319,10 @@ public class AI_SystemHook(ReadOnlySpan<char> name) : AutoGameSystem(name)
 		AI_BaseNPC.NextThinkRebalanceTick = 0;
 	}
 
+	public override void LevelInitPostEntity() => g_AI_SensedObjectsManager.Init();
+
 	public override void LevelShutdownPostEntity() {
+		g_AI_SensedObjectsManager.Term();
 		AI_NetworkManager.DeleteAllAINetworks();
 		g_AI_SchedulesManager.DeleteAllSchedules();
 		g_AI_SchedulesManager.DestroyStringRegistries();
