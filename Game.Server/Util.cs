@@ -11,6 +11,7 @@ using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Formats.BSP;
 using Source.Common.Mathematics;
+using Source.Common.Physics;
 using Source.Engine.Server;
 
 using System;
@@ -225,6 +226,34 @@ public static partial class Util
 		trace = default;
 		trace.Fraction = 1.0f;
 		trace.FractionLeftSolid = 0;
+	}
+
+	public static bool PointAtEntity(BaseEntity? dest, BaseEntity? target) {
+		if (dest == null || target == null)
+			return false;
+
+		Vector3 dir = target.GetAbsOrigin() - dest.GetAbsOrigin();
+
+		MathLib.VectorNormalize(ref dir);
+
+		MathLib.VectorAngles(dir, out QAngle angles);
+		dest.SetLocalAngles(angles);
+		dest.SetAbsAngles(angles);
+
+#if GMOD_DLL
+		IPhysicsObject? physicsObject = dest.VPhysicsGetObject();
+		if (physicsObject != null) {
+			physicsObject.GetPosition(out Vector3 worldPos, out _);
+			physicsObject.SetPosition(worldPos, angles, true);
+		}
+#endif
+
+		return true;
+	}
+
+	public static void PointAtNamedEntity(BaseEntity dest, string? target) {
+		if (!PointAtEntity(dest, gEntList.FindEntityByName(null, target)))
+			DevMsg(1, $"{dest.GetClassname()} ({dest.GetDebugName()}) was unable to point at an entity named: {target}\n");
 	}
 
 	public static int DropToFloor(BaseEntity entity, Mask mask) {
