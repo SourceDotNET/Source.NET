@@ -188,7 +188,6 @@ public readonly record struct AI_ScheduleDef(int Schedule, AI_TaskDef[] Tasks, A
 
 public sealed class AI_CustomSchedules
 {
-	public required string ClassName { get; init; }
 	public required AI_ClassScheduleIdSpace IdSpace { get; init; }
 	public required AI_ClassScheduleIdSpace ParentIdSpace { get; init; }
 	public AI_LocalIdSpace? SquadSlotIdSpace { get; init; }
@@ -205,38 +204,38 @@ public sealed class AI_CustomSchedules
 
 	public bool Valid => LoadStatus.Valid;
 
-	public bool Load(Func<bool> baseLoad) => AI_DoLoadSchedules(baseLoad, Init, ref LoadStatus);
+	public bool Load(Func<bool> baseLoad, string className) => AI_DoLoadSchedules(baseLoad, () => Init(className), ref LoadStatus);
 
-	void Init() {
+	void Init(string className) {
 		Declare?.Invoke();
 
-		IdSpace.Init(ClassName, AI_BaseNPC.GetSchedulingSymbols(), ParentIdSpace);
+		IdSpace.Init(className, AI_BaseNPC.GetSchedulingSymbols(), ParentIdSpace);
 		SquadSlotIdSpace?.Init(AI_BaseNPC.SquadSlotNamespace, AI_BaseNPC.SquadSlotIdSpace);
 
 		foreach ((string name, int localId) in SortedByLocalId(Schedules)) {
-			if (!IdSpace.AddSchedule(name, localId, ClassName))
+			if (!IdSpace.AddSchedule(name, localId, className))
 				return;
 		}
 
 		foreach ((string name, int localId) in SortedByLocalId(Tasks)) {
-			if (!IdSpace.AddTask(name, localId, ClassName))
+			if (!IdSpace.AddTask(name, localId, className))
 				return;
 		}
 
 		foreach ((string name, int localId) in SortedByLocalId(Conditions)) {
 			if (ValidateConditionLimits(name)) {
-				if (!IdSpace.AddCondition(name, localId, ClassName))
+				if (!IdSpace.AddCondition(name, localId, className))
 					return;
 			}
 		}
 
 		foreach ((string name, int localId) in SortedByLocalId(SquadSlots)) {
-			if (!SquadSlotIdSpace!.AddSymbol(name, localId, "squadslot", ClassName))
+			if (!SquadSlotIdSpace!.AddSymbol(name, localId, "squadslot", className))
 				return;
 		}
 
 		if (LoadStatus.Valid)
-			LoadStatus.Valid = g_AI_SchedulesManager.DefineSchedules(ClassName, IdSpace, Definitions);
+			LoadStatus.Valid = g_AI_SchedulesManager.DefineSchedules(className, IdSpace, Definitions);
 	}
 
 	static (string Name, int LocalId)[] SortedByLocalId((string Name, int LocalId)[] symbols) {

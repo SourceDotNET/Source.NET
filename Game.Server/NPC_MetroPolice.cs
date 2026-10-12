@@ -162,7 +162,6 @@ public class NPC_MetroPolice : AI_BaseActor
 
 	static readonly AI_ClassScheduleIdSpace gm_ClassScheduleIdSpace = new();
 	static readonly AI_LocalIdSpace gm_SquadSlotIdSpace = new();
-	const string gm_pszErrorClassName = "CNPC_MetroPolice";
 
 	public static readonly new DataMap DataDesc = new(typeof(NPC_MetroPolice), AI_BaseNPC.DataDesc, [
 		DEFINE.KEYFIELD(nameof(WeaponDrawn), FieldType.Boolean, "weapondrawn"),
@@ -224,13 +223,13 @@ public class NPC_MetroPolice : AI_BaseActor
 	public NPC_MetroPolice() => LoadSchedules();
 
 	public override AI_ClassScheduleIdSpace GetClassScheduleIdSpace() => gm_ClassScheduleIdSpace;
+	public override ReadOnlySpan<char> GetSchedulingErrorName() => nameof(NPC_MetroPolice);
 
-	public static new bool LoadSchedules() => CustomSchedules.Load(AI_BaseNPC.LoadSchedules);
+	public static new bool LoadSchedules() => CustomSchedules.Load(AI_BaseNPC.LoadSchedules, nameof(NPC_MetroPolice));
 
 	public override bool LoadedSchedules() => CustomSchedules.Valid;
 
 	static readonly AI_CustomSchedules CustomSchedules = new() {
-		ClassName = gm_pszErrorClassName,
 		IdSpace = gm_ClassScheduleIdSpace,
 		ParentIdSpace = AI_BaseNPC.ClassScheduleIdSpace,
 		SquadSlotIdSpace = gm_SquadSlotIdSpace,

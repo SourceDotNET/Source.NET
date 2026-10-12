@@ -192,7 +192,6 @@ public class AI_ActBusyBehavior : AI_Behavior_AI_BaseNPC_100000
 	public const int COND_ACTBUSY_ENEMY_TOO_CLOSE = NEXT_CONDITION + 2;
 
 	static readonly AI_ClassScheduleIdSpace gm_ClassScheduleIdSpace = new();
-	const string gm_pszErrorClassName = "CAI_ActBusyBehavior";
 
 	static ActBusyAnimData g_ActBusyAnimDataSystem => ActBusyAnimData.g_ActBusyAnimDataSystem;
 
@@ -238,12 +237,11 @@ public class AI_ActBusyBehavior : AI_Behavior_AI_BaseNPC_100000
 	public override string GetName() => "ActBusy";
 
 	public override AI_ClassScheduleIdSpace GetClassScheduleIdSpace() => gm_ClassScheduleIdSpace;
-	protected override string GetSchedulingErrorName() => gm_pszErrorClassName;
+	protected override string GetSchedulingErrorName() => nameof(AI_ActBusyBehavior);
 
-	public static bool LoadSchedules() => CustomSchedules.Load(AI_BaseNPC.LoadSchedules);
+	public static bool LoadSchedules() => CustomSchedules.Load(AI_BaseNPC.LoadSchedules, nameof(AI_ActBusyBehavior));
 
 	static readonly AI_CustomSchedules CustomSchedules = new() {
-		ClassName = gm_pszErrorClassName,
 		IdSpace = gm_ClassScheduleIdSpace,
 		ParentIdSpace = AccessClassScheduleIdSpaceDirect(),
 		Schedules = [

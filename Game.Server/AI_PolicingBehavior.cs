@@ -28,7 +28,6 @@ public class AI_PolicingBehavior : AI_Behavior_AI_BaseNPC_100000
 	public const int COND_POLICE_TARGET_TOO_CLOSE_SUPPRESS = NEXT_CONDITION + 1;
 
 	static readonly AI_ClassScheduleIdSpace gm_ClassScheduleIdSpace = new();
-	const string gm_pszErrorClassName = "CAI_PolicingBehavior";
 
 	static readonly string[] Warnings = [
 		"METROPOLICE_MOVE_ALONG_A",
@@ -47,12 +46,11 @@ public class AI_PolicingBehavior : AI_Behavior_AI_BaseNPC_100000
 	public override string GetName() => "Policing";
 
 	public override AI_ClassScheduleIdSpace GetClassScheduleIdSpace() => gm_ClassScheduleIdSpace;
-	protected override string GetSchedulingErrorName() => gm_pszErrorClassName;
+	protected override string GetSchedulingErrorName() => nameof(AI_PolicingBehavior);
 
-	public static bool LoadSchedules() => CustomSchedules.Load(AI_BaseNPC.LoadSchedules);
+	public static bool LoadSchedules() => CustomSchedules.Load(AI_BaseNPC.LoadSchedules, nameof(AI_PolicingBehavior));
 
 	static readonly AI_CustomSchedules CustomSchedules = new() {
-		ClassName = gm_pszErrorClassName,
 		IdSpace = gm_ClassScheduleIdSpace,
 		ParentIdSpace = AccessClassScheduleIdSpaceDirect(),
 		Schedules = [
