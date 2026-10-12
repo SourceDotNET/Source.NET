@@ -47,14 +47,18 @@ public class NPCSpawnDestination : PointEntity
 
 public abstract class BaseNPCMaker : BaseEntity
 {
-	public const int SF_NPCMAKER_START_ON = 1;
-	public const int SF_NPCMAKER_NPCCLIP = 8;
-	public const int SF_NPCMAKER_FADE = 16;
-	public const int SF_NPCMAKER_INF_CHILD = 32;
-	public const int SF_NPCMAKER_NO_DROP = 64;
-	public const int SF_NPCMAKER_HIDEFROMPLAYER = 128;
-	public const int SF_NPCMAKER_ALWAYSUSERADIUS = 256;
-	public const int SF_NPCMAKER_NOPRELOADMODELS = 512;
+	[Flags]
+	public enum SF
+	{
+		StartOn = 1,
+		NPCClip = 8,
+		Fade = 16,
+		InfChild = 32,
+		NoDrop = 64,
+		HideFromPlayer = 128,
+		AlwaysUseRadius = 256,
+		NoPreloadModels = 512,
+	}
 
 	public static readonly ConVar ai_inhibit_spawners = new("ai_inhibit_spawners", "0", FCvar.Cheat);
 
@@ -103,8 +107,8 @@ public abstract class BaseNPCMaker : BaseEntity
 		LiveChildren = 0;
 		Precache();
 
-		if (HasSpawnFlags(SF_NPCMAKER_INF_CHILD))
-			AddSpawnFlags(SF_NPCMAKER_FADE);
+		if (HasSpawnFlags(SF.InfChild))
+			AddSpawnFlags(SF.Fade);
 
 		if (!Disabled) {
 			SetThink(MakerThink);
@@ -158,7 +162,7 @@ public abstract class BaseNPCMaker : BaseEntity
 			}
 		}
 
-		if (HasSpawnFlags(SF_NPCMAKER_HIDEFROMPLAYER)) {
+		if (HasSpawnFlags(SF.HideFromPlayer)) {
 			for (int i = 1; i <= gpGlobals.MaxClients; i++) {
 				BasePlayer? player = Util.PlayerByIndex(i);
 				if (player != null) {
@@ -182,7 +186,7 @@ public abstract class BaseNPCMaker : BaseEntity
 		if (LiveChildren <= 0) {
 			OnAllLiveChildrenDead.FireOutput(this, this);
 
-			if (!HasSpawnFlags(SF_NPCMAKER_INF_CHILD) && IsDepleted())
+			if (!HasSpawnFlags(SF.InfChild) && IsDepleted())
 				OnAllSpawnedDead.FireOutput(this, this);
 		}
 	}
@@ -216,7 +220,7 @@ public abstract class BaseNPCMaker : BaseEntity
 	}
 
 	public virtual bool IsDepleted() {
-		if (HasSpawnFlags(SF_NPCMAKER_INF_CHILD) || MaxNumNPCs > 0)
+		if (HasSpawnFlags(SF.InfChild) || MaxNumNPCs > 0)
 			return false;
 
 		return true;
@@ -308,10 +312,10 @@ public class NPCMaker : BaseNPCMaker
 		angles.Z = 0.0f;
 		ent.SetAbsAngles(angles);
 
-		ent.AddSpawnFlags(SF_NPC_FALL_TO_GROUND);
+		ent.AddSpawnFlags(AI_BaseNPC.SF.FallToGround);
 
-		if (HasSpawnFlags(SF_NPCMAKER_FADE))
-			ent.AddSpawnFlags(SF_NPC_FADE_CORPSE);
+		if (HasSpawnFlags(SF.Fade))
+			ent.AddSpawnFlags(AI_BaseNPC.SF.FadeCorpse);
 
 		ent.SpawnEquipment = SpawnEquipment;
 		ent.SquadName = SquadName;
@@ -330,7 +334,7 @@ public class NPCMaker : BaseNPCMaker
 
 		LiveChildren++;
 
-		if (!HasSpawnFlags(SF_NPCMAKER_INF_CHILD)) {
+		if (!HasSpawnFlags(SF.InfChild)) {
 			MaxNumNPCs--;
 
 			if (IsDepleted()) {
@@ -529,7 +533,7 @@ public class TemplateNPCMaker : BaseNPCMaker
 	}
 
 	public override void MakeNPC() {
-		if (Radius != 0 && HasSpawnFlags(SF_NPCMAKER_ALWAYSUSERADIUS)) {
+		if (Radius != 0 && HasSpawnFlags(SF.AlwaysUseRadius)) {
 			MakeNPCInRadius();
 			return;
 		}
@@ -577,13 +581,13 @@ public class TemplateNPCMaker : BaseNPCMaker
 
 		OnSpawnNPC.Set(entity!.GetRefEHandle(), entity, this);
 
-		if (HasSpawnFlags(SF_NPCMAKER_FADE))
-			ent.AddSpawnFlags(SF_NPC_FADE_CORPSE);
+		if (HasSpawnFlags(SF.Fade))
+			ent.AddSpawnFlags(AI_BaseNPC.SF.FadeCorpse);
 
-		ent.RemoveSpawnFlags(SF_NPC_TEMPLATE);
+		ent.RemoveSpawnFlags(AI_BaseNPC.SF.Template);
 
-		if (!HasSpawnFlags(SF_NPCMAKER_NO_DROP))
-			ent.RemoveSpawnFlags(SF_NPC_FALL_TO_GROUND);
+		if (!HasSpawnFlags(SF.NoDrop))
+			ent.RemoveSpawnFlags(AI_BaseNPC.SF.FallToGround);
 
 		ChildPreSpawn(ent);
 
@@ -595,7 +599,7 @@ public class TemplateNPCMaker : BaseNPCMaker
 
 		LiveChildren++;
 
-		if (!HasSpawnFlags(SF_NPCMAKER_INF_CHILD)) {
+		if (!HasSpawnFlags(SF.InfChild)) {
 			MaxNumNPCs--;
 
 			if (IsDepleted()) {
@@ -625,9 +629,9 @@ public class TemplateNPCMaker : BaseNPCMaker
 
 		PlaceNPCInLine(ent);
 
-		ent.AddSpawnFlags(SF_NPC_FALL_TO_GROUND);
+		ent.AddSpawnFlags(AI_BaseNPC.SF.FallToGround);
 
-		ent.RemoveSpawnFlags(SF_NPC_TEMPLATE);
+		ent.RemoveSpawnFlags(AI_BaseNPC.SF.Template);
 
 		ChildPreSpawn(ent);
 
@@ -639,7 +643,7 @@ public class TemplateNPCMaker : BaseNPCMaker
 
 		LiveChildren++;
 
-		if (!HasSpawnFlags(SF_NPCMAKER_INF_CHILD)) {
+		if (!HasSpawnFlags(SF.InfChild)) {
 			MaxNumNPCs--;
 
 			if (IsDepleted()) {
@@ -698,9 +702,9 @@ public class TemplateNPCMaker : BaseNPCMaker
 
 		OnSpawnNPC.Set(entity!.GetRefEHandle(), entity, this);
 
-		ent.AddSpawnFlags(SF_NPC_FALL_TO_GROUND);
+		ent.AddSpawnFlags(AI_BaseNPC.SF.FallToGround);
 
-		ent.RemoveSpawnFlags(SF_NPC_TEMPLATE);
+		ent.RemoveSpawnFlags(AI_BaseNPC.SF.Template);
 
 		ChildPreSpawn(ent);
 
@@ -712,7 +716,7 @@ public class TemplateNPCMaker : BaseNPCMaker
 
 		LiveChildren++;
 
-		if (!HasSpawnFlags(SF_NPCMAKER_INF_CHILD)) {
+		if (!HasSpawnFlags(SF.InfChild)) {
 			MaxNumNPCs--;
 
 			if (IsDepleted()) {

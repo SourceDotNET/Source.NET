@@ -60,6 +60,29 @@ public class BaseProp : BaseAnimating
 [NetworkName("CBreakableProp")]
 public class BreakableProp : BaseProp, IBreakableWithPropData, IPlayerPickupVPhysics
 {
+	[Flags]
+	public enum SF
+	{
+		StartAsleep = 0x000001,
+		DontTakePhysicsDamage = 0x000002,// this prop can't be damaged by physics collisions
+		Debris = 0x000004,
+		MotionDisabled = 0x000008,// motion disabled at startup (flag only valid in spawn - motion can be enabled via input)
+		Touch = 0x000010,// can be 'crashed through' by running player (plate glass)
+		Pressure = 0x000020,// can be broken by a player standing on it
+		EnableOnPhyscannon = 0x000040,// enable motion only if the player grabs it with the physcannon
+		NoRotorwashPush = 0x000080,// The rotorwash doesn't push these
+		EnablePickupOutput = 0x000100,// If set, allow the player to +USE this for the purposes of generating an output
+		PreventPickup = 0x000200,// If set, prevent +USE/Physcannon pickup of this prop
+		PreventPlayerTouchEnable = 0x000400,// If set, the player will not cause the object to enable its motion when bumped into
+		HasAttachedRagdolls = 0x000800,// Need to remove attached ragdolls on enable motion/etc
+		ForceTouchTriggers = 0x001000,// Override normal debris behavior and respond to triggers anyway
+		ForceServerSide = 0x002000,// Force multiplayer physics object to be serverside
+		RadiusPickup = 0x004000,// For Xbox, makes small objects easier to pick up by allowing them to be found 
+		AlwaysPickUp = 0x100000,// Physcannon can always pick this up, no matter what mass or constraints may apply.
+		NoCollisions = 0x200000,// Don't enable collisions on spawn
+		IsGib = 0x400000,// Limit # of active gibs
+	}
+
 	public static readonly SendTable DT_BreakableProp = new(DT_BaseAnimating, []);
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_BreakableProp);
 
@@ -125,7 +148,7 @@ public class BreakableProp : BaseProp, IBreakableWithPropData, IPlayerPickupVPhy
 	}
 
 	public void CheckRemoveRagdolls() {
-		if (HasSpawnFlags(SF_PHYSPROP_HAS_ATTACHED_RAGDOLLS))
+		if (HasSpawnFlags(SF.HasAttachedRagdolls))
 			throw new NotImplementedException();
 	}
 
@@ -342,7 +365,7 @@ public class PhysicsProp : BreakableProp
 
 		IPhysicsObject? physicsObject = VPhysicsGetObject();
 		if (physicsObject != null && !physicsObject.IsMoveable()) {
-			if (!HasSpawnFlags(SF_PHYSPROP_ENABLE_ON_PHYSCANNON))
+			if (!HasSpawnFlags(SF.EnableOnPhyscannon))
 				return;
 
 			EnableMotion();
@@ -382,14 +405,14 @@ public class PhysicsProp : BreakableProp
 	}
 
 	public override void Term() {
-		if (HasSpawnFlags(SF_PHYSPROP_IS_GIB))
+		if (HasSpawnFlags(SF.IsGib))
 			g_ActiveGibCount--;
 
 		base.Term();
 	}
 
 	public override void Spawn() {
-		if (HasSpawnFlags(SF_PHYSPROP_IS_GIB))
+		if (HasSpawnFlags(SF.IsGib))
 			g_ActiveGibCount++;
 
 		// Condense classnames to one, except for "prop_physics_override"
@@ -405,10 +428,10 @@ public class PhysicsProp : BreakableProp
 		if (FClassnameIs(this, "prop_physics_override"))
 			SetClassname("prop_physics");
 
-		if (HasSpawnFlags(SF_PHYSPROP_DEBRIS) || HasInteraction(PropDataInteractions.PhysgunCreateFlare))
-			SetCollisionGroup(HasSpawnFlags(SF_PHYSPROP_FORCE_TOUCH_TRIGGERS) ? Source.CollisionGroup.DebrisTrigger : Source.CollisionGroup.Debris);
+		if (HasSpawnFlags(SF.Debris) || HasInteraction(PropDataInteractions.PhysgunCreateFlare))
+			SetCollisionGroup(HasSpawnFlags(SF.ForceTouchTriggers) ? Source.CollisionGroup.DebrisTrigger : Source.CollisionGroup.Debris);
 
-		if (HasSpawnFlags(SF_PHYSPROP_NO_ROTORWASH_PUSH))
+		if (HasSpawnFlags(SF.NoRotorwashPush))
 			AddEFlags(EFL.NoRotorWashPush);
 
 		CreateVPhysics();
@@ -430,10 +453,10 @@ public class PhysicsProp : BreakableProp
 		return false;
 	}
 
-	public bool IsGib() => HasSpawnFlags(SF_PHYSPROP_IS_GIB);
+	public bool IsGib() => HasSpawnFlags(SF.IsGib);
 
 	public virtual bool CreateVPhysics() {
-		bool asleep = HasSpawnFlags(SF_PHYSPROP_START_ASLEEP);
+		bool asleep = HasSpawnFlags(SF.StartAsleep);
 
 		Solid tmpSolid = default;
 		PhysModelParseSolid(ref tmpSolid, this, GetModelIndex());
@@ -448,7 +471,7 @@ public class PhysicsProp : BreakableProp
 		}
 
 		PhysGetMassCenterOverride(this, modelinfo.GetVCollide(GetModelIndex()), ref tmpSolid);
-		if (HasSpawnFlags(SF_PHYSPROP_NO_COLLISIONS))
+		if (HasSpawnFlags(SF.NoCollisions))
 			tmpSolid.Params.EnableCollisions = false;
 
 		PhysSolidOverride(ref tmpSolid, OverrideScript);
@@ -465,7 +488,7 @@ public class PhysicsProp : BreakableProp
 			if (DamageType == 1)
 				PhysSetGameFlags(physicsObject, PhysicsFlags.DamageSlice);
 
-			if (HasSpawnFlags(SF_PHYSPROP_MOTIONDISABLED) || DamageToEnableMotion > 0 || ForceToEnableMotion > 0)
+			if (HasSpawnFlags(SF.MotionDisabled) || DamageToEnableMotion > 0 || ForceToEnableMotion > 0)
 				physicsObject.EnableMotion(false);
 		}
 
@@ -477,7 +500,7 @@ public class PhysicsProp : BreakableProp
 		if (HasInteraction(PropDataInteractions.PhysgunDamageNone))
 			PhysSetGameFlags(physicsObject, PhysicsFlags.NoImpactDamage);
 
-		if (HasSpawnFlags(SF_PHYSPROP_PREVENT_PICKUP))
+		if (HasSpawnFlags(SF.PreventPickup))
 			PhysSetGameFlags(physicsObject, PhysicsFlags.NoPlayerPickup);
 
 		return true;
@@ -486,7 +509,7 @@ public class PhysicsProp : BreakableProp
 	public override EntityCapabilities ObjectCaps() {
 		EntityCapabilities caps = base.ObjectCaps() | EntityCapabilities.WorldcraftEditPosition;
 
-		if (HasSpawnFlags(SF_PHYSPROP_ENABLE_PICKUP_OUTPUT)) 
+		if (HasSpawnFlags(SF.EnablePickupOutput)) 
 			caps |= EntityCapabilities.ImpulseUse;
 		else if (BasePlayer.CanPickupObject(this, 35, 128)) {
 			caps |= EntityCapabilities.ImpulseUse;
@@ -496,7 +519,7 @@ public class PhysicsProp : BreakableProp
 			}
 		}
 
-		if (HasSpawnFlags(SF_PHYSPROP_RADIUS_PICKUP)) {
+		if (HasSpawnFlags(SF.RadiusPickup)) {
 			caps |= EntityCapabilities.UseInRadius;
 		}
 

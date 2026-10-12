@@ -15,8 +15,12 @@ namespace Game.Server;
 
 public class Message : PointEntity
 {
-	public const int SF_MESSAGE_ONCE = 0x0001;
-	public const int SF_MESSAGE_ALL = 0x0002;
+	[Flags]
+	public enum SF
+	{
+		Once = 0x0001,
+		All = 0x0002,
+	}
 
 	public override void Spawn() {
 		Precache();
@@ -74,7 +78,7 @@ public class Message : PointEntity
 	private void InputShowMessage(ref InputData inputData) {
 		BaseEntity? player = null;
 
-		if (HasSpawnFlags(SF_MESSAGE_ALL))
+		if (HasSpawnFlags(SF.All))
 			Util.ShowMessageAll(MessageText);
 		else {
 			if (inputData.Activator != null && inputData.Activator.IsPlayer())
@@ -99,7 +103,7 @@ public class Message : PointEntity
 			EmitSound(filter, EntIndex(), ep);
 		}
 
-		if (HasSpawnFlags(Message.SF_MESSAGE_ONCE))
+		if (HasSpawnFlags(SF.Once))
 			Util.Remove(this);
 
 		OnShowMessage.FireOutput(inputData.Activator, this);

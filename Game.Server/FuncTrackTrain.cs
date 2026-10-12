@@ -31,14 +31,18 @@ public enum TrainOrientationType
 [NetworkName("CFuncTrackTrain")]
 public class FuncTrackTrain : BaseEntity
 {
-	public const int SF_TRACKTRAIN_NOPITCH = 0x0001;
-	public const int SF_TRACKTRAIN_NOCONTROL = 0x0002;
-	public const int SF_TRACKTRAIN_FORWARDONLY = 0x0004;
-	public const int SF_TRACKTRAIN_PASSABLE = 0x0008;
-	public const int SF_TRACKTRAIN_FIXED_ORIENTATION = 0x0010;
-	public const int SF_TRACKTRAIN_HL1TRAIN = 0x0080;
-	public const int SF_TRACKTRAIN_USE_MAXSPEED_FOR_PITCH = 0x0100;
-	public const int SF_TRACKTRAIN_UNBLOCKABLE_BY_PLAYER = 0x0200;
+	[Flags]
+	public enum SF
+	{
+		NoPitch = 0x0001,
+		NoControl = 0x0002,
+		ForwardOnly = 0x0004,
+		Passable = 0x0008,
+		FixedOrientation = 0x0010,
+		HL1Train = 0x0080,
+		UseMaxSpeedForPitch = 0x0100,
+		UnblockableByPlayer = 0x0200,
+	}
 
 	public const int TRAIN_ACTIVE = 0x80;
 	public const int TRAIN_NEW = 0xc0;
@@ -258,7 +262,7 @@ public class FuncTrackTrain : BaseEntity
 				delta = 1;
 			else if (delta < -0.25f)
 				delta = -0.25f;
-			if (HasSpawnFlags(SF_TRACKTRAIN_FORWARDONLY)) {
+			if (HasSpawnFlags(SF.ForwardOnly)) {
 				if (delta < 0)
 					delta = 0;
 			}
@@ -403,7 +407,7 @@ public class FuncTrackTrain : BaseEntity
 			newVelocity *= BlockDamage;
 			other.SetAbsVelocity(newVelocity);
 		}
-		if (HasSpawnFlags(SF_TRACKTRAIN_UNBLOCKABLE_BY_PLAYER)) {
+		if (HasSpawnFlags(SF.UnblockableByPlayer)) {
 			BaseEntity? physicsBlocker = FindPhysicsBlockerForHierarchy(this);
 			if (physicsBlocker != null) {
 				long ticksBlocked = gpGlobals.TickCount - LastBlockTick;
@@ -464,7 +468,7 @@ public class FuncTrackTrain : BaseEntity
 		}
 
 		float speedRatio;
-		if (HasSpawnFlags(SF_TRACKTRAIN_USE_MAXSPEED_FOR_PITCH))
+		if (HasSpawnFlags(SF.UseMaxSpeedForPitch))
 			speedRatio = Math.Clamp(MathF.Abs(Speed) / MaxSpeed, 0.0f, 1.0f);
 		else
 			speedRatio = Math.Clamp(MathF.Abs(Speed) / TRAIN_MAXSPEED, 0.0f, 1.0f);
@@ -532,10 +536,10 @@ public class FuncTrackTrain : BaseEntity
 	void ArriveAtNode(PathTrack node) {
 		FirePassInputs(node, node.GetNext(), true);
 
-		if (node.HasSpawnFlags(PathTrack.SF_PATH_DISABLE_TRAIN))
-			AddSpawnFlags(SF_TRACKTRAIN_NOCONTROL);
+		if (node.HasSpawnFlags(PathTrack.SF.DisableTrain))
+			AddSpawnFlags(SF.NoControl);
 
-		if (HasSpawnFlags(SF_TRACKTRAIN_NOCONTROL)) {
+		if (HasSpawnFlags(SF.NoControl)) {
 			if (node.Speed != 0) {
 				SetSpeed(node.Speed);
 				DevMsg(2, $"TrackTrain {GetDebugName()} arrived at {node.GetDebugName()}, speed to {node.Speed,4:F2}\n");
@@ -603,7 +607,7 @@ public class FuncTrackTrain : BaseEntity
 	TrainOrientationType GetTrainOrientationType() => OrientationType;
 
 	void UpdateTrainOrientation(PathTrack? prev, PathTrack? next, in Vector3 nextPos, float interval) {
-		if (HasSpawnFlags(SF_TRACKTRAIN_FIXED_ORIENTATION))
+		if (HasSpawnFlags(SF.FixedOrientation))
 			return;
 
 		Assert(prev == null || prev.GetMoveParent() == GetMoveParent());
@@ -671,7 +675,7 @@ public class FuncTrackTrain : BaseEntity
 		else
 			angNext = angPrev;
 
-		if (HasSpawnFlags(SF_TRACKTRAIN_NOPITCH))
+		if (HasSpawnFlags(SF.NoPitch))
 			angNext[PITCH] = angPrev[PITCH];
 
 		float p = 0;
@@ -697,7 +701,7 @@ public class FuncTrackTrain : BaseEntity
 			MathLib.QuaternionAngles(qtNew, out angNew);
 		}
 
-		if (HasSpawnFlags(SF_TRACKTRAIN_NOPITCH))
+		if (HasSpawnFlags(SF.NoPitch))
 			angNew[PITCH] = angPrev[PITCH];
 
 		DoUpdateOrientation(GetLocalAngles(), angNew, interval);
@@ -705,7 +709,7 @@ public class FuncTrackTrain : BaseEntity
 
 	void DoUpdateOrientation(in QAngle curAngles, in QAngle angles, float interval) {
 		float vy, vx;
-		if (!HasSpawnFlags(SF_TRACKTRAIN_NOPITCH))
+		if (!HasSpawnFlags(SF.NoPitch))
 			vx = MathLib.AngleDistance(angles.X, curAngles.X);
 		else
 			vx = 0;
@@ -742,11 +746,11 @@ public class FuncTrackTrain : BaseEntity
 		teleport.LookAhead(ref look, Length, 0);
 
 		QAngle nextAngles;
-		if (HasSpawnFlags(SF_TRACKTRAIN_FIXED_ORIENTATION) || look == nextPos)
+		if (HasSpawnFlags(SF.FixedOrientation) || look == nextPos)
 			nextAngles = GetLocalAngles();
 		else {
 			nextAngles = teleport.GetOrientation(IsDirForward());
-			if (HasSpawnFlags(SF_TRACKTRAIN_NOPITCH))
+			if (HasSpawnFlags(SF.NoPitch))
 				nextAngles[PITCH] = angCur[PITCH];
 		}
 
@@ -811,7 +815,7 @@ public class FuncTrackTrain : BaseEntity
 				ArriveAtNode(next);
 
 				PathTrack? teleport = next.GetNext();
-				if (teleport != null && teleport.HasSpawnFlags(PathTrack.SF_PATH_TELEPORT))
+				if (teleport != null && teleport.HasSpawnFlags(PathTrack.SF.Teleport))
 					TeleportToPathTrack(teleport);
 			}
 
@@ -902,7 +906,7 @@ public class FuncTrackTrain : BaseEntity
 	public override bool OnControls(BaseEntity test) {
 		Vector3 offset = test.GetLocalOrigin() - GetLocalOrigin();
 
-		if (HasSpawnFlags(SF_TRACKTRAIN_NOCONTROL))
+		if (HasSpawnFlags(SF.NoControl))
 			return false;
 
 		Matrix4x4 tmp = default;
@@ -939,11 +943,11 @@ public class FuncTrackTrain : BaseEntity
 		look.Z += Height;
 
 		QAngle nextAngles;
-		if (HasSpawnFlags(SF_TRACKTRAIN_FIXED_ORIENTATION))
+		if (HasSpawnFlags(SF.FixedOrientation))
 			nextAngles = GetLocalAngles();
 		else {
 			MathLib.VectorAngles(look - nextPos, out nextAngles);
-			if (HasSpawnFlags(SF_TRACKTRAIN_NOPITCH))
+			if (HasSpawnFlags(SF.NoPitch))
 				nextAngles.X = 0;
 		}
 
@@ -1040,11 +1044,11 @@ public class FuncTrackTrain : BaseEntity
 		SetModel(GetModelName());
 		SetMoveType(Source.MoveType.Push);
 
-		SetSolid(HasSpawnFlags(SF_TRACKTRAIN_HL1TRAIN) ? SolidType.BSP : SolidType.VPhysics);
+		SetSolid(HasSpawnFlags(SF.HL1Train) ? SolidType.BSP : SolidType.VPhysics);
 
-		if (HasSpawnFlags(SF_TRACKTRAIN_UNBLOCKABLE_BY_PLAYER))
+		if (HasSpawnFlags(SF.UnblockableByPlayer))
 			AddFlag(EntityFlags.UnblockableByPlayer);
-		if (HasSpawnFlags(SF_TRACKTRAIN_PASSABLE))
+		if (HasSpawnFlags(SF.Passable))
 			AddSolidFlags(SolidFlags.NotSolid);
 
 		ControlMins = CollisionProp().OBBMins();

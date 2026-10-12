@@ -20,14 +20,18 @@ using DEFINE = DEFINE<NPC_MetroPolice>;
 [LinkEntityToClass("npc_metropolice")]
 public class NPC_MetroPolice : AI_BaseActor
 {
-	public const int SF_METROPOLICE_SIMPLE_VERSION = 0x00020000;
-	public const int SF_METROPOLICE_ALWAYS_STITCH = 0x00080000;
-	public const int SF_METROPOLICE_NOCHATTER = 0x00100000;
-	public const int SF_METROPOLICE_ARREST_ENEMY = 0x00200000;
-	public const int SF_METROPOLICE_NO_FAR_STITCH = 0x00400000;
-	public const int SF_METROPOLICE_NO_MANHACK_DEPLOY = 0x00800000;
-	public const int SF_METROPOLICE_ALLOWED_TO_RESPOND = 0x01000000;
-	public const int SF_METROPOLICE_MID_RANGE_ATTACK = 0x02000000;
+	[Flags]
+	public enum SF
+	{
+		SimpleVersion = 0x00020000,
+		AlwaysStitch = 0x00080000,
+		NoChatter = 0x00100000,
+		ArrestEnemy = 0x00200000,
+		NoFarStitch = 0x00400000,
+		NoManhackDeploy = 0x00800000,
+		AllowedToRespond = 0x01000000,
+		MidRangeAttack = 0x02000000,
+	}
 
 	public const float METROPOLICE_MID_RANGE_ATTACK_RANGE = 3500.0f;
 
@@ -817,7 +821,7 @@ public class NPC_MetroPolice : AI_BaseActor
 	}
 
 	public override void Precache() {
-		if (HasSpawnFlags(SF_NPC_START_EFFICIENT))
+		if (HasSpawnFlags(AI_BaseNPC.SF.StartEfficient))
 			SetModelName("models/police_cheaple.mdl");
 		else
 			SetModelName("models/police.mdl");
@@ -855,9 +859,9 @@ public class NPC_MetroPolice : AI_BaseActor
 		SetMoveType(Source.MoveType.Step);
 		SetBloodColor(Shared.BloodColor.Red);
 		IdleChatterType = METROPOLICE_CHATTER_ASK_QUESTION;
-		SimpleCops = HasSpawnFlags(SF_METROPOLICE_SIMPLE_VERSION);
-		if (HasSpawnFlags(SF_METROPOLICE_NOCHATTER))
-			AddSpawnFlags(SF_NPC_GAG);
+		SimpleCops = HasSpawnFlags(SF.SimpleVersion);
+		if (HasSpawnFlags(SF.NoChatter))
+			AddSpawnFlags(AI_BaseNPC.SF.Gag);
 
 		if (!SimpleCops)
 			Health = (int)sk_metropolice_health.GetFloat();
@@ -866,7 +870,7 @@ public class NPC_MetroPolice : AI_BaseActor
 
 		FieldOfView = -0.2f;
 		NPCState = NPCState.None;
-		if (!HasSpawnFlags(SF_NPC_START_EFFICIENT)) {
+		if (!HasSpawnFlags(AI_BaseNPC.SF.StartEfficient)) {
 			CapabilitiesAdd(Capability.TurnHead | Capability.AnimatedFace);
 			CapabilitiesAdd(Capability.AimGun | Capability.MoveShoot);
 		}
@@ -880,7 +884,7 @@ public class NPC_MetroPolice : AI_BaseActor
 
 		NPCInit();
 
-		if (HasSpawnFlags(SF_METROPOLICE_MID_RANGE_ATTACK)) {
+		if (HasSpawnFlags(SF.MidRangeAttack)) {
 			DistTooFar = METROPOLICE_MID_RANGE_ATTACK_RANGE;
 			SetDistLook(METROPOLICE_MID_RANGE_ATTACK_RANGE);
 		}
@@ -903,10 +907,10 @@ public class NPC_MetroPolice : AI_BaseActor
 		NextLedgeCheckTime = -1.0f;
 		BurstReloadCount = METROPOLICE_BURST_RELOAD_COUNT;
 
-		if (HasSpawnFlags(SF_METROPOLICE_ALWAYS_STITCH)) {
+		if (HasSpawnFlags(SF.AlwaysStitch)) {
 			if (Weapon_OwnsThisType("weapon_smg1", 0) == null) {
 				Warning("Warning! Metrocop is trying to use the stitch behavior but he has no smg1!\n");
-				RemoveSpawnFlags(SF_METROPOLICE_ALWAYS_STITCH);
+				RemoveSpawnFlags(SF.AlwaysStitch);
 			}
 		}
 
@@ -926,7 +930,7 @@ public class NPC_MetroPolice : AI_BaseActor
 	public override void Weapon_Equip(BaseCombatWeapon weapon) {
 		base.Weapon_Equip(weapon);
 
-		if (HasSpawnFlags(SF_METROPOLICE_MID_RANGE_ATTACK) && GetActiveWeapon() != null) {
+		if (HasSpawnFlags(SF.MidRangeAttack) && GetActiveWeapon() != null) {
 			GetActiveWeapon()!.MaxRange1 = METROPOLICE_MID_RANGE_ATTACK_RANGE;
 			GetActiveWeapon()!.MaxRange2 = METROPOLICE_MID_RANGE_ATTACK_RANGE;
 		}
@@ -966,7 +970,7 @@ public class NPC_MetroPolice : AI_BaseActor
 			case METROPOLICE_SENTENCE_MOVE_INTO_POSITION: {
 					BaseEntity? entity = GetEnemy();
 
-					if (entity != null && !HasSpawnFlags(SF_METROPOLICE_ARREST_ENEMY)) {
+					if (entity != null && !HasSpawnFlags(SF.ArrestEnemy)) {
 						if (entity.IsPlayer() && (entity.GetHealth() <= 20)) {
 							if (!HasMemory(bits_MEMORY_PLAYER_HURT)) {
 								if (Sentences.Speak("METROPOLICE_PLAYERHIT", SentencePriority.High) >= 0)
@@ -1075,8 +1079,8 @@ public class NPC_MetroPolice : AI_BaseActor
 	}
 
 	public void InputEnableManhackToss(InputData inputdata) {
-		if (HasSpawnFlags(SF_METROPOLICE_NO_MANHACK_DEPLOY))
-			RemoveSpawnFlags(SF_METROPOLICE_NO_MANHACK_DEPLOY);
+		if (HasSpawnFlags(SF.NoManhackDeploy))
+			RemoveSpawnFlags(SF.NoManhackDeploy);
 	}
 
 	public void InputSetPoliceGoal(InputData inputdata) {
@@ -1122,7 +1126,7 @@ public class NPC_MetroPolice : AI_BaseActor
 	}
 
 	public override void FoundEnemySound() {
-		if (HasSpawnFlags(SF_METROPOLICE_ARREST_ENEMY))
+		if (HasSpawnFlags(SF.ArrestEnemy))
 			return;
 
 		Sentences.Speak("METROPOLICE_REFIND_ENEMY", SentencePriority.High);
@@ -1452,7 +1456,7 @@ public class NPC_MetroPolice : AI_BaseActor
 		if (!AI_IsSinglePlayer())
 			return;
 
-		if (!IsInAScript() && (NPCState != NPCState.Script) && HasSpawnFlags(SF_METROPOLICE_ALLOWED_TO_RESPOND)) {
+		if (!IsInAScript() && (NPCState != NPCState.Script) && HasSpawnFlags(SF.AllowedToRespond)) {
 			if (PreChaseOrigin == vec3_origin) {
 				PreChaseOrigin = GetAbsOrigin();
 				PreChaseYaw = GetAbsAngles().Y;
@@ -1475,7 +1479,7 @@ public class NPC_MetroPolice : AI_BaseActor
 
 				if (ais[i].Classify() == Class_T.MetroPolice && FClassnameIs(ais[i], "npc_metropolice")) {
 					NPC_MetroPolice npc = (NPC_MetroPolice)ais[i];
-					if (npc.HasSpawnFlags(SF_METROPOLICE_ALLOWED_TO_RESPOND)) {
+					if (npc.HasSpawnFlags(SF.AllowedToRespond)) {
 						BasePlayer? player = AI_GetClosestPlayer();
 						if (FVisible(npc) && player != null && npc.FVisible(player) &&
 							Util.DistApprox(WorldSpaceCenter(), npc.WorldSpaceCenter()) < 512) {
@@ -1809,7 +1813,7 @@ public class NPC_MetroPolice : AI_BaseActor
 				throw new NotImplementedException();
 
 			case TASK_METROPOLICE_HARASS: {
-					if (!HasSpawnFlags(SF_METROPOLICE_NOCHATTER)) {
+					if (!HasSpawnFlags(SF.NoChatter)) {
 						if (GetEnemy() != null && GetEnemy()!.GetWaterLevel() > 0)
 							EmitSound("NPC_MetroPolice.WaterSpeech");
 						else
@@ -1838,7 +1842,7 @@ public class NPC_MetroPolice : AI_BaseActor
 		if (Squad != null) {
 			AI_BaseNPC? squadmate = Squad.GetFirstMember(out int iter);
 			while (squadmate != null) {
-				squadmate.RemoveSpawnFlags(SF_METROPOLICE_ARREST_ENEMY);
+				squadmate.RemoveSpawnFlags(SF.ArrestEnemy);
 				squadmate.SetCondition(COND_METROPOLICE_ENEMY_RESISTING_ARREST);
 				squadmate = Squad.GetNextMember(ref iter);
 			}
@@ -1931,7 +1935,7 @@ public class NPC_MetroPolice : AI_BaseActor
 	}
 
 	bool CanDeployManhack() {
-		if (HasSpawnFlags(SF_METROPOLICE_NO_MANHACK_DEPLOY))
+		if (HasSpawnFlags(SF.NoManhackDeploy))
 			return false;
 
 		if (Manhack.Get() != null)

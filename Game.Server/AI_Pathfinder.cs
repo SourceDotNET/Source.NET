@@ -424,7 +424,7 @@ public class AI_Pathfinder : AI_Component
 			if (startHint != null && endHint != null) {
 				if (startHint.HintType() == Hint.JumpOverride &&
 					endHint.HintType() == Hint.JumpOverride &&
-					(((startHint.SpawnFlags | endHint.SpawnFlags) & AI_Hint.SF_ALLOW_JUMP_UP) != 0 || startHint.GetAbsOrigin().Z > endHint.GetAbsOrigin().Z)) {
+					(startHint.HasSpawnFlags(AI_Hint.SF.AllowJumpUp) || endHint.HasSpawnFlags(AI_Hint.SF.AllowJumpUp) ||startHint.GetAbsOrigin().Z > endHint.GetAbsOrigin().Z)) {
 					if (!startNode.IsLocked()) {
 						if (startHint.GetTargetNode() == -1 || startHint.GetTargetNode() == endID)
 							moveType = Capability.MoveJump;

@@ -22,13 +22,17 @@ public enum MicrophoneResult
 [LinkEntityToClass("env_microphone")]
 public class EnvMicrophone : PointEntity
 {
-	public const int SF_MICROPHONE_SOUND_COMBAT = 0x01;
-	public const int SF_MICROPHONE_SOUND_WORLD = 0x02;
-	public const int SF_MICROPHONE_SOUND_PLAYER = 0x04;
-	public const int SF_MICROPHONE_SOUND_BULLET_IMPACT = 0x08;
-	public const int SF_MICROPHONE_SWALLOW_ROUTED_SOUNDS = 0x10;
-	public const int SF_MICROPHONE_SOUND_EXPLOSION = 0x20;
-	public const int SF_MICROPHONE_IGNORE_NONATTENUATED = 0x40;
+	[Flags]
+	public enum SF
+	{
+		SoundCombat = 0x01,
+		SoundWorld = 0x02,
+		SoundPlayer = 0x04,
+		SoundBulletImpact = 0x08,
+		SwallowRoutedSounds = 0x10,
+		SoundExplosion = 0x20,
+		IgnoreNonattenuated = 0x40,
+	}
 
 	const float MICROPHONE_SETTLE_EPSILON = 0.005f;
 
@@ -82,12 +86,12 @@ public class EnvMicrophone : PointEntity
 		base.UpdateOnRemove();
 	}
 
-	static readonly (int SpawnFlag, SoundInstanceType Type)[] SpawnFlagSoundTypes = [
-		(SF_MICROPHONE_SOUND_COMBAT, SoundInstanceType.Combat),
-		(SF_MICROPHONE_SOUND_WORLD, SoundInstanceType.World),
-		(SF_MICROPHONE_SOUND_PLAYER, SoundInstanceType.Player),
-		(SF_MICROPHONE_SOUND_BULLET_IMPACT, SoundInstanceType.BulletImpact),
-		(SF_MICROPHONE_SOUND_EXPLOSION, SoundInstanceType.ContextExplosion),
+	static readonly (SF SpawnFlag, SoundInstanceType Type)[] SpawnFlagSoundTypes = [
+		(SF.SoundCombat, SoundInstanceType.Combat),
+		(SF.SoundWorld, SoundInstanceType.World),
+		(SF.SoundPlayer, SoundInstanceType.Player),
+		(SF.SoundBulletImpact, SoundInstanceType.BulletImpact),
+		(SF.SoundExplosion, SoundInstanceType.ContextExplosion),
 	];
 
 	public override void Spawn() {
@@ -212,7 +216,7 @@ public class EnvMicrophone : PointEntity
 			return false;
 		}
 
-		if (HasSpawnFlags(SF_MICROPHONE_IGNORE_NONATTENUATED) && soundlevel == Source.Common.Audio.SoundLevel.LvlNone)
+		if (HasSpawnFlags(SF.IgnoreNonattenuated) && soundlevel == Source.Common.Audio.SoundLevel.LvlNone)
 			return false;
 
 		BaseEntity? entity = null;
@@ -337,7 +341,7 @@ public class EnvMicrophone : PointEntity
 		if (soundorigins != null)
 			soundorigins.AddRange(ep.SoundOrigin!);
 
-		if (HasSpawnFlags(SF_MICROPHONE_SWALLOW_ROUTED_SOUNDS))
+		if (HasSpawnFlags(SF.SwallowRoutedSounds))
 			return MicrophoneResult.Swallow;
 
 		return MicrophoneResult.Ok;

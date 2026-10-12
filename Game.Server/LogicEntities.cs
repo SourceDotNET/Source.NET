@@ -97,7 +97,11 @@ public class TimerEntity : LogicalEntity
 	//
 	// Spawnflags and others constants.
 	//
-	const int SF_TIMER_UPDOWN = 1;
+	[Flags]
+	public enum SF
+	{
+		UpDown = 1,
+	}
 	const float LOGIC_TIMER_MIN_INTERVAL = 0.01f;
 
 	// outputs
@@ -187,7 +191,7 @@ public class TimerEntity : LogicalEntity
 			//
 			// Up/down timers alternate between two outputs.
 			//
-			if (HasSpawnFlags(SF_TIMER_UPDOWN)) {
+			if (HasSpawnFlags(SF.UpDown)) {
 				if (UpDownState)
 					OnTimerHigh.FireOutput(this, this);
 				else
@@ -383,8 +387,12 @@ public class LogicLineToEntity : LogicalEntity
 [LinkEntityToClass("math_remap")]
 public class MathRemap : LogicalEntity
 {
-	const int SF_MATH_REMAP_IGNORE_OUT_OF_RANGE = 1;
-	const int SF_MATH_REMAP_CLAMP_OUTPUT_TO_RANGE = 2;
+	[Flags]
+	public enum SF
+	{
+		IgnoreOutOfRange = 1,
+		ClampOutputToRange = 2,
+	}
 
 	// Keys
 	public float InMin;
@@ -447,13 +455,13 @@ public class MathRemap : LogicalEntity
 		//
 		float clampValue = Math.Clamp(value, InMin, InMax);
 
-		if ((clampValue == value) || !HasSpawnFlags(SF_MATH_REMAP_IGNORE_OUT_OF_RANGE)) {
+		if ((clampValue == value) || !HasSpawnFlags(SF.IgnoreOutOfRange)) {
 			//
 			// Remap the input value to the desired output range and update the output.
 			//
 			float remappedValue = Out1 + (((value - InMin) * (Out2 - Out1)) / (InMax - InMin));
 
-			if (HasSpawnFlags(SF_MATH_REMAP_CLAMP_OUTPUT_TO_RANGE))
+			if (HasSpawnFlags(SF.ClampOutputToRange))
 				remappedValue = remappedValue < Out1 ? Out1 : remappedValue > Out2 ? Out2 : remappedValue;
 
 			if (Enabled == true)
@@ -468,7 +476,11 @@ public class MathRemap : LogicalEntity
 [LinkEntityToClass("math_colorblend")]
 public class MathColorBlend : LogicalEntity
 {
-	const int SF_COLOR_BLEND_IGNORE_OUT_OF_RANGE = 1;
+	[Flags]
+	public enum SF
+	{
+		IgnoreOutOfRange = 1,
+	}
 
 	// Keys
 	public float InMin;
@@ -517,7 +529,7 @@ public class MathColorBlend : LogicalEntity
 		// Disallow out-of-range input values to avoid out-of-range output values.
 		//
 		float clampValue = Math.Clamp(value, InMin, InMax);
-		if ((clampValue == value) || !HasSpawnFlags(SF_COLOR_BLEND_IGNORE_OUT_OF_RANGE)) {
+		if ((clampValue == value) || !HasSpawnFlags(SF.IgnoreOutOfRange)) {
 			//
 			// Remap the input value to the desired output color and update the output.
 			//
@@ -562,7 +574,11 @@ public class EnvGlobal : LogicalEntity
 			GlobalEntity.Add(global, gpGlobals.MapName, (GlobalEState)newState);
 	}
 
-	public const int SF_GLOBAL_SET = 1;    // Set global state to initial state on spawn
+	[Flags]
+	public enum SF
+	{
+		Set = 1,    // Set global state to initial state on spawn
+	}
 
 	public readonly OutputInt OutCounter = new();
 
@@ -597,7 +613,7 @@ public class EnvGlobal : LogicalEntity
 			return;
 		}
 
-		if (HasSpawnFlags(SF_GLOBAL_SET)) {
+		if (HasSpawnFlags(SF.Set)) {
 			if (!GlobalEntity.IsInTable(globalstate))
 				GlobalEntity.Add(globalstate, gpGlobals.MapName, (GlobalEState)initialstate);
 
@@ -704,7 +720,11 @@ public class EnvGlobal : LogicalEntity
 public class MultiSource : LogicalEntity
 {
 	public const int MS_MAX_TARGETS = 32;
-	public const int SF_MULTI_INIT = 1;
+	[Flags]
+	public enum SF
+	{
+		Init = 1,
+	}
 
 	public readonly EHANDLE[] rgEntities = new EHANDLE[MS_MAX_TARGETS];
 	public readonly int[] rgTriggered = new int[MS_MAX_TARGETS];
@@ -752,7 +772,7 @@ public class MultiSource : LogicalEntity
 
 	public override void Spawn() {
 		SetNextThink(gpGlobals.CurTime + 0.1f);
-		AddSpawnFlags(SF_MULTI_INIT);  // Until it's initialized
+		AddSpawnFlags(SF.Init);  // Until it's initialized
 		SetThink(Register);
 	}
 
@@ -791,7 +811,7 @@ public class MultiSource : LogicalEntity
 		int i = 0;
 
 		// Still initializing?
-		if (HasSpawnFlags(SF_MULTI_INIT))
+		if (HasSpawnFlags(SF.Init))
 			return false;
 
 		while (i < Total) {
@@ -837,7 +857,7 @@ public class MultiSource : LogicalEntity
 			target = gEntList.FindEntityByClassname(target, "multi_manager");
 		}
 
-		RemoveSpawnFlags(SF_MULTI_INIT);
+		RemoveSpawnFlags(SF.Init);
 	}
 }
 

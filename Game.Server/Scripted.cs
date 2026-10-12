@@ -38,19 +38,23 @@ public class AI_ScriptedSequence : BaseEntity
 {
 	public const int MAX_SCRIPT_EVENTS = 8;
 
-	public const int SF_SCRIPT_WAITTILLSEEN = 1;
-	public const int SF_SCRIPT_EXITAGITATED = 2;
-	public const int SF_SCRIPT_REPEATABLE = 4;
-	public const int SF_SCRIPT_LEAVECORPSE = 8;
-	public const int SF_SCRIPT_START_ON_SPAWN = 16;
-	public const int SF_SCRIPT_NOINTERRUPT = 32;
-	public const int SF_SCRIPT_OVERRIDESTATE = 64;
-	public const int SF_SCRIPT_DONT_TELEPORT_AT_END = 128;
-	public const int SF_SCRIPT_LOOP_IN_POST_IDLE = 256;
-	public const int SF_SCRIPT_HIGH_PRIORITY = 512;
-	public const int SF_SCRIPT_SEARCH_CYCLICALLY = 1024;
-	public const int SF_SCRIPT_NO_COMPLAINTS = 2048;
-	public const int SF_SCRIPT_ALLOW_DEATH = 4096;
+	[Flags]
+	public enum SF
+	{
+		WaitTillSeen = 1,
+		ExitAgitated = 2,
+		Repeatable = 4,
+		LeaveCorpse = 8,
+		StartOnSpawn = 16,
+		NoInterrupt = 32,
+		OverrideState = 64,
+		DontTeleportAtEnd = 128,
+		LoopInPostIdle = 256,
+		HighPriority = 512,
+		SearchCyclically = 1024,
+		NoComplaints = 2048,
+		AllowDeath = 4096,
+	}
 
 	public static readonly ConVar ai_task_pre_script = new("ai_task_pre_script", "0", FCvar.None);
 
@@ -250,7 +254,7 @@ public class AI_ScriptedSequence : BaseEntity
 	public override void Spawn() {
 		SetSolid(SolidType.None);
 
-		if (string.IsNullOrEmpty(GetEntityName()) || HasSpawnFlags(SF_SCRIPT_START_ON_SPAWN)) {
+		if (string.IsNullOrEmpty(GetEntityName()) || HasSpawnFlags(SF.StartOnSpawn)) {
 			StartThink();
 			SetNextThink(gpGlobals.CurTime + 1.0f);
 
@@ -258,7 +262,7 @@ public class AI_ScriptedSequence : BaseEntity
 				WaitForBeginSequence = true;
 		}
 
-		if (HasSpawnFlags(SF_SCRIPT_NOINTERRUPT))
+		if (HasSpawnFlags(SF.NoInterrupt))
 			Interruptable = false;
 		else
 			Interruptable = true;
@@ -290,7 +294,7 @@ public class AI_ScriptedSequence : BaseEntity
 	}
 
 	public bool FCanOverrideState() {
-		if (HasSpawnFlags(SF_SCRIPT_OVERRIDESTATE))
+		if (HasSpawnFlags(SF.OverrideState))
 			return true;
 		return false;
 	}
@@ -419,7 +423,7 @@ public class AI_ScriptedSequence : BaseEntity
 					return npc;
 				else if (canPlay == CanPlaySequence_t.CanPlayEnqueued)
 					enqueueNPC = npc;
-				else if (!HasSpawnFlags(SF_SCRIPT_NO_COMPLAINTS))
+				else if (!HasSpawnFlags(SF.NoComplaints))
 					DevMsg($"Found {Entity}, but can't play!\n");
 			}
 
@@ -446,7 +450,7 @@ public class AI_ScriptedSequence : BaseEntity
 	bool FindEntity() {
 		AI_BaseNPC? target = FindScriptEntity();
 
-		if (HasSpawnFlags(SF_SCRIPT_SEARCH_CYCLICALLY))
+		if (HasSpawnFlags(SF.SearchCyclically))
 			LastFoundEntity.Set(target);
 
 		SetTarget(target);
@@ -461,7 +465,7 @@ public class AI_ScriptedSequence : BaseEntity
 			target = entity.MyNPCPointer();
 
 		if (target != null) {
-			target.RemoveSpawnFlags(SF_NPC_WAIT_FOR_SCRIPT);
+			target.RemoveSpawnFlags(AI_BaseNPC.SF.WaitForScript);
 
 			AI_ScriptedSequence? targetCine = target.Cine.Get();
 			if (targetCine != null) {
@@ -693,12 +697,12 @@ public class AI_ScriptedSequence : BaseEntity
 	}
 
 	public void PostIdleDone(AI_BaseNPC npc) {
-		if (!string.IsNullOrEmpty(PostIdle) && HasSpawnFlags(SF_SCRIPT_LOOP_IN_POST_IDLE) && NextCine.Get() == null) {
+		if (!string.IsNullOrEmpty(PostIdle) && HasSpawnFlags(SF.LoopInPostIdle) && NextCine.Get() == null) {
 			npc.ScriptState = ScriptStateType.PostIdle;
 			StartSequence(npc, PostIdle, false);
 		}
 		else {
-			if (!HasSpawnFlags(SF_SCRIPT_REPEATABLE)) {
+			if (!HasSpawnFlags(SF.Repeatable)) {
 				SetThink(SUB_Remove);
 				SetNextThink(gpGlobals.CurTime + 0.1f);
 				Thinking = false;
@@ -712,7 +716,7 @@ public class AI_ScriptedSequence : BaseEntity
 			if (NextCine.Get() != null) {
 				AI_ScriptedSequence nextCine = (AI_ScriptedSequence)NextCine.Get()!;
 
-				if (nextCine != this || HasSpawnFlags(SF_SCRIPT_REPEATABLE)) {
+				if (nextCine != this || HasSpawnFlags(SF.Repeatable)) {
 					nextCine.SetTarget(npc);
 					nextCine.StartScript();
 				}
@@ -745,7 +749,7 @@ public class AI_ScriptedSequence : BaseEntity
 	}
 
 	public void AllowInterrupt(bool allow) {
-		if (HasSpawnFlags(SF_SCRIPT_NOINTERRUPT))
+		if (HasSpawnFlags(SF.NoInterrupt))
 			return;
 		Interruptable = allow;
 	}
@@ -789,7 +793,7 @@ public class AI_ScriptedSequence : BaseEntity
 			return false;
 		}
 
-		if (!NextCine.Get()!.HasSpawnFlags(SF_SCRIPT_HIGH_PRIORITY))
+		if (!NextCine.Get()!.HasSpawnFlags(SF.HighPriority))
 			return true;
 
 		DevMsg(2, $"{NextCine.Get()!.GetDebugName()} is a priority script and cannot be kicked out of the queue\n");
@@ -826,7 +830,7 @@ public class AI_ScriptedSequence : BaseEntity
 	public void CancelScript() {
 		DevMsg(2, $"Cancelling script: {Play}\n");
 
-		bool dontCancelOther = (DontCancelOtherSequences || HasSpawnFlags(SF_SCRIPT_ALLOW_DEATH)) && StartTime != 0;
+		bool dontCancelOther = (DontCancelOtherSequences || HasSpawnFlags(SF.AllowDeath)) && StartTime != 0;
 		if (dontCancelOther || string.IsNullOrEmpty(GetEntityName())) {
 			ScriptEntityCancel(this);
 			return;
@@ -883,7 +887,7 @@ public class AI_ScriptedSequence : BaseEntity
 	public static string? GetSpawnPreIdleSequenceForScript(BaseEntity entity) {
 		AI_ScriptedSequence? script = gEntList.NextEntByClass<AI_ScriptedSequence>(null);
 		while (script != null) {
-			if (script.HasSpawnFlags(SF_SCRIPT_START_ON_SPAWN) && script.Entity == entity.GetEntityName()) {
+			if (script.HasSpawnFlags(SF.StartOnSpawn) && script.Entity == entity.GetEntityName()) {
 				if (script.PreIdle != null)
 					return script.PreIdle;
 				return null;

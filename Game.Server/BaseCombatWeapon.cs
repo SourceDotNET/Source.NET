@@ -71,7 +71,7 @@ public partial class BaseCombatWeapon : BaseAnimating
 
 	public override EntityCapabilities ObjectCaps() {
 		EntityCapabilities caps = base.ObjectCaps();
-		if (!IsFollowingEntity() && !HasSpawnFlags(SF_WEAPON_NO_PLAYER_PICKUP))
+		if (!IsFollowingEntity() && !HasSpawnFlags(BaseCombatWeapon.SF.NoPlayerPickup))
 			caps |= EntityCapabilities.ImpulseUse;
 
 		return caps;
@@ -234,7 +234,7 @@ public partial class BaseCombatWeapon : BaseAnimating
 			DoMuzzleFlash();
 		}
 
-		if (HasSpawnFlags(BasePlayer.SF_NORESPAWN) == false) {
+		if (HasSpawnFlags(BasePlayer.SF.NoRespawn) == false) {
 			VPhysicsInitNormal(SolidType.BBox, GetSolidFlags() | SolidFlags.Trigger, false);
 			SetMoveType(Source.MoveType.VPhysics);
 		}

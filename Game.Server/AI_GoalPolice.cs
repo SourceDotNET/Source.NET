@@ -13,8 +13,12 @@ namespace Game.Server;
 [LinkEntityToClass("ai_goal_police")]
 public class AI_PoliceGoal : BaseEntity
 {
-	public const int SF_POLICE_GOAL_KNOCKOUT_BEHIND = 1 << 1;
-	public const int SF_POLICE_GOAL_DO_NOT_LEAVE_POST = 1 << 2;
+	[Flags]
+	public enum SF
+	{
+		KnockoutBehind = 1 << 1,
+		DoNotLeavePost = 1 << 2,
+	}
 
 	public static readonly new DataMap DataDesc = new(typeof(AI_PoliceGoal), BaseEntity.DataDesc, [
 		DEFINE.KEYFIELD(nameof(Radius), FieldType.Float, "PoliceRadius"),
@@ -59,7 +63,7 @@ public class AI_PoliceGoal : BaseEntity
 		if (OverrideKnockOut)
 			return true;
 
-		if (HasSpawnFlags(SF_POLICE_GOAL_KNOCKOUT_BEHIND) == false)
+		if (HasSpawnFlags(SF.KnockoutBehind) == false)
 			return false;
 
 		if (!targetVisible)
@@ -78,7 +82,7 @@ public class AI_PoliceGoal : BaseEntity
 
 	public void KnockOutTarget(BaseEntity? target) => OnKnockOut.FireOutput(target, this);
 
-	public bool ShouldRemainAtPost() => HasSpawnFlags(SF_POLICE_GOAL_DO_NOT_LEAVE_POST);
+	public bool ShouldRemainAtPost() => HasSpawnFlags(SF.DoNotLeavePost);
 
 	public void FireWarningLevelOutput(int level) {
 		switch (level) {

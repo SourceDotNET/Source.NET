@@ -28,11 +28,16 @@ public static class ItemConstants
 	public const int SIZE_AMMO_357_LARGE = 20;
 	public const int SIZE_AMMO_CROSSBOW = 6;
 	public const int SIZE_AMMO_AR2_ALTFIRE = 1;
-	public const int SF_ITEM_START_CONSTRAINED = 0x00000001;
 }
 
 public class Item : BaseAnimating, IPlayerPickupVPhysics
 {
+	[Flags]
+	public enum SF
+	{
+		StartConstrained = 0x00000001,
+	}
+
 	readonly DefaultPlayerPickupVPhysics pickup = new();
 
 	public bool ForcePhysgunOpen(BasePlayer player) => ((IPlayerPickupVPhysics)pickup).ForcePhysgunOpen(player);

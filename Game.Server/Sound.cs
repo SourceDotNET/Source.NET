@@ -304,9 +304,13 @@ public static class SoundGlobals
 [LinkEntityToClass("ambient_generic")]
 public class AmbientGeneric : PointEntity
 {
-	public const int SF_AMBIENT_SOUND_EVERYWHERE = 1;
-	public const int SF_AMBIENT_SOUND_START_SILENT = 16;
-	public const int SF_AMBIENT_SOUND_NOT_LOOPING = 32;
+	[Flags]
+	public enum SF
+	{
+		Everywhere = 1,
+		StartSilent = 16,
+		NotLooping = 32,
+	}
 
 	public float Radius;
 	public float MaxRadius;
@@ -364,7 +368,7 @@ public class AmbientGeneric : PointEntity
 	// Spawn
 	//-----------------------------------------------------------------------------
 	public override void Spawn() {
-		SoundLevel = ComputeSoundlevel(Radius, HasSpawnFlags(SF_AMBIENT_SOUND_EVERYWHERE));
+		SoundLevel = ComputeSoundlevel(Radius, HasSpawnFlags(SF.Everywhere));
 		ComputeMaxAudibleDistance();
 
 		ValidateSoundFile();
@@ -387,7 +391,7 @@ public class AmbientGeneric : PointEntity
 
 		Active = false;
 
-		if (HasSpawnFlags(SF_AMBIENT_SOUND_NOT_LOOPING))
+		if (HasSpawnFlags(SF.NotLooping))
 			Looping = false;
 		else
 			Looping = true;
@@ -552,7 +556,7 @@ public class AmbientGeneric : PointEntity
 				PrecacheScriptSound(SoundFile);
 		}
 
-		if (!HasSpawnFlags(SF_AMBIENT_SOUND_START_SILENT)) {
+		if (!HasSpawnFlags(SF.StartSilent)) {
 			// start the sound ASAP
 			if (Looping)
 				Active = true;
@@ -580,7 +584,7 @@ public class AmbientGeneric : PointEntity
 				SoundSourceEntIndex = EntIndex();
 			}
 			else {
-				if (!HasSpawnFlags(SF_AMBIENT_SOUND_EVERYWHERE))
+				if (!HasSpawnFlags(SF.Everywhere))
 					AddEFlags(EFL.ForceCheckTransmit);
 			}
 		}
@@ -619,7 +623,7 @@ public class AmbientGeneric : PointEntity
 			return;
 
 		// Don't bother sending the position of the source if we have to play everywhere
-		if (HasSpawnFlags(SF_AMBIENT_SOUND_EVERYWHERE))
+		if (HasSpawnFlags(SF.Everywhere))
 			return;
 
 		Assert(info.ClientEnt != null);
@@ -1004,7 +1008,7 @@ public class AmbientGeneric : PointEntity
 				Active = false;
 
 				// HACKHACK - this makes the code in Precache() work properly after a save/restore
-				AddSpawnFlags(SF_AMBIENT_SOUND_START_SILENT);
+				AddSpawnFlags(SF.StartSilent);
 
 				if (Dpv.SpinDownSav != 0 || Dpv.FadeOutSav != 0) {
 					// spin it down (or fade it) before shutoff if spindown is set
