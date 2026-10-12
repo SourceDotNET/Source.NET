@@ -606,8 +606,6 @@ public class PropDoorRotatingBreakable : PropDoorRotating;
 
 public static class Props
 {
-	public static int g_interactionHitByPlayerThrownPhysObj = 0;
-
 	public static PhysicsProp? CreatePhysicsProp(ReadOnlySpan<char> modelName, in Vector3 traceStart, in Vector3 traceEnd, IHandleEntity? traceIgnore, bool requireVCollide, ReadOnlySpan<char> className = default) {
 		if (className.IsStringEmpty)
 			className = "physics_prop";

@@ -680,16 +680,9 @@ public partial class BaseCombatCharacter : BaseFlex
 	public void SetCurrentWeaponProficiency(WeaponProficiency proficiency) => CurrentWeaponProficiency = proficiency;
 	public virtual WeaponProficiency CalcWeaponProficiency(BaseCombatWeapon? weapon) => WeaponProficiency.Average;
 
-	static int LastInteraction = 0;
+	public bool DispatchInteraction(AI_Interaction interactionType, object? data, BaseCombatCharacter? sourceEnt) => (interactionType > AI_Interaction.None) ? HandleInteraction(interactionType, data, sourceEnt) : false;
 
-	public static int GetInteractionID() {
-		LastInteraction++;
-		return LastInteraction;
-	}
-
-	public bool DispatchInteraction(int interactionType, object? data, BaseCombatCharacter? sourceEnt) => (interactionType > 0) ? HandleInteraction(interactionType, data, sourceEnt) : false;
-
-	public virtual bool HandleInteraction(int interactionType, object? data, BaseCombatCharacter? sourceEnt) => false;
+	public virtual bool HandleInteraction(AI_Interaction interactionType, object? data, BaseCombatCharacter? sourceEnt) => false;
 
 	public override void SetLightingOriginRelative(BaseEntity? lightingOrigin) {
 		base.SetLightingOriginRelative(lightingOrigin);

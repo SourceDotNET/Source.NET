@@ -62,10 +62,6 @@ public class NPC_MetroPolice : AI_BaseActor
 	const AI_MemoryFlags bits_MEMORY_PLAYER_HURT = AI_MemoryFlags.Custom3;
 	const AI_MemoryFlags bits_MEMORY_PLAYER_HARASSED = AI_MemoryFlags.Custom4;
 
-	public static int g_interactionMetrocopStartedStitch = 0;
-	public static int g_interactionMetrocopIdleChatter = 0;
-	public static int g_interactionMetrocopClearSentenceQueues = 0;
-
 	public static readonly ConVar sk_metropolice_health = new("sk_metropolice_health", "0");
 	public static readonly ConVar sk_metropolice_simple_health = new("sk_metropolice_simple_health", "26");
 
@@ -322,9 +318,6 @@ public class NPC_MetroPolice : AI_BaseActor
 			ACT_DEACTIVATE_BATON = DeclareActivity(nameof(ACT_DEACTIVATE_BATON));
 			ACT_WALK_BATON = DeclareActivity(nameof(ACT_WALK_BATON));
 			ACT_IDLE_ANGRY_BATON = DeclareActivity(nameof(ACT_IDLE_ANGRY_BATON));
-			g_interactionMetrocopStartedStitch = GetInteractionID();
-			g_interactionMetrocopIdleChatter = GetInteractionID();
-			g_interactionMetrocopClearSentenceQueues = GetInteractionID();
 		},
 		Definitions = [
 			new(SCHED_METROPOLICE_WAKE_ANGRY,
@@ -1181,7 +1174,7 @@ public class NPC_MetroPolice : AI_BaseActor
 					}
 
 					if (Sentences.Speak(IdleQuestions[isCriminal ? 1 : 0, questionType]) >= 0) {
-						GetSquad()!.BroadcastInteraction(g_interactionMetrocopIdleChatter, METROPOLICE_CHATTER_RESPONSE + questionType, this);
+						GetSquad()!.BroadcastInteraction(AI_Interaction.MetrocopIdleChatter, METROPOLICE_CHATTER_RESPONSE + questionType, this);
 						IdleChatterType = METROPOLICE_CHATTER_WAIT_FOR_RESPONSE;
 					}
 				}
@@ -1191,7 +1184,7 @@ public class NPC_MetroPolice : AI_BaseActor
 					int responseType = IdleChatterType - METROPOLICE_CHATTER_RESPONSE;
 
 					if (Sentences.Speak(IdleResponses[isCriminal ? 1 : 0, responseType]) >= 0) {
-						GetSquad()!.BroadcastInteraction(g_interactionMetrocopIdleChatter, METROPOLICE_CHATTER_ASK_QUESTION, this);
+						GetSquad()!.BroadcastInteraction(AI_Interaction.MetrocopIdleChatter, METROPOLICE_CHATTER_ASK_QUESTION, this);
 						IdleChatterType = METROPOLICE_CHATTER_ASK_QUESTION;
 					}
 				}
@@ -1321,23 +1314,23 @@ public class NPC_MetroPolice : AI_BaseActor
 		base.HandleAnimEvent(ref animEvent);
 	}
 
-	public override bool HandleInteraction(int interactionType, object? data, BaseCombatCharacter? sourceEnt) {
-		if (interactionType == g_interactionMetrocopStartedStitch) {
+	public override bool HandleInteraction(AI_Interaction interactionType, object? data, BaseCombatCharacter? sourceEnt) {
+		if (interactionType == AI_Interaction.MetrocopStartedStitch) {
 			ValidStitchTime = gpGlobals.CurTime + random.RandomFloat(METROPOLICE_SQUAD_STITCH_MIN_INTERVAL, METROPOLICE_SQUAD_STITCH_MAX_INTERVAL);
 			return true;
 		}
 
-		if (interactionType == g_interactionMetrocopIdleChatter) {
+		if (interactionType == AI_Interaction.MetrocopIdleChatter) {
 			IdleChatterType = (int)data!;
 			return true;
 		}
 
-		if (interactionType == g_interactionMetrocopClearSentenceQueues) {
+		if (interactionType == AI_Interaction.MetrocopClearSentenceQueues) {
 			Sentences.ClearQueue();
 			return true;
 		}
 
-		if (interactionType == Props.g_interactionHitByPlayerThrownPhysObj) {
+		if (interactionType == AI_Interaction.HitByPlayerThrownPhysObj) {
 			if (!IsInAScript() && (NPCState != NPCState.Script))
 				SetCondition(COND_METROPOLICE_PHYSOBJECT_ASSAULT);
 			else
