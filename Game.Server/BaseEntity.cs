@@ -991,7 +991,7 @@ public partial class BaseEntity : IServerEntity
 		if (Physics.g_bTestMoveTypeStepSimulation && GetMoveType() == Source.MoveType.Step && HasDataObjectType(DataObjectType.StepSimulation)) {
 			ref StepSimulationData step = ref GetDataObject<StepSimulationData>(DataObjectType.StepSimulation);
 			ComputeStepSimulationNetwork(ref step);
-			
+
 			ok = step.AnglesActive;
 			return ref step.NetworkAngles;
 		}
@@ -2719,6 +2719,8 @@ public partial class BaseEntity : IServerEntity
 
 	public bool HasSpawnFlags(int flags) => (SpawnFlags & flags) != 0;
 
+	public bool HasSpawnFlags<T>(T flags) where T : unmanaged, Enum => HasSpawnFlags(Unsafe.As<T, int>(ref flags));
+
 	public int GetModelIndex() => ModelIndex;
 
 	/// <summary>
@@ -3117,7 +3119,13 @@ public partial class BaseEntity : IServerEntity
 	public virtual void PostClientActive() { }
 
 	public void AddSpawnFlags(int flags) => SpawnFlags |= flags;
+
+	public void AddSpawnFlags<T>(T flags) where T : unmanaged, Enum => AddSpawnFlags(Unsafe.As<T, int>(ref flags));
+
 	public void RemoveSpawnFlags(int flags) => SpawnFlags &= ~flags;
+
+	public void RemoveSpawnFlags<T>(T flags) where T : unmanaged, Enum => RemoveSpawnFlags(Unsafe.As<T, int>(ref flags));
+
 	public void SetFriction(float friction) => Friction = friction;
 
 	public TimeUnit_t GetNextThink(ReadOnlySpan<char> context = default) {
