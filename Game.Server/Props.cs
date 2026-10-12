@@ -16,6 +16,7 @@ using Source.Common.Physics;
 using System.Diagnostics;
 using System.Numerics;
 
+using DEFINE = Source.DEFINE<Game.Server.PhysicsProp>;
 using FIELD_BPD = Source.FIELD<BasePropDoor>;
 using FIELD_DP = Source.FIELD<DynamicProp>;
 using FIELD_PBM = Source.FIELD<PhysBoxMultiplayer>;
@@ -62,6 +63,13 @@ public class BreakableProp : BaseProp, IBreakableWithPropData
 	public static readonly SendTable DT_BreakableProp = new(DT_BaseAnimating, []);
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_BreakableProp);
 
+	public bool PropDataOverrodeBlockLOS() => BlockLOSSetByPropData;
+
+	public void DisableAutoFade() {
+		FadeScale = 0;
+		DefaultFadeScale = 0;
+	}
+
 	public void SetDmgModBullet(float dmgMod) => DmgModBullet = dmgMod;
 	public void SetDmgModClub(float dmgMod) => DmgModClub = dmgMod;
 	public void SetDmgModExplosive(float dmgMod) => DmgModExplosive = dmgMod;
@@ -82,7 +90,7 @@ public class BreakableProp : BaseProp, IBreakableWithPropData
 	public int GetBreakableCount() => BreakableCount;
 	public void SetMaxBreakableSize(int size) => MaxBreakableSize = size;
 	public int GetMaxBreakableSize() => MaxBreakableSize;
-	public void SetPropDataBlocksLOS(bool blocksLOS) => SetBlocksLOS(blocksLOS);
+	public void SetPropDataBlocksLOS(bool blocksLOS) { BlockLOSSetByPropData = true; SetBlocksLOS(blocksLOS); }
 	public void SetPropDataIsAIWalkable(bool blocksLOS) => SetAIWalkable(blocksLOS);
 	public void SetBasePropData(ReadOnlySpan<char> propdata) => BasePropData = propdata.IsEmpty ? null : new(propdata);
 	public ReadOnlySpan<char> GetBasePropData() => BasePropData;
@@ -107,6 +115,8 @@ public class BreakableProp : BaseProp, IBreakableWithPropData
 	protected float ExplodeRadius;
 	protected PhysicsMultiplayerMode m_iPhysicsMode;
 	protected MultiplayerBreak MpBreakMode;
+	bool BlockLOSSetByPropData;
+	float DefaultFadeScale;
 }
 
 [LinkEntityToClass("func_physbox_multiplayer")]
@@ -146,7 +156,36 @@ public class PhysicsProp : BreakableProp
 	[NetworkName("m_bAwake")]
 	public bool Awake;
 
+	public static readonly new DataMap DataDesc = new(typeof(PhysicsProp), BaseEntity.DataDesc, [
+		DEFINE.KEYFIELD(nameof(MassScale), FieldType.Float, "massscale"),
+		DEFINE.KEYFIELD(nameof(InertiaScale), FieldType.Float, "inertiascale"),
+		DEFINE.KEYFIELD(nameof(DamageType), FieldType.Integer, "Damagetype"),
+		DEFINE.KEYFIELD(nameof(OverrideScript), FieldType.String, "overridescript"),
+		DEFINE.KEYFIELD(nameof(DamageToEnableMotion), FieldType.Integer, "damagetoenablemotion"),
+		DEFINE.KEYFIELD(nameof(ForceToEnableMotion), FieldType.Float, "forcetoenablemotion"),
+	]);
+	public override DataMap? GetDataDescMap() => DataDesc;
+
+	public static int g_ActiveGibCount = 0;
+
+	float MassScale;
+	float InertiaScale;
+	int DamageType;
+	string? OverrideScript;
+	int DamageToEnableMotion;
+	float ForceToEnableMotion;
+
+	public override void Term() {
+		if (HasSpawnFlags(SF_PHYSPROP_IS_GIB))
+			g_ActiveGibCount--;
+
+		base.Term();
+	}
+
 	public override void Spawn() {
+		if (HasSpawnFlags(SF_PHYSPROP_IS_GIB))
+			g_ActiveGibCount++;
+
 		// Condense classnames to one, except for "prop_physics_override"
 		if (FClassnameIs(this, "physics_prop"))
 			SetClassname("prop_physics");
@@ -160,7 +199,21 @@ public class PhysicsProp : BreakableProp
 		if (FClassnameIs(this, "prop_physics_override"))
 			SetClassname("prop_physics");
 
+		if (HasSpawnFlags(SF_PHYSPROP_DEBRIS) || HasInteraction(PropDataInteractions.PhysgunCreateFlare))
+			SetCollisionGroup(HasSpawnFlags(SF_PHYSPROP_FORCE_TOUCH_TRIGGERS) ? Source.CollisionGroup.DebrisTrigger : Source.CollisionGroup.Debris);
+
+		if (HasSpawnFlags(SF_PHYSPROP_NO_ROTORWASH_PUSH))
+			AddEFlags(EFL.NoRotorWashPush);
+
 		CreateVPhysics();
+
+		if (!PropDataOverrodeBlockLOS())
+			CalculateBlockLOS();
+
+		if (((ReadOnlySpan<char>)GetModelName()).Equals("models/props_c17/door01_left.mdl", StringComparison.Ordinal)) {
+			SetFadeDistance(-1, 0);
+			DisableAutoFade();
+		}
 	}
 
 	public static bool PropIsGib(BaseEntity entity) {
@@ -174,18 +227,52 @@ public class PhysicsProp : BreakableProp
 	public bool IsGib() => (SpawnFlags & SF_PHYSPROP_IS_GIB) != 0;
 
 	public virtual bool CreateVPhysics() {
-		SetSolid(SolidType.VPhysics);
+		bool asleep = HasSpawnFlags(SF_PHYSPROP_START_ASLEEP);
 
-		if (m_takedamage == (byte)Damage.No)
-			SetMoveType(Source.MoveType.None);
+		Solid tmpSolid = default;
+		PhysModelParseSolid(ref tmpSolid, this, GetModelIndex());
 
-		IPhysicsObject? physObj = VPhysicsInitNormal(SolidType.VPhysics, GetSolidFlags(), false);
-		if (physObj == null) {
+		if (MassScale > 0)
+			tmpSolid.Params.Mass *= MassScale;
+
+		if (InertiaScale > 0) {
+			tmpSolid.Params.Inertia *= InertiaScale;
+			if (tmpSolid.Params.Inertia < 0.5)
+				tmpSolid.Params.Inertia = 0.5f;
+		}
+
+		PhysGetMassCenterOverride(this, modelinfo.GetVCollide(GetModelIndex()), ref tmpSolid);
+		if (HasSpawnFlags(SF_PHYSPROP_NO_COLLISIONS))
+			tmpSolid.Params.EnableCollisions = false;
+
+		PhysSolidOverride(ref tmpSolid, OverrideScript);
+
+		IPhysicsObject? physicsObject = VPhysicsInitNormal(SolidType.VPhysics, 0, asleep, ref tmpSolid);
+
+		if (physicsObject == null) {
 			SetSolid(SolidType.None);
 			SetMoveType(Source.MoveType.None);
 			Warning($"ERROR!: Can't create physics object for {GetModelName()}\n");
 			return false;
 		}
+		else {
+			if (DamageType == 1)
+				PhysSetGameFlags(physicsObject, PhysicsFlags.DamageSlice);
+
+			if (HasSpawnFlags(SF_PHYSPROP_MOTIONDISABLED) || DamageToEnableMotion > 0 || ForceToEnableMotion > 0)
+				physicsObject.EnableMotion(false);
+		}
+
+		if (HasInteraction(PropDataInteractions.PhysgunLaunchSpinZ)) {
+			if ((VPhysicsGetObject()!.GetGameFlags() & PhysicsFlags.DamageSlice) == 0)
+				PhysSetGameFlags(physicsObject, PhysicsFlags.DamageSlice);
+		}
+
+		if (HasInteraction(PropDataInteractions.PhysgunDamageNone))
+			PhysSetGameFlags(physicsObject, PhysicsFlags.NoImpactDamage);
+
+		if (HasSpawnFlags(SF_PHYSPROP_PREVENT_PICKUP))
+			PhysSetGameFlags(physicsObject, PhysicsFlags.NoPlayerPickup);
 
 		return true;
 	}
