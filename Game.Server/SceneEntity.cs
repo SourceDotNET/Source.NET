@@ -1242,7 +1242,7 @@ public partial class SceneEntity : PointEntity, IChoreoEventCallback
 			actor = FindNamedActor(choreoActor.GetName());
 
 			if (actor != null) {
-				ActorList[index] = new EHANDLE().Set(actor);
+				ActorList[index] = actor.GetRefEHandle();
 				NetworkProp().NetworkStateForceUpdate();
 			}
 		}

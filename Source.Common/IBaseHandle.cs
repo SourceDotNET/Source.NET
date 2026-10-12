@@ -9,10 +9,5 @@ public interface IBaseHandle
 	int GetEntryIndex();
 	int GetHashCode();
 	int GetSerialNumber();
-	void Init(in BaseHandle otherHandle);
-	void Init(int entry, int serial);
-	void Init(uint entindex);
-	void Init(ulong entindex);
-	void Invalidate();
 	bool IsValid();
 }
