@@ -45,9 +45,6 @@ class OptionsSubVideoAdvancedDlg : Frame
 	int NumAAModes;
 	AAMode[] AAModes = new AAMode[16];
 
-	ICvar cvar = Singleton<ICvar>();
-	IGameUI GameUI => Singleton<IGameUI>();
-
 	public OptionsSubVideoAdvancedDlg(Panel? parent) : base(parent, "OptionsSubVideoAdvancedDlg") {
 		SetTitle("#GameUI_VideoAdvanced_Title", true);
 		SetSize(260, 400);
@@ -535,11 +532,11 @@ class OptionsSubVideoAdvancedDlg : Frame
 	}
 
 	public bool RequiresRestart() {
-		if (GameUI.IsInLevel()) {
-			if (GameUI.IsInBackgroundLevel())
+		if (GameUI().IsInLevel()) {
+			if (GameUI().IsInBackgroundLevel())
 				return false;
 
-			// if (!GameUI.IsInMultiplayer()) //todo
+			// if (!GameUI().IsInMultiplayer()) //todo
 			// 	return false;
 
 			if (HDR.IsEnabled()) {

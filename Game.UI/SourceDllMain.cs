@@ -5,12 +5,17 @@ using Microsoft.Extensions.DependencyInjection;
 using Source;
 using Source.Common;
 using Source.Common.Client;
+using Source.Common.Commands;
 using Source.Common.Filesystem;
 using Source.Common.GameUI;
 using Source.Common.GUI;
 using Source.Common.Input;
 using Source.Common.Launcher;
 using Source.Common.MaterialSystem;
+
+using System.Runtime.CompilerServices;
+
+using DependencyAttribute = Source.DependencyAttribute;
 
 namespace Game.UI;
 
@@ -28,8 +33,9 @@ public static class SourceDllMain
 	[Dependency] public static IGameUI gameUI { get; private set; } = null!;
 	[Dependency] public static IMaterialSystem Materials { get; private set; } = null!;
 	[Dependency] public static ISystem system { get; private set; } = null!;
+	[Dependency] public static ICvar cvar { get; private set; } = null!;
 
-	public static IGameUI GameUI() => gameUI;
+	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static IGameUI GameUI() => gameUI;
 
 	public static void Link(IServiceCollection services) {
 		services.AddSingleton<IGameConsole, GameConsole>();
