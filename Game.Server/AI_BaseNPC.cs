@@ -645,8 +645,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		NumEvents++;
 	}
 
-	public static Animevent DeclareAnimEvent(ReadOnlySpan<char> name) {
-		Animevent animEvent = EventList.RegisterPrivateEvent(name);
+	public static AnimEventId DeclareAnimEvent(ReadOnlySpan<char> name) {
+		AnimEventId animEvent = EventList.RegisterPrivateEvent(name);
 		AddEventToSR(name, (int)animEvent);
 		return animEvent;
 	}
@@ -2784,7 +2784,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				DevMsg("Bodygroup!\n");
 				break;
 
-			case (int)Animevent.AE_NPC_ATTACK_BROADCAST:
+			case (int)AnimEventId.AE_NPC_ATTACK_BROADCAST:
 				break;
 
 			case NPC_EVENT_BODYDROP_HEAVY:
@@ -2880,7 +2880,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 			default:
 				if ((animEvent.Type & AnimEventType.NewEventSystem) != 0 && (animEvent.Type & AnimEventType.Server) != 0) {
-					if (animEvent.Event == (int)Animevent.AE_NPC_HOLSTER) {
+					if (animEvent.Event == (int)AnimEventId.AE_NPC_HOLSTER) {
 						BaseCombatWeapon? weapon = GetActiveWeapon();
 
 						Assert(weapon != null);
@@ -2900,7 +2900,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 						return;
 					}
-					else if (animEvent.Event == (int)Animevent.AE_NPC_DRAW) {
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_DRAW) {
 						if (GetActiveWeapon() != null) {
 							GetActiveWeapon()!.Deploy();
 
@@ -2913,16 +2913,16 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 						}
 						return;
 					}
-					else if (animEvent.Event == (int)Animevent.AE_NPC_BODYDROP_HEAVY) {
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_BODYDROP_HEAVY) {
 						if ((GetFlags() & EntityFlags.OnGround) != 0)
 							EmitSound("AI_BaseNPC.BodyDrop_Heavy");
 						return;
 					}
-					else if (animEvent.Event == (int)Animevent.AE_NPC_LEFTFOOT || animEvent.Event == (int)Animevent.AE_NPC_RIGHTFOOT)
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_LEFTFOOT || animEvent.Event == (int)AnimEventId.AE_NPC_RIGHTFOOT)
 						return;
-					else if (animEvent.Event == (int)Animevent.AE_NPC_RAGDOLL)
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_RAGDOLL)
 						throw new NotImplementedException();
-					else if (animEvent.Event == (int)Animevent.AE_NPC_ADDGESTURE) {
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_ADDGESTURE) {
 						Activity act = LookupActivity(animEvent.Options);
 						if (act != Activity.ACT_INVALID) {
 							act = TranslateActivity(act);
@@ -2931,11 +2931,11 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 						}
 						return;
 					}
-					else if (animEvent.Event == (int)Animevent.AE_NPC_RESTARTGESTURE)
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_RESTARTGESTURE)
 						throw new NotImplementedException();
-					else if (animEvent.Event == (int)Animevent.AE_NPC_WEAPON_DROP)
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_WEAPON_DROP)
 						throw new NotImplementedException();
-					else if (animEvent.Event == (int)Animevent.AE_NPC_WEAPON_SET_ACTIVITY) {
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_WEAPON_SET_ACTIVITY) {
 						BaseCombatWeapon? weapon = GetActiveWeapon();
 						if (weapon != null && animEvent.Options != null) {
 							Activity act = weapon.LookupActivity(animEvent.Options);
@@ -2950,9 +2950,9 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 						}
 						return;
 					}
-					else if (animEvent.Event == (int)Animevent.AE_NPC_SET_INTERACTION_CANTDIE)
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_SET_INTERACTION_CANTDIE)
 						throw new NotImplementedException();
-					else if (animEvent.Event == (int)Animevent.AE_NPC_HURT_INTERACTION_PARTNER)
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_HURT_INTERACTION_PARTNER)
 						throw new NotImplementedException();
 				}
 

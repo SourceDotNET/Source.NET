@@ -132,12 +132,12 @@ public partial class BaseCombatWeapon : BaseAnimating
 
 	public virtual void Operator_HandleAnimEvent(ref AnimEvent animEvent, BaseCombatCharacter op) {
 		if ((animEvent.Type & AnimEventType.NewEventSystem) != 0 && (animEvent.Type & AnimEventType.Server) != 0) {
-			if (animEvent.Event == (int)Animevent.AE_NPC_WEAPON_FIRE) {
+			if (animEvent.Event == (int)AnimEventId.AE_NPC_WEAPON_FIRE) {
 				bool secondary = int.TryParse(animEvent.Options, out int value) && value != 0;
 				Operator_ForceNPCFire(op, secondary);
 				return;
 			}
-			else if (animEvent.Event == (int)Animevent.AE_WPN_PLAYWPNSOUND) {
+			else if (animEvent.Event == (int)AnimEventId.AE_WPN_PLAYWPNSOUND) {
 				int snd = WeaponParse.GetWeaponSoundFromString(animEvent.Options);
 				if (snd != -1)
 					WeaponSound((WeaponSound)snd);

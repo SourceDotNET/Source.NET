@@ -73,12 +73,12 @@ public class NPC_MetroPolice : AI_BaseActor
 	public static readonly ConVar metropolice_move_and_melee = new("metropolice_move_and_melee", "1");
 	public static readonly ConVar metropolice_charge = new("metropolice_charge", "1");
 
-	public static Animevent AE_METROPOLICE_BATON_ON;
-	public static Animevent AE_METROPOLICE_BATON_OFF;
-	public static Animevent AE_METROPOLICE_SHOVE;
-	public static Animevent AE_METROPOLICE_START_DEPLOY;
-	public static Animevent AE_METROPOLICE_DRAW_PISTOL;
-	public static Animevent AE_METROPOLICE_DEPLOY_MANHACK;
+	public static AnimEventId AE_METROPOLICE_BATON_ON;
+	public static AnimEventId AE_METROPOLICE_BATON_OFF;
+	public static AnimEventId AE_METROPOLICE_SHOVE;
+	public static AnimEventId AE_METROPOLICE_START_DEPLOY;
+	public static AnimEventId AE_METROPOLICE_DRAW_PISTOL;
+	public static AnimEventId AE_METROPOLICE_DEPLOY_MANHACK;
 
 	const SquadSlot SQUAD_SLOT_POLICE_CHARGE_ENEMY = SquadSlot.LastShared;
 	const SquadSlot SQUAD_SLOT_POLICE_HARASS = SquadSlot.LastShared + 1;

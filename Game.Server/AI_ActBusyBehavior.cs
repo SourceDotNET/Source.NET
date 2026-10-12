@@ -170,8 +170,8 @@ public class AI_ActBusyBehavior : AI_Behavior_AI_BaseNPC_100000
 		"4: Display debug output of actbusy logic.\n" +
 		"5: Display safe zone volumes and info.\n");
 
-	static Animevent AE_ACTBUSY_WEAPON_FIRE_ON;
-	static Animevent AE_ACTBUSY_WEAPON_FIRE_OFF;
+	static AnimEventId AE_ACTBUSY_WEAPON_FIRE_ON;
+	static AnimEventId AE_ACTBUSY_WEAPON_FIRE_OFF;
 
 	public const int SCHED_ACTBUSY_START_BUSYING = NEXT_SCHEDULE;
 	public const int SCHED_ACTBUSY_BUSY = NEXT_SCHEDULE + 1;

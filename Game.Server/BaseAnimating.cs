@@ -981,14 +981,14 @@ public partial class BaseAnimating : BaseEntity
 
 	public virtual void HandleAnimEvent(ref AnimEvent animEvent) {
 		if ((animEvent.Type & AnimEventType.NewEventSystem) != 0 && (animEvent.Type & AnimEventType.Server) != 0) {
-			if (animEvent.Event == (int)Animevent.AE_SV_PLAYSOUND) {
+			if (animEvent.Event == (int)AnimEventId.AE_SV_PLAYSOUND) {
 				EmitSound(animEvent.Options);
 				return;
 			}
-			else if (animEvent.Event == (int)Animevent.AE_RAGDOLL) {
+			else if (animEvent.Event == (int)AnimEventId.AE_RAGDOLL) {
 				throw new NotImplementedException();
 			}
-			else if (animEvent.Event == (int)Animevent.AE_SV_DUSTTRAIL) {
+			else if (animEvent.Event == (int)AnimEventId.AE_SV_DUSTTRAIL) {
 				throw new NotImplementedException();
 			}
 		}
