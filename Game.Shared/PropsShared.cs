@@ -1,5 +1,3 @@
-global using static Game.Shared.PropsSharedGlobals;
-
 using CommunityToolkit.HighPerformance;
 
 using Source.Common.Formats.Keyvalues;
@@ -8,11 +6,6 @@ using Source.Common.Mathematics;
 using System.Numerics;
 
 namespace Game.Shared;
-
-public static class PropsSharedGlobals
-{
-
-}
 
 public enum ParsePropDataReturn
 {

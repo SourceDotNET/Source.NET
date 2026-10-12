@@ -75,9 +75,6 @@ public struct AI_SchedLoadStatus
 
 public static class AI_BaseNPCGlobals
 {
-	// TODO: Enum these
-	// need a good name for its enum type
-
 	public const string PLAYER_SQUADNAME = "player_squad";
 
 	public static readonly ConVar ai_show_think_tolerance = new("ai_show_think_tolerance", "0");
