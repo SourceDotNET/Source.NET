@@ -531,9 +531,13 @@ IModelLoader modelloader, ICommandLine commandLine,
 				NetChannel.SetTimeout(Source.Common.Networking.NetChannel.SIGNON_TIME_OUT);
 				NetChannel.SetMaxBufferSize(true, Protocol.MAX_PAYLOAD);
 
+#if GMOD_DLL
+				Host.GMOD_BuildConVarUpdateMessage(NetChannel, FCvar.UserInfo, false);
+#else
 				var convars = new NET_SetConVar();
 				Host.BuildConVarUpdateMessage(convars, FCvar.UserInfo, false);
 				NetChannel.SendNetMsg(convars);
+#endif
 				break;
 			case SignOnState.New:
 				EngineVGui?.UpdateProgressBar(LevelLoadingProgress.SignOnNew);

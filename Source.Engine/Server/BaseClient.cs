@@ -271,6 +271,66 @@ public abstract class BaseClient : IGameEventListener2, IClient, IClientMessageH
 		return false;
 	}
 
+#if GMOD_DLL
+	public static readonly ConVar sv_max_userinfo = new("sv_max_userinfo", "4096", 0, "The max amount of userinfo ConVars clients are allowed to send to the server. Setting this too high may result in loss of performance.");
+	public static readonly ConVar sv_max_userinfo_rate = new("sv_max_userinfo_rate", "1500", 0, "The max amount of userinfo ConVars clients are allowed to send to the server in 1 second.", 0, 60000);
+
+	ushort UserInfoCount;
+	float UserInfoResetTime;
+
+	protected virtual bool ProcessSetConVar(NET_SetConVar msg) {
+		int unique = 0;
+		for (KeyValues? key = ConVars!.GetFirstSubKey(); key != null; key = key.GetNextKey())
+			unique++;
+
+		if (unique >= sv_max_userinfo.GetInt()) {
+			DevMsg($"Player {GetClientName()} has sent too many unique userinfo ConVars, ignoring.\n");
+			return true;
+		}
+
+		for (int i = 0; i < msg.ConVars.Count; i++) {
+			ReadOnlySpan<char> name = msg.ConVars[i].Name;
+			ReadOnlySpan<char> value = msg.ConVars[i].Value;
+
+			bool funky = false;
+			for (ReadOnlySpan<char> s = name; !s.IsStringEmpty; s = s[1..]) {
+				if (!char.IsAsciiLetterOrDigit(s[0]) && s[0] != '_') {
+					funky = true;
+					break;
+				}
+			}
+			if (funky) {
+				DevMsg($"Ignoring convar change request for variable '{name}' from client {GetClientName()}; invalid characters in the variable name\n");
+				continue;
+			}
+
+			if (stricmp(name, "name") == 0) {
+				ClientRequestNameChange(value);
+				continue;
+			}
+
+			int count = UserInfoCount;
+			if (IsActive())
+				UserInfoCount = (ushort)(count = UserInfoCount + 1);
+
+			if (count > sv_max_userinfo_rate.GetInt() || UserInfoCount > 60000) {
+				Disconnect("Client exceeded sv_max_userinfo_rate");
+				return false;
+			}
+
+			if (Platform.Time > UserInfoResetTime) {
+				UserInfoCount = 0;
+				UserInfoResetTime = (float)(Platform.Time + 1.0);
+			}
+
+			ConVars!.SetString(name, value);
+		}
+
+		ConVarsChanged = true;
+
+		return true;
+	}
+#else
 	static double s_dblLastWarned = 0.0;
 	protected virtual bool ProcessSetConVar(NET_SetConVar msg) {
 		for (int i = 0; i < msg.ConVars.Count; i++) {
@@ -322,6 +382,7 @@ public abstract class BaseClient : IGameEventListener2, IClient, IClientMessageH
 
 		return true;
 	}
+#endif
 
 	protected virtual bool ProcessSignonState(NET_SignonState msg) {
 		Common.TimestampedLog($"BaseClient.ProcessSignonState: {msg.SignOnState} (Current: {SignOnState})");
@@ -1203,10 +1264,14 @@ public abstract class BaseClient : IGameEventListener2, IClient, IClientMessageH
 
 		// Write replicated ConVars to non-listen server clients only
 		if (!NetChannel.IsLoopback()) {
+#if GMOD_DLL
+			Host.GMOD_BuildConVarUpdateMessageBF(msg, FCvar.Replicated, true);
+#else
 			NET_SetConVar convars = new();
 			Host.BuildConVarUpdateMessage(convars, FCvar.Replicated, true);
 
 			convars.WriteToBuffer(msg);
+#endif
 		}
 
 		NeedSendServerInfo = false;
