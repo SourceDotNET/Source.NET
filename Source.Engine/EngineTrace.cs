@@ -370,9 +370,7 @@ public abstract class EngineTrace : IEngineTrace
 		throw new NotImplementedException();
 	}
 
-	public ICollideable? GetCollideable(IHandleEntity? entity) {
-		throw new NotImplementedException();
-	}
+	public abstract ICollideable? GetCollideable(IHandleEntity? entity);
 
 	public int GetLeafContainingPoint(in Vector3 test) {
 		throw new NotImplementedException();
@@ -626,6 +624,17 @@ public class EngineTraceClient : EngineTrace
 		return pUnk?.GetCollideable();
 	}
 
+	public override ICollideable? GetCollideable(IHandleEntity? entity) {
+		Assert(entity != null);
+
+		ICollideable? prop = StaticPropMgr().GetStaticProp(entity);
+		if (prop != null)
+			return prop;
+
+		IClientUnknown? unk = entitylist.GetClientUnknownFromHandle(entity!.GetRefEHandle());
+		return unk!.GetCollideable();
+	}
+
 	public override void SetTraceEntity(ICollideable? collideable, ref Trace trace) {
 		if (!trace.DidHit())
 			return;
@@ -656,6 +665,17 @@ public class EngineTraceServer : EngineTrace
 		if (sv.Edicts == null)
 			return null;
 		return sv.Edicts[0].GetCollideable();
+	}
+
+	public override ICollideable? GetCollideable(IHandleEntity? entity) {
+		Assert(entity != null);
+
+		ICollideable? prop = StaticPropMgr().GetStaticProp(entity);
+		if (prop != null)
+			return prop;
+
+		IServerUnknown netUnknown = (IServerUnknown)entity!;
+		return netUnknown.GetCollideable();
 	}
 
 	public override void SetTraceEntity(ICollideable? collideable, ref Trace trace) {
