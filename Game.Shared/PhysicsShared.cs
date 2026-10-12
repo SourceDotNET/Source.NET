@@ -4,6 +4,7 @@ global using static Game.Shared.PhysicsSharedGlobals;
 using Source;
 using Source.Common;
 using Source.Common.Filesystem;
+using Source.Common.Formats.BSP;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.Mathematics;
 using Source.Common.Physics;
@@ -79,6 +80,25 @@ public struct TriggerEvent
 }
 #endif
 
+public class SolidSetDefaults : IVPhysicsKeyHandler
+{
+	Contents ContentsMask;
+
+	public void ParseKeyValue<T>(ref T data, ReadOnlySpan<char> key, ReadOnlySpan<char> value) {
+		if (stricmp(key, "contents") == 0)
+			ContentsMask = (Contents)atoi(value);
+	}
+
+	public void SetDefaults<T>(ref T data) {
+		Assert(typeof(T) == typeof(Solid));
+		ref Solid solid = ref Unsafe.As<T, Solid>(ref data);
+		solid.Params = g_PhysDefaultObjectParams;
+		ContentsMask = Contents.Solid;
+	}
+
+	public Contents GetContentsMask() => ContentsMask;
+}
+
 [EngineComponent]
 public static class PhysicsSharedGlobals
 {
@@ -115,6 +135,8 @@ public static class PhysicsSharedGlobals
 		DragCoefficient = 1.0f,
 		EnableCollisions = true
 	};
+
+	public static readonly SolidSetDefaults g_SolidSetup = new();
 
 	public static void AddSurfacepropFile(ReadOnlySpan<char> filename, IPhysicsSurfaceProps props, IFileSystem fileSystem) {
 		using IFileHandle? file = fileSystem.Open(filename, FileOpenOptions.Read | FileOpenOptions.Binary, "GAME");
