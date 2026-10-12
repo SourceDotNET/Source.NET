@@ -2545,7 +2545,7 @@ public partial class BaseEntity : IServerEntity
 	public void InputKill(InputData inputdata) {
 		BaseEntity? owner = GetOwnerEntity();
 		if (owner != null) {
-			// owner.DeathNotice(this);
+			owner.DeathNotice(this);
 			SetOwnerEntity(null);
 		}
 
@@ -2561,7 +2561,7 @@ public partial class BaseEntity : IServerEntity
 
 		BaseEntity? owner = GetOwnerEntity();
 		if (owner != null) {
-			// owner.DeathNotice(this);
+			owner.DeathNotice(this);
 			SetOwnerEntity(null);
 		}
 

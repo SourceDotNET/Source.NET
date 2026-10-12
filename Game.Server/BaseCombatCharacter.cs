@@ -527,6 +527,22 @@ public partial class BaseCombatCharacter : BaseFlex
 		return bestWeapon;
 	}
 
+	public override void UpdateOnRemove() {
+		int i;
+		for (i = 0; i < MAX_WEAPONS; i++) {
+			if (MyWeapons[i].Get() != null)
+				Util.Remove(MyWeapons[i].Get());
+		}
+
+		BaseEntity? owner = GetOwnerEntity();
+		if (owner != null) {
+			owner.DeathNotice(this);
+			SetOwnerEntity(null);
+		}
+
+		base.UpdateOnRemove();
+	}
+
 	public BaseCombatWeapon? Weapon_Create(ReadOnlySpan<char> weaponName) {
 		BaseCombatWeapon? weapon = (BaseCombatWeapon?)Create(weaponName, GetLocalOrigin(), GetLocalAngles(), this);
 
