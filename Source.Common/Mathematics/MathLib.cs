@@ -1878,6 +1878,66 @@ public static class MathLib
 		MatrixPosition(matrix, out position);
 	}
 
+	public static void MatrixAngles(in Matrix3x4 matrix, out Quaternion q, out Vector3 pos) {
+		float trace;
+		trace = matrix[0, 0] + matrix[1, 1] + matrix[2, 2] + 1.0f;
+		if (trace > 1.0f + FLT_EPSILON) {
+			q.X = matrix[2, 1] - matrix[1, 2];
+			q.Y = matrix[0, 2] - matrix[2, 0];
+			q.Z = matrix[1, 0] - matrix[0, 1];
+			q.W = trace;
+		}
+		else if (matrix[0, 0] > matrix[1, 1] && matrix[0, 0] > matrix[2, 2]) {
+			trace = 1.0f + matrix[0, 0] - matrix[1, 1] - matrix[2, 2];
+			q.X = trace;
+			q.Y = matrix[1, 0] + matrix[0, 1];
+			q.Z = matrix[0, 2] + matrix[2, 0];
+			q.W = matrix[2, 1] - matrix[1, 2];
+		}
+		else if (matrix[1, 1] > matrix[2, 2]) {
+			trace = 1.0f + matrix[1, 1] - matrix[0, 0] - matrix[2, 2];
+			q.X = matrix[0, 1] + matrix[1, 0];
+			q.Y = trace;
+			q.Z = matrix[2, 1] + matrix[1, 2];
+			q.W = matrix[0, 2] - matrix[2, 0];
+		}
+		else {
+			trace = 1.0f + matrix[2, 2] - matrix[0, 0] - matrix[1, 1];
+			q.X = matrix[0, 2] + matrix[2, 0];
+			q.Y = matrix[2, 1] + matrix[1, 2];
+			q.Z = trace;
+			q.W = matrix[1, 0] - matrix[0, 1];
+		}
+
+		QuaternionNormalize2(ref q);
+
+		MatrixGetColumn(matrix, 3, out pos);
+	}
+
+	public static void MatrixAngles(in Matrix3x4 matrix, out RadianEuler angles) {
+		MatrixAngles(matrix, out QAngle degrees);
+
+		angles.X = DEG2RAD(degrees.Z);
+		angles.Y = DEG2RAD(degrees.X);
+		angles.Z = DEG2RAD(degrees.Y);
+	}
+
+	public static void QuaternionAngles(in Quaternion q, out RadianEuler angles) {
+		QuaternionMatrix(q, out Matrix3x4 matrix);
+		MatrixAngles(matrix, out angles);
+	}
+
+	public static void AngleMatrix(in RadianEuler angles, out Matrix3x4 matrix) {
+		QAngle quakeEuler = new(RAD2DEG(angles.Y), RAD2DEG(angles.Z), RAD2DEG(angles.X));
+
+		AngleMatrix(quakeEuler, out matrix);
+	}
+
+	public static void AngleMatrix(in RadianEuler angles, in Vector3 position, out Matrix3x4 matrix) {
+		AngleMatrix(angles, out matrix);
+		MatrixSetColumn(position, 3, ref matrix);
+	}
+
 	public static void MatrixAngles(in Matrix3x4 matrix, out QAngle angles) {
 		angles = default;
 		Span<float> forward = stackalloc float[3];
