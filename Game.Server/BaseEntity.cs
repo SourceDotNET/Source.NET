@@ -1368,26 +1368,56 @@ public partial class BaseEntity : IServerEntity
 		switch (GetMoveType()) {
 			case Source.MoveType.VPhysics: {
 					if (GetMoveParent() != null) {
+#if !GMOD_DLL
 						DevWarning($"Updating physics on object in hierarchy {GetClassname()}!\n");
+#endif
 						return;
 					}
 
 					physics.GetPosition(out Vector3 origin, out QAngle angles);
 
-					if (!IsEntityQAngleReasonable(angles))
+					if (!IsEntityQAngleReasonable(angles)) {
+						if (CheckEmitReasonablePhysicsSpew())
+							Warning($"Ignoring bogus angles ({angles.X:F6},{angles.Y:F6},{angles.Z:F6}) from vphysics! (entity {GetDebugName()})\n");
 						angles = vec3_angle;
+					}
+					Vector3 prevOrigin = GetAbsOrigin();
 
 					if (IsEntityPositionReasonable(origin))
 						SetAbsOrigin(origin);
+					else {
+						if (CheckEmitReasonablePhysicsSpew())
+							Warning($"Ignoring unreasonable position ({origin.X:F6},{origin.Y:F6},{origin.Z:F6}) from vphysics! (entity {GetDebugName()})\n");
+					}
 
 					angles.X = MathLib.AngleNormalize(angles.X);
 					angles.Y = MathLib.AngleNormalize(angles.Y);
 					angles.Z = MathLib.AngleNormalize(angles.Z);
 					SetAbsAngles(angles);
+
+					PhysicsTouchTriggers(prevOrigin);
+					PhysicsRelinkChildren(gpGlobals.FrameTime);
 					break;
 				}
 			default:
 				break;
+		}
+	}
+
+	public void PhysicsRelinkChildren(TimeUnit_t dt) {
+		BaseEntity? child;
+
+		for (child = FirstMoveChild(); child != null; child = child.NextMovePeer()) {
+			if (child.IsSolid() || child.IsSolidFlagSet(SolidFlags.Trigger))
+				child.PhysicsTouchTriggers();
+
+			if (child.GetMoveType() != Source.MoveType.VPhysics)
+				child.UpdatePhysicsShadowToCurrentPosition(dt);
+			else if (child.GetOwnerEntity() != this)
+				Assert(false);
+
+			if (child.FirstMoveChild() != null)
+				child.PhysicsRelinkChildren(dt);
 		}
 	}
 
