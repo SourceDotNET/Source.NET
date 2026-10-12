@@ -375,6 +375,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		DEFINE.OUTPUT(nameof(OnLostPlayerLOS), "OnLostPlayerLOS", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnLostPlayer), "OnLostPlayer", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnWake), "OnWake", eventFuncs),
+		DEFINE.FIELD(nameof(DidDeathCleanup), FieldType.Boolean),
+		DEFINE.OUTPUT(nameof(OnDeath), "OnDeath", eventFuncs),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
@@ -530,6 +532,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public OutputEvent OnLostEnemy = new();
 	public OutputEvent OnLostPlayer = new();
 	public OutputEvent OnWake = new();
+	public OutputEvent OnDeath = new();
+	public bool DidDeathCleanup;
 	public bool WakeSquad;
 	public long WakeTick;
 	public OutputEHANDLE OnFoundEnemy = new();
@@ -4967,6 +4971,19 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				TaskComplete();
 				break;
 
+			case TASK_DIE:
+				GetNavigator()!.StopMoving();
+				SetIdealActivity(GetDeathActivity());
+				LifeState = (int)Source.LifeState.Dying;
+				break;
+
+			case TASK_SOUND_DIE: {
+					TakeDamageInfo info = new();
+					DeathSound(info);
+					TaskComplete();
+					break;
+				}
+
 			case TASK_SCRIPT_RUN_TO_TARGET:
 			case TASK_SCRIPT_WALK_TO_TARGET:
 			case TASK_SCRIPT_CUSTOM_MOVE_TO_TARGET:
@@ -5200,9 +5217,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_STRAFE_PATH:
 			case TASK_SMALL_FLINCH:
 			case TASK_BIG_FLINCH:
-			case TASK_DIE:
 			case TASK_SOUND_WAKE:
-			case TASK_SOUND_DIE:
 			case TASK_SOUND_IDLE:
 			case TASK_SOUND_PAIN:
 			case TASK_SOUND_ANGRY:
@@ -5469,6 +5484,10 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 					break;
 				}
 
+			case TASK_DIE:
+				RunDieTask();
+				break;
+
 			case TASK_SCRIPT_RUN_TO_TARGET:
 			case TASK_SCRIPT_WALK_TO_TARGET:
 			case TASK_SCRIPT_CUSTOM_MOVE_TO_TARGET:
@@ -5559,7 +5578,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_MOVE_AWAY_PATH:
 			case TASK_WEAPON_RUN_PATH:
 			case TASK_ITEM_RUN_PATH:
-			case TASK_DIE:
 			case TASK_WAIT_FOR_SPEAK_FINISH:
 			case TASK_RANGE_ATTACK1:
 			case TASK_RANGE_ATTACK2:
@@ -5892,7 +5910,111 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public virtual int SelectCombatSchedule() => throw new NotImplementedException();
 
-	public virtual int SelectDeadSchedule() => throw new NotImplementedException();
+	public virtual int SelectDeadSchedule() {
+		if (BecomeRagdollOnClient(vec3_origin)) {
+			CleanupOnDeath();
+			return SCHED_DIE_RAGDOLL;
+		}
+
+		if (LifeState == (int)Source.LifeState.Dead)
+			return SCHED_NONE;
+
+		CleanupOnDeath();
+		return SCHED_DIE;
+	}
+
+	public void RunDieTask() {
+		AutoMovement();
+
+		if (IsActivityFinished() && GetCycle() >= 1.0f) {
+			LifeState = (int)Source.LifeState.Dead;
+
+			SetThink(null);
+			StopAnimation();
+
+			if (!BBoxFlat())
+				Util.SetSize(this, new Vector3(-4, -4, 0), new Vector3(4, 4, 1));
+			else
+				Util.SetSize(this, WorldAlignMins(), new Vector3(WorldAlignMaxs().X, WorldAlignMaxs().Y, WorldAlignMins().Z + 1));
+		}
+	}
+
+	public bool BBoxFlat() {
+		Vector3 point;
+		float xSize, ySize;
+		float length;
+		float length2;
+
+		xSize = WorldAlignSize().X / 2;
+		ySize = WorldAlignSize().Y / 2;
+
+		point.X = GetAbsOrigin().X + xSize;
+		point.Y = GetAbsOrigin().Y + ySize;
+		point.Z = GetAbsOrigin().Z;
+
+		Util.TraceLine(point, point - new Vector3(0, 0, 100), Mask.NPCSolidBrushOnly, this, Source.CollisionGroup.None, out Trace tr);
+		length = (point - tr.EndPos).Length();
+
+		point.X = GetAbsOrigin().X - xSize;
+		point.Y = GetAbsOrigin().Y - ySize;
+
+		Util.TraceLine(point, point - new Vector3(0, 0, 100), Mask.NPCSolidBrushOnly, this, Source.CollisionGroup.None, out tr);
+		length2 = (point - tr.EndPos).Length();
+		if (length2 > length)
+			return false;
+		length = length2;
+
+		point.X = GetAbsOrigin().X - xSize;
+		point.Y = GetAbsOrigin().Y + ySize;
+		Util.TraceLine(point, point - new Vector3(0, 0, 100), Mask.NPCSolidBrushOnly, this, Source.CollisionGroup.None, out tr);
+		length2 = (point - tr.EndPos).Length();
+		if (length2 > length)
+			return false;
+		length = length2;
+
+		point.X = GetAbsOrigin().X + xSize;
+		point.Y = GetAbsOrigin().Y - ySize;
+		Util.TraceLine(point, point - new Vector3(0, 0, 100), Mask.NPCSolidBrushOnly, this, Source.CollisionGroup.None, out tr);
+		length2 = (point - tr.EndPos).Length();
+		if (length2 > length)
+			return false;
+		length = length2;
+
+		return true;
+	}
+
+	public void CleanupOnDeath(BaseEntity? culprit = null, bool fireDeathOutput = true) {
+		if (!DidDeathCleanup) {
+			DidDeathCleanup = true;
+
+			if (NPCState == NPCState.Script && Cine.Get() != null)
+				Cine.Get()!.CancelScript();
+
+			if (GetHintNode() != null) {
+				GetHintNode()!.Unlock(0.0f);
+				SetHintNode(null);
+			}
+
+			if (fireDeathOutput)
+				OnDeath.FireOutput(culprit, this);
+
+			VacateStrategySlot();
+
+			if (Squad != null) {
+				if (NPCState == NPCState.Idle && culprit != null) {
+					if (GetEnemies().GetDangerMemory() == null)
+						UpdateEnemyMemory(culprit, GetAbsOrigin());
+				}
+
+				Squad.RemoveFromSquad(this, true);
+				Squad = null;
+			}
+
+			SceneEntityGlobals.RemoveActorFromScriptedScenes(this, false);
+		}
+		else
+			DevMsg("Unexpected double-death-cleanup\n");
+	}
 
 	public virtual int SelectScriptSchedule() {
 		Assert(Cine.Get() != null);

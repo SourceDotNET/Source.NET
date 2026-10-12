@@ -98,6 +98,101 @@ public partial class BaseCombatCharacter : BaseFlex
 	public virtual Vector3 EyeDirection3D() => HeadDirection3D(); // No eye motion so just return head dir
 
 
+	public HitGroup LastHitGroupValue;
+	public HitGroup LastHitGroup() => LastHitGroupValue;
+
+	public virtual Activity GetDeathActivity() {
+		Activity deathActivity;
+		bool triedDirection;
+		float dot;
+		Vector3 src;
+
+		if (IsPlayer()) {
+			switch (random.RandomInt(0, 7)) {
+				case 0: return Activity.ACT_DIESIMPLE;
+				case 1: return Activity.ACT_DIEBACKWARD;
+				case 2: return Activity.ACT_DIEFORWARD;
+				case 3: return Activity.ACT_DIEVIOLENT;
+				case 4: return Activity.ACT_DIE_HEADSHOT;
+				case 5: return Activity.ACT_DIE_CHESTSHOT;
+				case 6: return Activity.ACT_DIE_GUTSHOT;
+				case 7: return Activity.ACT_DIE_BACKSHOT;
+			}
+		}
+
+		src = WorldSpaceCenter();
+
+		triedDirection = false;
+		deathActivity = Activity.ACT_DIESIMPLE;
+
+		MathLib.AngleVectors(GetLocalAngles(), out Vector3 forward);
+		dot = -Vector3.Dot(forward, g_vecAttackDir);
+
+		switch (LastHitGroupValue) {
+			case HitGroup.Head:
+				deathActivity = Activity.ACT_DIE_HEADSHOT;
+				break;
+
+			case HitGroup.Stomach:
+				deathActivity = Activity.ACT_DIE_GUTSHOT;
+				break;
+
+			case HitGroup.Generic:
+				triedDirection = true;
+
+				if (dot > 0.3)
+					deathActivity = Activity.ACT_DIEFORWARD;
+				else if (dot <= -0.3)
+					deathActivity = Activity.ACT_DIEBACKWARD;
+				break;
+
+			default:
+				triedDirection = true;
+
+				if (dot > 0.3)
+					deathActivity = Activity.ACT_DIEFORWARD;
+				else if (dot <= -0.3)
+					deathActivity = Activity.ACT_DIEBACKWARD;
+				break;
+		}
+
+		if (SelectWeightedSequence(deathActivity) == StudioHdr.ACTIVITY_NOT_AVAILABLE) {
+			if (triedDirection)
+				deathActivity = Activity.ACT_DIESIMPLE;
+			else {
+				if (dot > 0.3)
+					deathActivity = Activity.ACT_DIEFORWARD;
+				else if (dot <= -0.3)
+					deathActivity = Activity.ACT_DIEBACKWARD;
+			}
+		}
+
+		if (SelectWeightedSequence(deathActivity) == StudioHdr.ACTIVITY_NOT_AVAILABLE) {
+			deathActivity = Activity.ACT_DIESIMPLE;
+
+			if (SelectWeightedSequence(deathActivity) == StudioHdr.ACTIVITY_NOT_AVAILABLE)
+				Msg($"ERROR! {GetModelName()} missing ACT_DIESIMPLE\n");
+		}
+
+		if (deathActivity == Activity.ACT_DIEFORWARD) {
+			Util.TraceHull(src, src + forward * 64, new Vector3(-16, -16, -18),
+				new Vector3(16, 16, 18), Mask.Solid, this, Source.CollisionGroup.None, out Trace tr);
+
+			if (tr.Fraction != 1.0)
+				deathActivity = Activity.ACT_DIESIMPLE;
+		}
+
+		if (deathActivity == Activity.ACT_DIEBACKWARD) {
+			Util.TraceHull(src, src - forward * 64, new Vector3(-16, -16, -18),
+				new Vector3(16, 16, 18), Mask.Solid, this, Source.CollisionGroup.None, out Trace tr);
+
+			if (tr.Fraction != 1.0)
+				deathActivity = Activity.ACT_DIESIMPLE;
+		}
+
+		return deathActivity;
+	}
+
 	public virtual bool FInViewCone(BaseEntity entity) => FInViewCone(entity.WorldSpaceCenter());
 
 	public virtual bool FInViewCone(in Vector3 spot) {

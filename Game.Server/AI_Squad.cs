@@ -35,5 +35,6 @@ public class AI_Squad
 	public AI_BaseNPC? GetNextMember(ref int iter) => throw new NotImplementedException();
 	public void VacateStrategySlot(BaseEntity? enemy, SquadSlot slot) => throw new NotImplementedException();
 	public bool OccupyStrategySlotRange(BaseEntity? enemy, SquadSlot slotIDStart, SquadSlot slotIDEnd, ref SquadSlot slot) => throw new NotImplementedException();
+	public void RemoveFromSquad(AI_BaseNPC npc, bool death = false) => throw new NotImplementedException();
 	public void UpdateEnemyMemory(AI_BaseNPC updater, BaseEntity enemy, in Vector3 position) => throw new NotImplementedException();
 }

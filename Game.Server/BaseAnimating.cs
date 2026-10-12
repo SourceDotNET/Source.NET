@@ -534,7 +534,52 @@ public partial class BaseAnimating : BaseEntity
 		return pcache;
 	}
 
+	public void StopAnimation() => PlaybackRate = 0;
+
+	public virtual void ClampRagdollForce(in Vector3 forceIn, out Vector3 forceOut) => forceOut = forceIn;
+
+	public virtual bool BecomeRagdollOnClient(in Vector3 force) {
+		if (CanBecomeRagdoll()) {
+			VPhysicsDestroyObject();
+			AddSolidFlags(SolidFlags.NotSolid);
+			RenderFX = (byte)RenderFx.Ragdoll;
+
+			ClampRagdollForce(force, out Vector3 clampedForce);
+			Force = clampedForce;
+
+			SetParent(null);
+
+			AddFlag(EntityFlags.TransRagdoll);
+
+			SetMoveType(Source.MoveType.None);
+			SetThink(null);
+
+			SetNextThink(gpGlobals.CurTime + 2.0f);
+			SetThink(SUB_Remove);
+
+			if (EffectEntity.Get() is EntityFlame fireChild) {
+				fireChild.SetThink(fireChild.SUB_Remove);
+				fireChild.SetNextThink(gpGlobals.CurTime + 0.1f);
+			}
+
+			return true;
+		}
+		return false;
+	}
+
 	public bool IsRagdoll() => RenderFX == (byte)RenderFx.Ragdoll;
+
+	public virtual bool CanBecomeRagdoll() {
+		int ragdollSequence = SelectWeightedSequence(Activity.ACT_DIERAGDOLL);
+
+		if (ragdollSequence == StudioHdr.ACTIVITY_NOT_AVAILABLE)
+			return false;
+
+		if ((GetFlags() & EntityFlags.TransRagdoll) != 0)
+			return false;
+
+		return true;
+	}
 
 	public virtual void GetSkeleton(StudioHdr? studioHdr, Span<Vector3> pos, Span<Quaternion> q, int boneMask) {
 		if (studioHdr == null) {
