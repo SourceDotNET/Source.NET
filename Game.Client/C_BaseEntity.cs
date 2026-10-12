@@ -34,6 +34,13 @@ public static class BaseEntityConsts
 	public const int MULTIPLAYER_BACKUP = 90;
 }
 
+public enum CollideType
+{
+	ShouldNotCollide = 0,
+	ShouldCollide,
+	ShouldRespond
+}
+
 public enum InterpolateResult
 {
 	Stop = 0,
@@ -182,6 +189,10 @@ public partial class C_BaseEntity : IClientEntity
 	public virtual bool IsNextBot() => false;
 	public virtual bool IsBaseCombatWeapon() => false;
 	public virtual bool IsCombatItem() => false;
+
+	public void SetClassname(ReadOnlySpan<char> classname) {
+		// todo
+	}
 
 	static readonly char[] GetClassname__outstr = new char[256];
 	public ReadOnlySpan<char> GetClassname() {
@@ -2025,7 +2036,31 @@ public partial class C_BaseEntity : IClientEntity
 		return gpGlobals.CurTime;
 	}
 
-	private void CreateShadow() {
+	public static bool AllowPrecache;
+	public static bool IsPrecacheAllowed() => AllowPrecache;
+	public static void SetAllowPrecache(bool allow) => AllowPrecache = allow;
+
+	public void SetBlocksLOS(bool blocksLOS) {
+		if (blocksLOS)
+			RemoveEFlags(EFL.DontBlockLOS);
+		else
+			AddEFlags(EFL.DontBlockLOS);
+	}
+
+	public virtual CollideType GetCollideType() => CollideType.ShouldNotCollide;
+
+	public void UpdatePartitionListEntry() {
+		PartitionListMask list = PartitionListMask.ClientNonStaticEdicts;
+		CollideType shouldCollide = GetCollideType();
+		if (shouldCollide == CollideType.ShouldCollide)
+			list |= PartitionListMask.ClientSolidEdicts;
+		else if (shouldCollide == CollideType.ShouldRespond)
+			list |= PartitionListMask.ClientResponsiveEdicts;
+
+		partition.RemoveAndInsert((int)(PartitionListMask.ClientSolidEdicts | PartitionListMask.ClientResponsiveEdicts | PartitionListMask.ClientNonStaticEdicts), (int)list, CollisionProp().GetPartitionHandle());
+	}
+
+	public void CreateShadow() {
 		ShadowType shadowType = ShadowCastType();
 		if (shadowType == ShadowType.None)
 			DestroyShadow();
