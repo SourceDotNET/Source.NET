@@ -60,6 +60,19 @@ public enum AI_DebugFlags
 	StepAI = 0x00000002
 }
 
+public struct UnreachableEnt
+{
+	public EHANDLE UnreachableEntity;
+	public TimeUnit_t ExpireTime;
+	public Vector3 LocationWhenUnreachable;
+}
+
+public struct AI_SchedLoadStatus
+{
+	public bool Valid;
+	public int Signature;
+}
+
 public static class AI_BaseNPCGlobals
 {
 	// TODO: Enum these
@@ -105,6 +118,8 @@ public static class AI_BaseNPCGlobals
 	public static readonly ConVar g_IgnorePlayers = new("ai_ignoreplayers", "0", FCvar.Notify);
 	public static readonly ConVar ai_LOS_mode = new("ai_LOS_mode", "0", FCvar.Replicated);
 	public static readonly ConVar ai_auto_contact_solver = new("ai_auto_contact_solver", "1");
+	public static readonly ConVar ai_reaction_delay_idle = new("ai_reaction_delay_idle", "0.3");
+	public static readonly ConVar ai_reaction_delay_alert = new("ai_reaction_delay_alert", "0.1");
 
 	public static bool ShouldUseEfficiency() => ai_use_think_optimizations.GetBool() && ai_use_efficiency.GetBool();
 	public static bool ShouldUseFrameThinkLimits() => ai_use_think_optimizations.GetBool() && ai_use_frame_think_limits.GetBool();
@@ -112,6 +127,61 @@ public static class AI_BaseNPCGlobals
 	public static bool ShouldDefaultEfficient() => ai_use_think_optimizations.GetBool() && ai_default_efficient.GetBool();
 
 	public static readonly AI_Manager g_AI_Manager = new();
+
+	public static bool FBoxVisible(BaseEntity looker, BaseEntity target, out Vector3 targetOrigin, float size = 0.0f) {
+		targetOrigin = default;
+
+		if (((int)looker.GetWaterLevel() != 3 && (int)target.GetWaterLevel() == 3)
+			|| ((int)looker.GetWaterLevel() == 3 && (int)target.GetWaterLevel() == 0))
+			return false;
+
+		Vector3 lookerOrigin = looker.EyePosition();
+		for (int i = 0; i < 5; i++) {
+			Vector3 vecTarget = target.GetAbsOrigin();
+			vecTarget.X += random.RandomFloat(target.WorldAlignMins().X + size, target.WorldAlignMaxs().X - size);
+			vecTarget.Y += random.RandomFloat(target.WorldAlignMins().Y + size, target.WorldAlignMaxs().Y - size);
+			vecTarget.Z += random.RandomFloat(target.WorldAlignMins().Z + size, target.WorldAlignMaxs().Z - size);
+
+			Util.TraceLine(lookerOrigin, vecTarget, Mask.BlockLOS, looker, CollisionGroup.None, out Trace tr);
+
+			if (tr.Fraction == 1.0) {
+				targetOrigin = vecTarget;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static void AI_TraceLOS(in Vector3 absStart, in Vector3 absEnd, BaseEntity? looker, out Trace tr) {
+		if (ai_LOS_mode.GetBool()) {
+			Util.TraceLine(absStart, absEnd, Mask.BlockLOS, looker, CollisionGroup.None, out tr);
+			return;
+		}
+
+		TraceFilterLOS traceFilter = new(looker, CollisionGroup.None);
+		Util.TraceLine(absStart, absEnd, Mask.BlockLOSAndNPCs, ref traceFilter, out tr);
+	}
+
+	public static bool AI_DoLoadSchedules(Func<bool> baseLoad, Action initCustomSchedules, ref AI_SchedLoadStatus loadStatus) {
+		baseLoad();
+
+		if (loadStatus.Signature != g_AI_SchedulesManager.GetScheduleLoadSignature()) {
+			initCustomSchedules();
+			loadStatus.Valid = true;
+			loadStatus.Signature = g_AI_SchedulesManager.GetScheduleLoadSignature();
+		}
+		return loadStatus.Valid;
+	}
+
+	public static bool ValidateConditionLimits(string newCondition) {
+		int globalConditions = AI_BaseNPC.GetSchedulingSymbols().NumConditions();
+		if (globalConditions >= MAX_CONDITIONS) {
+			AssertMsg(false, $"Exceeded max number of conditions ({MAX_CONDITIONS}), ignoring condition {newCondition}\n");
+			DevWarning($"Exceeded max number of conditions ({MAX_CONDITIONS}), ignoring condition {newCondition}\n");
+			return false;
+		}
+		return true;
+	}
 
 	public static readonly Stopwatch g_AIRunTimer = new();
 
@@ -190,6 +260,13 @@ public enum ScriptStateType
 	WalkToMark,
 	RunToMark,
 	CustomMoveToMark,
+}
+
+public enum CanPlaySequence_t
+{
+	CannotPlay = 0,
+	CanPlayNow,
+	CanPlayEnqueued,
 }
 
 public enum NPCInteractionState
@@ -282,6 +359,25 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public static readonly new DataMap DataDesc = new(typeof(AI_BaseNPC), BaseEntity.DataDesc, [
 		DEFINE.KEYFIELD(nameof(SpawnEquipment), FieldType.String, "additionalequipment"),
+		DEFINE.KEYFIELD(nameof(HintGroup), FieldType.String, "hintgroup"),
+		DEFINE.KEYFIELD(nameof(HintGroupNavLimiting), FieldType.Boolean, "hintlimiting"),
+		DEFINE.KEYFIELD(nameof(IgnoreUnseenEnemies), FieldType.Boolean, "ignoreunseenenemies"),
+		DEFINE.KEYFIELD(nameof(EnemyFilterName), FieldType.String, "enemyfilter"),
+		DEFINE.KEYFIELD(nameof(WakeSquad), FieldType.Boolean, "wakesquad"),
+
+		DEFINE.OUTPUT(nameof(OnHearWorld), "OnHearWorld", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnHearPlayer), "OnHearPlayer", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnHearCombat), "OnHearCombat", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnFoundEnemy), "OnFoundEnemy", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnLostEnemyLOS), "OnLostEnemyLOS", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnLostEnemy), "OnLostEnemy", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnFoundPlayer), "OnFoundPlayer", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnLostPlayerLOS), "OnLostPlayerLOS", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnLostPlayer), "OnLostPlayer", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnWake), "OnWake", eventFuncs),
+		DEFINE.FIELD(nameof(DidDeathCleanup), FieldType.Boolean),
+		DEFINE.OUTPUT(nameof(OnDeath), "OnDeath", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnDenyCommanderUse), "OnDenyCommanderUse", eventFuncs),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
@@ -354,6 +450,10 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public static AI_DebugFlags DebugBits = 0;
 	public static int DebugPauseIndex = -1;
 
+	public const int NEXT_SCHEDULE = LAST_SHARED_SCHEDULE;
+	public const int NEXT_TASK = LAST_SHARED_TASK;
+	public const int NEXT_CONDITION = (int)SCOND_t.LAST_SHARED_CONDITION;
+
 	public static readonly AI_ClassScheduleIdSpace ClassScheduleIdSpace = new(true);
 	public static readonly AI_GlobalScheduleNamespace SchedulingSymbols = new();
 
@@ -420,6 +520,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public Handle<AI_BaseNPC> ForcedInteractionPartner = new();
 	public NPCInteractionState InteractionState;
 	public Vector3 SavePosition;
+	public Vector3 LastPosition;
 	public Vector3 EyeLookTarget;
 	public Vector3 CurEyeTarget;
 	public float EyeIntegRate = 0.95f;
@@ -431,6 +532,31 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public OutputEvent OnHearCombat = new();
 	public OutputEvent OnLostEnemy = new();
 	public OutputEvent OnLostPlayer = new();
+	public OutputEvent OnWake = new();
+	public OutputEvent OnDeath = new();
+	public OutputEvent OnDenyCommanderUse = new();
+	public bool DidDeathCleanup;
+	public bool WakeSquad;
+	public long WakeTick;
+	public OutputEHANDLE OnFoundEnemy = new();
+	public OutputEvent OnLostEnemyLOS = new();
+	public OutputEHANDLE OnFoundPlayer = new();
+	public OutputEvent OnLostPlayerLOS = new();
+
+	public readonly AI_Enemies Enemies = new();
+	public bool IgnoreUnseenEnemies;
+	public TimeUnit_t AcceptableTimeSeenEnemy;
+	public readonly SimpleSimTimer FailChooseEnemyTimer = new();
+	public readonly SimpleSimTimer UpdateEnemyPosTimer = new();
+	public TimeUnit_t SoundWaitTime;
+	public SentencePriority SoundPriorityValue;
+	public bool SkippedChooseEnemy;
+	public WorldSoundInstance LockedBestSound = new();
+	public Handle<BaseFilter> EnemyFilter = new();
+	public string? EnemyFilterName;
+	public EHANDLE EnemyOccluder = new();
+	public SquadSlot MySquadSlot = SquadSlot.None;
+	public readonly List<UnreachableEnt> UnreachableEnts = [];
 
 	static readonly BASEPTR CallNPCThinkPtr = static self => ((AI_BaseNPC)self).CallNPCThink();
 
@@ -509,6 +635,34 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public static StringRegistry? ActivitySR;
 	public static StringRegistry? EventSR;
+	public static int NumEvents;
+
+	public static readonly AI_GlobalNamespace SquadSlotNamespace = new();
+	public static readonly AI_LocalIdSpace SquadSlotIdSpace = new(true);
+
+	public static void AddEventToSR(ReadOnlySpan<char> eventName, int eventID) {
+		Assert(EventSR != null);
+
+		EventSR!.AddString(eventName, eventID);
+		NumEvents++;
+	}
+
+	public static AnimEventId DeclareAnimEvent(ReadOnlySpan<char> name) {
+		AnimEventId animEvent = EventList.RegisterPrivateEvent(name);
+		AddEventToSR(name, (int)animEvent);
+		return animEvent;
+	}
+
+	public static void InitDefaultSquadSlotSR() {
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_ATTACK1", AI_RemapToGlobal((int)SquadSlot.Attack1));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_ATTACK2", AI_RemapToGlobal((int)SquadSlot.Attack2));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_INVESTIGATE_SOUND", AI_RemapToGlobal((int)SquadSlot.InvestigateSound));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_EXCLUSIVE_HANDSIGN", AI_RemapToGlobal((int)SquadSlot.ExclusiveHandsign));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_EXCLUSIVE_RELOAD", AI_RemapToGlobal((int)SquadSlot.ExclusiveReload));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_PICKUP_WEAPON1", AI_RemapToGlobal((int)SquadSlot.PickupWeapon1));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_PICKUP_WEAPON2", AI_RemapToGlobal((int)SquadSlot.PickupWeapon2));
+		SquadSlotNamespace.AddSymbol("SQUAD_SLOT_SPECIAL_ATTACK", AI_RemapToGlobal((int)SquadSlot.SpecialAttack));
+	}
 
 	public static int GetScheduleID(ReadOnlySpan<char> schedName) => GetSchedulingSymbols().ScheduleSymbolToId(schedName);
 	public static int GetTaskID(ReadOnlySpan<char> taskName) => GetSchedulingSymbols().TaskSymbolToId(taskName);
@@ -856,6 +1010,12 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 		ActivitySR.AddString(actName, actID);
 		NumActivities++;
+	}
+
+	public static Activity DeclareActivity(ReadOnlySpan<char> name) {
+		Activity activity = ActivityList.RegisterPrivateActivity(name);
+		AddActivityToSR(name, (int)activity);
+		return activity;
 	}
 
 	public static void InitDefaultActivitySR() {
@@ -2466,191 +2626,407 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		InitDefaultConditionSR();
 		InitDefaultTaskSR();
 		InitDefaultActivitySR();
+		InitDefaultSquadSlotSR();
 	}
 
-	public static bool LoadDefaultSchedules() {
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_IDLE_STAND, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_IDLE_WALK, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_IDLE_WANDER, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_WAKE_ANGRY, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_ALERT_FACE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_ALERT_FACE_BESTSOUND, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_ALERT_REACT_TO_COMBAT_SOUND, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_ALERT_SCAN, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_ALERT_STAND, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_ALERT_WALK, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_INVESTIGATE_SOUND, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_COMBAT_FACE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_COMBAT_SWEEP, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_COMBAT_WALK, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_FEAR_FACE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_COMBAT_STAND, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_CHASE_ENEMY, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_CHASE_ENEMY_FAILED, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_VICTORY_DANCE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_TARGET_FACE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_TARGET_CHASE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SMALL_FLINCH, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_BIG_FLINCH, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_BACK_AWAY_FROM_ENEMY, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_MOVE_AWAY_FROM_ENEMY, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_BACK_AWAY_FROM_SAVE_POSITION, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_TAKE_COVER_FROM_ENEMY, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_TAKE_COVER_FROM_BEST_SOUND, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_FLEE_FROM_BEST_SOUND, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_TAKE_COVER_FROM_ORIGIN, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_FAIL_TAKE_COVER, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_RUN_FROM_ENEMY, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_RUN_FROM_ENEMY_FALLBACK, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_MOVE_TO_WEAPON_RANGE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_ESTABLISH_LINE_OF_FIRE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SHOOT_ENEMY_COVER, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_ESTABLISH_LINE_OF_FIRE_FALLBACK, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_PRE_FAIL_ESTABLISH_LINE_OF_FIRE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_FAIL_ESTABLISH_LINE_OF_FIRE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_COWER, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_MELEE_ATTACK1, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_MELEE_ATTACK2, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_RANGE_ATTACK1, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_RANGE_ATTACK2, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SPECIAL_ATTACK1, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SPECIAL_ATTACK2, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_STANDOFF, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_ARM_WEAPON, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_DISARM_WEAPON, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_HIDE_AND_RELOAD, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_RELOAD, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_AMBUSH, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_DIE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_DIE_RAGDOLL, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_WAIT_FOR_SCRIPT, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SCRIPTED_WALK, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SCRIPTED_RUN, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SCRIPTED_CUSTOM_MOVE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SCRIPTED_WAIT, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SCRIPTED_FACE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SCENE_GENERIC, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_NEW_WEAPON, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_NEW_WEAPON_CHEAT, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SWITCH_TO_PENDING_WEAPON, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_GET_HEALTHKIT, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_MOVE_AWAY, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_MOVE_AWAY_FAIL, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_MOVE_AWAY_END, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_WAIT_FOR_SPEAK_FINISH, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_FORCED_GO, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_FORCED_GO_RUN, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_PATROL_WALK, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_COMBAT_PATROL, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_PATROL_RUN, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_RUN_RANDOM, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_FAIL, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_FAIL_NOSTOP, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_FALL_TO_GROUND, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_DROPSHIP_DUSTOFF, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_FLINCH_PHYSICS, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_RUN_FROM_ENEMY_MOB, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_DUCK_DODGE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_NPC_FREEZE, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_INTERACTION_MOVE_TO_PARTNER, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_INTERACTION_WAIT_FOR_PARTNER, ClassScheduleIdSpace))
-			return false;
-		if (!g_AI_SchedulesManager.LoadSchedulesFromBuffer("CAI_BaseNPC", g_pszSCHED_SLEEP, ClassScheduleIdSpace))
-			return false;
-
-		return true;
-	}
+	public static bool LoadDefaultSchedules() => g_AI_SchedulesManager.DefineSchedules("CAI_BaseNPC", ClassScheduleIdSpace, DefaultSchedules);
 
 	public NPCState GetState() => NPCState;
 
 	public bool IsInAScript() => InAScript;
 	public void SetInAScript(bool script) => InAScript = script;
 
-	public bool CineCleanup() => throw new NotImplementedException();
+	public NPCState GetIdealState() => IdealNPCState;
+
+	public override bool IsTemplate() => HasSpawnFlags(SF_NPC_TEMPLATE);
+
+	public static bool FindSpotForNPCInRadius(out Vector3 result, in Vector3 startPos, AI_BaseNPC npc, float radius, bool outOfPlayerViewcone = false) {
+		BasePlayer? player = npc.AI_GetClosestPlayer();
+		QAngle fan;
+
+		fan.X = 0;
+		fan.Z = 0;
+
+		for (fan.Y = 0; fan.Y < 360; fan.Y += 18.0f) {
+			MathLib.AngleVectors(fan, out Vector3 dir);
+
+			Vector3 test = startPos + dir * radius;
+
+			if (outOfPlayerViewcone && player != null && !player.FInViewCone(test))
+				continue;
+
+			Util.TraceLine(test, test - new Vector3(0, 0, 8192), Mask.Shot, npc, Source.CollisionGroup.None, out Trace tr);
+			if (tr.Fraction == 1.0f)
+				continue;
+
+			Util.TraceHull(tr.EndPos, tr.EndPos + new Vector3(0, 0, 10), npc.GetHullMins(), npc.GetHullMaxs(), Mask.NPCSolid, npc, Source.CollisionGroup.None, out tr);
+
+			if (tr.Fraction == 1.0f && npc.GetMoveProbe()!.CheckStandPosition(tr.EndPos, Mask.NPCSolid)) {
+				result = tr.EndPos;
+				return true;
+			}
+		}
+
+		result = default;
+		return false;
+	}
+
+	public bool IsRunningDynamicInteraction() => InteractionState != NPCInteractionState.NotRunning && Cine.Get() != null;
+
+	public static readonly ConVar sv_test_scripted_sequences = new("sv_test_scripted_sequences", "0", FCvar.None, "Tests for scripted sequences that are embedded in the world. Run through your map with this set to check for NPCs falling through the world.");
+
+	public bool CineCleanup() {
+		AI_ScriptedSequence? oldCine = Cine.Get();
+		EntityFlags savedFlags = oldCine != null ? oldCine.SavedFlags : GetFlags();
+
+		bool destroyCine = false;
+		if (IsRunningDynamicInteraction())
+			throw new NotImplementedException();
+
+		if (oldCine != null) {
+			oldCine.SetTarget(null);
+			SetEffects(oldCine.SavedEffects);
+
+			SetCollisionGroup(oldCine.SavedCollisionGroup);
+		}
+		else
+			AddSolidFlags(SolidFlags.NotStandable);
+
+		Cine.Set(null);
+		SetTarget(null);
+		SetGoalEnt(null);
+		if (LifeState == (int)Source.LifeState.Dying)
+			throw new NotImplementedException();
+
+		if (oldCine != null && !string.IsNullOrEmpty(oldCine.Play) && oldCine.PlayedSequence()) {
+			if (!oldCine.HasSpawnFlags(AI_ScriptedSequence.SF_SCRIPT_DONT_TELEPORT_AT_END)) {
+				GetBonePosition(0, out Vector3 newOrigin, out _);
+
+				Vector3 oldOrigin = GetLocalOrigin();
+
+				if ((oldOrigin - newOrigin).Length2D() < 8.0)
+					newOrigin = oldOrigin;
+
+				Vector3 origin = GetLocalOrigin();
+
+				origin.X = newOrigin.X;
+				origin.Y = newOrigin.Y;
+				origin.Z += 1;
+
+				if ((savedFlags & EntityFlags.Fly) != 0) {
+					origin.Z = newOrigin.Z;
+					SetLocalOrigin(origin);
+				}
+				else {
+					SetLocalOrigin(origin);
+
+					int drop = Util.DropToFloor(this, Mask.NPCSolid, AI_GetClosestPlayer());
+
+					if (drop < 0 || sv_test_scripted_sequences.GetBool())
+						SetLocalOrigin(oldOrigin);
+					else if (drop == 0) {
+						Vector3 dropOrigin = GetLocalOrigin();
+						dropOrigin.Z = newOrigin.Z;
+						SetLocalOrigin(dropOrigin);
+						SetGroundEntity(null);
+					}
+				}
+
+				origin = GetLocalOrigin();
+
+				if ((oldOrigin - origin).Length() > 8.0) {
+					Teleport(origin, null, null);
+					SetLocalOrigin(origin);
+					IncrementInterpolationFrame();
+				}
+
+				if (Health <= 0) {
+					SetIdealState(NPCState.Dead);
+					SetCondition((int)SCOND_t.COND_LIGHT_DAMAGE);
+					LifeState = (int)Source.LifeState.Dying;
+				}
+			}
+
+			Activity = Activity.ACT_RESET;
+		}
+
+		if (Health > 0)
+			SetIdealState(NPCState.Idle);
+		else {
+			SetIdealState(NPCState.Dead);
+			SetCondition((int)SCOND_t.COND_LIGHT_DAMAGE);
+		}
+
+		RemoveSpawnFlags(SF_NPC_WAIT_FOR_SCRIPT);
+
+		if (destroyCine)
+			Util.Remove(oldCine);
+
+		return true;
+	}
+
+	public override void HandleAnimEvent(ref AnimEvent animEvent) {
+		switch (animEvent.Event) {
+			case SCRIPT_EVENT_DEAD:
+				if (NPCState == NPCState.Script) {
+					LifeState = (int)Source.LifeState.Dying;
+					Health = 0;
+				}
+				break;
+			case SCRIPT_EVENT_NOT_DEAD:
+				if (NPCState == NPCState.Script) {
+					LifeState = (int)Source.LifeState.Alive;
+					Health = MaxHealth;
+				}
+				break;
+
+			case SCRIPT_EVENT_SOUND:
+				EmitSound(animEvent.Options);
+				break;
+
+			case SCRIPT_EVENT_SOUND_VOICE:
+				EmitSound(animEvent.Options);
+				break;
+
+			case SCRIPT_EVENT_SENTENCE_RND1:
+				if (random.RandomInt(0, 2) == 0)
+					break;
+				goto case SCRIPT_EVENT_SENTENCE;
+			case SCRIPT_EVENT_SENTENCE:
+				SENTENCEG_PlayRndSz(Edict()!, animEvent.Options, 1.0f, Source.Common.Audio.SoundLevel.LvlTalking, 0, 100);
+				break;
+
+			case SCRIPT_EVENT_FIREEVENT:
+				Cine.Get()?.FireScriptEvent(atoi(animEvent.Options));
+				break;
+			case SCRIPT_EVENT_FIRE_INPUT: {
+					Variant_t emptyVariant = default;
+					AcceptInput(animEvent.Options, this, this, emptyVariant, 0);
+					break;
+				}
+
+			case SCRIPT_EVENT_NOINTERRUPT:
+				Cine.Get()?.AllowInterrupt(false);
+				break;
+
+			case SCRIPT_EVENT_CANINTERRUPT:
+				Cine.Get()?.AllowInterrupt(true);
+				break;
+
+			case SCRIPT_EVENT_BODYGROUPON:
+			case SCRIPT_EVENT_BODYGROUPOFF:
+			case SCRIPT_EVENT_BODYGROUPTEMP:
+				DevMsg("Bodygroup!\n");
+				break;
+
+			case (int)AnimEventId.AE_NPC_ATTACK_BROADCAST:
+				break;
+
+			case NPC_EVENT_BODYDROP_HEAVY:
+				if ((GetFlags() & EntityFlags.OnGround) != 0)
+					EmitSound("AI_BaseNPC.BodyDrop_Heavy");
+				break;
+
+			case NPC_EVENT_BODYDROP_LIGHT:
+				if ((GetFlags() & EntityFlags.OnGround) != 0)
+					EmitSound("AI_BaseNPC.BodyDrop_Light");
+				break;
+
+			case NPC_EVENT_SWISHSOUND:
+				EmitSound("AI_BaseNPC.SwishSound");
+				break;
+
+			case NPC_EVENT_180TURN:
+				SetIdealActivity(Activity.ACT_IDLE);
+				Forget(AI_MemoryFlags.Turning);
+				SetBoneController(0, GetLocalAngles().Y);
+				IncrementInterpolationFrame();
+				break;
+
+			case NPC_EVENT_ITEM_PICKUP:
+				throw new NotImplementedException();
+
+			case NPC_EVENT_WEAPON_SET_SEQUENCE_NUMBER: {
+					BaseCombatWeapon? weapon = GetActiveWeapon();
+					if (weapon != null && animEvent.Options != null) {
+						int sequence = atoi(animEvent.Options);
+						if (sequence != -1)
+							weapon.ResetSequence(sequence);
+					}
+					break;
+				}
+
+			case NPC_EVENT_WEAPON_SET_SEQUENCE_NAME: {
+					BaseCombatWeapon? weapon = GetActiveWeapon();
+					if (weapon != null && animEvent.Options != null) {
+						int sequence = weapon.LookupSequence(animEvent.Options);
+						if (sequence != -1)
+							weapon.ResetSequence(sequence);
+					}
+					break;
+				}
+
+			case NPC_EVENT_WEAPON_SET_ACTIVITY: {
+					BaseCombatWeapon? weapon = GetActiveWeapon();
+					if (weapon != null && animEvent.Options != null) {
+						Activity act = weapon.LookupActivity(animEvent.Options);
+						if (act != Activity.ACT_INVALID)
+							Weapon_SetActivity(act, 0);
+					}
+					break;
+				}
+
+			case NPC_EVENT_WEAPON_DROP:
+				throw new NotImplementedException();
+
+			case EVENT_WEAPON_RELOAD: {
+					BaseCombatWeapon? weapon = GetActiveWeapon();
+					if (weapon != null) {
+						weapon.WeaponSound(WeaponSound.ReloadNPC);
+						weapon.iClip1 = weapon.GetMaxClip1();
+						ClearCondition((int)SCOND_t.COND_LOW_PRIMARY_AMMO);
+						ClearCondition((int)SCOND_t.COND_NO_PRIMARY_AMMO);
+						ClearCondition((int)SCOND_t.COND_NO_SECONDARY_AMMO);
+					}
+					break;
+				}
+
+			case EVENT_WEAPON_RELOAD_SOUND:
+				GetActiveWeapon()?.WeaponSound(WeaponSound.ReloadNPC);
+				break;
+
+			case EVENT_WEAPON_RELOAD_FILL_CLIP: {
+					BaseCombatWeapon? weapon = GetActiveWeapon();
+					if (weapon != null) {
+						weapon.iClip1 = weapon.GetMaxClip1();
+						ClearCondition((int)SCOND_t.COND_LOW_PRIMARY_AMMO);
+						ClearCondition((int)SCOND_t.COND_NO_PRIMARY_AMMO);
+						ClearCondition((int)SCOND_t.COND_NO_SECONDARY_AMMO);
+					}
+					break;
+				}
+
+			case NPC_EVENT_LEFTFOOT:
+			case NPC_EVENT_RIGHTFOOT:
+				break;
+
+			case NPC_EVENT_OPEN_DOOR:
+				throw new NotImplementedException();
+
+			default:
+				if ((animEvent.Type & AnimEventType.NewEventSystem) != 0 && (animEvent.Type & AnimEventType.Server) != 0) {
+					if (animEvent.Event == (int)AnimEventId.AE_NPC_HOLSTER) {
+						BaseCombatWeapon? weapon = GetActiveWeapon();
+
+						Assert(weapon != null);
+
+						GetActiveWeapon()!.Holster();
+						SetActiveWeapon(null);
+
+						GetNavigator()!.SetArrivalSequence((int)Activity.ACT_INVALID);
+
+						if (DesiredWeaponState == DesiredWeaponState.ChangingDestroy)
+							Util.Remove(weapon);
+
+						if (DesiredWeaponState != DesiredWeaponState.Ignore) {
+							DesiredWeaponState = DesiredWeaponState.Ignore;
+							Activity = Activity.ACT_RESET;
+						}
+
+						return;
+					}
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_DRAW) {
+						if (GetActiveWeapon() != null) {
+							GetActiveWeapon()!.Deploy();
+
+							GetNavigator()!.SetArrivalSequence((int)Activity.ACT_INVALID);
+
+							if (DesiredWeaponState != DesiredWeaponState.Ignore) {
+								DesiredWeaponState = DesiredWeaponState.Ignore;
+								Activity = Activity.ACT_RESET;
+							}
+						}
+						return;
+					}
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_BODYDROP_HEAVY) {
+						if ((GetFlags() & EntityFlags.OnGround) != 0)
+							EmitSound("AI_BaseNPC.BodyDrop_Heavy");
+						return;
+					}
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_LEFTFOOT || animEvent.Event == (int)AnimEventId.AE_NPC_RIGHTFOOT)
+						return;
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_RAGDOLL)
+						throw new NotImplementedException();
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_ADDGESTURE) {
+						Activity act = LookupActivity(animEvent.Options);
+						if (act != Activity.ACT_INVALID) {
+							act = TranslateActivity(act);
+							if (act != Activity.ACT_INVALID)
+								AddGesture(act);
+						}
+						return;
+					}
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_RESTARTGESTURE)
+						throw new NotImplementedException();
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_WEAPON_DROP)
+						throw new NotImplementedException();
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_WEAPON_SET_ACTIVITY) {
+						BaseCombatWeapon? weapon = GetActiveWeapon();
+						if (weapon != null && animEvent.Options != null) {
+							Activity act = weapon.LookupActivity(animEvent.Options);
+							if (act == Activity.ACT_INVALID)
+								{
+								bool required = false;
+								act = Weapon_TranslateActivity((Activity)GetActivityID(animEvent.Options), ref required);
+							}
+
+							if (act != Activity.ACT_INVALID)
+								Weapon_SetActivity(act, 0);
+						}
+						return;
+					}
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_SET_INTERACTION_CANTDIE)
+						throw new NotImplementedException();
+					else if (animEvent.Event == (int)AnimEventId.AE_NPC_HURT_INTERACTION_PARTNER)
+						throw new NotImplementedException();
+				}
+
+				if (animEvent.Source != this || ((animEvent.Type & AnimEventType.NewEventSystem) != 0 && (animEvent.Type & AnimEventType.Weapon) != 0) || (animEvent.Event >= EVENT_WEAPON && animEvent.Event <= EVENT_WEAPON_LAST))
+					Weapon_HandleAnimEvent(ref animEvent);
+				else
+					base.HandleAnimEvent(ref animEvent);
+				break;
+		}
+	}
+
+	public CanPlaySequence_t CanPlaySequence(bool disregardNPCState, ScriptInterrupt interruptLevel) {
+		CanPlaySequence_t ret = CanPlaySequence_t.CanPlayNow;
+
+		AI_ScriptedSequence? cine = Cine.Get();
+		if (cine != null) {
+			if (!cine.CanEnqueueAfter())
+				return CanPlaySequence_t.CannotPlay;
+
+			ret = CanPlaySequence_t.CanPlayEnqueued;
+		}
+
+		if (!IsAlive())
+			return CanPlaySequence_t.CannotPlay;
+
+		if (IsInAVehicle())
+			return CanPlaySequence_t.CannotPlay;
+
+		if (disregardNPCState)
+			return ret;
+
+		if (NPCState == NPCState.None || NPCState == NPCState.Idle || IdealNPCState == NPCState.Idle)
+			return ret;
+
+		if (NPCState == NPCState.Alert && interruptLevel >= ScriptInterrupt.ByName)
+			return ret;
+
+		return CanPlaySequence_t.CannotPlay;
+	}
 
 	public bool IsInLockedScene() => SceneTime > gpGlobals.CurTime;
 	public void AddSceneLock(TimeUnit_t duration = 0.2) => SceneTime = Math.Max(gpGlobals.CurTime + duration, SceneTime);
@@ -2860,7 +3236,41 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		SetPoseParameter(PoseAim_Yaw, newYaw);
 	}
 
-	public Vector3 GetEnemyLKP() => throw new NotImplementedException();
+	public AI_Enemies GetEnemies() => Enemies;
+
+	public Vector3 GetEnemyLKP() => GetEnemies().LastKnownPosition(GetEnemy());
+	public TimeUnit_t GetEnemyLastTimeSeen() => GetEnemies().LastTimeSeen(GetEnemy());
+	public void MarkEnemyAsEluded() => GetEnemies().MarkAsEluded(GetEnemy());
+	public void ClearEnemyMemory() => GetEnemies().ClearMemory(GetEnemy());
+	public bool EnemyHasEludedMe() => GetEnemies().HasEludedMe(GetEnemy());
+
+	public virtual float GetReactionDelay(BaseEntity? enemy) {
+		return (NPCState == NPCState.Alert || NPCState == NPCState.Combat) ?
+					ai_reaction_delay_alert.GetFloat() :
+					ai_reaction_delay_idle.GetFloat();
+	}
+
+	public bool UpdateEnemyMemory(BaseEntity? enemy, in Vector3 position, BaseEntity? informer = null) {
+		bool firstHand = (informer == null || informer == this);
+
+		if (GetEnemies() != null) {
+			if (GetEnemies().HasEludedMe(enemy))
+				FoundEnemySound();
+			float reactionDelay = (informer == null || informer == this) ? GetReactionDelay(enemy) : 0.0f;
+			bool result = GetEnemies().UpdateMemory(GetNavigator()!.GetNetwork(), enemy, position, reactionDelay, firstHand);
+
+			if (!firstHand && enemy != null && result && GetState() == NPCState.Idle)
+				ForceDecisionThink();
+
+			if (firstHand && enemy != null && Squad != null)
+				Squad.UpdateEnemyMemory(this, enemy, position);
+			return result;
+		}
+		return true;
+	}
+
+	public void SetEnemyOccluder(BaseEntity? blocker) => EnemyOccluder.Set(blocker);
+	public BaseEntity? GetEnemyOccluder() => EnemyOccluder.Get();
 
 	public virtual Vector3 GetShootEnemyDir(in Vector3 shootOrigin, bool noisy = true) {
 		BaseEntity? enemy = GetEnemy();
@@ -2965,6 +3375,201 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return true;
 	}
 
+	public virtual bool QueryHearSound(ref WorldSoundInstance sound) {
+		if ((sound.SoundContext() & SoundInstanceType.ContextCombineOnly) != 0)
+			return false;
+
+		if ((sound.SoundContext() & SoundInstanceType.ContextAlliesOnly) != 0) {
+			if (!IsPlayerAlly())
+				return false;
+		}
+
+		if (sound.IsSoundType(SoundInstanceType.Player) && GetState() == NPCState.Idle && !FVisible(sound.GetSoundReactOrigin()))
+			return false;
+
+		if (sound.IsSoundType(SoundInstanceType.Combat) && sound.SoundChannel() == SoundEntChannel.NPCFootstep) {
+			if (sound.Owner.Get() != null && sound.Owner.Get()!.ClassMatches(GetClassname()))
+				return false;
+		}
+
+		if (ShouldIgnoreSound(ref sound))
+			return false;
+
+		return true;
+	}
+
+	static readonly int[] LookConditionsToClear = [
+		(int)SCOND_t.COND_SEE_HATE,
+		(int)SCOND_t.COND_SEE_DISLIKE,
+		(int)SCOND_t.COND_SEE_ENEMY,
+		(int)SCOND_t.COND_SEE_FEAR,
+		(int)SCOND_t.COND_SEE_NEMESIS,
+		(int)SCOND_t.COND_SEE_PLAYER,
+		(int)SCOND_t.COND_LOST_PLAYER,
+		(int)SCOND_t.COND_ENEMY_WENT_NULL,
+	];
+
+	public virtual void OnLooked(int distance) {
+		bool hadSeePlayer = HasCondition((int)SCOND_t.COND_SEE_PLAYER);
+
+		ClearConditions(LookConditionsToClear);
+
+		BaseEntity? sightEnt = GetSenses()!.GetFirstSeenEntity(out AISightIter iter);
+
+		while (sightEnt != null) {
+			if (sightEnt.IsPlayer()) {
+				SetCondition((int)SCOND_t.COND_SEE_PLAYER);
+				LastSawPlayerTime = gpGlobals.CurTime;
+			}
+
+			Disposition relation = IRelationType(sightEnt);
+
+			if (relation != Disposition.NU) {
+				if (sightEnt == GetEnemy())
+					SetCondition((int)SCOND_t.COND_SEE_ENEMY);
+
+				switch (relation) {
+					case Disposition.HT: {
+							int priority = IRelationPriority(sightEnt);
+							if (priority < 0)
+								SetCondition((int)SCOND_t.COND_SEE_DISLIKE);
+							else if (priority > 10)
+								SetCondition((int)SCOND_t.COND_SEE_NEMESIS);
+							else
+								SetCondition((int)SCOND_t.COND_SEE_HATE);
+							UpdateEnemyMemory(sightEnt, sightEnt.GetAbsOrigin());
+							break;
+						}
+					case Disposition.FR:
+						UpdateEnemyMemory(sightEnt, sightEnt.GetAbsOrigin());
+						SetCondition((int)SCOND_t.COND_SEE_FEAR);
+						break;
+					case Disposition.LI:
+					case Disposition.NU:
+						break;
+					default:
+						DevWarning(2, $"{GetClassname()} can't assess {sightEnt.GetClassname()}\n");
+						break;
+				}
+			}
+
+			sightEnt = GetSenses()!.GetNextSeenEntity(ref iter);
+		}
+
+		if (hadSeePlayer && !HasCondition((int)SCOND_t.COND_SEE_PLAYER))
+			SetCondition((int)SCOND_t.COND_LOST_PLAYER);
+	}
+
+	static readonly int[] ListenConditionsToClear = [
+		(int)SCOND_t.COND_HEAR_DANGER,
+		(int)SCOND_t.COND_HEAR_COMBAT,
+		(int)SCOND_t.COND_HEAR_WORLD,
+		(int)SCOND_t.COND_HEAR_PLAYER,
+		(int)SCOND_t.COND_HEAR_THUMPER,
+		(int)SCOND_t.COND_HEAR_BUGBAIT,
+		(int)SCOND_t.COND_HEAR_PHYSICS_DANGER,
+		(int)SCOND_t.COND_HEAR_BULLET_IMPACT,
+		(int)SCOND_t.COND_HEAR_MOVE_AWAY,
+
+		(int)SCOND_t.COND_NO_HEAR_DANGER,
+
+		(int)SCOND_t.COND_SMELL,
+	];
+
+	public virtual void OnListened() {
+		ClearConditions(ListenConditionsToClear);
+
+		ref WorldSoundInstance currentSound = ref GetSenses()!.GetFirstHeardSound(out int iter);
+
+		while (!Unsafe.IsNullRef(ref currentSound)) {
+			int condition = (int)SCOND_t.COND_NONE;
+
+			if (currentSound.FIsSound()) {
+				switch (currentSound.SoundTypeNoContext()) {
+					case SoundInstanceType.Danger:
+						if (gpGlobals.CurTime > IgnoreDangerSoundsUntil)
+							condition = (int)SCOND_t.COND_HEAR_DANGER;
+						break;
+
+					case SoundInstanceType.Thumper: condition = (int)SCOND_t.COND_HEAR_THUMPER; break;
+					case SoundInstanceType.Bugbait: condition = (int)SCOND_t.COND_HEAR_BUGBAIT; break;
+					case SoundInstanceType.Combat:
+						if (currentSound.SoundChannel() == SoundEntChannel.SpookyNoise)
+							condition = (int)SCOND_t.COND_HEAR_SPOOKY;
+						else
+							condition = (int)SCOND_t.COND_HEAR_COMBAT;
+						break;
+
+					case SoundInstanceType.World: condition = (int)SCOND_t.COND_HEAR_WORLD; break;
+					case SoundInstanceType.Player: condition = (int)SCOND_t.COND_HEAR_PLAYER; break;
+					case SoundInstanceType.BulletImpact: condition = (int)SCOND_t.COND_HEAR_BULLET_IMPACT; break;
+					case SoundInstanceType.PhysicsDanger: condition = (int)SCOND_t.COND_HEAR_PHYSICS_DANGER; break;
+					case SoundInstanceType.DangerSniperOnly: break;
+					case SoundInstanceType.MoveAway: condition = (int)SCOND_t.COND_HEAR_MOVE_AWAY; break;
+					case SoundInstanceType.PlayerVehicle: condition = (int)SCOND_t.COND_HEAR_PLAYER; break;
+
+					default:
+						DevMsg($"**ERROR: NPC {GetClassname()} hearing sound of unknown type {(int)currentSound.SoundType()}!\n");
+						break;
+				}
+			}
+			else
+				condition = (int)SCOND_t.COND_SMELL;
+
+			if (condition != (int)SCOND_t.COND_NONE)
+				SetCondition(condition);
+
+			currentSound = ref GetSenses()!.GetNextHeardSound(ref iter);
+		}
+
+		if (!HasCondition((int)SCOND_t.COND_HEAR_DANGER))
+			SetCondition((int)SCOND_t.COND_NO_HEAR_DANGER);
+
+		if (HasCondition((int)SCOND_t.COND_HEAR_WORLD))
+			OnHearWorld.FireOutput(this, this);
+
+		if (HasCondition((int)SCOND_t.COND_HEAR_PLAYER))
+			OnHearPlayer.FireOutput(this, this);
+
+		if (HasCondition((int)SCOND_t.COND_HEAR_COMBAT) ||
+			 HasCondition((int)SCOND_t.COND_HEAR_BULLET_IMPACT) ||
+			 HasCondition((int)SCOND_t.COND_HEAR_DANGER)) {
+			OnHearCombat.FireOutput(this, this);
+		}
+	}
+
+	public virtual ref WorldSoundInstance GetBestSound(SoundInstanceType validTypes = SoundInstanceType.AllSounds) {
+		if (LockedBestSound.Type != SoundInstanceType.None)
+			return ref LockedBestSound;
+		ref WorldSoundInstance result = ref GetSenses()!.GetClosestSound(false, validTypes);
+		if (Unsafe.IsNullRef(ref result))
+			DevMsg("Warning: NULL Return from GetBestSound\n");
+		return ref result;
+	}
+
+	public ref WorldSoundInstance GetBestScent() {
+		ref WorldSoundInstance result = ref GetSenses()!.GetClosestSound(true);
+		if (Unsafe.IsNullRef(ref result))
+			DevMsg("Warning: NULL Return from GetBestScent\n");
+		return ref result;
+	}
+
+	public void LockBestSound() {
+		UnlockBestSound();
+		ref WorldSoundInstance bestSound = ref GetBestSound();
+		if (!Unsafe.IsNullRef(ref bestSound))
+			LockedBestSound = bestSound;
+	}
+
+	public void UnlockBestSound() {
+		if (LockedBestSound.Type != SoundInstanceType.None) {
+			LockedBestSound.Type = SoundInstanceType.None;
+			OnListened();
+		}
+	}
+
+	public void PerformSensing() => GetSenses()!.PerformSensing();
+
 	public void SetTarget(BaseEntity? target) => TargetEnt.Set(target);
 
 	public float GetHullWidth() => NAI_Hull.Width(GetHullType());
@@ -2989,11 +3594,115 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public ref readonly Vector3 GetHullMins() => ref NAI_Hull.Mins(GetHullType());
 	public ref readonly Vector3 GetHullMaxs() => ref NAI_Hull.Maxs(GetHullType());
 
+	public virtual float StepHeight() => 18.0f;
+	public float GetStepDownMultiplier() => Navigator!.GetStepDownMultiplier();
+	public virtual float GetMaxJumpSpeed() => 350.0f;
+	public virtual float GetJumpGravity() => 1.0f;
+
+	public float GetHullHeight() => NAI_Hull.Height(GetHullType());
+
+	public bool IsJumpLegal(in Vector3 startPos, in Vector3 apex, in Vector3 endPos, float maxUp, float maxDown, float maxDist) {
+		if ((endPos.Z - startPos.Z) > maxUp + 0.1f)
+			return false;
+		if ((startPos.Z - endPos.Z) > maxDown + 0.1f)
+			return false;
+
+		if ((apex.Z - startPos.Z) > maxUp * 1.25f)
+			return false;
+
+		float dist = (startPos - endPos).Length();
+		if (dist > maxDist + 0.1f)
+			return false;
+		return true;
+	}
+
+	public virtual bool IsJumpLegal(in Vector3 startPos, in Vector3 apex, in Vector3 endPos) {
+		const float MAX_JUMP_RISE = 80.0f;
+		const float MAX_JUMP_DISTANCE = 250.0f;
+		const float MAX_JUMP_DROP = 192.0f;
+
+		return IsJumpLegal(startPos, apex, endPos, MAX_JUMP_RISE, MAX_JUMP_DROP, MAX_JUMP_DISTANCE);
+	}
+
+	public virtual bool MovementCost(Capability moveType, in Vector3 start, in Vector3 end, ref float cost) => false;
+
+	public override bool CanStandOn(BaseEntity? surface) {
+		if (!surface!.IsAIWalkable())
+			return false;
+
+		AI_Navigator navigator = GetNavigator()!;
+
+		if (navigator.IsGoalActive() && surface == navigator.GetGoalTarget())
+			return false;
+
+		return base.CanStandOn(surface);
+	}
+
+	public virtual bool IsUnusableNode(int nodeID, AI_Hint? hint) {
+		if (HintGroupNavLimiting && !string.IsNullOrEmpty(HintGroup)) {
+			if (hint == null || hint.GetGroup() != GetHintGroup())
+				return true;
+		}
+		return false;
+	}
+
+	public string? GetHintGroup() => HintGroup;
+
+	public virtual Vector3 GetNodeViewOffset() => GetViewOffset();
+
+	public string? HintGroup;
+	public bool HintGroupNavLimiting;
+
 	public virtual Vector3 GetCrouchEyeOffset() => new(0, 0, 40);
 
 	public override bool IsMoving() => GetNavigator()!.IsGoalSet();
 
 	public virtual float CalcYawSpeed() => -1.0f;
+
+	public virtual bool OnCalcBaseMove(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) {
+		if (moveGoal.DirectTrace.Obstruction != null) {
+			if (moveGoal.DirectTrace.Obstruction is BasePropDoor propDoor && OnUpcomingPropDoor(ref moveGoal, propDoor, distClear, ref result))
+				return true;
+		}
+
+		return false;
+	}
+
+	public virtual bool OnObstructionPreSteer(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) {
+		if (moveGoal.DirectTrace.Obstruction != null) {
+			if (moveGoal.DirectTrace.Obstruction is BaseDoor door && OnObstructingDoor(ref moveGoal, door, distClear, ref result))
+				return true;
+		}
+
+		return false;
+	}
+
+	public virtual bool OnFailedSteer(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) => false;
+	public virtual bool OnFailedLocalNavigation(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) => false;
+	public virtual bool OnInsufficientStopDist(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) => false;
+	public virtual bool OnMoveBlocked(ref AIMoveResult result) => false;
+	public virtual bool OnMoveStalled(in AILocalMoveGoal move) => false;
+	public virtual bool OnMoveExecuteFailed(in AILocalMoveGoal move, in AIMoveTrace trace, AIMotorMoveResult motorResult, ref AIMoveResult result) => false;
+
+	public virtual bool OnObstructingDoor(ref AILocalMoveGoal moveGoal, BaseDoor door, float distClear, ref AIMoveResult result) {
+		if (moveGoal.MaxDist < distClear)
+			return false;
+
+		if (door.ToggleState == Game.Shared.ToggleState.AtBottom || door.ToggleState == Game.Shared.ToggleState.GoingDown) {
+			if (distClear < 0.1)
+				result = AIMoveResult.BlockedEntity;
+			else {
+				moveGoal.MaxDist = distClear;
+				result = AIMoveResult.Ok;
+			}
+
+			return true;
+		}
+
+		return false;
+	}
+
+	public virtual bool OnUpcomingPropDoor(ref AILocalMoveGoal moveGoal, BasePropDoor door, float distClear, ref AIMoveResult result) => throw new NotImplementedException();
 
 	public virtual float HearingSensitivity() => 1.0f;
 
@@ -3595,6 +4304,28 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 	}
 
+	public bool ValidateNavGoal() {
+		if (GetNavigator()!.GetGoalType() == NavGoalType.Cover) {
+			if (GetEnemy() != null) {
+				Activity coverActivity = GetCoverActivity(GetHintNode());
+				Vector3 coverLocation = GetNavigator()!.GetGoalPos();
+
+				float floorZ = GetFloorZ(coverLocation);
+				coverLocation.Z = floorZ;
+
+				Vector3 eyePos = coverLocation + EyeOffset(coverActivity);
+
+				if (!IsCoverPosition(GetEnemy()!.EyePosition(), eyePos)) {
+					TaskFail(AI_TaskFailureCode.BadPathGoal);
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	public virtual bool IsCoverPosition(in Vector3 threat, in Vector3 position) => throw new NotImplementedException();
+
 	public bool ShouldMoveWait() => MoveWaitFinished > gpGlobals.CurTime;
 
 	public virtual bool ShouldMoveAndShoot() => (CapabilitiesGet() & Server.Capability.MoveShoot) != 0;
@@ -3618,7 +4349,15 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public virtual void OnScheduleChange() {
 		EndTaskOverlay();
 
+		Navigator!.OnScheduleChange();
+
 		MoveWaitFinished = 0;
+
+		VacateStrategySlot();
+
+		GetNavigator()!.ClearGoal();
+
+		UnlockBestSound();
 
 		if (HasMemory(AI_MemoryFlags.LockedHint) && GetHintNode() != null) {
 			float hintDelay = GetHintDelay(GetHintNode()!.HintType());
@@ -3627,7 +4366,39 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 	}
 
-	public virtual float GetHintDelay(short hintType) => 0;
+	public virtual float GetHintDelay(Hint hintType) => 0;
+
+	public void SetSequenceByName(ReadOnlySpan<char> sequenceName) {
+		int sequence = LookupSequence(sequenceName);
+
+		if (sequence > StudioHdr.ACTIVITY_NOT_AVAILABLE)
+			SetSequenceById(sequence);
+		else {
+			DevWarning(2, $"{GetClassname()} has no sequence {sequenceName} to match request\n");
+			SetSequence(0);
+		}
+	}
+
+	public void SetSequenceById(int sequence) {
+		if (sequence > StudioHdr.ACTIVITY_NOT_AVAILABLE) {
+			if (GetSequence() != sequence || !SequenceLoops)
+				SetCycle(0);
+
+			ResetSequence(sequence);
+			GetMotor()!.RecalculateYawSpeed();
+		}
+		else {
+			DevWarning(2, $"{GetClassname()} invalid sequence requested\n");
+			SetSequence(0);
+		}
+	}
+
+	public virtual Activity GetHintActivity(short hintType, Activity hintsActivity) {
+		if (hintsActivity != Activity.ACT_INVALID)
+			return hintsActivity;
+
+		return Activity.ACT_IDLE;
+	}
 
 	public Activity GetIdealActivity() => IdealActivity;
 
@@ -3635,7 +4406,16 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public bool IsActivityFinished() => IsSequenceFinished() && (GetSequence() == IdealSequence);
 
-	public Activity GetStoppedActivity() => Activity.ACT_IDLE;
+	public Activity GetStoppedActivity() {
+		if (GetNavigator()!.IsGoalActive()) {
+			Activity activity = GetNavigator()!.GetArrivalActivity();
+
+			if (activity > Activity.ACT_RESET)
+				return activity;
+		}
+
+		return Activity.ACT_IDLE;
+	}
 
 	public void MaintainActivity() {
 		if (LifeState == (int)Source.LifeState.Dead)
@@ -3697,6 +4477,113 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 		SetIdealActivity(newIdealActivity);
 	}
+
+	public void StartTurn(float deltaYaw) {
+		float currentYaw = Util.AngleMod(GetLocalAngles().Y);
+		GetMotor()!.SetIdealYaw(Util.AngleMod(currentYaw + deltaYaw));
+		SetTurnActivity();
+	}
+
+	public float CalcReasonableFacing(bool ignoreOriginalFacing = false) {
+		float reasonableYaw;
+
+		if (!ignoreOriginalFacing && !HasMemory(AI_MemoryFlags.MovedFromSpawn) && !HasCondition((int)SCOND_t.COND_SEE_ENEMY))
+			reasonableYaw = OriginalYaw;
+		else {
+			QAngle angles = new(0, 0, 0);
+
+			float idealYaw = GetMotor()!.GetIdealYaw();
+
+			reasonableYaw = idealYaw;
+
+			float MIN_DIST = GetReasonableFacingDist();
+			float longestTrace = 0;
+
+			if (MIN_DIST == 0)
+				return reasonableYaw;
+
+			const float SLICES = 8.0f;
+			const float SIZE_SLICE = 360.0f / SLICES;
+			const int SEARCH_MAX = (int)SLICES / 2;
+
+			float zEye = GetAbsOrigin().Z + DefaultEyeOffset.Z;
+
+			for (int i = 0; i <= SEARCH_MAX; i++) {
+				float offset = i * SIZE_SLICE;
+				for (int j = -1; j <= 1; j += 2) {
+					angles.Y = idealYaw + (offset * j);
+					MathLib.AngleVectors(angles, out Vector3 forward);
+					float curTrace;
+					if ((curTrace = LineOfSightDist(forward, zEye)) > longestTrace && IsValidReasonableFacing(forward, curTrace)) {
+						reasonableYaw = angles.Y;
+						longestTrace = curTrace;
+					}
+
+					if (longestTrace > MIN_DIST)
+						break;
+
+					if (i == 0 || i == SEARCH_MAX)
+						break;
+				}
+
+				if (longestTrace > MIN_DIST)
+					break;
+			}
+		}
+
+		return reasonableYaw;
+	}
+
+	public virtual float GetReasonableFacingDist() {
+		if (GetTask() != null && GetTask()!.Value.Task == TASK_FACE_ENEMY) {
+			const float dist = 3.5f * 12;
+			if (GetEnemy() != null) {
+				float distEnemy = (GetEnemy()!.GetAbsOrigin().AsVector2D() - GetAbsOrigin().AsVector2D()).Length() - 1.0f;
+				return MathF.Min(distEnemy, dist);
+			}
+
+			return dist;
+		}
+		return 5 * 12;
+	}
+
+	public virtual bool IsValidReasonableFacing(in Vector3 sightDir, float sightDist) => true;
+
+	public float LineOfSightDist(in Vector3 dir, float zEye = float.MaxValue) {
+		Vector3 testDir;
+		if (dir == vec3_invalid)
+			testDir = EyeDirection3D();
+		else
+			testDir = dir;
+
+		if (zEye == float.MaxValue)
+			zEye = EyePosition().Z;
+
+		Vector3 testPos = new(GetAbsOrigin().X, GetAbsOrigin().Y, zEye);
+		AI_TraceLOS(testPos, testPos + testDir * MAX_COORD_RANGE, this, out Trace tr);
+		return (tr.StartPos - tr.EndPos).Length();
+	}
+
+	public bool FInAimCone(in Vector3 spot) {
+		Vector3 los = spot - GetAbsOrigin();
+
+		los.Z = 0;
+		MathLib.VectorNormalize(ref los);
+
+		Vector3 facingDir = BodyDirection2D();
+
+		float dot = Vector3.Dot(los, facingDir);
+
+		if ((CapabilitiesGet() & Capability.AimGun) != 0)
+			return dot > BasePlayer.DOT_30DEGREE;
+
+		if (dot > 0.994)
+			return true;
+
+		return false;
+	}
+
+	public virtual void SpeakSentence(int sentenceType) { }
 
 	public bool FacingIdeal() {
 		if (MathF.Abs(GetMotor()!.DeltaIdealYaw()) <= 0.006)
@@ -3767,7 +4654,172 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				break;
 
 			case TASK_STOP_MOVING:
-				SetIdealActivity(GetStoppedActivity());
+				if ((GetNavigator()!.IsGoalSet() && GetNavigator()!.IsGoalActive()) || GetNavType() == Navigation.Jump) {
+					if (task.TaskData == 1)
+						GetNavigator()!.StopMoving(false);
+					else
+						GetNavigator()!.ClearGoal();
+
+					if (HasPoseMoveYaw())
+						SetPoseParameter(PoseMove_Yaw, 0);
+				}
+				else {
+					if (!(task.TaskData == 1 && GetNavigator()!.SetGoalFromStoppingPath())) {
+						GetNavigator()!.ClearGoal();
+						SetIdealActivity(GetStoppedActivity());
+						TaskComplete();
+					}
+				}
+				break;
+
+			case TASK_STORE_LASTPOSITION:
+				LastPosition = GetLocalOrigin();
+				TaskComplete();
+				break;
+
+			case TASK_CLEAR_LASTPOSITION:
+				LastPosition = vec3_origin;
+				TaskComplete();
+				break;
+
+			case TASK_STORE_POSITION_IN_SAVEPOSITION:
+				SavePosition = GetLocalOrigin();
+				TaskComplete();
+				break;
+
+			case TASK_GET_PATH_TO_PLAYER: {
+					BaseEntity? player = AI_GetClosestPlayer();
+					if (player == null)
+						break;
+
+					AI_NavGoal goal = new() {
+						Type = NavGoalType.Location,
+						Dest = player.WorldSpaceCenter(),
+						Target = player,
+						DefTarget = false
+					};
+
+					GetNavigator()!.SetGoal(goal);
+					break;
+				}
+
+			case TASK_GET_PATH_TO_TARGET: {
+					if (TargetEnt.Get() == null)
+						TaskFail(AI_TaskFailureCode.NoTarget);
+					else {
+						AI_NavGoal goal = new(TargetEnt.Get()!.EyePosition()) {
+							Target = TargetEnt.Get(),
+							DefTarget = false
+						};
+						GetNavigator()!.SetGoal(goal);
+					}
+					break;
+				}
+
+			case TASK_GET_PATH_TO_LASTPOSITION: {
+					if (!GetNavigator()!.SetGoal(new AI_NavGoal(LastPosition)))
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					else
+						GetNavigator()!.SetGoalTolerance(48);
+					break;
+				}
+
+			case TASK_GET_PATH_TO_SAVEPOSITION:
+				GetNavigator()!.SetGoal(new AI_NavGoal(SavePosition));
+				break;
+
+			case TASK_GET_PATH_TO_RANDOM_NODE: {
+					if (GetNavigator()!.SetRandomGoal(task.TaskData))
+						TaskComplete();
+					else
+						TaskFail(AI_TaskFailureCode.NoReachableNode);
+					break;
+				}
+
+			case TASK_RUN_PATH: {
+					if (TranslateActivity(Activity.ACT_RUN) != Activity.ACT_INVALID)
+						GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+					else
+						GetNavigator()!.SetMovementActivity(Activity.ACT_WALK);
+					Forget(AI_MemoryFlags.Incover);
+					TaskComplete();
+					break;
+				}
+
+			case TASK_WALK_PATH_FOR_UNITS:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_WALK);
+				break;
+
+			case TASK_RUN_PATH_FOR_UNITS:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+				break;
+
+			case TASK_WALK_PATH: {
+					bool isFlying = (GetMoveType() == Source.MoveType.Fly) || (GetMoveType() == Source.MoveType.FlyGravity);
+					if (isFlying && (TranslateActivity(Activity.ACT_FLY) != Activity.ACT_INVALID))
+						GetNavigator()!.SetMovementActivity(Activity.ACT_FLY);
+					else if (TranslateActivity(Activity.ACT_WALK) != Activity.ACT_INVALID)
+						GetNavigator()!.SetMovementActivity(Activity.ACT_WALK);
+					else
+						GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+					Forget(AI_MemoryFlags.Incover);
+					TaskComplete();
+					break;
+				}
+
+			case TASK_WALK_PATH_WITHIN_DIST:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_WALK);
+				GetNavigator()!.SetArrivalDistance(task.TaskData);
+				break;
+
+			case TASK_RUN_PATH_WITHIN_DIST:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+				GetNavigator()!.SetArrivalDistance(task.TaskData);
+				break;
+
+			case TASK_RUN_PATH_FLEE: {
+					Vector3 diff = GetLocalOrigin() - GetNavigator()!.GetGoalPos();
+
+					if (diff.Length() <= task.TaskData) {
+						GetNavigator()!.StopMoving();
+						TaskFail("Flee path shorter than task parameter");
+					}
+					else
+						GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+					break;
+				}
+
+			case TASK_WALK_PATH_TIMED:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_WALK);
+				SetWait(task.TaskData);
+				break;
+
+			case TASK_RUN_PATH_TIMED:
+				GetNavigator()!.SetMovementActivity(Activity.ACT_RUN);
+				SetWait(task.TaskData);
+				break;
+
+			case TASK_WAIT_FOR_MOVEMENT_STEP: {
+					if (!GetNavigator()!.IsGoalActive()) {
+						TaskComplete();
+						return;
+					}
+
+					if (IsActivityFinished()) {
+						TaskComplete();
+						return;
+					}
+					ValidateNavGoal();
+					break;
+				}
+
+			case TASK_SET_TOLERANCE_DISTANCE:
+				GetNavigator()!.SetGoalTolerance((int)task.TaskData);
+				TaskComplete();
+				break;
+
+			case TASK_SET_ROUTE_SEARCH_TIME:
+				GetNavigator()!.SetMaxRouteRebuildTime((int)task.TaskData);
 				TaskComplete();
 				break;
 
@@ -3804,7 +4856,14 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				}
 
 			case TASK_WAIT_FOR_MOVEMENT:
-				TaskComplete();
+				if (GetNavigator()!.GetGoalType() == NavGoalType.None) {
+					TaskComplete();
+					GetNavigator()!.ClearGoal();
+				}
+				else if (!GetNavigator()!.IsGoalActive())
+					SetIdealActivity(GetStoppedActivity());
+				else
+					ValidateNavGoal();
 				break;
 
 			case TASK_PLAY_SCENE:
@@ -3838,28 +4897,380 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				TaskComplete();
 				break;
 
-			case TASK_CREATE_PENDING_WEAPON:
-			case TASK_RANDOMIZE_FRAMERATE:
-			case TASK_DEFER_DODGE:
-			case TASK_ANNOUNCE_ATTACK:
 			case TASK_TURN_RIGHT:
+				StartTurn(-task.TaskData);
+				break;
+
 			case TASK_TURN_LEFT:
+				StartTurn(task.TaskData);
+				break;
+
 			case TASK_REMEMBER:
+				Remember((AI_MemoryFlags)(int)task.TaskData);
+				TaskComplete();
+				break;
+
 			case TASK_FORGET:
-			case TASK_FIND_HINTNODE:
-			case TASK_FIND_LOCK_HINTNODE:
-			case TASK_LOCK_HINTNODE:
-			case TASK_STORE_LASTPOSITION:
-			case TASK_CLEAR_LASTPOSITION:
-			case TASK_STORE_POSITION_IN_SAVEPOSITION:
-			case TASK_STORE_BESTSOUND_IN_SAVEPOSITION:
-			case TASK_STORE_ENEMY_POSITION_IN_SAVEPOSITION:
-			case TASK_CLEAR_HINTNODE:
+				Forget((AI_MemoryFlags)(int)task.TaskData);
+				TaskComplete();
+				break;
+
+			case TASK_STORE_BESTSOUND_IN_SAVEPOSITION: {
+					ref WorldSoundInstance bestSound = ref GetBestSound();
+					if (!Unsafe.IsNullRef(ref bestSound)) {
+						SavePosition = bestSound.GetSoundOrigin();
+						BaseEntity? soundEnt = bestSound.Owner.Get();
+						if (soundEnt != null) {
+							soundEnt.GetVelocity(out Vector3 vel, out _);
+							SavePosition += vel * 2;
+						}
+						TaskComplete();
+					}
+					else {
+						TaskFail("No Sound!");
+						return;
+					}
+				}
+				break;
+
+			case TASK_STORE_BESTSOUND_REACTORIGIN_IN_SAVEPOSITION: {
+					ref WorldSoundInstance bestSound = ref GetBestSound();
+					if (!Unsafe.IsNullRef(ref bestSound)) {
+						SavePosition = bestSound.GetSoundReactOrigin();
+						TaskComplete();
+					}
+					else {
+						TaskFail("No Sound!");
+						return;
+					}
+				}
+				break;
+
 			case TASK_PLAY_PRIVATE_SEQUENCE:
 			case TASK_PLAY_PRIVATE_SEQUENCE_FACE_ENEMY:
 			case TASK_PLAY_SEQUENCE_FACE_ENEMY:
 			case TASK_PLAY_SEQUENCE_FACE_TARGET:
 			case TASK_PLAY_SEQUENCE:
+				SetIdealActivity((Activity)(int)task.TaskData);
+				break;
+
+			case TASK_FACE_LASTPOSITION:
+				GetMotor()!.SetIdealYawToTarget(LastPosition);
+				GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+				SetTurnActivity();
+				break;
+
+			case TASK_FACE_SAVEPOSITION:
+				GetMotor()!.SetIdealYawToTarget(SavePosition);
+				GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+				SetTurnActivity();
+				break;
+
+			case TASK_FACE_AWAY_FROM_SAVEPOSITION:
+				GetMotor()!.SetIdealYawToTarget(SavePosition, 0, 180.0f);
+				GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+				SetTurnActivity();
+				break;
+
+			case TASK_SET_IDEAL_YAW_TO_CURRENT:
+				GetMotor()!.SetIdealYaw(Util.AngleMod(GetLocalAngles().Y));
+				TaskComplete();
+				break;
+
+			case TASK_FACE_TARGET:
+				if (TargetEnt.Get() != null) {
+					GetMotor()!.SetIdealYawToTarget(TargetEnt.Get()!.GetAbsOrigin());
+					SetTurnActivity();
+				}
+				else
+					TaskFail(AI_TaskFailureCode.NoTarget);
+				break;
+
+			case TASK_FACE_PLAYER:
+				SetWait(task.TaskData);
+				break;
+
+			case TASK_FACE_ENEMY: {
+					Vector3 enemyLKP = GetEnemyLKP();
+					if (!FInAimCone(enemyLKP)) {
+						GetMotor()!.SetIdealYawToTarget(enemyLKP);
+						GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+						SetTurnActivity();
+					}
+					else {
+						float reasonableFacing = CalcReasonableFacing(true);
+						if (MathF.Abs(reasonableFacing - GetMotor()!.GetIdealYaw()) < 1)
+							TaskComplete();
+						else {
+							GetMotor()!.SetIdealYaw(reasonableFacing);
+							SetTurnActivity();
+						}
+					}
+					break;
+				}
+
+			case TASK_FACE_REASONABLE:
+				GetMotor()!.SetIdealYaw(CalcReasonableFacing());
+				SetTurnActivity();
+				break;
+
+			case TASK_FACE_PATH: {
+					if (!GetNavigator()!.IsGoalActive()) {
+						DevWarning(2, "No route to face!\n");
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					}
+					else {
+						const float NPC_TRIVIAL_TURN = 15;
+
+						GetMotor()!.SetIdealYawToTarget(GetNavigator()!.GetCurWaypointPos());
+
+						if (MathF.Abs(GetMotor()!.DeltaIdealYaw()) <= NPC_TRIVIAL_TURN) {
+							TaskComplete();
+							break;
+						}
+						SetTurnActivity();
+					}
+				}
+				break;
+
+			case TASK_SPEAK_SENTENCE:
+				SpeakSentence((int)task.TaskData);
+				TaskComplete();
+				break;
+
+			case TASK_DIE:
+				GetNavigator()!.StopMoving();
+				SetIdealActivity(GetDeathActivity());
+				LifeState = (int)Source.LifeState.Dying;
+				break;
+
+			case TASK_FACE_HINTNODE:
+				Assert(GetMotor()!.IsYawLocked() == false);
+
+				GetMotor()!.SetIdealYaw(GetHintNode()!.Yaw());
+				GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+				if (FacingIdeal())
+					TaskComplete();
+				else
+					SetTurnActivity();
+				break;
+
+			case TASK_GET_PATH_TO_HINTNODE: {
+					if (GetHintNode() == null)
+						TaskFail(AI_TaskFailureCode.NoHintNode);
+					else {
+						GetHintNode()!.GetPosition(this, out Vector3 hintPos);
+
+						GetNavigator()!.SetGoal(new AI_NavGoal(hintPos, Activity.ACT_RUN));
+						if (task.TaskData == 0)
+							GetNavigator()!.SetArrivalDirection(GetHintNode()!.GetDirection());
+						if (GetHintNode()!.HintActivityName() != null) {
+							Activity hintActivity = (Activity)GetActivityID(GetHintNode()!.HintActivityName());
+							if (hintActivity != Activity.ACT_INVALID)
+								GetNavigator()!.SetArrivalActivity(GetHintActivity((short)GetHintNode()!.HintType(), hintActivity));
+							else {
+								int sequence = LookupSequence(GetHintNode()!.HintActivityName());
+								if (sequence != (int)Activity.ACT_INVALID)
+									GetNavigator()!.SetArrivalSequence(sequence);
+							}
+						}
+					}
+					break;
+				}
+
+			case TASK_SOUND_DIE: {
+					TakeDamageInfo info = new();
+					DeathSound(info);
+					TaskComplete();
+					break;
+				}
+
+			case TASK_SCRIPT_RUN_TO_TARGET:
+			case TASK_SCRIPT_WALK_TO_TARGET:
+			case TASK_SCRIPT_CUSTOM_MOVE_TO_TARGET:
+				StartScriptMoveToTargetTask(task.Task);
+				break;
+
+			case TASK_WAIT_FOR_SCRIPT: {
+					if (Cine.Get() == null) {
+						DevMsg("Scripted sequence destroyed while in use\n");
+						TaskFail(AI_TaskFailureCode.ScheduleNotFound);
+						break;
+					}
+
+					break;
+				}
+
+			case TASK_PUSH_SCRIPT_ARRIVAL_ACTIVITY: {
+					AI_ScriptedSequence? cine = Cine.Get();
+					if (cine == null) {
+						DevMsg("Scripted sequence destroyed while in use\n");
+						TaskFail(AI_TaskFailureCode.ScheduleNotFound);
+						break;
+					}
+
+					string? arrivalText;
+
+					if (!string.IsNullOrEmpty(cine.EntryName))
+						arrivalText = cine.EntryName;
+					else if (!string.IsNullOrEmpty(cine.Play))
+						arrivalText = cine.Play;
+					else if (!string.IsNullOrEmpty(cine.PostIdle))
+						arrivalText = cine.PostIdle;
+					else
+						arrivalText = null;
+
+					ScriptArrivalActivity = AIN_DEF_ACTIVITY;
+					ScriptArrivalSequence = null;
+
+					if (arrivalText != null) {
+						ScriptArrivalActivity = (Activity)GetActivityID(arrivalText);
+						if (ScriptArrivalActivity == Activity.ACT_INVALID)
+							ScriptArrivalSequence = arrivalText;
+					}
+
+					TaskComplete();
+					break;
+				}
+
+			case TASK_PLAY_SCRIPT: {
+					GetNavigator()!.IgnoreStoppingPath();
+
+					if (HasMovement(GetSequence()) || Cine.Get()!.IgnoreGravity) {
+						AddFlag(EntityFlags.Fly);
+						SetGroundEntity(null);
+					}
+
+					Cine.Get()?.SynchronizeSequence(this);
+
+					ScriptState = ScriptStateType.Playing;
+					break;
+				}
+
+			case TASK_PLAY_SCRIPT_POST_IDLE:
+				ScriptState = ScriptStateType.PostIdle;
+				break;
+
+			case TASK_PRE_SCRIPT: {
+					if (!AI_ScriptedSequence.ai_task_pre_script.GetBool())
+						TaskComplete();
+					else if (Cine.Get() == null)
+						TaskComplete();
+					else {
+						Cine.Get()!.DelayStart(true);
+						TaskComplete();
+					}
+					break;
+				}
+
+			case TASK_ENABLE_SCRIPT: {
+					AI_ScriptedSequence cine = Cine.Get()!;
+					if (!string.IsNullOrEmpty(cine.PreIdle)) {
+						cine.StartSequence(this, cine.PreIdle, false);
+						if (cine.PreIdle == cine.Play)
+							PlaybackRate = 0;
+					}
+					else if (ScriptState != ScriptStateType.CustomMoveToMark) {
+						if (GetActivity() == Activity.ACT_WALK ||
+							 GetActivity() == Activity.ACT_RUN ||
+							 GetActivity() == Activity.ACT_WALK_AIM ||
+							 GetActivity() == Activity.ACT_RUN_AIM)
+							SetActivity(Activity.ACT_IDLE);
+					}
+					break;
+				}
+
+			case TASK_PLANT_ON_SCRIPT: {
+					if (TargetEnt.Get() != null)
+						SetLocalOrigin(TargetEnt.Get()!.GetAbsOrigin());
+
+					TaskComplete();
+					break;
+				}
+
+			case TASK_FACE_SCRIPT: {
+					if (TargetEnt.Get() != null)
+						GetMotor()!.SetIdealYaw(Util.AngleMod(TargetEnt.Get()!.GetLocalAngles().Y));
+
+					if (ScriptState != ScriptStateType.CustomMoveToMark) {
+						SetTurnActivity();
+
+						SetActivity(GetIdealActivity());
+					}
+
+					GetNavigator()!.StopMoving();
+					break;
+				}
+
+			case TASK_GET_CHASE_PATH_TO_ENEMY: {
+					BaseEntity? enemy = GetEnemy();
+					if (enemy == null) {
+						TaskFail(AI_TaskFailureCode.NoRoute);
+						return;
+					}
+
+					if ((enemy.GetAbsOrigin() - GetEnemyLKP()).LengthSquared() < task.TaskData * task.TaskData)
+						ChainStartTask(TASK_GET_PATH_TO_ENEMY);
+					else
+						ChainStartTask(TASK_GET_PATH_TO_ENEMY_LKP);
+
+					if (!TaskIsComplete() && !HasCondition((int)SCOND_t.COND_TASK_FAILED))
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					break;
+				}
+
+			case TASK_GET_PATH_TO_ENEMY_LKP: {
+					BaseEntity? enemy = GetEnemy();
+					if (enemy == null || IsUnreachable(enemy)) {
+						TaskFail(AI_TaskFailureCode.NoRoute);
+						return;
+					}
+					AI_NavGoal goal = new(GetEnemyLKP());
+
+					TranslateNavGoal(enemy, ref goal.Dest);
+
+					if (GetNavigator()!.SetGoal(goal, AI_NavSetGoalFlags.ClearTarget))
+						TaskComplete();
+					else {
+						DevWarning(2, "GetPathToEnemyLKP failed!!\n");
+						RememberUnreachable(GetEnemy()!);
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					}
+					break;
+				}
+
+			case TASK_GET_PATH_TO_ENEMY: {
+					if (IsUnreachable(GetEnemy())) {
+						TaskFail(AI_TaskFailureCode.NoRoute);
+						return;
+					}
+
+					BaseEntity? enemy = GetEnemy();
+
+					if (enemy == null) {
+						TaskFail(AI_TaskFailureCode.NoEnemy);
+						return;
+					}
+
+					if (GetNavigator()!.SetGoal(new AI_NavGoal(NavGoalType.Enemy)))
+						TaskComplete();
+					else {
+						DevWarning(2, "GetPathToEnemy failed!!\n");
+						RememberUnreachable(GetEnemy()!);
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					}
+					break;
+				}
+
+			case TASK_CREATE_PENDING_WEAPON:
+			case TASK_RANDOMIZE_FRAMERATE:
+			case TASK_DEFER_DODGE:
+			case TASK_ANNOUNCE_ATTACK:
+			case TASK_FIND_HINTNODE:
+			case TASK_FIND_LOCK_HINTNODE:
+			case TASK_LOCK_HINTNODE:
+			case TASK_STORE_ENEMY_POSITION_IN_SAVEPOSITION:
+			case TASK_CLEAR_HINTNODE:
 			case TASK_ADD_GESTURE_WAIT:
 			case TASK_ADD_GESTURE:
 			case TASK_PLAY_HINT_ACTIVITY:
@@ -3870,21 +5281,10 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_FIND_COVER_FROM_ENEMY:
 			case TASK_FIND_COVER_FROM_ORIGIN:
 			case TASK_FIND_COVER_FROM_BEST_SOUND:
-			case TASK_FACE_HINTNODE:
-			case TASK_FACE_LASTPOSITION:
-			case TASK_FACE_AWAY_FROM_SAVEPOSITION:
-			case TASK_SET_IDEAL_YAW_TO_CURRENT:
-			case TASK_FACE_TARGET:
-			case TASK_FACE_PLAYER:
-			case TASK_FACE_ENEMY:
-			case TASK_FACE_PATH:
 			case TASK_MOVE_TO_TARGET_RANGE:
 			case TASK_MOVE_TO_GOAL_RANGE:
 			case TASK_WAIT_UNTIL_NO_DANGER_SOUND:
 			case TASK_TARGET_PLAYER:
-			case TASK_SCRIPT_RUN_TO_TARGET:
-			case TASK_SCRIPT_WALK_TO_TARGET:
-			case TASK_SCRIPT_CUSTOM_MOVE_TO_TARGET:
 			case TASK_CLEAR_MOVE_WAIT:
 			case TASK_MELEE_ATTACK1:
 			case TASK_MELEE_ATTACK2:
@@ -3893,8 +5293,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_RELOAD:
 			case TASK_SPECIAL_ATTACK1:
 			case TASK_SPECIAL_ATTACK2:
-			case TASK_GET_CHASE_PATH_TO_ENEMY:
-			case TASK_GET_PATH_TO_ENEMY_LKP:
 			case TASK_GET_PATH_TO_INTERACTION_PARTNER:
 			case TASK_GET_PATH_TO_RANGE_ENEMY_LKP_LOS:
 			case TASK_GET_PATH_TO_ENEMY_LOS:
@@ -3903,56 +5301,29 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_GET_PATH_TO_ENEMY_LKP_LOS:
 			case TASK_SET_GOAL:
 			case TASK_GET_PATH_TO_GOAL:
-			case TASK_GET_PATH_TO_ENEMY:
 			case TASK_GET_PATH_TO_ENEMY_CORPSE:
-			case TASK_GET_PATH_TO_PLAYER:
 			case TASK_GET_PATH_TO_SAVEPOSITION_LOS:
 			case TASK_GET_PATH_TO_TARGET_WEAPON:
-			case TASK_GET_PATH_TO_TARGET:
-			case TASK_GET_PATH_TO_HINTNODE:
 			case TASK_GET_PATH_TO_COMMAND_GOAL:
 			case TASK_MARK_COMMAND_GOAL_POS:
 			case TASK_CLEAR_COMMAND_GOAL:
-			case TASK_GET_PATH_TO_LASTPOSITION:
-			case TASK_GET_PATH_TO_SAVEPOSITION:
-			case TASK_GET_PATH_TO_RANDOM_NODE:
 			case TASK_GET_PATH_TO_BESTSOUND:
 			case TASK_GET_PATH_TO_BESTSCENT:
-			case TASK_GET_PATH_AWAY_FROM_BEST_SOUND:
 			case TASK_MOVE_AWAY_PATH:
+				DesireStand();
+				break;
+
+			case TASK_GET_PATH_AWAY_FROM_BEST_SOUND:
 			case TASK_WEAPON_RUN_PATH:
 			case TASK_ITEM_RUN_PATH:
-			case TASK_RUN_PATH:
-			case TASK_WALK_PATH_FOR_UNITS:
-			case TASK_RUN_PATH_FOR_UNITS:
-			case TASK_WALK_PATH:
-			case TASK_WALK_PATH_WITHIN_DIST:
-			case TASK_RUN_PATH_WITHIN_DIST:
-			case TASK_RUN_PATH_FLEE:
-			case TASK_WALK_PATH_TIMED:
-			case TASK_RUN_PATH_TIMED:
 			case TASK_STRAFE_PATH:
-			case TASK_WAIT_FOR_MOVEMENT_STEP:
 			case TASK_SMALL_FLINCH:
 			case TASK_BIG_FLINCH:
-			case TASK_DIE:
 			case TASK_SOUND_WAKE:
-			case TASK_SOUND_DIE:
 			case TASK_SOUND_IDLE:
 			case TASK_SOUND_PAIN:
 			case TASK_SOUND_ANGRY:
-			case TASK_SPEAK_SENTENCE:
 			case TASK_WAIT_FOR_SPEAK_FINISH:
-			case TASK_WAIT_FOR_SCRIPT:
-			case TASK_PUSH_SCRIPT_ARRIVAL_ACTIVITY:
-			case TASK_PLAY_SCRIPT:
-			case TASK_PLAY_SCRIPT_POST_IDLE:
-			case TASK_PRE_SCRIPT:
-			case TASK_ENABLE_SCRIPT:
-			case TASK_PLANT_ON_SCRIPT:
-			case TASK_FACE_SCRIPT:
-			case TASK_SET_TOLERANCE_DISTANCE:
-			case TASK_SET_ROUTE_SEARCH_TIME:
 			case TASK_WEAPON_FIND:
 			case TASK_ITEM_PICKUP:
 			case TASK_WEAPON_PICKUP:
@@ -3974,6 +5345,20 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 					if (task.TaskData == 1)
 						ChainRunTask(TASK_WAIT_FOR_MOVEMENT);
 					else {
+						if (GetNavType() == Navigation.Jump) {
+							if ((GetFlags() & EntityFlags.OnGround) != 0)
+								SetNavType(Navigation.Ground);
+							else if (GetSmoothedVelocity().Length() > 0.01)
+								break;
+							else {
+								SetNavType(Navigation.Ground);
+								TaskFail(AI_TaskFailureCode.StuckOnTop);
+							}
+						}
+
+						if (GetNavType() == Navigation.Climb)
+							break;
+
 						SetIdealActivity(GetStoppedActivity());
 
 						TaskComplete();
@@ -4028,9 +5413,53 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 			case TASK_WAIT_FOR_MOVEMENT_STEP:
 			case TASK_WAIT_FOR_MOVEMENT: {
-					TaskComplete();
+					bool timeExpired = task.TaskData != 0 && task.TaskData < gpGlobals.CurTime - GetTimeTaskStarted();
+
+					if (timeExpired || GetNavigator()!.GetGoalType() == NavGoalType.None) {
+						TaskComplete();
+						GetNavigator()!.StopMoving();
+					}
+					else if (!GetNavigator()!.IsGoalActive())
+						SetIdealActivity(GetStoppedActivity());
+					else
+						ValidateNavGoal();
 					break;
 				}
+
+			case TASK_RUN_PATH_FOR_UNITS:
+			case TASK_WALK_PATH_FOR_UNITS: {
+					float distance = (LastPosition - GetLocalOrigin()).Length2D();
+
+					if (distance > task.TaskData ||
+						 GetNavigator()!.GetGoalType() == NavGoalType.None)
+						TaskComplete();
+					break;
+				}
+
+			case TASK_RUN_PATH_FLEE: {
+					Vector3 diff = GetLocalOrigin() - GetNavigator()!.GetGoalPos();
+
+					if (diff.Length() <= task.TaskData)
+						TaskComplete();
+					break;
+				}
+
+			case TASK_WALK_PATH_WITHIN_DIST:
+			case TASK_RUN_PATH_WITHIN_DIST: {
+					Vector3 diff = GetLocalOrigin() - GetNavigator()!.GetGoalPos();
+
+					if (diff.Length() <= task.TaskData)
+						TaskComplete();
+					break;
+				}
+
+			case TASK_WALK_PATH_TIMED:
+			case TASK_RUN_PATH_TIMED: {
+					if (IsWaitFinished() ||
+						 GetNavigator()!.GetGoalType() == NavGoalType.None)
+						TaskComplete();
+				}
+				break;
 
 			case TASK_PLAY_SCENE: {
 					if (!IsInLockedScene())
@@ -4073,23 +5502,171 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				break;
 
 			case TASK_TURN_RIGHT:
-			case TASK_TURN_LEFT:
+			case TASK_TURN_LEFT: {
+					Assert(GetMotor()!.IsYawLocked() == false);
+
+					GetMotor()!.UpdateYaw();
+
+					if (FacingIdeal())
+						TaskComplete();
+					break;
+				}
+
 			case TASK_PLAY_PRIVATE_SEQUENCE_FACE_ENEMY:
 			case TASK_PLAY_SEQUENCE_FACE_ENEMY:
-			case TASK_PLAY_SEQUENCE_FACE_TARGET:
-			case TASK_PLAY_HINT_ACTIVITY:
+			case TASK_PLAY_SEQUENCE_FACE_TARGET: {
+					BaseEntity? target;
+
+					if (task.Task == TASK_PLAY_SEQUENCE_FACE_TARGET)
+						target = TargetEnt.Get();
+					else
+						target = GetEnemy();
+					if (target != null)
+						GetMotor()!.SetIdealYawAndUpdate(target.GetAbsOrigin() - GetLocalOrigin(), AI_Motor.AI_KEEP_YAW_SPEED);
+
+					if (IsActivityFinished())
+						TaskComplete();
+				}
+				break;
+
 			case TASK_PLAY_SEQUENCE:
-			case TASK_PLAY_PRIVATE_SEQUENCE:
-			case TASK_ADD_GESTURE_WAIT:
-			case TASK_FACE_ENEMY:
-			case TASK_FACE_PLAYER:
-			case TASK_FIND_COVER_FROM_BEST_SOUND:
-			case TASK_FACE_HINTNODE:
+			case TASK_PLAY_PRIVATE_SEQUENCE: {
+					AutoMovement();
+					if (IsActivityFinished())
+						TaskComplete();
+					break;
+				}
+
+			case TASK_FACE_ENEMY: {
+					Assert(GetMotor()!.IsYawLocked() == false);
+
+					Vector3 enemyLKP = GetEnemyLKP();
+					if (!FInAimCone(enemyLKP)) {
+						GetMotor()!.SetIdealYawToTarget(enemyLKP);
+						GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+					}
+					else {
+						float reasonableFacing = CalcReasonableFacing(true);
+						if (MathF.Abs(reasonableFacing - GetMotor()!.GetIdealYaw()) > 1)
+							GetMotor()!.SetIdealYaw(reasonableFacing);
+					}
+
+					GetMotor()!.UpdateYaw();
+
+					if (FacingIdeal())
+						TaskComplete();
+					break;
+				}
+
+			case TASK_FACE_PLAYER: {
+					BasePlayer? player = AI_GetClosestPlayer();
+					if (player != null) {
+						GetMotor()!.SetIdealYawToTargetAndUpdate(player.GetAbsOrigin(), AI_Motor.AI_KEEP_YAW_SPEED);
+						SetTurnActivity();
+						if (IsWaitFinished() && GetMotor()!.DeltaIdealYaw() < 10)
+							TaskComplete();
+					}
+					else
+						TaskFail(AI_TaskFailureCode.NoPlayer);
+				}
+				break;
+
 			case TASK_FACE_LASTPOSITION:
 			case TASK_FACE_AWAY_FROM_SAVEPOSITION:
+			case TASK_FACE_HINTNODE:
 			case TASK_FACE_TARGET:
 			case TASK_FACE_SCRIPT:
-			case TASK_FACE_PATH:
+			case TASK_FACE_PATH: {
+					Assert(GetMotor()!.IsYawLocked() == false);
+
+					GetMotor()!.UpdateYaw();
+
+					if (FacingIdeal())
+						TaskComplete();
+					break;
+				}
+
+			case TASK_DIE:
+				RunDieTask();
+				break;
+
+			case TASK_SCRIPT_RUN_TO_TARGET:
+			case TASK_SCRIPT_WALK_TO_TARGET:
+			case TASK_SCRIPT_CUSTOM_MOVE_TO_TARGET:
+				StartScriptMoveToTargetTask(task.Task);
+				break;
+
+			case TASK_WAIT_FOR_SCRIPT: {
+					AI_ScriptedSequence? cine = Cine.Get();
+					if (cine != null && cine.IsTimeToStart()) {
+						TaskComplete();
+						cine.OnBeginSequence();
+
+						if (!string.IsNullOrEmpty(cine.EntryName))
+							cine.StartSequence(this, cine.EntryName, true);
+						else
+							cine.StartSequence(this, cine.Play, true);
+
+						if (Cine.Get() == null)
+							ClearSchedule("Waiting for script, but lost script!");
+
+						PlaybackRate = 1.0;
+					}
+					else if (cine == null) {
+						DevMsg("Cine died!\n");
+						TaskComplete();
+					}
+					else if (IsRunningDynamicInteraction())
+						throw new NotImplementedException();
+					break;
+				}
+
+			case TASK_PLAY_SCRIPT: {
+					AutoMovement();
+
+					if (IsSequenceFinished()) {
+						if (Cine.Get()!.FinishedActionSequence(this)) {
+							Cine.Get()?.SequenceDone(this);
+
+							TaskComplete();
+						}
+						else if (Cine.Get() != null && Cine.Get()!.ForceSynch)
+							Cine.Get()!.SynchronizeSequence(this);
+					}
+					break;
+				}
+
+			case TASK_PLAY_SCRIPT_POST_IDLE: {
+					AI_ScriptedSequence? cine = Cine.Get();
+					if (cine == null) {
+						DevMsg("Scripted sequence destroyed while in use\n");
+						TaskFail(AI_TaskFailureCode.ScheduleNotFound);
+						break;
+					}
+
+					if (IsSequenceFinished() || cine.NextCine.Get() != null)
+						cine.PostIdleDone(this);
+					break;
+				}
+
+			case TASK_ENABLE_SCRIPT: {
+					AI_ScriptedSequence? cine = Cine.Get();
+					if (cine == null) {
+						DevMsg("Scripted sequence destroyed while in use\n");
+						TaskFail(AI_TaskFailureCode.ScheduleNotFound);
+						break;
+					}
+
+					if (!cine.IsWaitingForBegin()) {
+						cine.DelayStart(false);
+						TaskComplete();
+					}
+					break;
+				}
+
+			case TASK_PLAY_HINT_ACTIVITY:
+			case TASK_ADD_GESTURE_WAIT:
+			case TASK_FIND_COVER_FROM_BEST_SOUND:
 			case TASK_WAIT_FACE_ENEMY:
 			case TASK_WAIT_FACE_ENEMY_RANDOM:
 			case TASK_WAIT_UNTIL_NO_DANGER_SOUND:
@@ -4099,15 +5676,110 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_GET_FLANK_RADIUS_PATH_TO_ENEMY_LOS:
 			case TASK_GET_FLANK_ARC_PATH_TO_ENEMY_LOS:
 			case TASK_GET_PATH_TO_ENEMY_LKP_LOS:
+			case TASK_MOVE_AWAY_PATH: {
+					QAngle ang = GetLocalAngles();
+					ang.Y = GetMotor()!.GetIdealYaw() + 180;
+					Vector3 move;
+
+					switch (GetTaskInterrupt()) {
+						case 0: {
+								if (IsPlayerAlly()) {
+									AI_Hint? hint;
+									HintCriteria hintCriteria = new();
+
+									hintCriteria.AddHintType(Hint.PlayerAllyMoveAwayDest);
+									hintCriteria.SetFlag(AI_HintNodeFlags.Nearest);
+									hintCriteria.AddIncludePosition(GetAbsOrigin(), 20.0f * 12.0f);
+									hintCriteria.AddExcludePosition(GetAbsOrigin(), 28.0f);
+
+									hint = AI_HintManager.FindHint(this, hintCriteria);
+
+									if (hint != null) {
+										BasePlayer? player = AI_GetClosestPlayer();
+										Vector3 goal = hint.GetAbsOrigin();
+
+										if (goal.DistToSqr(GetAbsOrigin()) < goal.DistToSqr(player!.GetAbsOrigin())) {
+											if (GetNavigator()!.SetGoal(new AI_NavGoal(goal))) {
+												hint.DisableForSeconds(0.1f);
+												TaskComplete();
+												break;
+											}
+										}
+									}
+								}
+
+								ref WorldSoundInstance bestSound = ref GetBestSound(SoundInstanceType.MoveAway);
+								if (!Unsafe.IsNullRef(ref bestSound) && bestSound.Owner.Get() != null && bestSound.Owner.Get()!.GetServerVehicle() != null) {
+									move = GetAbsOrigin() - bestSound.Owner.Get()!.WorldSpaceCenter();
+									MathLib.VectorNormalize(ref move);
+								}
+								else
+									MathLib.AngleVectors(ang, out move);
+
+								if (GetNavigator()!.SetVectorGoal(move, task.TaskData, Math.Min(36, task.TaskData), true) && IsValidMoveAwayDest(GetNavigator()!.GetGoalPos()))
+									TaskComplete();
+								else {
+									ang.Y = GetMotor()!.GetIdealYaw() + 91;
+									MathLib.AngleVectors(ang, out move);
+
+									if (GetNavigator()!.SetVectorGoal(move, task.TaskData, Math.Min(24, task.TaskData), true) && IsValidMoveAwayDest(GetNavigator()!.GetGoalPos()))
+										TaskComplete();
+									else
+										TaskInterrupt();
+								}
+							}
+							break;
+
+						case 1: {
+								ang.Y = GetMotor()!.GetIdealYaw() + 271;
+								MathLib.AngleVectors(ang, out move);
+
+								if (GetNavigator()!.SetVectorGoal(move, task.TaskData, Math.Min(24, task.TaskData), true) && IsValidMoveAwayDest(GetNavigator()!.GetGoalPos()))
+									TaskComplete();
+								else {
+									ang.Y = GetMotor()!.GetIdealYaw() + 180;
+									while (ang.Y < 0)
+										ang.Y += 360;
+									while (ang.Y >= 360)
+										ang.Y -= 360;
+									if (ang.Y < 45 || ang.Y >= 315)
+										ang.Y = 0;
+									else if (ang.Y < 135)
+										ang.Y = 90;
+									else if (ang.Y < 225)
+										ang.Y = 180;
+									else
+										ang.Y = 270;
+
+									MathLib.AngleVectors(ang, out move);
+
+									if (GetNavigator()!.SetVectorGoal(move, task.TaskData, Math.Min(6, task.TaskData), false) && IsValidMoveAwayDest(GetNavigator()!.GetGoalPos()))
+										TaskComplete();
+									else
+										TaskInterrupt();
+								}
+							}
+							break;
+
+						case 2: {
+								ClearTaskInterrupt();
+
+								if (GetTacticalServices()!.FindCoverPos(GetLocalOrigin(), EyePosition(), 0, CoverRadius(), out Vector3 coverPos) && IsValidMoveAwayDest(GetNavigator()!.GetGoalPos())) {
+									GetNavigator()!.SetGoal(new AI_NavGoal(coverPos, Activity.ACT_RUN));
+									MoveWaitFinished = gpGlobals.CurTime + 2;
+								}
+								else
+									TaskFail(AI_TaskFailureCode.NoRoute);
+							}
+							break;
+					}
+				}
+				break;
+
 			case TASK_GET_PATH_AWAY_FROM_BEST_SOUND:
-			case TASK_MOVE_AWAY_PATH:
 			case TASK_WEAPON_RUN_PATH:
 			case TASK_ITEM_RUN_PATH:
-			case TASK_DIE:
 			case TASK_WAIT_FOR_SPEAK_FINISH:
-			case TASK_SCRIPT_RUN_TO_TARGET:
-			case TASK_SCRIPT_WALK_TO_TARGET:
-			case TASK_SCRIPT_CUSTOM_MOVE_TO_TARGET:
 			case TASK_RANGE_ATTACK1:
 			case TASK_RANGE_ATTACK2:
 			case TASK_MELEE_ATTACK1:
@@ -4117,17 +5789,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_RELOAD:
 			case TASK_SMALL_FLINCH:
 			case TASK_BIG_FLINCH:
-			case TASK_WAIT_FOR_SCRIPT:
-			case TASK_PLAY_SCRIPT:
-			case TASK_PLAY_SCRIPT_POST_IDLE:
-			case TASK_ENABLE_SCRIPT:
-			case TASK_RUN_PATH_FOR_UNITS:
-			case TASK_WALK_PATH_FOR_UNITS:
-			case TASK_RUN_PATH_FLEE:
-			case TASK_WALK_PATH_WITHIN_DIST:
-			case TASK_RUN_PATH_WITHIN_DIST:
-			case TASK_WALK_PATH_TIMED:
-			case TASK_RUN_PATH_TIMED:
 			case TASK_WEAPON_PICKUP:
 			case TASK_ITEM_PICKUP:
 				throw new NotImplementedException();
@@ -4163,6 +5824,21 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return ret;
 	}
 
+	public bool HasCondition(int condition, bool useIgnoreConditions) {
+		if (useIgnoreConditions)
+			return HasCondition(condition);
+
+		int interrupt = InterruptFromCondition(condition);
+
+		if (interrupt == -1) {
+			Assert(false);
+			return false;
+		}
+
+		bool ret = ConditionsPreIgnore.IsBitSet(interrupt);
+		return ret;
+	}
+
 	public void ClearCondition(int condition) {
 		int interrupt = InterruptFromCondition(condition);
 
@@ -4186,7 +5862,76 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		ClearCondition((int)SCOND_t.COND_WEAPON_SIGHT_OCCLUDED);
 	}
 
-	public virtual bool IsNavigationUrgent() => throw new NotImplementedException();
+	public virtual bool IsNavigationUrgent() {
+		if (IsCurSchedule(SCHED_SCRIPTED_WALK, false) ||
+			 IsCurSchedule(SCHED_SCRIPTED_RUN, false) ||
+			 IsCurSchedule(SCHED_SCRIPTED_CUSTOM_MOVE, false) ||
+			 (IsCurSchedule(SCHED_SCENE_GENERIC, false) && IsInLockedScene()))
+			return true;
+		return false;
+	}
+
+	public virtual bool ShouldFailNav(bool movementFailed) {
+#if HL2_EPISODIC
+		if (ai_vehicle_avoidance.GetBool()) {
+			BaseEntity? entity = GetNavigator()!.GetBlockingEntity();
+			if (entity != null && entity.GetServerVehicle() != null) {
+				if (Classify() == Class_T.PlayerAllyVital || IsNavigationUrgent())
+					return false;
+			}
+		}
+#endif
+
+		if (IsNavigationUrgent())
+			return false;
+
+		return true;
+	}
+
+	public virtual bool ShouldBruteForceFailedNav() => false;
+
+	public virtual void OnMovementFailed() { }
+	public virtual void OnMovementComplete() { }
+
+	public virtual float GetDefaultNavGoalTolerance() => GetHullWidth() * 2.0f;
+
+	public virtual void TranslateNavGoal(BaseEntity enemy, ref Vector3 chasePosition) {
+		if (GetNavType() == Navigation.Fly) {
+			Vector3 offset = enemy.EyePosition() - enemy.GetAbsOrigin();
+			chasePosition += offset;
+		}
+	}
+
+	public void OpenPropDoorBegin(BasePropDoor door) => throw new NotImplementedException();
+
+	public void TaskMovementComplete() {
+		switch (GetTaskStatus()) {
+			case TaskStatus.New:
+			case TaskStatus.RunMoveAndTask:
+				SetTaskStatus(TaskStatus.RunTask);
+				break;
+
+			case TaskStatus.RunMove:
+				TaskComplete();
+				break;
+
+			case TaskStatus.RunTask:
+				break;
+
+			case TaskStatus.Complete:
+				break;
+		}
+
+		if (ScriptState != ScriptStateType.CustomMoveToMark)
+			SetIdealActivity(GetStoppedActivity());
+
+		if (GetNavigator()!.IsGoalActive())
+			GetNavigator()!.AdvancePath();
+
+		GetNavigator()!.ClearGoal();
+
+		OnMovementComplete();
+	}
 
 	public virtual bool ShouldProbeCollideAgainstEntity(BaseEntity entity) {
 		if (entity.GetMoveType() == Source.MoveType.VPhysics) {
@@ -4229,6 +5974,10 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public void DesireStand() => CrouchDesired = false;
+
+	public virtual bool IsValidMoveAwayDest(in Vector3 dest) => true;
+
+	public virtual float CoverRadius() => 1024;
 
 	public virtual void OnChangeActivity(Activity newActivity) {
 		if (newActivity == Activity.ACT_RUN ||
@@ -4381,7 +6130,111 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public virtual int SelectCombatSchedule() => throw new NotImplementedException();
 
-	public virtual int SelectDeadSchedule() => throw new NotImplementedException();
+	public virtual int SelectDeadSchedule() {
+		if (BecomeRagdollOnClient(vec3_origin)) {
+			CleanupOnDeath();
+			return SCHED_DIE_RAGDOLL;
+		}
+
+		if (LifeState == (int)Source.LifeState.Dead)
+			return SCHED_NONE;
+
+		CleanupOnDeath();
+		return SCHED_DIE;
+	}
+
+	public void RunDieTask() {
+		AutoMovement();
+
+		if (IsActivityFinished() && GetCycle() >= 1.0f) {
+			LifeState = (int)Source.LifeState.Dead;
+
+			SetThink(null);
+			StopAnimation();
+
+			if (!BBoxFlat())
+				Util.SetSize(this, new Vector3(-4, -4, 0), new Vector3(4, 4, 1));
+			else
+				Util.SetSize(this, WorldAlignMins(), new Vector3(WorldAlignMaxs().X, WorldAlignMaxs().Y, WorldAlignMins().Z + 1));
+		}
+	}
+
+	public bool BBoxFlat() {
+		Vector3 point;
+		float xSize, ySize;
+		float length;
+		float length2;
+
+		xSize = WorldAlignSize().X / 2;
+		ySize = WorldAlignSize().Y / 2;
+
+		point.X = GetAbsOrigin().X + xSize;
+		point.Y = GetAbsOrigin().Y + ySize;
+		point.Z = GetAbsOrigin().Z;
+
+		Util.TraceLine(point, point - new Vector3(0, 0, 100), Mask.NPCSolidBrushOnly, this, Source.CollisionGroup.None, out Trace tr);
+		length = (point - tr.EndPos).Length();
+
+		point.X = GetAbsOrigin().X - xSize;
+		point.Y = GetAbsOrigin().Y - ySize;
+
+		Util.TraceLine(point, point - new Vector3(0, 0, 100), Mask.NPCSolidBrushOnly, this, Source.CollisionGroup.None, out tr);
+		length2 = (point - tr.EndPos).Length();
+		if (length2 > length)
+			return false;
+		length = length2;
+
+		point.X = GetAbsOrigin().X - xSize;
+		point.Y = GetAbsOrigin().Y + ySize;
+		Util.TraceLine(point, point - new Vector3(0, 0, 100), Mask.NPCSolidBrushOnly, this, Source.CollisionGroup.None, out tr);
+		length2 = (point - tr.EndPos).Length();
+		if (length2 > length)
+			return false;
+		length = length2;
+
+		point.X = GetAbsOrigin().X + xSize;
+		point.Y = GetAbsOrigin().Y - ySize;
+		Util.TraceLine(point, point - new Vector3(0, 0, 100), Mask.NPCSolidBrushOnly, this, Source.CollisionGroup.None, out tr);
+		length2 = (point - tr.EndPos).Length();
+		if (length2 > length)
+			return false;
+		length = length2;
+
+		return true;
+	}
+
+	public void CleanupOnDeath(BaseEntity? culprit = null, bool fireDeathOutput = true) {
+		if (!DidDeathCleanup) {
+			DidDeathCleanup = true;
+
+			if (NPCState == NPCState.Script && Cine.Get() != null)
+				Cine.Get()!.CancelScript();
+
+			if (GetHintNode() != null) {
+				GetHintNode()!.Unlock(0.0f);
+				SetHintNode(null);
+			}
+
+			if (fireDeathOutput)
+				OnDeath.FireOutput(culprit, this);
+
+			VacateStrategySlot();
+
+			if (Squad != null) {
+				if (NPCState == NPCState.Idle && culprit != null) {
+					if (GetEnemies().GetDangerMemory() == null)
+						UpdateEnemyMemory(culprit, GetAbsOrigin());
+				}
+
+				Squad.RemoveFromSquad(this, true);
+				Squad = null;
+			}
+
+			SceneEntityGlobals.RemoveActorFromScriptedScenes(this, false);
+		}
+		else
+			DevMsg("Unexpected double-death-cleanup\n");
+	}
 
 	public virtual int SelectScriptSchedule() {
 		Assert(Cine.Get() != null);
@@ -4584,6 +6437,10 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				if (ShouldPlayIdleSound())
 					IdleSound();
 
+				PerformSensing();
+
+				GetEnemies().RefreshMemories();
+				ChooseEnemy();
 
 				if (Weapon_IsBetterAvailable())
 					SetCondition((int)SCOND_t.COND_BETTER_WEAPON_AVAILABLE);
@@ -4609,15 +6466,566 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 					SetEnemy(null);
 			}
 
+			if (GetTarget() != null)
+				CheckTarget(GetTarget()!);
+
 			CheckAmmo();
 
 			CheckFlinches();
+
+			CheckSquad();
 		}
 		else
 			ClearCondition((int)SCOND_t.COND_IN_PVS);
 	}
 
-	public virtual void GatherEnemyConditions(BaseEntity enemy) => throw new NotImplementedException();
+	public virtual void GatherEnemyConditions(BaseEntity enemy) {
+		ClearCondition((int)SCOND_t.COND_ENEMY_FACING_ME);
+		ClearCondition((int)SCOND_t.COND_BEHIND_ENEMY);
+
+		if (HasCondition((int)SCOND_t.COND_NEW_ENEMY) || GetSenses()!.GetTimeLastUpdate(GetEnemy()) == gpGlobals.CurTime) {
+			ClearCondition((int)SCOND_t.COND_HAVE_ENEMY_LOS);
+			ClearCondition((int)SCOND_t.COND_ENEMY_OCCLUDED);
+
+			BaseEntity? blocker = null;
+			SetEnemyOccluder(null);
+
+			bool sensesDidSee = GetSenses()!.DidSeeEntity(enemy);
+
+			if (!sensesDidSee && ((EnemyDistance(enemy) >= GetSenses()!.GetDistLook()) || !FVisible(enemy, Mask.BlockLOS, out blocker))) {
+				SetEnemyOccluder(blocker);
+				SetCondition((int)SCOND_t.COND_ENEMY_OCCLUDED);
+				ClearCondition((int)SCOND_t.COND_SEE_ENEMY);
+
+				if (HasMemory(AI_MemoryFlags.HadLOS)) {
+					if (GetEnemy()!.IsPlayer())
+						OnLostPlayerLOS.FireOutput(GetEnemy(), this);
+					OnLostEnemyLOS.FireOutput(GetEnemy(), this);
+				}
+				Forget(AI_MemoryFlags.HadLOS);
+			}
+			else {
+				SetCondition((int)SCOND_t.COND_HAVE_ENEMY_LOS);
+
+				if (sensesDidSee)
+					SetCondition((int)SCOND_t.COND_SEE_ENEMY);
+				else
+					ClearCondition((int)SCOND_t.COND_SEE_ENEMY);
+
+				if (!HasMemory(AI_MemoryFlags.HadLOS)) {
+					EHANDLE hEnemy = new();
+					hEnemy.Set(GetEnemy());
+
+					if (GetEnemy()!.IsPlayer()) {
+						OnFoundPlayer.Set(hEnemy, this, this);
+						OnFoundEnemy.Set(hEnemy, this, this);
+					}
+					else
+						OnFoundEnemy.Set(hEnemy, this, this);
+				}
+				Remember(AI_MemoryFlags.HadLOS);
+			}
+		}
+
+		if (!enemy.IsAlive()) {
+			SetCondition((int)SCOND_t.COND_ENEMY_DEAD);
+			ClearCondition((int)SCOND_t.COND_SEE_ENEMY);
+			ClearCondition((int)SCOND_t.COND_ENEMY_OCCLUDED);
+			return;
+		}
+
+		float distToEnemy = EnemyDistance(enemy);
+
+		if (HasCondition((int)SCOND_t.COND_SEE_ENEMY)) {
+			if (enemy.GetSmoothedVelocity() != vec3_origin) {
+				Vector3 trailPos = enemy.GetAbsOrigin() - enemy.GetSmoothedVelocity() * random.RandomFloat(-0.05f, 0);
+				UpdateEnemyMemory(enemy, trailPos);
+			}
+			else
+				UpdateEnemyMemory(enemy, enemy.GetAbsOrigin());
+
+			if (enemy is BaseCombatCharacter enemyBCC && enemyBCC.FInViewCone(this)) {
+				SetCondition((int)SCOND_t.COND_ENEMY_FACING_ME);
+				ClearCondition((int)SCOND_t.COND_BEHIND_ENEMY);
+			}
+			else {
+				ClearCondition((int)SCOND_t.COND_ENEMY_FACING_ME);
+				SetCondition((int)SCOND_t.COND_BEHIND_ENEMY);
+			}
+		}
+		else if ((!HasCondition((int)SCOND_t.COND_ENEMY_OCCLUDED) && !HasCondition((int)SCOND_t.COND_SEE_ENEMY)) && (distToEnemy <= 256))
+			UpdateEnemyMemory(enemy, enemy.GetAbsOrigin(), enemy);
+
+		float tooFar = DistTooFar;
+		if (GetActiveWeapon() != null && HasCondition((int)SCOND_t.COND_SEE_ENEMY))
+			tooFar = Math.Max(DistTooFar, GetActiveWeapon()!.MaxRange1);
+
+		if (distToEnemy >= tooFar)
+			SetCondition((int)SCOND_t.COND_ENEMY_TOO_FAR);
+		else
+			ClearCondition((int)SCOND_t.COND_ENEMY_TOO_FAR);
+
+		if (FCanCheckAttacks())
+			GatherAttackConditions(GetEnemy()!, distToEnemy);
+		else
+			ClearAttackConditions();
+
+		UpdateEnemyPos();
+
+		UpdateTargetPos();
+
+		if (GetNavigator()!.IsOnNetwork()) {
+			if (IsUnreachable(GetEnemy()))
+				SetCondition((int)SCOND_t.COND_ENEMY_UNREACHABLE);
+		}
+
+		if (gpGlobals.CurTime - GetEnemyLastTimeSeen() > 8) {
+			Vector3 enemyLKP = GetEnemyLKP();
+			if (((enemyLKP - GetAbsOrigin()).AsVector2D().Length() < 48) &&
+				!HasCondition((int)SCOND_t.COND_SEE_ENEMY)) {
+				MarkEnemyAsEluded();
+			}
+
+			if (!HasCondition((int)SCOND_t.COND_SEE_ENEMY) && HasCondition((int)SCOND_t.COND_ENEMY_UNREACHABLE)) {
+				if (!FVisible(enemyLKP))
+					MarkEnemyAsEluded();
+			}
+		}
+	}
+
+	public virtual void GatherAttackConditions(BaseEntity target, float dist) => throw new NotImplementedException();
+
+	public virtual bool FCanCheckAttacks() {
+		if (GetNavType() == Navigation.Climb || GetNavType() == Navigation.Jump)
+			return false;
+
+		if (HasCondition((int)SCOND_t.COND_SEE_ENEMY) && !HasCondition((int)SCOND_t.COND_ENEMY_TOO_FAR))
+			return true;
+
+		return false;
+	}
+
+	public virtual float GetGoalRepathTolerance(BaseEntity goalEnt, NavGoalType type, in Vector3 curGoal, in Vector3 curTargetPos) {
+		float distToGoal = (GetAbsOrigin() - curTargetPos).Length() - GetNavigator()!.GetArrivalDistance();
+		float distMoved1Sec = GetSmoothedVelocity().Length();
+		float result = 120;
+
+		if (distMoved1Sec > 0.0) {
+			float t = distToGoal / distMoved1Sec;
+
+			result = Math.Clamp(120.0f * t, 0.0f, 120.0f);
+		}
+
+		if (!goalEnt.IsPlayer())
+			result *= 1.20f;
+
+		return result;
+	}
+
+	public void UpdateEnemyPos() {
+		if (!GetNavigator()!.IsInterruptable())
+			return;
+
+		if (AnyUpdateEnemyPosTimer.Expired() && UpdateEnemyPosTimer.Expired()) {
+			if (GetNavigator()!.GetGoalType() == NavGoalType.Enemy) {
+				if (Enemy.Get() != GetNavigator()!.GetGoalTarget())
+					GetNavigator()!.SetGoalTarget(Enemy.Get(), vec3_origin);
+				else {
+					Vector3 enemyLKP = GetEnemyLKP();
+					TranslateNavGoal(GetEnemy(), ref enemyLKP);
+					float tolerance = GetGoalRepathTolerance(GetEnemy()!, NavGoalType.Enemy, GetNavigator()!.GetGoalPos(), enemyLKP);
+					if ((GetNavigator()!.GetGoalPos() - enemyLKP).Length() > tolerance) {
+						AnyUpdateEnemyPosTimer.Set(0.1f);
+						if (!GetNavigator()!.RefindPathToGoal(false))
+							TaskFail(AI_TaskFailureCode.NoRoute);
+					}
+				}
+			}
+		}
+	}
+
+	public void UpdateTargetPos() {
+		if (!GetNavigator()!.IsInterruptable())
+			return;
+
+		if (GetNavigator()!.GetGoalType() == NavGoalType.TargetEnt) {
+			if (TargetEnt.Get() != GetNavigator()!.GetGoalTarget())
+				GetNavigator()!.SetGoalTarget(TargetEnt.Get(), vec3_origin);
+			else if ((GetNavigator()!.GetGoalFlags() & AI_NavGoalFlags.UpdateTargetPos) != 0) {
+				if (GetTarget() == null || (GetNavigator()!.GetGoalPos() - GetTarget()!.GetAbsOrigin()).Length() > GetGoalRepathTolerance(GetTarget()!, NavGoalType.TargetEnt, GetNavigator()!.GetGoalPos(), GetTarget()!.GetAbsOrigin())) {
+					if (!GetNavigator()!.RefindPathToGoal(false))
+						TaskFail(AI_TaskFailureCode.NoRoute);
+				}
+			}
+		}
+	}
+
+	public void CheckTarget(BaseEntity target) {
+		ClearCondition((int)SCOND_t.COND_HAVE_TARGET_LOS);
+		ClearCondition((int)SCOND_t.COND_TARGET_OCCLUDED);
+
+		if ((EnemyDistance(target) >= GetSenses()!.GetDistLook()) || !FVisible(target))
+			SetCondition((int)SCOND_t.COND_TARGET_OCCLUDED);
+		else
+			SetCondition((int)SCOND_t.COND_HAVE_TARGET_LOS);
+
+		UpdateTargetPos();
+	}
+
+	public void RememberUnreachable(BaseEntity entity, float duration = -1) {
+		if (entity == GetEnemy())
+			ForceChooseNewEnemy();
+
+		float NPC_UNREACHABLE_TIMEOUT = (duration > 0.0) ? duration : 3;
+		for (int i = UnreachableEnts.Count - 1; i >= 0; i--) {
+			if (entity == UnreachableEnts[i].UnreachableEntity.Get()) {
+				UnreachableEnt existing = UnreachableEnts[i];
+				existing.ExpireTime = gpGlobals.CurTime + NPC_UNREACHABLE_TIMEOUT;
+				existing.LocationWhenUnreachable = entity.GetAbsOrigin();
+				UnreachableEnts[i] = existing;
+				return;
+			}
+		}
+
+		UnreachableEnt added = new() {
+			ExpireTime = gpGlobals.CurTime + NPC_UNREACHABLE_TIMEOUT,
+			LocationWhenUnreachable = entity.GetAbsOrigin()
+		};
+		added.UnreachableEntity.Set(entity);
+		UnreachableEnts.Add(added);
+	}
+
+	public bool IsUnreachable(BaseEntity? entity) {
+		float UNREACHABLE_DIST_TOLERANCE_SQ = 120 * 120;
+
+		for (int i = UnreachableEnts.Count - 1; i >= 0; i--) {
+			if (UnreachableEnts[i].UnreachableEntity.Get() == null)
+				FastRemoveUnreachable(i);
+			else if (entity == UnreachableEnts[i].UnreachableEntity.Get()) {
+				if (gpGlobals.CurTime > UnreachableEnts[i].ExpireTime ||
+					  Vector3.DistanceSquared(entity.GetAbsOrigin(), UnreachableEnts[i].LocationWhenUnreachable) > UNREACHABLE_DIST_TOLERANCE_SQ) {
+					FastRemoveUnreachable(i);
+					return false;
+				}
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void FastRemoveUnreachable(int i) {
+		UnreachableEnts[i] = UnreachableEnts[^1];
+		UnreachableEnts.RemoveAt(UnreachableEnts.Count - 1);
+	}
+
+	public void ForceChooseNewEnemy() => EnemiesSerialNumber = -1;
+
+	public bool DidChooseEnemy() => !SkippedChooseEnemy;
+
+	public TimeUnit_t GetAcceptableTimeSeenEnemy() => AcceptableTimeSeenEnemy;
+
+	public virtual float EnemyDistTolerance() => 0;
+
+	public virtual bool ShouldChooseNewEnemy() {
+		BaseEntity? enemy = GetEnemy();
+		if (enemy != null) {
+			if (GetEnemies().GetSerialNumber() != EnemiesSerialNumber)
+				return true;
+
+			EnemiesSerialNumber = GetEnemies().GetSerialNumber();
+
+			if (EnemyHasEludedMe() || (IRelationType(enemy) != Disposition.HT && IRelationType(enemy) != Disposition.FR) || !IsValidEnemy(enemy))
+				return true;
+			if (HasCondition((int)SCOND_t.COND_SEE_HATE) || HasCondition((int)SCOND_t.COND_SEE_DISLIKE) || HasCondition((int)SCOND_t.COND_SEE_NEMESIS) || HasCondition((int)SCOND_t.COND_SEE_FEAR))
+				return true;
+			if (!enemy.IsAlive()) {
+				if (GiveUpOnDeadEnemyTimer.IsRunning()) {
+					if (GiveUpOnDeadEnemyTimer.Expired())
+						return true;
+				}
+				else
+					GiveUpOnDeadEnemyTimer.Start();
+			}
+
+			AI_EnemyInfo? info = GetEnemies().Find(enemy);
+
+			if (FailChooseEnemyTimer.Expired()) {
+				FailChooseEnemyTimer.Set(1.5f);
+				if (HasCondition((int)SCOND_t.COND_TASK_FAILED) ||
+					 (info != null && (info.TimeAtFirstHand == AI_INVALID_TIME || gpGlobals.CurTime - info.TimeLastSeen > 10))) {
+					return true;
+				}
+			}
+
+			if (info != null && info.TimeValidEnemy < gpGlobals.CurTime)
+				return false;
+		}
+
+		EnemiesSerialNumber = GetEnemies().GetSerialNumber();
+
+		return true;
+	}
+
+	public bool ChooseEnemy() {
+		BaseEntity? initialEnemy = GetEnemy();
+		BaseEntity? chosenEnemy = initialEnemy;
+
+		bool hadEnemy = HasMemory(AI_MemoryFlags.HadEnemy | AI_MemoryFlags.HadPlayer);
+		bool enemyWasPlayer = HasMemory(AI_MemoryFlags.HadPlayer);
+		bool enemyWentNull = (hadEnemy && initialEnemy == null);
+		bool enemyEluded = (enemyWentNull || (initialEnemy != null && GetEnemies().HasEludedMe(initialEnemy)));
+
+		bool haveCondNewEnemy;
+		bool haveCondLostEnemy;
+
+		if (!ScheduleState.ScheduleWasInterrupted && GetCurSchedule() != null && !FScheduleDone()) {
+			Assert(InterruptFromCondition((int)SCOND_t.COND_NEW_ENEMY) == (int)SCOND_t.COND_NEW_ENEMY && InterruptFromCondition((int)SCOND_t.COND_LOST_ENEMY) == (int)SCOND_t.COND_LOST_ENEMY);
+			haveCondNewEnemy = GetCurSchedule()!.HasInterrupt((int)SCOND_t.COND_NEW_ENEMY);
+			haveCondLostEnemy = GetCurSchedule()!.HasInterrupt((int)SCOND_t.COND_LOST_ENEMY);
+
+			if (!haveCondNewEnemy)
+				haveCondNewEnemy = IsCustomInterruptConditionSet((int)SCOND_t.COND_NEW_ENEMY);
+			if (!haveCondLostEnemy)
+				haveCondLostEnemy = IsCustomInterruptConditionSet((int)SCOND_t.COND_LOST_ENEMY);
+		}
+		else {
+			haveCondNewEnemy = true;
+			haveCondLostEnemy = true;
+		}
+
+		if (!enemyWentNull) {
+			if (!haveCondNewEnemy && !(haveCondLostEnemy && enemyEluded)) {
+				SkippedChooseEnemy = true;
+
+				return (chosenEnemy != null);
+			}
+		}
+		else if (!haveCondNewEnemy && !haveCondLostEnemy && GetCurSchedule() != null)
+			DevMsg(2, $"WARNING: AI enemy went NULL but schedule ({GetCurSchedule()!.GetName()}) is not interested\n");
+
+		SkippedChooseEnemy = false;
+
+		if (ShouldChooseNewEnemy())
+			chosenEnemy = BestEnemy();
+
+		bool changingEnemy = (chosenEnemy != initialEnemy);
+
+		if (changingEnemy || enemyWentNull) {
+			Forget(AI_MemoryFlags.HadEnemy | AI_MemoryFlags.HadPlayer);
+
+			if (initialEnemy != null && !initialEnemy.IsAlive())
+				SetCondition((int)SCOND_t.COND_ENEMY_DEAD);
+
+			SetEnemy(chosenEnemy);
+
+			if (hadEnemy) {
+				VacateStrategySlot();
+
+				Forget(AI_MemoryFlags.HadLOS);
+			}
+
+			if (chosenEnemy == null) {
+				if (!HasCondition((int)SCOND_t.COND_ENEMY_DEAD))
+					SetCondition((int)SCOND_t.COND_ENEMY_WENT_NULL);
+
+				if (enemyEluded) {
+					SetCondition((int)SCOND_t.COND_LOST_ENEMY);
+					LostEnemySound();
+				}
+
+				if (enemyWasPlayer)
+					OnLostPlayer.FireOutput(initialEnemy, this);
+				OnLostEnemy.FireOutput(initialEnemy, this);
+			}
+			else
+				Remember((chosenEnemy.IsPlayer()) ? AI_MemoryFlags.HadPlayer : AI_MemoryFlags.HadEnemy);
+		}
+
+		return (chosenEnemy != null);
+	}
+
+	public virtual BaseEntity? BestEnemy() {
+		BaseEntity? bestEnemy = null;
+		int bestDistSq = (int)(MAX_COORD_RANGE * MAX_COORD_RANGE);
+		int bestPriority = -1000;
+		bool bestUnreachable = true;
+		ThreeState bestSeen = ThreeState.None;
+		ThreeState bestVisible = ThreeState.None;
+		int distSq;
+		bool unreachable = false;
+
+		for (AI_EnemyInfo? eMemory = GetEnemies().GetFirst(out int iter); eMemory != null; eMemory = GetEnemies().GetNext(ref iter)) {
+			BaseEntity? enemy = eMemory.Enemy.Get();
+
+			if (enemy == null || !enemy.IsAlive())
+				continue;
+
+			if (g_IgnorePlayers.GetBool() && enemy.IsPlayer())
+				continue;
+
+			if ((enemy.GetFlags() & EntityFlags.NoTarget) != 0)
+				continue;
+
+			if (IgnoreUnseenEnemies) {
+				const float TIME_CONSIDER_ENEMY_UNSEEN = .4f;
+				if (eMemory.TimeLastSeen < gpGlobals.CurTime - TIME_CONSIDER_ENEMY_UNSEEN)
+					continue;
+			}
+
+			Disposition relation = IRelationType(enemy);
+			if (relation != Disposition.HT && relation != Disposition.FR)
+				continue;
+
+			if (AcceptableTimeSeenEnemy > 0.0 && eMemory.TimeLastSeen < AcceptableTimeSeenEnemy)
+				continue;
+
+			if (eMemory.TimeValidEnemy > gpGlobals.CurTime)
+				continue;
+
+			if (eMemory.EludedMe)
+				continue;
+
+			if (relation == Disposition.FR && !eMemory.Unforgettable && eMemory.TimeFirstSeen == AI_INVALID_TIME)
+				continue;
+
+			if (!IsValidEnemy(enemy))
+				continue;
+
+			unreachable = IsUnreachable(enemy);
+
+			if (!bestUnreachable && unreachable)
+				continue;
+
+			if (bestUnreachable && !unreachable) {
+				bestPriority = IRelationPriority(enemy);
+				bestDistSq = (int)(enemy.GetAbsOrigin() - GetAbsOrigin()).LengthSquared();
+				bestEnemy = enemy;
+				bestUnreachable = unreachable;
+				bestSeen = ThreeState.None;
+				bestVisible = ThreeState.None;
+			}
+			else if (IRelationPriority(enemy) > bestPriority) {
+				bestPriority = IRelationPriority(enemy);
+				bestDistSq = (int)(enemy.GetAbsOrigin() - GetAbsOrigin()).LengthSquared();
+				bestEnemy = enemy;
+				bestUnreachable = unreachable;
+				bestSeen = ThreeState.None;
+				bestVisible = ThreeState.None;
+			}
+			else if (IRelationPriority(enemy) == bestPriority) {
+				distSq = (int)(enemy.GetAbsOrigin() - GetAbsOrigin()).LengthSquared();
+
+				bool acceptCurrent = false;
+				bool closer = ((bestDistSq - distSq) > EnemyDistTolerance());
+				ThreeState curSeen = ThreeState.None;
+				ThreeState curVisible = ThreeState.None;
+
+				if (!closer) {
+					if (bestSeen == ThreeState.True || bestVisible == ThreeState.True)
+						continue;
+				}
+
+				if (closer) {
+					if (bestSeen == ThreeState.False && bestVisible == ThreeState.False)
+						acceptCurrent = true;
+				}
+
+				if (!acceptCurrent) {
+					if (closer) {
+						curSeen = (GetSenses()!.DidSeeEntity(enemy)) ? ThreeState.True : ThreeState.False;
+
+						acceptCurrent = (curSeen == ThreeState.True);
+					}
+				}
+
+				if (!acceptCurrent) {
+					if (!closer) {
+						if (bestSeen == ThreeState.None)
+							bestSeen = (GetSenses()!.DidSeeEntity(bestEnemy)) ? ThreeState.True : ThreeState.False;
+
+						if (bestSeen == ThreeState.True)
+							continue;
+					}
+
+					if (closer && bestVisible == ThreeState.None) {
+						curVisible = ((EnemyDistance(enemy) < GetSenses()!.GetDistLook()) && FVisible(enemy)) ? ThreeState.True : ThreeState.False;
+
+						acceptCurrent = (curVisible == ThreeState.True);
+					}
+
+					if (!acceptCurrent) {
+						if (bestSeen == ThreeState.None)
+							bestSeen = (GetSenses()!.DidSeeEntity(bestEnemy)) ? ThreeState.True : ThreeState.False;
+
+						if (bestVisible == ThreeState.None)
+							bestVisible = ((EnemyDistance(bestEnemy!) < GetSenses()!.GetDistLook()) && FVisible(bestEnemy!)) ? ThreeState.True : ThreeState.False;
+
+						if (curSeen == ThreeState.None)
+							curSeen = (GetSenses()!.DidSeeEntity(enemy)) ? ThreeState.True : ThreeState.False;
+
+						if (curVisible == ThreeState.None)
+							curVisible = ((EnemyDistance(enemy) < GetSenses()!.GetDistLook()) && FVisible(enemy)) ? ThreeState.True : ThreeState.False;
+
+						bool bestSeenOrVisible = (bestSeen == ThreeState.True || bestVisible == ThreeState.True);
+						bool curSeenOrVisible = (curSeen == ThreeState.True || curVisible == ThreeState.True);
+
+						if (!closer) {
+							if (bestSeenOrVisible)
+								continue;
+							else if (!curSeenOrVisible)
+								continue;
+						}
+						else {
+							if (!curSeenOrVisible && bestSeenOrVisible)
+								continue;
+						}
+					}
+				}
+
+				bestSeen = curSeen;
+				bestVisible = curVisible;
+				bestDistSq = distSq;
+				bestPriority = IRelationPriority(enemy);
+				bestEnemy = enemy;
+				bestUnreachable = unreachable;
+			}
+		}
+
+		return bestEnemy;
+	}
+
+	public bool IsInSquad() => Squad != null;
+	public AI_Squad? GetSquad() => Squad;
+
+	public void CheckSquad() {
+		if (!IsInSquad())
+			return;
+
+		if (!GetSquad()!.IsLeader(this))
+			return;
+
+		if (VPhysicsGetObject() != null && (VPhysicsGetObject()!.GetGameFlags() & PhysicsFlags.PlayerHeld) != 0)
+			return;
+
+		AI_BaseNPC? squadmate = Squad!.GetFirstMember(out int iter);
+		while (squadmate != null) {
+			if (IRelationType(squadmate) < Disposition.LI) {
+				bool warn = true;
+
+				if (squadmate.VPhysicsGetObject() != null) {
+					if ((squadmate.VPhysicsGetObject()!.GetGameFlags() & PhysicsFlags.PlayerHeld) != 0)
+						warn = false;
+				}
+
+				if (warn) {
+					Warning($"ERROR: Squad '{GetSquad()!.GetName()}' has enemies in it!\n");
+					Warning($"{GetDebugName()} doesn't like {squadmate.GetDebugName()}\n\n");
+				}
+			}
+
+			squadmate = Squad.GetNextMember(ref iter);
+		}
+	}
 
 	public virtual void CheckAmmo() { }
 
@@ -4625,7 +7033,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public bool IsMovingToPickupWeapon() => IsCurSchedule(SCHED_NEW_WEAPON);
 
-	public bool ShouldLookForBetterWeapon() {
+	public virtual bool ShouldLookForBetterWeapon() {
 		if (NextWeaponSearchTime > gpGlobals.CurTime)
 			return false;
 
@@ -4678,6 +7086,14 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public BaseEntity? GetTarget() => TargetEnt.Get();
+
+	public virtual BaseEntity? GetNavTargetEntity() {
+		if (GetNavigator()!.GetGoalType() == NavGoalType.Enemy)
+			return Enemy.Get();
+		else if (GetNavigator()!.GetGoalType() == NavGoalType.TargetEnt)
+			return TargetEnt.Get();
+		return null;
+	}
 
 	public float EnemyDistance(BaseEntity enemy) {
 		Vector3 enemyDelta = enemy.WorldSpaceCenter() - WorldSpaceCenter();
@@ -4748,6 +7164,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public Navigation GetNavType() => Navigator!.GetNavType();
+	public void SetNavType(Navigation navType) => Navigator!.SetNavType(navType);
 
 	public virtual bool ShouldPlayIdleSound() {
 		if ((NPCState == NPCState.Idle || NPCState == NPCState.Alert) &&
@@ -4758,7 +7175,33 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return false;
 	}
 
+	public bool FOkToMakeSound(SentencePriority soundPriority = SentencePriority.Normal) {
+		if (Squad != null) {
+			if (!Squad.FOkToMakeSound(soundPriority))
+				return false;
+		}
+		else {
+			if (gpGlobals.CurTime <= SoundWaitTime) {
+				if (soundPriority <= SoundPriorityValue)
+					return false;
+			}
+		}
+
+		if (HasSpawnFlags(SF_NPC_GAG) && (NPCState != NPCState.Combat))
+			return false;
+
+		return true;
+	}
+
+	public void JustMadeSound(SentencePriority soundPriority = SentencePriority.Normal, float soundLength = 0.0f) {
+		SoundWaitTime = gpGlobals.CurTime + soundLength + random.RandomFloat(1.5f, 2.0f);
+		SoundPriorityValue = soundPriority;
+
+		Squad?.JustMadeSound(soundPriority, gpGlobals.CurTime + soundLength + random.RandomFloat(1.5f, 2.0f));
+	}
+
 	public virtual void IdleSound() { }
+	public virtual void DeathSound(in TakeDamageInfo info) { }
 	public virtual void LostEnemySound() { }
 	public virtual void FoundEnemySound() { }
 
@@ -4812,7 +7255,26 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		SetEfficiency(AI_Efficiency.Normal);
 	}
 
-	public virtual bool IsValidEnemy(BaseEntity enemy) => throw new NotImplementedException();
+	public override void Activate() {
+		base.Activate();
+
+		if (EnemyFilterName != null) {
+			BaseEntity? filter = gEntList.FindEntityByName(null, EnemyFilterName);
+			if (filter != null)
+				EnemyFilter.Set(filter as BaseFilter);
+		}
+	}
+
+	public virtual bool IsValidEnemy(BaseEntity enemy) {
+		AI_BaseNPC? enemyNPC = enemy.MyNPCPointer();
+		if (enemyNPC != null && enemyNPC.CanBeAnEnemyOf(this) == false)
+			return false;
+
+		if (EnemyFilter.Get() != null && EnemyFilter.Get()!.PassesFilter(this, enemy) == false)
+			return false;
+
+		return true;
+	}
 
 	public virtual bool CanBeAnEnemyOf(BaseEntity enemy) {
 		if (GetSleepState() > AI_SleepState.WaitingForThreat)
@@ -4873,6 +7335,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return Capability;
 	}
 
+	public void CapabilitiesClear() => Capability = 0;
+
 	public void SetHullSizeNormal(bool force = false) {
 		if (IsUsingSmallHullValue || force) {
 			float scale = GetModelScale();
@@ -4896,9 +7360,117 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return 45;
 	}
 
-	public virtual float GetTimeToNavGoal() => throw new NotImplementedException();
+	public virtual bool ScheduledMoveToGoalEntity(int scheduleType, BaseEntity goalEntity, Activity movementActivity) {
+		if (NPCState == NPCState.None)
+			NPCState = IdealNPCState;
 
-	public void VacateStrategySlot() => throw new NotImplementedException();
+		SetSchedule(scheduleType);
+
+		SetGoalEnt(goalEntity);
+
+		AI_NavGoal goal = new(goalEntity.GetAbsOrigin(), movementActivity, AIN_DEF_TOLERANCE, AI_NavGoalFlags.YawToDest);
+
+		TranslateNavGoal(goalEntity, ref goal.Dest);
+
+		return GetNavigator()!.SetGoal(goal);
+	}
+
+	public virtual bool ScheduledFollowPath(int scheduleType, BaseEntity pathStart, Activity movementActivity) {
+		if (NPCState == NPCState.None)
+			NPCState = IdealNPCState;
+
+		SetSchedule(scheduleType);
+
+		SetGoalEnt(pathStart);
+
+		AI_NavGoal goal = new(NavGoalType.PathCorner, pathStart.GetLocalOrigin(), movementActivity, AIN_DEF_TOLERANCE, AI_NavGoalFlags.YawToDest);
+
+		TranslateNavGoal(pathStart, ref goal.Dest);
+
+		return GetNavigator()!.SetGoal(goal);
+	}
+
+	public virtual float GetTimeToNavGoal() {
+		float dist = GetNavigator()!.BuildAndGetPathDistToGoal();
+		if (dist < 0)
+			return -1.0f;
+
+		float speed = GetIdealSpeed();
+
+		if (speed > 0 && dist > 0)
+			return dist / speed;
+		return 0.0f;
+	}
+
+	public bool OccupyStrategySlot(SquadSlot squadSlotID) => OccupyStrategySlotRange(squadSlotID, squadSlotID);
+
+	public bool OccupyStrategySlotRange(SquadSlot slotIDStart, SquadSlot slotIDEnd) {
+		return Squad == null || Squad.OccupyStrategySlotRange(GetEnemy(), slotIDStart, slotIDEnd, ref MySquadSlot);
+	}
+
+	public bool HasStrategySlot(SquadSlot squadSlotID) => MySquadSlot == squadSlotID;
+
+	public bool HasStrategySlotRange(SquadSlot slotIDStart, SquadSlot slotIDEnd) {
+		if (MySquadSlot < slotIDStart || MySquadSlot > slotIDEnd)
+			return false;
+		return true;
+	}
+
+	public void SetLastAttackTime(TimeUnit_t time) => LastAttackTime = time;
+
+	protected readonly AI_ShotRegulator ShotRegulator = new();
+
+	public AI_ShotRegulator GetShotRegulator() => ShotRegulator;
+
+	public bool ConditionsGathered() => ConditionsGatheredValue;
+
+	public virtual BaseEntity? GetAlternateMoveShootTarget() => null;
+
+	public virtual bool OnBeginMoveAndShoot() => true;
+	public virtual void OnEndMoveAndShoot() { }
+
+	public virtual void OnUpdateShotRegulator() {
+		BaseCombatWeapon? weapon = GetActiveWeapon();
+		if (weapon == null)
+			return;
+
+		ShotRegulator.SetBurstInterval(weapon.GetFireRate(), weapon.GetFireRate());
+		ShotRegulator.SetBurstShotCountRange(weapon.GetMinBurst(), weapon.GetMaxBurst());
+		ShotRegulator.SetRestInterval((float)weapon.GetMinRestTime(), (float)weapon.GetMaxRestTime());
+
+		GetRunningBehavior()?.OnUpdateShotRegulator();
+	}
+
+	public override void OnChangeActiveWeapon(BaseCombatWeapon? oldWeapon, BaseCombatWeapon? newWeapon) {
+		base.OnChangeActiveWeapon(oldWeapon, newWeapon);
+
+		if (newWeapon != null) {
+			OnUpdateShotRegulator();
+			ShotRegulator.Reset(true);
+		}
+	}
+
+	public virtual void OnRangeAttack1() {
+		SetLastAttackTime(gpGlobals.CurTime);
+
+		Assert(GetShotRegulator().ShouldShoot());
+
+		ShotRegulator.OnFiredWeapon();
+		if (ShotRegulator.IsInRestInterval())
+			OnUpdateShotRegulator();
+
+		SetNextAttack(ShotRegulator.NextShotTime());
+
+		BaseCombatWeapon? wep = GetActiveWeapon();
+		wep?.OnRangeAttack1();
+	}
+
+	public void VacateStrategySlot() {
+		if (Squad != null) {
+			Squad.VacateStrategySlot(GetEnemy(), MySquadSlot);
+			MySquadSlot = SquadSlot.None;
+		}
+	}
 
 	public virtual bool CreateVPhysics() {
 		if (IsAlive() && VPhysicsGetObject() == null)
@@ -5191,6 +7763,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public Activity GetActivity() => Activity;
 
+	public void ResetActivity() => Activity = Activity.ACT_RESET;
+
 	public virtual void SetActivity(Activity newActivity) {
 		if (Activity == newActivity)
 			return;
@@ -5278,6 +7852,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	static readonly List<Activity> sUniqueActivities = [];
 
+	public Activity TranslateActivity(Activity idealActivity) => TranslateActivity(idealActivity, out _);
+
 	public Activity TranslateActivity(Activity idealActivity, out Activity idealWeaponActivityOut) {
 		const int MAX_TRIES = 5;
 		int count = 0;
@@ -5342,7 +7918,98 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return idealActivity;
 	}
 
-	public virtual int GetScriptCustomMoveSequence() => throw new NotImplementedException();
+	public Activity GetScriptCustomMoveActivity() {
+		Activity activity = Activity.ACT_WALK;
+
+		AI_ScriptedSequence? cine = Cine.Get();
+		if (cine != null && !string.IsNullOrEmpty(cine.CustomMove)) {
+			activity = LookupActivity(cine.CustomMove);
+			if (activity == Activity.ACT_INVALID) {
+				if (LookupSequence(cine.CustomMove) != (int)Activity.ACT_INVALID)
+					activity = Activity.ACT_SCRIPT_CUSTOM_MOVE;
+				else
+					activity = Activity.ACT_WALK;
+			}
+		}
+		else if (!string.IsNullOrEmpty(SceneCustomMoveSeq))
+			activity = Activity.ACT_SCRIPT_CUSTOM_MOVE;
+
+		return activity;
+	}
+
+	public virtual int GetScriptCustomMoveSequence() {
+		int sequence = StudioHdr.ACTIVITY_NOT_AVAILABLE;
+
+		AI_ScriptedSequence? cine = Cine.Get();
+		if (cine != null) {
+			sequence = LookupSequence(cine.CustomMove);
+			if (sequence == StudioHdr.ACTIVITY_NOT_AVAILABLE)
+				DevMsg($"SCRIPT_CUSTOM_MOVE: {GetClassname()} has no sequence:{cine.CustomMove}\n");
+		}
+		else if (!string.IsNullOrEmpty(SceneCustomMoveSeq)) {
+			sequence = LookupSequence(SceneCustomMoveSeq);
+			if (sequence == StudioHdr.ACTIVITY_NOT_AVAILABLE)
+				Warning($"SCRIPT_CUSTOM_MOVE: {GetClassname()} failed scripted custom move. Has no sequence called: {SceneCustomMoveSeq}\n");
+		}
+
+		if (sequence == StudioHdr.ACTIVITY_NOT_AVAILABLE)
+			sequence = SelectWeightedSequence(Activity.ACT_WALK);
+
+		return sequence;
+	}
+
+	public void StartScriptMoveToTargetTask(int task) {
+		Activity newActivity;
+
+		if (TargetEnt.Get() == null)
+			TaskFail(AI_TaskFailureCode.NoTarget);
+		else if ((TargetEnt.Get()!.GetAbsOrigin() - GetLocalOrigin()).Length() < 1)
+			TaskComplete();
+		else {
+			if (task == TASK_SCRIPT_WALK_TO_TARGET)
+				newActivity = Activity.ACT_WALK;
+			else if (task == TASK_SCRIPT_RUN_TO_TARGET)
+				newActivity = Activity.ACT_RUN;
+			else
+				newActivity = GetScriptCustomMoveActivity();
+
+			if (newActivity != Activity.ACT_SCRIPT_CUSTOM_MOVE && TranslateActivity(newActivity) == Activity.ACT_INVALID)
+				Assert(false);
+			else {
+				if (TargetEnt.Get() == null)
+					TaskFail(AI_TaskFailureCode.NoTarget);
+				else {
+					AI_NavGoal goal = new(NavGoalType.TargetEnt, newActivity);
+
+					if (GetState() == NPCState.Script &&
+						 (ScriptArrivalActivity != AIN_DEF_ACTIVITY ||
+						   ScriptArrivalSequence != null)) {
+						if (ScriptArrivalActivity != AIN_DEF_ACTIVITY)
+							goal.ArrivalActivity = ScriptArrivalActivity;
+						else
+							goal.ArrivalSequence = LookupSequence(ScriptArrivalSequence);
+					}
+
+					if (!GetNavigator()!.SetGoal(goal, AI_NavSetGoalFlags.DiscardIfFail)) {
+						if (GetNavigator()!.GetNavFailCounter() == 0) {
+							DevWarning($"{GetDebugName()} {TaskName(task)} failed Urgent Movement, retrying\n");
+							return;
+						}
+
+						DevWarning($"{GetDebugName()} {TaskName(task)} failed Urgent Movement, abandoning schedule\n");
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					}
+					else
+						GetNavigator()!.SetArrivalDirection(TargetEnt.Get()!.GetAbsAngles());
+				}
+			}
+		}
+
+		ScriptArrivalActivity = AIN_DEF_ACTIVITY;
+		ScriptArrivalSequence = null;
+
+		TaskComplete();
+	}
 
 	static AI_BaseNPC? ResolveLastWarn;
 	static Activity ResolveLastWarnActivity;
@@ -5481,6 +8148,144 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		CommandMoveMonitor.ClearMark();
 	}
 
+	public Vector3 GetCommandGoal() => CommandGoal;
+
+	public void SentenceStop() => EmitSound("AI_BaseNPC.SentenceStop");
+
+	public virtual bool CanBeUsedAsAFriend() {
+		if (IsCurSchedule(SCHED_FORCED_GO) || IsCurSchedule(SCHED_FORCED_GO_RUN))
+			return false;
+		return true;
+	}
+
+	public bool ConditionInterruptsCurSchedule(int condition) {
+		if (GetCurSchedule() == null)
+			return false;
+
+		int interrupt = InterruptFromCondition(condition);
+
+		if (interrupt == -1) {
+			Assert(false);
+			return false;
+		}
+		return GetCurSchedule()!.HasInterrupt(interrupt);
+	}
+
+	public void TestPlayerPushing(BaseEntity? entity) {
+		if (HasSpawnFlags(SF_NPC_NO_PLAYER_PUSHAWAY))
+			return;
+
+		BasePlayer? player = ToBasePlayer(entity);
+		if (player != null && (player.GetFlags() & EntityFlags.NoTarget) == 0) {
+			if (g_IgnorePlayers.GetBool())
+				return;
+
+			if ((player.Buttons & (InButtons.Forward | InButtons.Back | InButtons.MoveLeft | InButtons.MoveRight)) != 0 ||
+				 player.GetAbsVelocity().AsVector2D().LengthSquared() > 50 * 50) {
+				SetCondition((int)SCOND_t.COND_PLAYER_PUSHING);
+				Vector3 push = GetAbsOrigin() - player.GetAbsOrigin();
+				MathLib.VectorNormalize(ref push);
+				CascadePlayerPush(push, player.WorldSpaceCenter());
+			}
+		}
+	}
+
+	public void CascadePlayerPush(in Vector3 push, in Vector3 pushOrigin) {
+		float hullWidth = GetHullWidth();
+		Vector3 origin = GetAbsOrigin();
+		Vector2 origin2D = origin.AsVector2D();
+
+		float MIN_Z_TO_TRANSMIT = GetHullHeight() * 0.5f + 0.1f;
+		float DIST_REQD_TO_TRANSMIT_PUSH_SQ = (hullWidth * 5 + 0.1f) * (hullWidth * 5 + 0.1f);
+		float DIST_FROM_PUSH_VECTOR_REQD_SQ = (hullWidth + 0.1f) * (hullWidth + 0.1f);
+
+		Vector2 pushTestPoint = vec2_invalid;
+
+		for (int i = 0; i < g_AI_Manager.NumAIs(); i++) {
+			AI_BaseNPC other = g_AI_Manager.AccessAIs()[i];
+			if (other != this && other.IRelationType(this) == Disposition.LI && !other.HasCondition((int)SCOND_t.COND_PLAYER_PUSHING)) {
+				Vector3 friendOrigin = other.GetAbsOrigin();
+				if (MathF.Abs(friendOrigin.Z - origin.Z) < MIN_Z_TO_TRANSMIT &&
+					 (friendOrigin.AsVector2D() - origin.AsVector2D()).LengthSquared() < DIST_REQD_TO_TRANSMIT_PUSH_SQ) {
+					if (pushTestPoint == vec2_invalid) {
+						pushTestPoint = origin2D - pushOrigin.AsVector2D();
+						pushTestPoint *= 2000;
+						pushTestPoint += origin2D;
+					}
+					float distSq = MathLib.CalcDistanceSqrToLine2D(friendOrigin.AsVector2D(), origin2D, pushTestPoint, out float t);
+					if (t > 0 && distSq < DIST_FROM_PUSH_VECTOR_REQD_SQ)
+						other.SetCondition((int)SCOND_t.COND_PLAYER_PUSHING);
+				}
+			}
+		}
+	}
+
+	public bool IsSquadmateInSpread(in Vector3 sourcePos, in Vector3 targetPos, float spread, float maxDistOffCenter) {
+		if (Squad == null)
+			return false;
+
+		AI_BaseNPC? squadmate = Squad.GetFirstMember(out int iter);
+		while (squadmate != null) {
+			if (squadmate.m_takedamage != (byte)Damage.No) {
+				if (squadmate != this) {
+					if (PointInSpread(squadmate, sourcePos, targetPos, squadmate.GetAbsOrigin(), spread, maxDistOffCenter))
+						return true;
+				}
+			}
+			squadmate = Squad.GetNextMember(ref iter);
+		}
+		return false;
+	}
+
+	public bool PointInSpread(BaseCombatCharacter? checkEntity, in Vector3 sourcePos, in Vector3 targetPos, in Vector3 testPoint, float spread, float maxDistOffCenter) {
+		float distOffLine = MathLib.CalcDistanceToLine2D(testPoint.AsVector2D(), sourcePos.AsVector2D(), targetPos.AsVector2D(), out _);
+		if (distOffLine < maxDistOffCenter) {
+			Vector3 toTarget = targetPos - sourcePos;
+			float distTarget = MathLib.VectorNormalize(ref toTarget);
+
+			Vector3 toTest = testPoint - sourcePos;
+			float distTest = MathLib.VectorNormalize(ref toTest);
+			if (distTarget > distTest) {
+				toTarget.Z = 0.0f;
+				toTest.Z = 0.0f;
+
+				float dotProduct = Vector3.Dot(toTarget, toTest);
+				if (dotProduct > spread)
+					return true;
+				else if (dotProduct > 0.0f) {
+					if (checkEntity != null) {
+						float bboxDist = NAI_Hull.Width(checkEntity.GetHullType());
+						bboxDist *= 1.414f;
+
+						distOffLine = MathLib.CalcDistanceToLine(testPoint, sourcePos, targetPos, out _);
+						if (distOffLine < bboxDist)
+							return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	public int NumWeaponsInSquad(ReadOnlySpan<char> weaponClassname) {
+		if (GetSquad() == null) {
+			if (GetActiveWeapon() != null && GetActiveWeapon()!.ClassMatches(weaponClassname))
+				return 1;
+
+			return 0;
+		}
+
+		int count = 0;
+		AI_BaseNPC? squadmate = Squad!.GetFirstMember(out int iter);
+		while (squadmate != null) {
+			if (squadmate.GetActiveWeapon() != null && squadmate.GetActiveWeapon()!.ClassMatches(weaponClassname))
+				count++;
+			squadmate = Squad.GetNextMember(ref iter);
+		}
+
+		return count;
+	}
+
 	public void ClearSchedule(string? reason) {
 		if (reason != null && (DebugOverlays & DebugOverlayBits.TaskText) != 0)
 			DevMsg($"  Schedule cleared: {reason}\n");
@@ -5532,6 +8337,33 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public void SetHintNode(AI_Hint? hintNode) => HintNode.Set(hintNode);
+
+	public void ClearHintNode(float reuseDelay = 0.0f) {
+		AI_Hint? hint = HintNode.Get();
+		if (hint != null) {
+			if (hint.IsLockedBy(this))
+				hint.Unlock(reuseDelay);
+			HintNode.Set(null);
+		}
+	}
+
+	public virtual bool FValidateHintType(AI_Hint hint) => false;
+
+	public bool GetBehavior<T>(out T? behavior) where T : AI_BehaviorBase {
+		List<AI_BehaviorBase>? behaviors = AccessBehaviors();
+
+		behavior = null;
+		if (behaviors != null) {
+			for (int i = 0; i < behaviors.Count; i++) {
+				behavior = behaviors[i] as T;
+				if (behavior != null)
+					return true;
+			}
+		}
+		return false;
+	}
+
+	protected virtual List<AI_BehaviorBase>? AccessBehaviors() => null;
 
 	public BaseEntity? GetEnemy() => Enemy.Get();
 
@@ -5967,7 +8799,26 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 	}
 
-	public void Wake(bool fireOutput = true) => throw new NotImplementedException();
+	public bool WokeThisTick() => WakeTick == gpGlobals.TickCount;
+
+	public void Wake(bool fireOutput = true) {
+		if (GetSleepState() != AI_SleepState.Awake) {
+			WakeTick = gpGlobals.TickCount;
+			SetSleepState(AI_SleepState.Awake);
+			RemoveEffects(EntityEffects.NoDraw);
+			if (fireOutput)
+				OnWake.FireOutput(this, this);
+
+			if (WakeSquad && GetSquad() != null) {
+				for (AI_BaseNPC? squadMember = GetSquad()!.GetFirstMember(out int iter); squadMember != null; squadMember = GetSquad()!.GetNextMember(ref iter)) {
+					if (squadMember.IsAlive() && squadMember != this) {
+						squadMember.WakeSquad = false;
+						squadMember.Wake();
+					}
+				}
+			}
+		}
+	}
 
 	public void UpdateSleepState(bool inPVS) {
 		if (GetSleepState() > AI_SleepState.Awake) {
@@ -6033,7 +8884,15 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 	}
 
-	public bool SoundIsVisible(ref WorldSoundInstance sound) => throw new NotImplementedException();
+	public bool SoundIsVisible(ref WorldSoundInstance sound) {
+		if (!FVisible(sound.GetSoundReactOrigin(), Mask.BlockLOS, out BaseEntity? blocker)) {
+			if (blocker != null && blocker == sound.Owner.Get())
+				return true;
+
+			return false;
+		}
+		return true;
+	}
 
 	static Vector3 UpdateEfficiencyPlayerEyePosition;
 	static Vector3 UpdateEfficiencyPlayerForward;
@@ -6316,7 +9175,43 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		g_AIRunTimer.Stop();
 	}
 
-	public virtual bool AutoMovement(BaseEntity? target = null) => throw new NotImplementedException();
+	public virtual bool AutoMovement(BaseEntity? target = null) => AutoMovement(GetAnimTimeInterval(), target, out _);
+	public virtual bool AutoMovement(BaseEntity? target, out AIMoveTrace traceResult) => AutoMovement(GetAnimTimeInterval(), target, out traceResult);
+
+	public virtual bool AutoMovement(TimeUnit_t interval, BaseEntity? target, out AIMoveTrace traceResult) {
+		traceResult = default;
+
+		if (interval <= 0.0)
+			return true;
+
+		ScheduleState.TaskRanAutomovement = true;
+
+		if (GetIntervalMovement(interval, out _, out Vector3 newPos, out QAngle newAngles)) {
+			Cine.Get()?.ModifyScriptedAutoMovement(ref newPos);
+
+			if (GetMoveType() == Source.MoveType.Step) {
+				if ((GetFlags() & EntityFlags.Fly) == 0) {
+					target ??= GetNavTargetEntity();
+
+					return GetMotor()!.MoveGroundStep(newPos, target, newAngles.Y, false, true, out traceResult) == AIMotorMoveResult.Success;
+				}
+				else {
+					SetLocalOrigin(newPos);
+					SetLocalAngles(newAngles);
+					return true;
+				}
+			}
+			else if (GetMoveType() == Source.MoveType.Fly) {
+				Vector3 dist = newPos - GetLocalOrigin();
+
+				dist *= (float)(1.0 / interval);
+
+				SetLocalVelocity(dist);
+				return true;
+			}
+		}
+		return false;
+	}
 
 	public virtual void PostRun() {
 		if (!IsMoving()) {
@@ -6334,7 +9229,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public virtual void PostRunStopMoving() {
-		SetIdealActivity(GetStoppedActivity());
+		if (!GetNavigator()!.SetGoalFromStoppingPath())
+			SetIdealActivity(GetStoppedActivity());
 	}
 
 	public virtual void RunAnimation() {
@@ -6368,11 +9264,18 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public virtual bool OverrideMove(float interval) => false;
+	public virtual bool OverrideMoveFacing(in AILocalMoveGoal move, float interval) => false;
+
+	public bool HasPoseMoveYaw() => PoseMove_Yaw >= 0;
+	public int LookupPoseMoveYaw() => PoseMove_Yaw;
 
 	public virtual void PerformMovement() {
 		if (!IsAlive())
 			return;
 
+		TimeUnit_t interval = (TimeLastMovement != float.MaxValue) ? gpGlobals.CurTime - TimeLastMovement : 0.1;
+
+		Navigator!.Move((float)(TICK_INTERVAL * TIME_TO_TICKS(interval)));
 		TimeLastMovement = gpGlobals.CurTime;
 	}
 

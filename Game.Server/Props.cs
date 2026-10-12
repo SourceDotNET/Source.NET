@@ -58,7 +58,7 @@ public class BaseProp : BaseAnimating
 }
 
 [NetworkName("CBreakableProp")]
-public class BreakableProp : BaseProp, IBreakableWithPropData
+public class BreakableProp : BaseProp, IBreakableWithPropData, IPlayerPickupVPhysics
 {
 	public static readonly SendTable DT_BreakableProp = new(DT_BaseAnimating, []);
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_BreakableProp);
@@ -68,6 +68,149 @@ public class BreakableProp : BaseProp, IBreakableWithPropData
 	public void DisableAutoFade() {
 		FadeScale = 0;
 		DefaultFadeScale = 0;
+	}
+
+	const string s_pFadeScaleThink = "FadeScaleThink";
+	const float PROP_FLARE_LIFETIME = 30.0f;
+
+	public QAngle m_preferredCarryAngles;
+
+	Handle<BasePlayer> PhysicsAttacker = new();
+	TimeUnit_t LastPhysicsInfluenceTime;
+	bool OriginalBlockLOS;
+	string? PuntSound;
+	bool UsePuntSound;
+
+	public BreakableProp() {
+		FadeMinDist = -1;
+		FadeMaxDist = 0;
+		FadeScale = 1;
+		DefaultFadeScale = 1;
+		MpBreakMode = MultiplayerBreak.Default;
+
+		UsePuntSound = true;
+	}
+
+	public override void Spawn() {
+		DefaultFadeScale = FadeScale;
+
+		base.Spawn();
+
+		if (IsMarkedForDeletion())
+			return;
+
+		StudioHdr? studioHdr = GetModelPtr();
+
+		if (studioHdr == null) {
+			Msg("GARRY SEZ: CBreakableProp::Spawn - GetModelPtr returned NULL!\n");
+			Msg($"Model Name: {GetModelName()}\n");
+		}
+
+		if (studioHdr != null && (studioHdr.Flags() & StudioHdrFlags.NoForcedFade) != 0)
+			DisableAutoFade();
+		else
+			FadeScale = DefaultFadeScale;
+
+		m_preferredCarryAngles = new(-5, 0, 0);
+	}
+
+	public virtual void PlayPuntSound() {
+		if (!UsePuntSound)
+			return;
+
+		if (PuntSound == null)
+			return;
+
+		EmitSound(PuntSound);
+	}
+
+	public void CheckRemoveRagdolls() {
+		if (HasSpawnFlags(SF_PHYSPROP_HAS_ATTACHED_RAGDOLLS))
+			throw new NotImplementedException();
+	}
+
+	public void SetPhysicsAttacker(BasePlayer? entity, TimeUnit_t time) {
+		PhysicsAttacker.Set(entity);
+		LastPhysicsInfluenceTime = time;
+	}
+
+	void ForceFadeScaleToAlwaysVisible() {
+		FadeScale = 0.0f;
+		SetContextThink(null, gpGlobals.CurTime, s_pFadeScaleThink);
+	}
+
+	void RampToDefaultFadeScale() {
+		FadeScale += DefaultFadeScale * (float)TICK_INTERVAL / 2.0f;
+		if (FadeScale >= DefaultFadeScale) {
+			FadeScale = DefaultFadeScale;
+			SetContextThink(null, gpGlobals.CurTime, s_pFadeScaleThink);
+		}
+		else
+			SetContextThink(RampToDefaultFadeScale, gpGlobals.CurTime + TICK_INTERVAL, s_pFadeScaleThink);
+	}
+
+	public virtual bool OnAttemptPhysGunPickup(BasePlayer physGunUser, PhysGunPickup reason = PhysGunPickup.PickedUpByCannon) => true;
+
+	public virtual BaseEntity? OnFailedPhysGunPickup(Vector3 physgunPos) => null;
+
+	public virtual void OnPhysGunPickup(BasePlayer physGunUser, PhysGunPickup reason = PhysGunPickup.PickedUpByCannon) {
+		if (reason == PhysGunPickup.PickedUpByCannon)
+			ForceFadeScaleToAlwaysVisible();
+		else
+			SetContextThink(RampToDefaultFadeScale, gpGlobals.CurTime + 2.0f, s_pFadeScaleThink);
+
+		if (reason == PhysGunPickup.PuntedByCannon)
+			PlayPuntSound();
+
+		SetPhysicsAttacker(physGunUser, gpGlobals.CurTime);
+
+		OriginalBlockLOS = BlocksLOS();
+		SetBlocksLOS(false);
+
+		if (HasInteraction(PropDataInteractions.PhysgunCreateFlare))
+			CreateFlare(PROP_FLARE_LIFETIME);
+	}
+
+	public void CreateFlare(float lifetime) => throw new NotImplementedException();
+
+	public virtual void OnPhysGunDrop(BasePlayer physGunUser, PhysGunDrop reason) {
+		SetContextThink(RampToDefaultFadeScale, gpGlobals.CurTime + 2.0f, s_pFadeScaleThink);
+
+		SetPhysicsAttacker(physGunUser, gpGlobals.CurTime);
+
+		if ((PhysGunPickup)reason == PhysGunPickup.PuntedByCannon)
+			PlayPuntSound();
+
+		SetBlocksLOS(OriginalBlockLOS);
+	}
+
+	public virtual bool HasPreferredCarryAnglesForPlayer(BasePlayer? player = null) {
+		if (HasInteraction(PropDataInteractions.PhysgunLaunchSpinZ))
+			return true;
+
+		return false;
+	}
+
+	public virtual QAngle PreferredCarryAngles() => m_preferredCarryAngles;
+
+	public virtual bool ForcePhysgunOpen(BasePlayer player) => false;
+
+	public virtual Vector3 PhysGunLaunchAngularImpulse() {
+		if (HasInteraction(PropDataInteractions.PhysgunLaunchSpinNone) || HasInteraction(PropDataInteractions.PhysgunLaunchSpinZ))
+			return new(0, 0, 0);
+
+		return RandomAngularImpulse(-600, 600);
+	}
+
+	public virtual bool ShouldPuntUseLaunchForces(PhysGunForce reason) => false;
+
+	public virtual Vector3 PhysGunLaunchVelocity(in Vector3 forward, float mass) => Pickup.DefaultPhysGunLaunchVelocity(forward, mass);
+
+	public virtual BasePlayer? HasPhysicsAttacker(TimeUnit_t dt) {
+		if (gpGlobals.CurTime - dt <= LastPhysicsInfluenceTime)
+			return PhysicsAttacker.Get();
+
+		return null;
 	}
 
 	public void SetDmgModBullet(float dmgMod) => DmgModBullet = dmgMod;
@@ -163,6 +306,13 @@ public class PhysicsProp : BreakableProp
 		DEFINE.KEYFIELD(nameof(OverrideScript), FieldType.String, "overridescript"),
 		DEFINE.KEYFIELD(nameof(DamageToEnableMotion), FieldType.Integer, "damagetoenablemotion"),
 		DEFINE.KEYFIELD(nameof(ForceToEnableMotion), FieldType.Float, "forcetoenablemotion"),
+
+		DEFINE.OUTPUT(nameof(OnPhysGunPickup_), "OnPhysGunPickup", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnPhysGunOnlyPickup), "OnPhysGunOnlyPickup", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnPhysGunPunt), "OnPhysGunPunt", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnPhysGunDrop_), "OnPhysGunDrop", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnPlayerUse), "OnPlayerUse", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnPlayerPickup), "OnPlayerPickup", eventFuncs),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
@@ -174,6 +324,62 @@ public class PhysicsProp : BreakableProp
 	string? OverrideScript;
 	int DamageToEnableMotion;
 	float ForceToEnableMotion;
+
+	bool FirstCollisionAfterLaunch;
+	bool ThrownByPlayer;
+
+	public OutputEvent OnPhysGunPickup_ = new();
+	public OutputEvent OnPhysGunPunt = new();
+	public OutputEvent OnPhysGunOnlyPickup = new();
+	public OutputEvent OnPhysGunDrop_ = new();
+	public OutputEvent OnPlayerUse = new();
+	public OutputEvent OnPlayerPickup = new();
+
+	public void EnableMotion() => throw new NotImplementedException();
+
+	public override void OnPhysGunPickup(BasePlayer physGunUser, PhysGunPickup reason = PhysGunPickup.PickedUpByCannon) {
+		base.OnPhysGunPickup(physGunUser, reason);
+
+		IPhysicsObject? physicsObject = VPhysicsGetObject();
+		if (physicsObject != null && !physicsObject.IsMoveable()) {
+			if (!HasSpawnFlags(SF_PHYSPROP_ENABLE_ON_PHYSCANNON))
+				return;
+
+			EnableMotion();
+		}
+
+		OnPhysGunPickup_.FireOutput(physGunUser, this);
+
+		if (reason == PhysGunPickup.PickedUpByCannon)
+			OnPhysGunOnlyPickup.FireOutput(physGunUser, this);
+
+		if (reason == PhysGunPickup.PuntedByCannon)
+			OnPhysGunPunt.FireOutput(physGunUser, this);
+
+		if (reason == PhysGunPickup.PickedUpByCannon || reason == PhysGunPickup.PickedUpByPlayer)
+			OnPlayerPickup.FireOutput(physGunUser, this);
+
+		CheckRemoveRagdolls();
+	}
+
+	public override void OnPhysGunDrop(BasePlayer physGunUser, PhysGunDrop reason) {
+		base.OnPhysGunDrop(physGunUser, reason);
+
+		if (reason == PhysGunDrop.LaunchedByCannon) {
+			if (HasInteraction(PropDataInteractions.PhysgunLaunchSpinZ))
+				throw new NotImplementedException();
+
+			PhysSetGameFlags(VPhysicsGetObject(), PhysicsFlags.WasThrown);
+			FirstCollisionAfterLaunch = true;
+		}
+		else if (reason == PhysGunDrop.ThrownByPlayer)
+			ThrownByPlayer = true;
+
+		OnPhysGunDrop_.FireOutput(physGunUser, this);
+
+		if (HasInteraction(PropDataInteractions.PhysgunNotifyChildren))
+			throw new NotImplementedException();
+	}
 
 	public override void Term() {
 		if (HasSpawnFlags(SF_PHYSPROP_IS_GIB))

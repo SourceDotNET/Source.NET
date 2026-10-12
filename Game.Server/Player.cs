@@ -249,11 +249,14 @@ public enum PlayerPhysFlag
 public partial class BasePlayer : BaseCombatCharacter
 {
 	public const int SF_NORESPAWN = 1 << 30;
+	public const float DOT_30DEGREE = 0.866025403784f;
+	public const float DOT_45DEGREE = 0.707106781187f;
 	public static readonly SendTable DT_PlayerState = new(nameof(DT_PlayerState), [
 		SendPropInt(FIELD<PlayerState>.OF(nameof(PlayerState.DeadFlag)), 1, PropFlags.Unsigned)
 	]);
 
 	public override bool IsPlayer() => true;
+	public override Class_T Classify() => Class_T.Player;
 	public virtual bool IsBot() => (GetFlags() & EntityFlags.FakeClient) != 0;
 	public virtual bool IsFakeClient() => (GetFlags() & EntityFlags.FakeClient) != 0;
 	public virtual bool IsBotOfType(int botType) => (GetBotType() != 0) && (GetBotType() == botType);

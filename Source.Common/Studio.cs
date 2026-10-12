@@ -1171,6 +1171,32 @@ public class MStudioAnimSections
 	public int AnimIndex;
 }
 
+public class MStudioMovement
+{
+	public const int SIZEOF = 44;
+	public static MStudioMovement FACTORY(object caller, Memory<byte> data) => new(data);
+
+	public int EndFrame;
+	public int MotionFlags;
+	public float V0;
+	public float V1;
+	public float Angle;
+	public Vector3 Vector;
+	public Vector3 Position;
+
+	public MStudioMovement(Memory<byte> data) {
+		SpanBinaryReader br = new(data.Span);
+
+		br.Read(out EndFrame);
+		br.Read(out MotionFlags);
+		br.Read(out V0);
+		br.Read(out V1);
+		br.Read(out Angle);
+		br.Read(out Vector);
+		br.Read(out Position);
+	}
+}
+
 public class MStudioAnimDesc
 {
 	public const int SIZEOF = 100; // Static offset from MSVC stats (mstudiobone_t size 100, alignment 4)
@@ -1191,6 +1217,8 @@ public class MStudioAnimDesc
 
 	public int NumMovements;
 	public int MovementIndex;
+	MStudioMovement[]? movements;
+	public MStudioMovement Movement(int i) => Studio.ProduceArrayIdx(this, ref movements, NumMovements, MovementIndex, i, MStudioMovement.SIZEOF, Data, MStudioMovement.FACTORY);
 
 	// UNUSED 6 INTEGERS
 

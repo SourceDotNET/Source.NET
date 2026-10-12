@@ -438,6 +438,27 @@ public partial class BaseAnimating : BaseEntity
 		return false;
 	}
 
+	public void GetBonePosition(int bone, out Vector3 origin, out QAngle angles) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null) {
+			AssertMsg(false, "BaseAnimating.GetBonePosition: model missing");
+			origin = default;
+			angles = default;
+			return;
+		}
+
+		if (bone < 0 || bone >= studioHdr.NumBones()) {
+			AssertMsg(false, "BaseAnimating.GetBonePosition: invalid bone index");
+			origin = default;
+			angles = default;
+			return;
+		}
+
+		GetBoneTransform(bone, out Matrix3x4 boneToWorld);
+
+		MathLib.MatrixAngles(boneToWorld, out angles, out origin);
+	}
+
 	public void GetBoneTransform(int bone, out Matrix3x4 boneToWorld) {
 		StudioHdr? studioHdr = GetModelPtr();
 
@@ -513,7 +534,52 @@ public partial class BaseAnimating : BaseEntity
 		return pcache;
 	}
 
+	public void StopAnimation() => PlaybackRate = 0;
+
+	public virtual void ClampRagdollForce(in Vector3 forceIn, out Vector3 forceOut) => forceOut = forceIn;
+
+	public virtual bool BecomeRagdollOnClient(in Vector3 force) {
+		if (CanBecomeRagdoll()) {
+			VPhysicsDestroyObject();
+			AddSolidFlags(SolidFlags.NotSolid);
+			RenderFX = (byte)RenderFx.Ragdoll;
+
+			ClampRagdollForce(force, out Vector3 clampedForce);
+			Force = clampedForce;
+
+			SetParent(null);
+
+			AddFlag(EntityFlags.TransRagdoll);
+
+			SetMoveType(Source.MoveType.None);
+			SetThink(null);
+
+			SetNextThink(gpGlobals.CurTime + 2.0f);
+			SetThink(SUB_Remove);
+
+			if (EffectEntity.Get() is EntityFlame fireChild) {
+				fireChild.SetThink(fireChild.SUB_Remove);
+				fireChild.SetNextThink(gpGlobals.CurTime + 0.1f);
+			}
+
+			return true;
+		}
+		return false;
+	}
+
 	public bool IsRagdoll() => RenderFX == (byte)RenderFx.Ragdoll;
+
+	public virtual bool CanBecomeRagdoll() {
+		int ragdollSequence = SelectWeightedSequence(Activity.ACT_DIERAGDOLL);
+
+		if (ragdollSequence == StudioHdr.ACTIVITY_NOT_AVAILABLE)
+			return false;
+
+		if ((GetFlags() & EntityFlags.TransRagdoll) != 0)
+			return false;
+
+		return true;
+	}
 
 	public virtual void GetSkeleton(StudioHdr? studioHdr, Span<Vector3> pos, Span<Quaternion> q, int boneMask) {
 		if (studioHdr == null) {
@@ -742,6 +808,53 @@ public partial class BaseAnimating : BaseEntity
 		return interval;
 	}
 
+	public bool HasMovement(int sequence) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return false;
+
+		if (BoneSetup.Studio_SeqMovement(studioHdr, sequence, 0.0f, 1.0f, GetPoseParameterArray(), out _, out _))
+			return true;
+
+		return false;
+	}
+
+	public bool GetIntervalMovement(TimeUnit_t intervalUsed, out bool moveSeqFinished, out Vector3 newPosition, out QAngle newAngles) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null || !studioHdr.SequencesAvailable()) {
+			moveSeqFinished = default;
+			newPosition = default;
+			newAngles = default;
+			return false;
+		}
+
+		float computedCycleRate = GetSequenceCycleRate(GetSequence());
+
+		TimeUnit_t nextCycle = GetCycle() + intervalUsed * computedCycleRate * PlaybackRate;
+
+		if (!SequenceLoops && nextCycle > 1.0) {
+			intervalUsed = GetCycle() / (computedCycleRate * PlaybackRate);
+			nextCycle = 1.0;
+			moveSeqFinished = true;
+		}
+		else {
+			moveSeqFinished = false;
+		}
+
+		if (BoneSetup.Studio_SeqMovement(studioHdr, GetSequence(), (float)GetCycle(), (float)nextCycle, GetPoseParameterArray(), out Vector3 deltaPos, out QAngle deltaAngles)) {
+			MathLib.VectorYawRotate(deltaPos, GetLocalAngles().Y, out deltaPos);
+			newPosition = GetLocalOrigin() + deltaPos;
+			newAngles = default;
+			newAngles.Y = GetLocalAngles().Y + deltaAngles.Y;
+			return true;
+		}
+		else {
+			newPosition = GetLocalOrigin();
+			newAngles = GetLocalAngles();
+			return false;
+		}
+	}
+
 	public void InvalidateBoneCache() => Studio.InvalidateBoneCache(BoneCacheHandle);
 
 	public void InvalidateBoneCacheIfOlderThan(TimeUnit_t deltaTime) {
@@ -799,6 +912,20 @@ public partial class BaseAnimating : BaseEntity
 	public int SelectWeightedSequence(Activity activity) {
 		return Animation.SelectWeightedSequence(GetModelPtr(), activity, GetSequence());
 	}
+	public int SelectWeightedSequence(Activity activity, int curSequence) {
+		Assert(activity != Activity.ACT_INVALID);
+		Assert(GetModelPtr() != null);
+		return Animation.SelectWeightedSequence(GetModelPtr(), activity, curSequence);
+	}
+	public string GetSequenceName(int sequence) {
+		if (sequence == -1)
+			return "Not Found!";
+
+		if (GetModelPtr() == null)
+			return "No model!";
+
+		return Animation.GetSequenceName(GetModelPtr(), sequence);
+	}
 	public int SelectHeaviestSequence(Activity activity) {
 		Assert(GetModelPtr() != null);
 		return Animation.SelectHeaviestSequence(GetModelPtr(), activity);
@@ -854,14 +981,14 @@ public partial class BaseAnimating : BaseEntity
 
 	public virtual void HandleAnimEvent(ref AnimEvent animEvent) {
 		if ((animEvent.Type & AnimEventType.NewEventSystem) != 0 && (animEvent.Type & AnimEventType.Server) != 0) {
-			if (animEvent.Event == (int)Animevent.AE_SV_PLAYSOUND) {
+			if (animEvent.Event == (int)AnimEventId.AE_SV_PLAYSOUND) {
 				EmitSound(animEvent.Options);
 				return;
 			}
-			else if (animEvent.Event == (int)Animevent.AE_RAGDOLL) {
+			else if (animEvent.Event == (int)AnimEventId.AE_RAGDOLL) {
 				throw new NotImplementedException();
 			}
-			else if (animEvent.Event == (int)Animevent.AE_SV_DUSTTRAIL) {
+			else if (animEvent.Event == (int)AnimEventId.AE_SV_DUSTTRAIL) {
 				throw new NotImplementedException();
 			}
 		}
@@ -896,6 +1023,74 @@ public partial class BaseAnimating : BaseEntity
 			return (GetSequenceMoveDist(studioHdr, sequence) / (float)t);
 		else
 			return 0;
+	}
+	public float GetSequenceMoveYaw(int sequence) {
+		Assert(GetModelPtr() != null);
+		Animation.GetSequenceLinearMotion(GetModelPtr(), sequence, GetPoseParameterArray(), out Vector3 vecReturn);
+
+		if (vecReturn.Length() > 0)
+			return Util.VecToYaw(vecReturn);
+
+		return Animation.NOMOTION;
+	}
+	public void GetSequenceLinearMotion(int sequence, out Vector3 vec) {
+		Assert(GetModelPtr() != null);
+		Animation.GetSequenceLinearMotion(GetModelPtr(), sequence, GetPoseParameterArray(), out vec);
+	}
+	public virtual float GetIdealSpeed() => GroundSpeed;
+	public virtual float GetIdealAccel() => GetIdealSpeed() + 50;
+	public bool HasPoseParameter(int sequence, ReadOnlySpan<char> name) {
+		int parameter = LookupPoseParameter(name);
+		if (parameter == -1)
+			return false;
+
+		return HasPoseParameter(sequence, parameter);
+	}
+	public bool HasPoseParameter(int sequence, int parameter) {
+		StudioHdr? studioHdr = GetModelPtr();
+
+		if (studioHdr == null)
+			return false;
+
+		if (!studioHdr.SequencesAvailable())
+			return false;
+
+		if (sequence < 0 || sequence >= studioHdr.GetNumSeq())
+			return false;
+
+		MStudioSeqDesc seqdesc = studioHdr.Seqdesc(sequence);
+		if (studioHdr.GetSharedPoseParameter(sequence, seqdesc.ParamIndex[0]) == parameter ||
+			studioHdr.GetSharedPoseParameter(sequence, seqdesc.ParamIndex[1]) == parameter)
+			return true;
+		return false;
+	}
+	public float GetInstantaneousVelocity(float interval = 0.0f) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return 0;
+
+		float nextCycle = (float)(GetCycle() + interval * GetSequenceCycleRate(GetSequence()) * PlaybackRate);
+
+		BoneSetup.Studio_SeqVelocity(studioHdr, GetSequence(), nextCycle, GetPoseParameterArray(), out Vector3 vecVelocity);
+		vecVelocity *= (float)PlaybackRate;
+
+		return vecVelocity.Length();
+	}
+	public float GetEntryVelocity(int sequence) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return 0;
+
+		BoneSetup.Studio_SeqVelocity(studioHdr, sequence, 0.0f, GetPoseParameterArray(), out Vector3 vecVelocity);
+
+		return vecVelocity.Length();
+	}
+	public float GetMovementFrame(float dist) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return 0;
+
+		return BoneSetup.Studio_FindSeqDistance(studioHdr, GetSequence(), GetPoseParameterArray(), dist);
 	}
 	public void ResetSequenceInfo() {
 		if (GetSequence() == -1)

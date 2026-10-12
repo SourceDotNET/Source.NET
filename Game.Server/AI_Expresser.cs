@@ -105,6 +105,10 @@ public class AI_Expresser
 		return StopTalkTime > gpGlobals.CurTime;
 	}
 
+	public bool CanSpeakConcept(ReadOnlySpan<char> concept) => throw new NotImplementedException();
+
+	public bool Speak(ReadOnlySpan<char> concept) => throw new NotImplementedException();
+
 	public AI_TimedSemaphore? GetMySpeechSemaphore(BaseEntity? npc) {
 		if (npc!.MyNPCPointer() == null)
 			return null;

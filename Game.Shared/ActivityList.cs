@@ -74,6 +74,7 @@ public class ActivityList
 		if (activityIndex > HighestActivity)
 			HighestActivity = activityIndex;
 		g_ActivityList.Add(list);
+		SharedActivityRemapDatabase[list.StringKey] = g_ActivityList.Count - 1;
 		return list;
 	}
 
@@ -111,7 +112,6 @@ public class ActivityList
 		}
 		// ----------------------------------------------------------------
 		AddActivityEntry(activityName, activityIndex, false);
-		SharedActivityRemapDatabase[g_ActivityList[^1].StringKey] = g_ActivityList.Count - 1;
 		return true;
 	}
 

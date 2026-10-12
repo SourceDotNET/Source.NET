@@ -38,6 +38,14 @@ namespace Source.CodeAnalysis.NetworkVars
 			defaultSeverity: DiagnosticSeverity.Error,
 			isEnabledByDefault: true);
 
+		private static readonly DiagnosticDescriptor InaccessibleFieldType = new DiagnosticDescriptor(
+			id: "NETVAR004",
+			title: "Field accessor cannot reference an inaccessible type",
+			messageFormat: "Field '{0}' on '{1}' involves type '{2}', which is not accessible outside its declaring type; generated field accessors cannot reference it",
+			category: "NetworkVars",
+			defaultSeverity: DiagnosticSeverity.Error,
+			isEnabledByDefault: true);
+
 		public void Initialize(IncrementalGeneratorInitializationContext context) {
 			context.RegisterPostInitializationOutput(ctx =>
 				ctx.AddSource("NetworkVarAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8)));

@@ -686,18 +686,25 @@ public class AI_BaseActor : AI_ExpresserHost_AI_BaseHumanoid
 			return 0;
 
 		if (ExpressionSceneEnt.Get() != null)
-			throw new NotImplementedException();
+			StopScriptedScene(this, ExpressionSceneEnt);
 
 		if (ai_debug_expressions.GetInt() != 0)
 			Msg($"{GetClassname()} ({GetDebugName()}) set expression to: {expressionScene}\n");
 
 		ExpressionScene = null;
-		throw new NotImplementedException();
+		float duration = InstancedScriptedScene(this, expressionScene, ref ExpressionSceneEnt, 0.0f, true);
+
+		ExpressionEndTime = gpGlobals.CurTime + duration;
+
+		if (ExpressionSceneEnt.Get() != null)
+			ExpressionScene = expressionScene;
+
+		return duration;
 	}
 
 	public void ClearExpression() {
 		if (ExpressionSceneEnt.Get() != null)
-			throw new NotImplementedException();
+			StopScriptedScene(this, ExpressionSceneEnt);
 		ExpressionScene = null;
 	}
 

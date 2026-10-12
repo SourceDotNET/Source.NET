@@ -45,7 +45,7 @@ public class AI_BlendedMotor : AI_Motor
 		ScriptTurn.Clear();
 	}
 
-	public float OverrideMaxYawSpeed(Activity activity) {
+	public override float OverrideMaxYawSpeed(Activity activity) {
 		if (IsYawLocked())
 			return 0.0f;
 

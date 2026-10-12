@@ -216,6 +216,19 @@ public class BaseAnimatingOverlay : BaseAnimating
 
 	public bool IsPlayingGesture(Activity activity) => FindGestureLayer(activity) != -1;
 
+	public void RestartGesture(Activity activity, bool addIfMissing = true, bool autokill = true) {
+		int idx = FindGestureLayer(activity);
+		if (idx == -1) {
+			if (addIfMissing)
+				AddGesture(activity, autokill);
+			return;
+		}
+
+		AnimOverlay[idx].Cycle = 0.0f;
+		AnimOverlay[idx].PrevCycle = 0.0f;
+		AnimOverlay[idx].LastEventCheck = 0.0f;
+	}
+
 	public int AddLayeredSequence(int sequence, int priority) {
 		int i = AllocateLayer(priority);
 		if (IsValidLayer(i)) {

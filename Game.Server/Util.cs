@@ -256,10 +256,12 @@ public static partial class Util
 			DevMsg(1, $"{dest.GetClassname()} ({dest.GetDebugName()}) was unable to point at an entity named: {target}\n");
 	}
 
-	public static int DropToFloor(BaseEntity entity, Mask mask) {
+	public static int DropToFloor(BaseEntity entity, Mask mask) => DropToFloor(entity, mask, null);
+
+	public static int DropToFloor(BaseEntity entity, Mask mask, BaseEntity? ignore) {
 		entity.SetGroundEntity(null);
 
-		TraceEntity(entity, entity.GetAbsOrigin(), entity.GetAbsOrigin() - new Vector3(0, 0, 256), mask, out Trace trace);
+		TraceEntity(entity, entity.GetAbsOrigin(), entity.GetAbsOrigin() - new Vector3(0, 0, 256), mask, ignore, entity.GetCollisionGroup(), out Trace trace);
 
 		if (trace.AllSolid)
 			return -1;
@@ -334,6 +336,21 @@ public static partial class Util
 		ent.SetCollisionBounds(mins, maxs);
 	}
 
+	public static float DistApprox(in Vector3 vec1, in Vector3 vec2) {
+		float dx = vec1.X - vec2.X;
+		float dy = vec1.Y - vec2.Y;
+		float dz = vec1.Z - vec2.Z;
+
+		return MathF.Abs(dx) + MathF.Abs(dy) + MathF.Abs(dz);
+	}
+
+	public static float DistApprox2D(in Vector3 vec1, in Vector3 vec2) {
+		float dx = vec1.X - vec2.X;
+		float dy = vec1.Y - vec2.Y;
+
+		return MathF.Abs(dx) + MathF.Abs(dy);
+	}
+
 	public static BasePlayer? GetLocalPlayer() {
 		if (gpGlobals.MaxClients > 1) {
 			if (developer.GetBool()) {
@@ -354,6 +371,16 @@ public static partial class Util
 
 	public static void SetSize(BaseEntity ent, in Vector3 min, in Vector3 max) {
 		SetMinMaxSize(ent, min, max);
+	}
+
+	public static int EntitiesInBox(Span<BaseEntity> list, in Vector3 mins, in Vector3 maxs, EntityFlags flagMask) {
+		FlaggedEntitiesEnum boxEnum = new(list, flagMask);
+		return EntitiesInBox(mins, maxs, ref boxEnum);
+	}
+
+	public static int EntitiesInBox(in Vector3 mins, in Vector3 maxs, scoped ref FlaggedEntitiesEnum enumerator) {
+		partition.EnumerateElementsInBox((SpatialPartitionListMask_t)PartitionListMask.EngineNonStaticEdicts, mins, maxs, false, ref enumerator);
+		return enumerator.GetCount();
 	}
 
 	public static int EntitiesInSphere(Span<BaseEntity> list, in Vector3 center, float radius, EntityFlags flagMask) {

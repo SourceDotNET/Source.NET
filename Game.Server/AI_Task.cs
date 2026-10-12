@@ -1,5 +1,7 @@
 global using static Game.Server.AI_TaskGlobals;
 
+using Game.Shared;
+
 namespace Game.Server;
 
 // keeping these as const ints for now since the scripts refer to them by these names
@@ -259,4 +261,23 @@ public struct Task_t
 {
 	public int Task;
 	public float TaskData;
+}
+
+public readonly struct AI_TaskDef(int task, float data, string? activityName = null)
+{
+	public readonly int Task = task;
+	public readonly float Data = data;
+	public readonly string? ActivityName = activityName;
+
+	public static implicit operator AI_TaskDef(int task) => new(task, 0);
+	public static implicit operator AI_TaskDef((int Task, int Data) task) => new(task.Task, task.Data);
+	public static implicit operator AI_TaskDef((int Task, float Data) task) => new(task.Task, task.Data);
+	public static implicit operator AI_TaskDef((int Task, Activity Data) task) => new(task.Task, (int)task.Data);
+	public static implicit operator AI_TaskDef((int Task, string ActivityName) task) => new(task.Task, 0, task.ActivityName);
+	public static implicit operator AI_TaskDef((int Task, NPCState Data) task) => new(task.Task, (int)task.Data);
+	public static implicit operator AI_TaskDef((int Task, AI_MemoryFlags Data) task) => new(task.Task, (int)task.Data);
+	public static implicit operator AI_TaskDef((int Task, PathType Data) task) => new(task.Task, (int)task.Data);
+	public static implicit operator AI_TaskDef((int Task, ScheduleGoalType Data) task) => new(task.Task, (int)task.Data);
+	public static implicit operator AI_TaskDef((int Task, AI_HintNodeFlags Data) task) => new(task.Task, (int)task.Data);
+	public static implicit operator AI_TaskDef((int Task, DamageType Data) task) => new(task.Task, (int)task.Data);
 }

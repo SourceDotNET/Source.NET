@@ -15,7 +15,7 @@
 
 		SearchPaths
 		{
-			game+mod			hl2/garrysmod.vpk
+			game+mod			sdn/garrysmod.vpk
 
 			game				|all_source_engine_paths|sourceengine/hl2_textures.vpk
 			game				|all_source_engine_paths|sourceengine/hl2_sound_vo_english.vpk
@@ -26,12 +26,12 @@
 
 			mod+mod_write+default_write_path		|gameinfo_path|.
 
-			game+game_write		hl2
+			game+game_write		sdn
 
 			game				|all_source_engine_paths|sourceengine
 			platform			|all_source_engine_paths|platform
 
-			game+download		hl2/download
+			game+download		sdn/download
 		}
 	}
 }

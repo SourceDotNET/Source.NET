@@ -4,6 +4,7 @@ using System.Numerics;
 
 using Source.Common;
 using Source.Common.Commands;
+using Source.Common.Mathematics;
 using Source.Common.Physics;
 using Source;
 using Game.Shared.HL2;
@@ -47,6 +48,7 @@ public class HL2_Player : BaseMultiplayerPlayer
 	public virtual void SuspendUse(TimeUnit_t duration) { TimeUseSuspended = gpGlobals.CurTime + duration; }
 
 	bool SprintEnabled;
+	Class_T ControlClass;
 
 	[NetworkName("m_fIsSprinting")]
 	public bool m_bIsSprinting;
@@ -113,7 +115,20 @@ public class HL2_Player : BaseMultiplayerPlayer
 		// GetPlayerProxy();
 	}
 
-	// Class_T Classify() { }
+	public override Class_T Classify() {
+		if (ControlClass != Class_T.None)
+			return ControlClass;
+		else {
+			if (IsInAVehicle()) {
+				IServerVehicle vehicle = GetVehicle()!;
+				return vehicle.ClassifyPassenger(this, Class_T.Player);
+			}
+			else
+				return Class_T.Player;
+		}
+	}
+
+	public void SetControlClass(Class_T controlClass) => ControlClass = controlClass;
 
 	// bool HandleInteraction(int interactionType, void* data, BaseCombatCharacter sourceEnt) { }
 
@@ -576,7 +591,15 @@ public class HL2_Player : BaseMultiplayerPlayer
 	void OnRestore() { }
 
 	public override Vector3 EyeDirection2D() {
-		throw new NotImplementedException();
+		Vector3 vecReturn = EyeDirection3D();
+		vecReturn.Z = 0;
+
+		Vector2 vecReturn2D = new(vecReturn.X, vecReturn.Y);
+		MathLib.VectorNormalize(ref vecReturn2D);
+		vecReturn.X = vecReturn2D.X;
+		vecReturn.Y = vecReturn2D.Y;
+
+		return vecReturn;
 	}
 
 	public override Vector3 EyeDirection3D() {

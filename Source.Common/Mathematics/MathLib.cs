@@ -26,6 +26,7 @@ public static class MathLibConsts
 	public static readonly Vector3 vec3_origin = new(0, 0, 0);
 	public static readonly QAngle vec3_angle = new(0, 0, 0);
 	public static readonly Vector3 vec3_invalid = new(float.MaxValue, float.MaxValue, float.MaxValue);
+	public static readonly Vector2 vec2_invalid = new(float.MaxValue, float.MaxValue);
 
 	public static Vector3 RandomAngularImpulse(float minVal, float maxVal) {
 		Vector3 angImp = default;
@@ -673,6 +674,32 @@ public static class MathLib
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static float Lerp(float f1, float f2, float i1, float i2, float x) {
 		return f1 + (f2 - f1) * (x - i1) / (i2 - i1);
+	}
+	public static bool SolveQuadratic(float a, float b, float c, out float root1, out float root2) {
+		if (a == 0) {
+			if (b != 0) {
+				root1 = root2 = -c / b;
+				return true;
+			}
+			if (c == 0) {
+				root1 = root2 = 0;
+				return true;
+			}
+			root1 = root2 = 0;
+			return false;
+		}
+
+		float tmp = b * b - 4.0f * a * c;
+
+		if (tmp < 0) {
+			root1 = root2 = 0;
+			return false;
+		}
+
+		tmp = MathF.Sqrt(tmp);
+		root1 = (-b + tmp) / (2.0f * a);
+		root2 = (-b - tmp) / (2.0f * a);
+		return true;
 	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static double Fmod(double x, double y) {
@@ -1364,6 +1391,36 @@ public static class MathLib
 		return P.DistToSqr(vClosest);
 	}
 
+	public static float CalcClosestPointToLineT2D(in Vector2 P, in Vector2 vLineA, in Vector2 vLineB, out Vector2 vDir) {
+		Assert(MathlibInitialized);
+		vDir = vLineB - vLineA;
+
+		float div = Vector2.Dot(vDir, vDir);
+		if (div < 0.00001f)
+			return 0;
+		else
+			return (Vector2.Dot(vDir, P) - Vector2.Dot(vDir, vLineA)) / div;
+	}
+
+	public static void CalcClosestPointOnLine2D(in Vector2 P, in Vector2 vLineA, in Vector2 vLineB, out Vector2 vClosest, out float outT) {
+		Assert(MathlibInitialized);
+		float t = CalcClosestPointToLineT2D(P, vLineA, vLineB, out Vector2 vDir);
+		outT = t;
+		vClosest = vLineA + vDir * t;
+	}
+
+	public static float CalcDistanceToLine2D(in Vector2 P, in Vector2 vLineA, in Vector2 vLineB, out float outT) {
+		Assert(MathlibInitialized);
+		CalcClosestPointOnLine2D(P, vLineA, vLineB, out Vector2 vClosest, out outT);
+		return Vector2.Distance(P, vClosest);
+	}
+
+	public static float CalcDistanceSqrToLine2D(in Vector2 P, in Vector2 vLineA, in Vector2 vLineB, out float outT) {
+		Assert(MathlibInitialized);
+		CalcClosestPointOnLine2D(P, vLineA, vLineB, out Vector2 vClosest, out outT);
+		return Vector2.DistanceSquared(P, vClosest);
+	}
+
 
 	public static void CalculateAABBFromProjectionMatrixInverse(in Matrix4x4 volumeToWorld, out Vector3 mins, out Vector3 maxs) {
 		ClearBounds(out mins, out maxs);
@@ -1821,6 +1878,66 @@ public static class MathLib
 		MatrixPosition(matrix, out position);
 	}
 
+	public static void MatrixAngles(in Matrix3x4 matrix, out Quaternion q, out Vector3 pos) {
+		float trace;
+		trace = matrix[0, 0] + matrix[1, 1] + matrix[2, 2] + 1.0f;
+		if (trace > 1.0f + FLT_EPSILON) {
+			q.X = matrix[2, 1] - matrix[1, 2];
+			q.Y = matrix[0, 2] - matrix[2, 0];
+			q.Z = matrix[1, 0] - matrix[0, 1];
+			q.W = trace;
+		}
+		else if (matrix[0, 0] > matrix[1, 1] && matrix[0, 0] > matrix[2, 2]) {
+			trace = 1.0f + matrix[0, 0] - matrix[1, 1] - matrix[2, 2];
+			q.X = trace;
+			q.Y = matrix[1, 0] + matrix[0, 1];
+			q.Z = matrix[0, 2] + matrix[2, 0];
+			q.W = matrix[2, 1] - matrix[1, 2];
+		}
+		else if (matrix[1, 1] > matrix[2, 2]) {
+			trace = 1.0f + matrix[1, 1] - matrix[0, 0] - matrix[2, 2];
+			q.X = matrix[0, 1] + matrix[1, 0];
+			q.Y = trace;
+			q.Z = matrix[2, 1] + matrix[1, 2];
+			q.W = matrix[0, 2] - matrix[2, 0];
+		}
+		else {
+			trace = 1.0f + matrix[2, 2] - matrix[0, 0] - matrix[1, 1];
+			q.X = matrix[0, 2] + matrix[2, 0];
+			q.Y = matrix[2, 1] + matrix[1, 2];
+			q.Z = trace;
+			q.W = matrix[1, 0] - matrix[0, 1];
+		}
+
+		QuaternionNormalize2(ref q);
+
+		MatrixGetColumn(matrix, 3, out pos);
+	}
+
+	public static void MatrixAngles(in Matrix3x4 matrix, out RadianEuler angles) {
+		MatrixAngles(matrix, out QAngle degrees);
+
+		angles.X = DEG2RAD(degrees.Z);
+		angles.Y = DEG2RAD(degrees.X);
+		angles.Z = DEG2RAD(degrees.Y);
+	}
+
+	public static void QuaternionAngles(in Quaternion q, out RadianEuler angles) {
+		QuaternionMatrix(q, out Matrix3x4 matrix);
+		MatrixAngles(matrix, out angles);
+	}
+
+	public static void AngleMatrix(in RadianEuler angles, out Matrix3x4 matrix) {
+		QAngle quakeEuler = new(RAD2DEG(angles.Y), RAD2DEG(angles.Z), RAD2DEG(angles.X));
+
+		AngleMatrix(quakeEuler, out matrix);
+	}
+
+	public static void AngleMatrix(in RadianEuler angles, in Vector3 position, out Matrix3x4 matrix) {
+		AngleMatrix(angles, out matrix);
+		MatrixSetColumn(position, 3, ref matrix);
+	}
+
 	public static void MatrixAngles(in Matrix3x4 matrix, out QAngle angles) {
 		angles = default;
 		Span<float> forward = stackalloc float[3];
@@ -2142,6 +2259,16 @@ public static class MathLib
 		random.Random(minVal, maxVal);
 		return random;
 	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static float Vector2DNormalize(ref Vector2 v) {
+		float l = v.Length();
+		if (l != 0.0f)
+			v /= l;
+		else
+			v.X = v.Y = 0.0f;
+		return l;
+	}
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static float VectorNormalize(ref Vector3 vec) {
 		float radius = MathF.Sqrt(vec.X * vec.X + vec.Y * vec.Y + vec.Z * vec.Z);

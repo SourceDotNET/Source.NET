@@ -28,31 +28,31 @@ static class AssetUtils
 
 	public static List<AssetMapping> GetRequiredAssets() {
 		List<AssetMapping> list = [
-			new("hl2/steam.inf", "garrysmod/steam.inf"),
+			new("sdn/steam.inf", "garrysmod/steam.inf"),
 			new("sourceengine", "sourceengine", IsDirectory: true),
 			new("platform", "platform", IsDirectory: true),
-			new("hl2/maps", "garrysmod/maps", IsDirectory: true),
-			new("hl2/materials", "garrysmod/materials", IsDirectory: true),
-			new("hl2/resource", "garrysmod/resource", IsDirectory: true),
-			new("hl2/scenes", "garrysmod/scenes", IsDirectory: true),
+			new("sdn/maps", "garrysmod/maps", IsDirectory: true),
+			new("sdn/materials", "garrysmod/materials", IsDirectory: true),
+			new("sdn/resource", "garrysmod/resource", IsDirectory: true),
+			new("sdn/scenes", "garrysmod/scenes", IsDirectory: true),
 			#if GMOD_DLL
-			new("hl2/gamemodes", "garrysmod/gamemodes", IsDirectory: true),
-			new("hl2/lua", "garrysmod/lua", IsDirectory: true),
+			new("sdn/gamemodes", "garrysmod/gamemodes", IsDirectory: true),
+			new("sdn/lua", "garrysmod/lua", IsDirectory: true),
 			#endif
-			new("hl2/cache/workshop", "garrysmod/cache/workshop", IsDirectory: true, Optional: false),
-			new("hl2/settings", "garrysmod/settings", IsDirectory: true)
+			new("sdn/cache/workshop", "garrysmod/cache/workshop", IsDirectory: true, Optional: false),
+			new("sdn/settings", "garrysmod/settings", IsDirectory: true)
 		];
 
 		string[] specificGmodVpks = ["dir", "000", "001", "002"];
 		foreach (var suffix in specificGmodVpks)
-			list.Add(new($"hl2/garrysmod_{suffix}.vpk", $"garrysmod/garrysmod_{suffix}.vpk"));
+			list.Add(new($"sdn/garrysmod_{suffix}.vpk", $"garrysmod/garrysmod_{suffix}.vpk"));
 
 		return list;
 	}
 
 	public static List<AssetMapping> GetOptionalAssets() {
 		return [
-			new("hl2/cfg/autoexec.cfg", "garrysmod/cfg/autoexec.cfg", Optional: true)
+			new("sdn/cfg/autoexec.cfg", "garrysmod/cfg/autoexec.cfg", Optional: true)
 		];
 	}
 
