@@ -32,16 +32,20 @@ public class EnvFade : LogicalEntity
 	public void SetDuration(float duration) => Duration = duration;
 	public void SetHoldTime(float hold) => HoldTime = hold;
 
-	/// <summary>
-	/// Fade in, not out
-	/// </summary>
-	const int SF_FADE_IN = 0x0001;
-	/// <summary>
-	/// Modulate, don't blend
-	/// </summary>
-	const int SF_FADE_MODULATE = 0x0002;
-	const int SF_FADE_ONLYONE = 0x0004;
-	const int SF_FADE_STAYOUT = 0x0008;
+	[Flags]
+	public enum SF
+	{
+		/// <summary>
+		/// Fade in, not out
+		/// </summary>
+		In = 0x0001,
+		/// <summary>
+		/// Modulate, don't blend
+		/// </summary>
+		Modulate = 0x0002,
+		OnlyOne = 0x0004,
+		StayOut = 0x0008,
+	}
 
 	public override void Spawn() { }
 
@@ -51,18 +55,18 @@ public class EnvFade : LogicalEntity
 	public void InputFade(InputData inputdata) {
 		FadeFlags fadeFlags = 0;
 
-		if ((SpawnFlags & SF_FADE_IN) != 0)
+		if (HasSpawnFlags(SF.In))
 			fadeFlags |= FadeFlags.In;
 		else
 			fadeFlags |= FadeFlags.Out;
 
-		if ((SpawnFlags & SF_FADE_MODULATE) != 0)
+		if (HasSpawnFlags(SF.Modulate))
 			fadeFlags |= FadeFlags.Modulate;
 
-		if ((SpawnFlags & SF_FADE_STAYOUT) != 0)
+		if (HasSpawnFlags(SF.StayOut))
 			fadeFlags |= FadeFlags.StayOut;
 
-		if ((SpawnFlags & SF_FADE_ONLYONE) != 0) {
+		if (HasSpawnFlags(SF.OnlyOne)) {
 			if (inputdata.Activator != null && inputdata.Activator.IsNetClient())
 				Util.ScreenFade(inputdata.Activator, ColorRender, GetDuration(), GetHoldTime(), fadeFlags);
 		}

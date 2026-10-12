@@ -248,7 +248,11 @@ public enum PlayerPhysFlag
 [NetworkName("CBasePlayer")]
 public partial class BasePlayer : BaseCombatCharacter
 {
-	public const int SF_NORESPAWN = 1 << 30;
+	[Flags]
+	public enum SF
+	{
+		NoRespawn = 1 << 30,
+	}
 	public const float DOT_30DEGREE = 0.866025403784f;
 	public const float DOT_45DEGREE = 0.707106781187f;
 	public static readonly SendTable DT_PlayerState = new(nameof(DT_PlayerState), [
@@ -1978,10 +1982,10 @@ public partial class BasePlayer : BaseCombatCharacter
 				if (prop == null && box == null)
 					return false;
 
-				if (prop != null && !(prop.HasSpawnFlags(SF_PHYSPROP_ENABLE_ON_PHYSCANNON)))
+				if (prop != null && !(prop.HasSpawnFlags(BreakableProp.SF.EnableOnPhyscannon)))
 					return false;
 
-				if (box != null && !(box.HasSpawnFlags(PhysBox.SF_PHYSBOX_ENABLE_ON_PHYSCANNON)))
+				if (box != null && !(box.HasSpawnFlags(PhysBox.SF.EnableOnPhyscannon)))
 					return false;
 			}
 

@@ -67,7 +67,11 @@ public class AI_ScriptConditionsElement
 [LinkEntityToClass("ai_script_conditions")]
 public class AI_ScriptConditions : BaseEntity, IEntityListener
 {
-	const int SF_ACTOR_AS_ACTIVATOR = 1 << 0;
+	[Flags]
+	public enum SF
+	{
+		ActorAsActivator = 1 << 0,
+	}
 
 	static readonly ConVar debugscriptconditions = new("ai_debugscriptconditions", "0");
 
@@ -419,7 +423,7 @@ public class AI_ScriptConditions : BaseEntity, IEntityListener
 			BaseEntity activator = this;
 
 #if HL2_EPISODIC
-			if (actor != null && HasSpawnFlags(SF_ACTOR_AS_ACTIVATOR))
+			if (actor != null && HasSpawnFlags(SF.ActorAsActivator))
 				activator = actor;
 #endif
 

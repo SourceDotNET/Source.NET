@@ -239,7 +239,7 @@ public class NPC_PlayerCompanion : AI_PlayerAlly
 		CapabilitiesClear();
 		CapabilitiesAdd(Capability.Squad);
 
-		if (!HasSpawnFlags(SF_NPC_START_EFFICIENT)) {
+		if (!HasSpawnFlags(AI_BaseNPC.SF.StartEfficient)) {
 			CapabilitiesAdd(Capability.AnimatedFace | Capability.TurnHead);
 			CapabilitiesAdd(Capability.UseWeapons | Capability.AimGun | Capability.MoveShoot);
 			CapabilitiesAdd(Capability.Duck | Capability.AutoDoors | Capability.OpenDoors);
@@ -254,9 +254,9 @@ public class NPC_PlayerCompanion : AI_PlayerAlly
 		SetReadinessSensitivity(random.RandomFloat(0.7f, 1.3f));
 		ReadinessLockedUntil = 0.0f;
 
-		if (HasSpawnFlags(SF_NPC_ALTCOLLISION)) {
+		if (HasSpawnFlags(AI_BaseNPC.SF.AltCollision)) {
 			Warning($"NPC {GetEntityName()} using alternate collision! -- DISABLED\n");
-			RemoveSpawnFlags(SF_NPC_ALTCOLLISION);
+			RemoveSpawnFlags(AI_BaseNPC.SF.AltCollision);
 		}
 
 		base.Spawn();

@@ -12,7 +12,11 @@ namespace Game.Server;
 [LinkEntityToClass("npc_breen")]
 public class NPC_Breen : AI_BaseActor
 {
-	public const int SF_BREEN_BACKGROUND_TALK = 1 << 16;
+	[Flags]
+	public enum SF
+	{
+		BackgroundTalk = 1 << 16,
+	}
 
 	public override void Spawn( ){
 		// Breen is allowed to use multiple models, because he has a torso version for monitors.
@@ -52,5 +56,5 @@ public class NPC_Breen : AI_BaseActor
 	public override Class_T Classify() => Class_T.None;
 	public override void HandleAnimEvent(ref AnimEvent ev) => base.HandleAnimEvent(ref ev); // not sure why this was overridden?
 	public override int GetSoundInterests() => 0;
-	public override bool UseSemaphore() => HasSpawnFlags(SF_BREEN_BACKGROUND_TALK) ? false : base.UseSemaphore();
+	public override bool UseSemaphore() => HasSpawnFlags(SF.BackgroundTalk) ? false : base.UseSemaphore();
 }

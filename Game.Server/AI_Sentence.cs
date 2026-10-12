@@ -71,15 +71,15 @@ public abstract class AI_SentenceBase : AI_Component
 				return true;
 
 			case SentenceCriteria.Normal:
-				return (GetOuter()!.GetState() == NPCState.Combat) || (GetOuter()!.HasSpawnFlags(SF_NPC_GAG) == false);
+				return (GetOuter()!.GetState() == NPCState.Combat) || (GetOuter()!.HasSpawnFlags(AI_BaseNPC.SF.Gag) == false);
 
 			case SentenceCriteria.InSquad:
-				if ((GetOuter()!.GetState() != NPCState.Combat) && GetOuter()!.HasSpawnFlags(SF_NPC_GAG))
+				if ((GetOuter()!.GetState() != NPCState.Combat) && GetOuter()!.HasSpawnFlags(AI_BaseNPC.SF.Gag))
 					return false;
 				return GetOuter()!.GetSquad() != null && (GetOuter()!.GetSquad()!.NumMembers() > 1);
 
 			case SentenceCriteria.SquadLeader: {
-					if ((GetOuter()!.GetState() != NPCState.Combat) && GetOuter()!.HasSpawnFlags(SF_NPC_GAG))
+					if ((GetOuter()!.GetState() != NPCState.Combat) && GetOuter()!.HasSpawnFlags(AI_BaseNPC.SF.Gag))
 						return false;
 
 					AI_Squad? squad = GetOuter()!.GetSquad();

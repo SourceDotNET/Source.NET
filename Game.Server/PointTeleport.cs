@@ -13,7 +13,11 @@ using DEFINE = Source.DEFINE<PointTeleport>;
 [LinkEntityToClass("point_teleport")]
 public class PointTeleport : BaseEntity
 {
-	const int SF_TELEPORT_TO_SPAWN_POS = 0x00000001;
+	[Flags]
+	public enum SF
+	{
+		ToSpawnPos = 0x00000001,
+	}
 
 	Vector3 SaveOrigin;
 	QAngle SaveAngles;
@@ -40,7 +44,7 @@ public class PointTeleport : BaseEntity
 		SaveOrigin = GetAbsOrigin();
 		SaveAngles = GetAbsAngles();
 
-		if ((SpawnFlags & SF_TELEPORT_TO_SPAWN_POS) != 0) {
+		if (HasSpawnFlags(SF.ToSpawnPos)) {
 			BaseEntity? target = gEntList.FindEntityByName(null, Target);
 			if (target != null) {
 				if (EntityMayTeleport(target)) {

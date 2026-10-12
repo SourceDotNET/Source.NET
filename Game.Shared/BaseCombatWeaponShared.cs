@@ -1269,9 +1269,13 @@ public partial class
 
 
 
-	public const int SF_WEAPON_START_CONSTRAINED = 1 << 0;
-	public const int SF_WEAPON_NO_PLAYER_PICKUP = 1 << 1;
-	public const int SF_WEAPON_NO_PHYSCANNON_PUNT = 1 << 2;
+	[Flags]
+	public enum SF
+	{
+		StartConstrained = 1 << 0,
+		NoPlayerPickup = 1 << 1,
+		NoPhyscannonPunt = 1 << 2,
+	}
 
 	public virtual void OnPickedUp(BaseCombatCharacter newOwner) {
 #if !CLIENT_DLL
@@ -1312,7 +1316,7 @@ public partial class
 		if (Util.ItemCanBeTouchedByPlayer(this, player))
 			OnCacheInteraction.FireOutput(other, this);
 
-		if (HasSpawnFlags(SF_WEAPON_NO_PLAYER_PICKUP))
+		if (HasSpawnFlags(SF.NoPlayerPickup))
 			return;
 
 		if (player.BumpWeapon(this))
@@ -1325,7 +1329,7 @@ public partial class
 		SetTouch(DefaultTouch);
 
 		if (gpGlobals.MaxClients > 1) {
-			if (HasSpawnFlags(BasePlayer.SF_NORESPAWN)) {
+			if (HasSpawnFlags(BasePlayer.SF.NoRespawn)) {
 				SetThink(SUB_Remove);
 				SetNextThink(gpGlobals.CurTime + 30.0f);
 			}

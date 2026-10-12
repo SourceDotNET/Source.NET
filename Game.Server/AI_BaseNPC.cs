@@ -75,22 +75,6 @@ public struct AI_SchedLoadStatus
 
 public static class AI_BaseNPCGlobals
 {
-	// TODO: Enum these
-	// need a good name for its enum type
-	public const int SF_NPC_WAIT_TILL_SEEN = 1 << 0;
-	public const int SF_NPC_GAG = 1 << 1;
-	public const int SF_NPC_FALL_TO_GROUND = 1 << 2;
-	public const int SF_NPC_DROP_HEALTHKIT = 1 << 3;
-	public const int SF_NPC_START_EFFICIENT = 1 << 4;
-	public const int SF_NPC_WAIT_FOR_SCRIPT = 1 << 7;
-	public const int SF_NPC_LONG_RANGE = 1 << 8;
-	public const int SF_NPC_FADE_CORPSE = 1 << 9;
-	public const int SF_NPC_ALWAYSTHINK = 1 << 10;
-	public const int SF_NPC_TEMPLATE = 1 << 11;
-	public const int SF_NPC_ALTCOLLISION = 1 << 12;
-	public const int SF_NPC_NO_WEAPON_DROP = 1 << 13;
-	public const int SF_NPC_NO_PLAYER_PUSHAWAY = 1 << 14;
-
 	public const string PLAYER_SQUADNAME = "player_squad";
 
 	public static readonly ConVar ai_show_think_tolerance = new("ai_show_think_tolerance", "0");
@@ -334,6 +318,24 @@ public ref struct TriggerTraceEnum(ref Ray ray, in TakeDamageInfo info, in Vecto
 [NetworkName("CAI_BaseNPC")]
 public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 {
+	[Flags]
+	public enum SF
+	{
+		WaitTillSeen = 1 << 0,
+		Gag = 1 << 1,
+		FallToGround = 1 << 2,
+		DropHealthkit = 1 << 3,
+		StartEfficient = 1 << 4,
+		WaitForScript = 1 << 7,
+		LongRange = 1 << 8,
+		FadeCorpse = 1 << 9,
+		AlwaysThink = 1 << 10,
+		Template = 1 << 11,
+		AltCollision = 1 << 12,
+		NoWeaponDrop = 1 << 13,
+		NoPlayerPushaway = 1 << 14,
+	}
+
 	public static ReadOnlySpan<char> GetActivityName(Activity actID) {
 		if (actID == Activity.ACT_INVALID)
 			return "ACT_INVALID";
@@ -2638,7 +2640,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public NPCState GetIdealState() => IdealNPCState;
 
-	public override bool IsTemplate() => HasSpawnFlags(SF_NPC_TEMPLATE);
+	public override bool IsTemplate() => HasSpawnFlags(SF.Template);
 
 	public static bool FindSpotForNPCInRadius(out Vector3 result, in Vector3 startPos, AI_BaseNPC npc, float radius, bool outOfPlayerViewcone = false) {
 		BasePlayer? player = npc.AI_GetClosestPlayer();
@@ -2699,7 +2701,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			throw new NotImplementedException();
 
 		if (oldCine != null && !string.IsNullOrEmpty(oldCine.Play) && oldCine.PlayedSequence()) {
-			if (!oldCine.HasSpawnFlags(AI_ScriptedSequence.SF_SCRIPT_DONT_TELEPORT_AT_END)) {
+			if (!oldCine.HasSpawnFlags(AI_ScriptedSequence.SF.DontTeleportAtEnd)) {
 				GetBonePosition(0, out Vector3 newOrigin, out _);
 
 				Vector3 oldOrigin = GetLocalOrigin();
@@ -2757,7 +2759,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			SetCondition((int)SCOND_t.COND_LIGHT_DAMAGE);
 		}
 
-		RemoveSpawnFlags(SF_NPC_WAIT_FOR_SCRIPT);
+		RemoveSpawnFlags(SF.WaitForScript);
 
 		if (destroyCine)
 			Util.Remove(oldCine);
@@ -3584,7 +3586,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public AI_MoveEfficiency GetMoveEfficiency() => MoveEfficiency;
 	public void SetMoveEfficiency(AI_MoveEfficiency efficiency) => MoveEfficiency = efficiency;
 
-	public bool IsFlaggedEfficient() => HasSpawnFlags(SF_NPC_START_EFFICIENT);
+	public bool IsFlaggedEfficient() => HasSpawnFlags(SF.StartEfficient);
 
 	public void RemoveSleepFlags(AI_SleepFlags flags) => SleepFlags &= ~flags;
 	public bool HasSleepFlags(AI_SleepFlags flags) => (SleepFlags & flags) == flags;
@@ -5956,7 +5958,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		if (IsInLockedScene() == true)
 			return true;
 
-		if (HasSpawnFlags(SF_NPC_ALTCOLLISION))
+		if (HasSpawnFlags(SF.AltCollision))
 			return true;
 
 		return false;
@@ -7168,7 +7170,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public virtual bool ShouldPlayIdleSound() {
 		if ((NPCState == NPCState.Idle || NPCState == NPCState.Alert) &&
-			   RandomInt(0, 99) == 0 && !HasSpawnFlags(SF_NPC_GAG)) {
+			   RandomInt(0, 99) == 0 && !HasSpawnFlags(SF.Gag)) {
 			return true;
 		}
 
@@ -7187,7 +7189,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			}
 		}
 
-		if (HasSpawnFlags(SF_NPC_GAG) && (NPCState != NPCState.Combat))
+		if (HasSpawnFlags(SF.Gag) && (NPCState != NPCState.Combat))
 			return false;
 
 		return true;
@@ -7205,7 +7207,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public virtual void LostEnemySound() { }
 	public virtual void FoundEnemySound() { }
 
-	public virtual bool ShouldAlwaysThink() => HasSpawnFlags(SF_NPC_ALWAYSTHINK);
+	public virtual bool ShouldAlwaysThink() => HasSpawnFlags(SF.AlwaysThink);
 
 	static readonly int[] SenseConditionsToClear = [
 		(int)SCOND_t.COND_SEE_HATE,
@@ -7522,7 +7524,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		DistTooFar = 1024.0f;
 		SetDistLook(2048.0f);
 
-		if (HasSpawnFlags(SF_NPC_LONG_RANGE)) {
+		if (HasSpawnFlags(SF.LongRange)) {
 			DistTooFar = 1e9f;
 			SetDistLook(6000.0f);
 		}
@@ -7553,7 +7555,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 		ForceGatherConditions();
 
-		if (HasSpawnFlags(SF_NPC_WAIT_FOR_SCRIPT)) {
+		if (HasSpawnFlags(SF.WaitForScript)) {
 			string? startSequence = AI_ScriptedSequence.GetSpawnPreIdleSequenceForScript(this);
 			if (startSequence != null)
 				SetSequence(LookupSequence(startSequence));
@@ -7561,7 +7563,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 		CreateVPhysics();
 
-		if (HasSpawnFlags(SF_NPC_START_EFFICIENT))
+		if (HasSpawnFlags(SF.StartEfficient))
 			SetEfficiency(AI_Efficiency.Efficient);
 
 		FadeCorpse = ShouldFadeOnDeath();
@@ -7606,7 +7608,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public virtual void StartNPC() {
 		if ((GetMoveType() != Source.MoveType.Fly) && (GetMoveType() != Source.MoveType.FlyGravity) &&
 			 (CapabilitiesGet() & Server.Capability.MoveFly) == 0 &&
-			 !HasSpawnFlags(SF_NPC_FALL_TO_GROUND) && !IsWaitingToRappel() && GetMoveParent() == null) {
+			 !HasSpawnFlags(SF.FallToGround) && !IsWaitingToRappel() && GetMoveParent() == null) {
 			Vector3 origin = GetLocalOrigin();
 
 			if (!GetMoveProbe()!.FloorPoint(origin + new Vector3(0, 0, 0.1f), Mask.NPCSolid, 0, -2048, out origin)) {
@@ -7649,7 +7651,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		ScriptArrivalActivity = AIN_DEF_ACTIVITY;
 		ScriptArrivalSequence = null;
 
-		if (HasSpawnFlags(SF_NPC_WAIT_FOR_SCRIPT)) {
+		if (HasSpawnFlags(SF.WaitForScript)) {
 			SetState(NPCState.Idle);
 			Activity = IdealActivity;
 			IdealSequence = GetSequence();
@@ -8172,7 +8174,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public void TestPlayerPushing(BaseEntity? entity) {
-		if (HasSpawnFlags(SF_NPC_NO_PLAYER_PUSHAWAY))
+		if (HasSpawnFlags(SF.NoPlayerPushaway))
 			return;
 
 		BasePlayer? player = ToBasePlayer(entity);
@@ -8846,7 +8848,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 						}
 					}
 
-					if ((GetSoundInterests() & (int)SoundInstanceType.Danger) != 0 && !HasSpawnFlags(SF_NPC_WAIT_TILL_SEEN)) {
+					if ((GetSoundInterests() & (int)SoundInstanceType.Danger) != 0 && !HasSpawnFlags(SF.WaitTillSeen)) {
 						int sound = SoundEnt.ActiveList();
 
 						while (sound != SOUNDLIST_EMPTY) {

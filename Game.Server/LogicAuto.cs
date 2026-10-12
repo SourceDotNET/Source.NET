@@ -10,7 +10,11 @@ using DEFINE = Source.DEFINE<LogicAuto>;
 [LinkEntityToClass("logic_auto")]
 class LogicAuto : BaseEntity
 {
-	const int SF_AUTO_FIREONCE = 0x01;
+	[Flags]
+	public enum SF
+	{
+		FireOnce = 0x01,
+	}
 
 	OutputEvent OnMapSpawn = new();
 	OutputEvent OnNewGame = new();
@@ -59,7 +63,7 @@ class LogicAuto : BaseEntity
 					OnMultiNewMap.FireOutput(null, this);
 			}
 
-			if ((SpawnFlags & SF_AUTO_FIREONCE) != 0)
+			if (HasSpawnFlags(SF.FireOnce))
 				Util.Remove(this);
 		}
 	}

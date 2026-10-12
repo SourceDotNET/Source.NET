@@ -16,20 +16,6 @@ using FIELD_BT = FIELD<BaseTrigger>;
 
 public static class TriggerGlobals
 {
-	public const int SF_TRIGGER_ALLOW_CLIENTS = 0x01;       // Players can fire this trigger
-	public const int SF_TRIGGER_ALLOW_NPCS = 0x02;      // NPCS can fire this trigger
-	public const int SF_TRIGGER_ALLOW_PUSHABLES = 0x04;     // Pushables can fire this trigger
-	public const int SF_TRIGGER_ALLOW_PHYSICS = 0x08;       // Physics objects can fire this trigger
-	public const int SF_TRIGGER_ONLY_PLAYER_ALLY_NPCS = 0x10;       // *if* NPCs can fire this trigger, this flag means only player allies do so
-	public const int SF_TRIGGER_ONLY_CLIENTS_IN_VEHICLES = 0x20;        // *if* Players can fire this trigger, this flag means only players inside vehicles can
-	public const int SF_TRIGGER_ALLOW_ALL = 0x40;       // Everything can fire this trigger EXCEPT DEBRIS!
-	public const int SF_TRIGGER_ONLY_CLIENTS_OUT_OF_VEHICLES = 0x200;   // *if* Players can fire this trigger, this flag means only players outside vehicles can
-	public const int SF_TRIG_PUSH_ONCE = 0x80;      // trigger_push removes itself after firing once
-	public const int SF_TRIG_PUSH_AFFECT_PLAYER_ON_LADDER = 0x100;  // if pushed object is player on a ladder, then this disengages them from the ladder (HL2only)
-	public const int SF_TRIG_TOUCH_DEBRIS = 0x400;  // Will touch physics debris objects
-	public const int SF_TRIGGER_ONLY_NPCS_IN_VEHICLES = 0X800;  // *if* NPCs can fire this trigger, only NPCs in vehicles do so (respects player ally flag too)
-	public const int SF_TRIGGER_DISALLOW_BOTS = 0x1000;   // Bots are not allowed to fire this trigger
-
 	public static readonly ConVar showtriggers = new("showtriggers", "0", FCvar.Cheat, "Shows trigger brushes");
 
 	// Global list of triggers that care about weapon fire
@@ -90,6 +76,24 @@ public static class TriggerGlobals
 [NetworkName("CBaseTrigger")]
 public class BaseTrigger : BaseToggle
 {
+	[Flags]
+	public enum SF
+	{
+		AllowClients = 0x01,       // Players can fire this trigger
+		AllowNPCs = 0x02,      // NPCS can fire this trigger
+		AllowPushables = 0x04,     // Pushables can fire this trigger
+		AllowPhysics = 0x08,       // Physics objects can fire this trigger
+		OnlyPlayerAllyNPCs = 0x10,       // *if* NPCs can fire this trigger, this flag means only player allies do so
+		OnlyClientsInVehicles = 0x20,        // *if* Players can fire this trigger, this flag means only players inside vehicles can
+		AllowAll = 0x40,       // Everything can fire this trigger EXCEPT DEBRIS!
+		OnlyClientsOutOfVehicles = 0x200,   // *if* Players can fire this trigger, this flag means only players outside vehicles can
+		PushOnce = 0x80,      // trigger_push removes itself after firing once
+		PushAffectPlayerOnLadder = 0x100,  // if pushed object is player on a ladder, then this disengages them from the ladder (HL2only)
+		TouchDebris = 0x400,  // Will touch physics debris objects
+		OnlyNPCsInVehicles = 0X800,  // *if* NPCs can fire this trigger, only NPCs in vehicles do so (respects player ally flag too)
+		DisallowBots = 0x1000,   // Bots are not allowed to fire this trigger
+	}
+
 	public static readonly SendTable DT_BaseTrigger = new(DT_BaseToggle, [
 		SendPropBool(FIELD_BT.OF(nameof(ClientSidePredicted))),
 		SendPropInt(FIELD_BT.OF(nameof(SpawnFlags)), 32, PropFlags.NoScale)
@@ -182,16 +186,16 @@ public class BaseTrigger : BaseToggle
 	//------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------
 	public override void Spawn() {
-		if (HasSpawnFlags(TriggerGlobals.SF_TRIGGER_ONLY_PLAYER_ALLY_NPCS) || HasSpawnFlags(TriggerGlobals.SF_TRIGGER_ONLY_NPCS_IN_VEHICLES)) {
+		if (HasSpawnFlags(SF.OnlyPlayerAllyNPCs) || HasSpawnFlags(SF.OnlyNPCsInVehicles)) {
 			// Automatically set this trigger to work with NPC's.
-			AddSpawnFlags(TriggerGlobals.SF_TRIGGER_ALLOW_NPCS);
+			AddSpawnFlags(SF.AllowNPCs);
 		}
 
-		if (HasSpawnFlags(TriggerGlobals.SF_TRIGGER_ONLY_CLIENTS_IN_VEHICLES))
-			AddSpawnFlags(TriggerGlobals.SF_TRIGGER_ALLOW_CLIENTS);
+		if (HasSpawnFlags(SF.OnlyClientsInVehicles))
+			AddSpawnFlags(SF.AllowClients);
 
-		if (HasSpawnFlags(TriggerGlobals.SF_TRIGGER_ONLY_CLIENTS_OUT_OF_VEHICLES))
-			AddSpawnFlags(TriggerGlobals.SF_TRIGGER_ALLOW_CLIENTS);
+		if (HasSpawnFlags(SF.OnlyClientsOutOfVehicles))
+			AddSpawnFlags(SF.AllowClients);
 
 		base.Spawn();
 	}
@@ -313,7 +317,7 @@ public class BaseTrigger : BaseToggle
 
 		TouchingEntities.Clear();
 
-		if (HasSpawnFlags(TriggerGlobals.SF_TRIG_TOUCH_DEBRIS))
+		if (HasSpawnFlags(SF.TouchDebris))
 			CollisionProp().AddSolidFlags(SolidFlags.TriggerTouchDebris);
 	}
 
@@ -323,14 +327,14 @@ public class BaseTrigger : BaseToggle
 	//-----------------------------------------------------------------------------
 	public virtual bool PassesTriggerFilters(BaseEntity other) {
 		// First test spawn flag filters
-		if (HasSpawnFlags(TriggerGlobals.SF_TRIGGER_ALLOW_ALL) ||
-			(HasSpawnFlags(TriggerGlobals.SF_TRIGGER_ALLOW_CLIENTS) && (other.GetFlags() & EntityFlags.Client) != 0) ||
-			(HasSpawnFlags(TriggerGlobals.SF_TRIGGER_ALLOW_NPCS) && (other.GetFlags() & EntityFlags.NPC) != 0) ||
-			(HasSpawnFlags(TriggerGlobals.SF_TRIGGER_ALLOW_PUSHABLES) && FClassnameIs(other, "func_pushable")) ||
-			(HasSpawnFlags(TriggerGlobals.SF_TRIGGER_ALLOW_PHYSICS) && other.GetMoveType() == Source.MoveType.VPhysics)
+		if (HasSpawnFlags(SF.AllowAll) ||
+			(HasSpawnFlags(SF.AllowClients) && (other.GetFlags() & EntityFlags.Client) != 0) ||
+			(HasSpawnFlags(SF.AllowNPCs) && (other.GetFlags() & EntityFlags.NPC) != 0) ||
+			(HasSpawnFlags(SF.AllowPushables) && FClassnameIs(other, "func_pushable")) ||
+			(HasSpawnFlags(SF.AllowPhysics) && other.GetMoveType() == Source.MoveType.VPhysics)
 #if HL2_EPISODIC || TF_DLL
 			||
-			(HasSpawnFlags(TriggerGlobals.SF_TRIG_TOUCH_DEBRIS) &&
+			(HasSpawnFlags(SF.TouchDebris) &&
 				(other.GetCollisionGroup() == Source.CollisionGroup.Debris ||
 				other.GetCollisionGroup() == Source.CollisionGroup.DebrisTrigger ||
 				other.GetCollisionGroup() == Source.CollisionGroup.InteractiveDebris)
@@ -344,7 +348,7 @@ public class BaseTrigger : BaseToggle
 				if (!player.IsAlive())
 					return false;
 
-				if (HasSpawnFlags(TriggerGlobals.SF_TRIGGER_ONLY_CLIENTS_IN_VEHICLES)) {
+				if (HasSpawnFlags(SF.OnlyClientsInVehicles)) {
 					if (!player.IsInAVehicle())
 						return false;
 
@@ -357,12 +361,12 @@ public class BaseTrigger : BaseToggle
 						return false;
 				}
 
-				if (HasSpawnFlags(TriggerGlobals.SF_TRIGGER_ONLY_CLIENTS_OUT_OF_VEHICLES)) {
+				if (HasSpawnFlags(SF.OnlyClientsOutOfVehicles)) {
 					if (player.IsInAVehicle())
 						return false;
 				}
 
-				if (HasSpawnFlags(TriggerGlobals.SF_TRIGGER_DISALLOW_BOTS)) {
+				if (HasSpawnFlags(SF.DisallowBots)) {
 					if (player.IsFakeClient())
 						return false;
 				}
@@ -876,8 +880,12 @@ public class TriggerOnce : TriggerMultiple
 [LinkEntityToClass("trigger_look")]
 public class TriggerLook : TriggerOnce
 {
-	const int SF_TRIGGERLOOK_FIREONCE = 128;
-	const int SF_TRIGGERLOOK_USEVELOCITY = 256;
+	[Flags]
+	public enum SF
+	{
+		FireOnce = 128,
+		UseVelocity = 256,
+	}
 
 	public EHANDLE LookTarget = new();
 	public float FieldOfView;
@@ -980,7 +988,7 @@ public class TriggerLook : TriggerOnce
 			// Check that toucher is facing the target
 			// ----------------------------------------
 			Vector3 vLookDir;
-			if (HasSpawnFlags(SF_TRIGGERLOOK_USEVELOCITY)) {
+			if (HasSpawnFlags(SF.UseVelocity)) {
 				vLookDir = other.GetAbsVelocity();
 				if (vLookDir == vec3_origin) {
 					// See if they're in a vehicle
@@ -1037,7 +1045,7 @@ public class TriggerLook : TriggerOnce
 			SetNextThink(TICK_NEVER_THINK);
 		}
 
-		if (HasSpawnFlags(SF_TRIGGERLOOK_FIREONCE)) {
+		if (HasSpawnFlags(SF.FireOnce)) {
 			SetThink(SUB_Remove);
 			SetNextThink(gpGlobals.CurTime);
 		}
@@ -1116,7 +1124,7 @@ public class TriggerPush : BaseTrigger
 		MathLib.VectorRotate(PushDir, EntityToWorldTransform(), out Vector3 vecAbsDir);
 
 		// Instant trigger, just transfer velocity and remove
-		if (HasSpawnFlags(TriggerGlobals.SF_TRIG_PUSH_ONCE)) {
+		if (HasSpawnFlags(SF.PushOnce)) {
 			other.ApplyAbsVelocityImpulse(PushSpeed * vecAbsDir);
 
 			if (vecAbsDir.Z > 0)
@@ -1146,7 +1154,7 @@ public class TriggerPush : BaseTrigger
 					// HACK HACK  HL2 players on ladders will only be disengaged if the sf is set, otherwise no push occurs.
 					if (other.IsPlayer() &&
 						 other.GetMoveType() == Source.MoveType.Ladder) {
-						if (!HasSpawnFlags(TriggerGlobals.SF_TRIG_PUSH_AFFECT_PLAYER_ON_LADDER)) {
+						if (!HasSpawnFlags(SF.PushAffectPlayerOnLadder)) {
 							// Ignore the push
 							return;
 						}
@@ -1187,7 +1195,11 @@ public class TriggerPush : BaseTrigger
 [LinkEntityToClass("trigger_teleport")]
 public class TriggerTeleport : BaseTrigger
 {
-	const int SF_TELEPORT_PRESERVE_ANGLES = 0x20;  // Preserve angles even when a local landmark is not specified
+	[Flags]
+	public enum SF
+	{
+		PreserveAngles = 0x20,  // Preserve angles even when a local landmark is not specified
+	}
 
 	public string? Landmark;
 
@@ -1249,7 +1261,7 @@ public class TriggerTeleport : BaseTrigger
 		QAngle? angles = null;
 		Vector3? velocity = null;
 
-		if (entLandmark == null && !HasSpawnFlags(SF_TELEPORT_PRESERVE_ANGLES)) {
+		if (entLandmark == null && !HasSpawnFlags(SF.PreserveAngles)) {
 			angles = entTarget.GetAbsAngles();
 
 #if HL1_DLL

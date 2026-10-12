@@ -21,13 +21,17 @@ public enum TrackOrientationType
 [LinkEntityToClass("path_track")]
 public class PathTrack : PointEntity
 {
-	public const int SF_PATH_DISABLED = 0x00000001;
-	public const int SF_PATH_ALTREVERSE = 0x00000004;
-	public const int SF_PATH_DISABLE_TRAIN = 0x00000008;
-	public const int SF_PATH_TELEPORT = 0x00000010;
-	public const int SF_PATH_UPHILL = 0x00000020;
-	public const int SF_PATH_DOWNHILL = 0x00000040;
-	public const int SF_PATH_ALTERNATE = 0x00008000;
+	[Flags]
+	public enum SF
+	{
+		Disabled = 0x00000001,
+		AltReverse = 0x00000004,
+		DisableTrain = 0x00000008,
+		Teleport = 0x00000010,
+		Uphill = 0x00000020,
+		Downhill = 0x00000040,
+		Alternate = 0x00008000,
+	}
 
 	public Handle<PathTrack> Next = new();
 	public Handle<PathTrack> Previous = new();
@@ -133,7 +137,7 @@ public class PathTrack : PointEntity
 
 	public void ToggleAlternatePath() {
 		if (AltPath.Get() != null) {
-			if ((SpawnFlags & SF_PATH_ALTERNATE) == 0)
+			if (!HasSpawnFlags(SF.Alternate))
 				EnableAlternatePath();
 			else
 				DisableAlternatePath();
@@ -142,12 +146,12 @@ public class PathTrack : PointEntity
 
 	public void EnableAlternatePath() {
 		if (AltPath.Get() != null)
-			SpawnFlags |= SF_PATH_ALTERNATE;
+			AddSpawnFlags(SF.Alternate);
 	}
 
 	public void DisableAlternatePath() {
 		if (AltPath.Get() != null)
-			SpawnFlags &= ~SF_PATH_ALTERNATE;
+			RemoveSpawnFlags(SF.Alternate);
 	}
 
 	public void InputEnableAlternatePath(InputData inputdata) => EnableAlternatePath();
@@ -157,15 +161,15 @@ public class PathTrack : PointEntity
 	public void InputToggleAlternatePath(InputData inputdata) => ToggleAlternatePath();
 
 	public void TogglePath() {
-		if ((SpawnFlags & SF_PATH_DISABLED) != 0)
+		if (HasSpawnFlags(SF.Disabled))
 			EnablePath();
 		else
 			DisablePath();
 	}
 
-	public void EnablePath() => SpawnFlags &= ~SF_PATH_DISABLED;
+	public void EnablePath() => RemoveSpawnFlags(SF.Disabled);
 
-	public void DisablePath() => SpawnFlags |= SF_PATH_DISABLED;
+	public void DisablePath() => AddSpawnFlags(SF.Disabled);
 
 	public void InputEnablePath(InputData inputdata) => EnablePath();
 
@@ -177,7 +181,7 @@ public class PathTrack : PointEntity
 		if (path == null)
 			return null;
 
-		if (testFlag != 0 && (path.SpawnFlags & SF_PATH_DISABLED) != 0)
+		if (testFlag != 0 && path.HasSpawnFlags(SF.Disabled))
 			return null;
 
 		return path;
@@ -207,14 +211,14 @@ public class PathTrack : PointEntity
 	}
 
 	public PathTrack? GetNext() {
-		if (AltPath.Get() != null && (SpawnFlags & SF_PATH_ALTERNATE) != 0 && (SpawnFlags & SF_PATH_ALTREVERSE) == 0)
+		if (AltPath.Get() != null && HasSpawnFlags(SF.Alternate) && !HasSpawnFlags(SF.AltReverse))
 			return AltPath.Get();
 
 		return Next.Get();
 	}
 
 	public PathTrack? GetPrevious() {
-		if (AltPath.Get() != null && (SpawnFlags & SF_PATH_ALTERNATE) != 0 && (SpawnFlags & SF_PATH_ALTREVERSE) != 0)
+		if (AltPath.Get() != null && HasSpawnFlags(SF.Alternate) && HasSpawnFlags(SF.AltReverse))
 			return AltPath.Get();
 
 		return Previous.Get();
@@ -339,8 +343,8 @@ public class PathTrack : PointEntity
 
 	public float GetRadius() => Radius;
 
-	public bool IsUpHill() => (SpawnFlags & SF_PATH_UPHILL) != 0;
-	public bool IsDownHill() => (SpawnFlags & SF_PATH_DOWNHILL) != 0;
+	public bool IsUpHill() => HasSpawnFlags(SF.Uphill);
+	public bool IsDownHill() => HasSpawnFlags(SF.Downhill);
 
 	public HillType GetHillType() {
 		HillType retVal = HillType.None;
@@ -352,7 +356,7 @@ public class PathTrack : PointEntity
 		return retVal;
 	}
 
-	public bool IsDisabled() => (SpawnFlags & SF_PATH_DISABLED) != 0;
+	public bool IsDisabled() => HasSpawnFlags(SF.Disabled);
 
 	public void InputPass(InputData inputdata) => OnPass.FireOutput(inputdata.Activator, this);
 

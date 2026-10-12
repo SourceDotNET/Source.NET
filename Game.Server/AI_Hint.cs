@@ -233,7 +233,11 @@ public class HintCriteria
 [LinkEntityToClass("ai_hint")]
 public class AI_Hint : ServerOnlyEntity
 {
-	public const int SF_ALLOW_JUMP_UP = 65536;
+	[Flags]
+	public enum SF
+	{
+		AllowJumpUp = 65536,
+	}
 
 	public static readonly new DataMap DataDesc = new(typeof(AI_Hint), BaseEntity.DataDesc, [
 		DEFINE.EMBEDDED(nameof(NodeData)),

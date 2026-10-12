@@ -17,7 +17,11 @@ namespace Game.Server;
 [NetworkName("CPhysBox")]
 public class PhysBox : Breakable
 {
-	public const int SF_PHYSBOX_ENABLE_ON_PHYSCANNON = 0x20000;
+	[Flags]
+	public enum SF
+	{
+		EnableOnPhyscannon = 0x20000,
+	}
 
 	public static readonly SendTable DT_PhysBox = new(DT_BaseEntity, []);
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_PhysBox);

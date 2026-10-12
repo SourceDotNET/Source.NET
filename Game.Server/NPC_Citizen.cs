@@ -36,15 +36,19 @@ public enum CitizenExpressionType
 [LinkEntityToClass("npc_citizen")]
 public class NPC_Citizen : NPC_PlayerCompanion
 {
-	public const int SF_CITIZEN_FOLLOW = 1 << 16;
-	public const int SF_CITIZEN_MEDIC = 1 << 17;
-	public const int SF_CITIZEN_RANDOM_HEAD = 1 << 18;
-	public const int SF_CITIZEN_AMMORESUPPLIER = 1 << 19;
-	public const int SF_CITIZEN_NOT_COMMANDABLE = 1 << 20;
-	public const int SF_CITIZEN_IGNORE_SEMAPHORE = 1 << 21;
-	public const int SF_CITIZEN_RANDOM_HEAD_MALE = 1 << 22;
-	public const int SF_CITIZEN_RANDOM_HEAD_FEMALE = 1 << 23;
-	public const int SF_CITIZEN_USE_RENDER_BOUNDS = 1 << 24;
+	[Flags]
+	public enum SF
+	{
+		Follow = 1 << 16,
+		Medic = 1 << 17,
+		RandomHead = 1 << 18,
+		AmmoResupplier = 1 << 19,
+		NotCommandable = 1 << 20,
+		IgnoreSemaphore = 1 << 21,
+		RandomHeadMale = 1 << 22,
+		RandomHeadFemale = 1 << 23,
+		UseRenderBounds = 1 << 24,
+	}
 
 	const int CIT_INSPECTED_DELAY_TIME = 120;
 
@@ -285,8 +289,8 @@ public class NPC_Citizen : NPC_PlayerCompanion
 		],
 	};
 
-	public bool IsMedic() => HasSpawnFlags(SF_CITIZEN_MEDIC);
-	public bool IsAmmoResupplier() => HasSpawnFlags(SF_CITIZEN_AMMORESUPPLIER);
+	public bool IsMedic() => HasSpawnFlags(SF.Medic);
+	public bool IsAmmoResupplier() => HasSpawnFlags(SF.AmmoResupplier);
 
 	public override void Precache() {
 		SelectModel();
@@ -362,7 +366,7 @@ public class NPC_Citizen : NPC_PlayerCompanion
 
 		NPCInit();
 
-		ActBusyBehavior.SetUseRenderBounds(HasSpawnFlags(SF_CITIZEN_USE_RENDER_BOUNDS));
+		ActBusyBehavior.SetUseRenderBounds(HasSpawnFlags(SF.UseRenderBounds));
 	}
 
 	public override void SelectModel() {
@@ -390,13 +394,13 @@ public class NPC_Citizen : NPC_PlayerCompanion
 				Type = CitizenType.Downtrodden;
 		}
 
-		if (HasSpawnFlags(SF_CITIZEN_RANDOM_HEAD | SF_CITIZEN_RANDOM_HEAD_MALE | SF_CITIZEN_RANDOM_HEAD_FEMALE) || GetModelName().IsEmpty) {
+		if (HasSpawnFlags(SF.RandomHead | SF.RandomHeadMale | SF.RandomHeadFemale) || GetModelName().IsEmpty) {
 			Assert(Head == -1);
-			char gender = HasSpawnFlags(SF_CITIZEN_RANDOM_HEAD_MALE) ? 'm' :
-						  HasSpawnFlags(SF_CITIZEN_RANDOM_HEAD_FEMALE) ? 'f' : '\0';
+			char gender = HasSpawnFlags(SF.RandomHeadMale) ? 'm' :
+						  HasSpawnFlags(SF.RandomHeadFemale) ? 'f' : '\0';
 
-			RemoveSpawnFlags(SF_CITIZEN_RANDOM_HEAD | SF_CITIZEN_RANDOM_HEAD_MALE | SF_CITIZEN_RANDOM_HEAD_FEMALE);
-			if (HasSpawnFlags(SF_NPC_START_EFFICIENT)) {
+			RemoveSpawnFlags(SF.RandomHead | SF.RandomHeadMale | SF.RandomHeadFemale);
+			if (HasSpawnFlags(AI_BaseNPC.SF.StartEfficient)) {
 				SetModelName("models/humans/male_cheaple.mdl");
 				return;
 			}
@@ -543,7 +547,7 @@ public class NPC_Citizen : NPC_PlayerCompanion
 						float dist = (localPlayer.GetAbsOrigin() - GetAbsOrigin()).Length();
 
 						if (dist < 50 * 12) {
-							AddSpawnFlags(SF_CITIZEN_NOT_COMMANDABLE);
+							AddSpawnFlags(SF.NotCommandable);
 							return SCHED_CITIZEN_MOURN_PLAYER;
 						}
 					}
@@ -746,7 +750,7 @@ public class NPC_Citizen : NPC_PlayerCompanion
 		if (NPCState == NPCState.Script || NPCState == NPCState.Prone)
 			return false;
 
-		if (HasSpawnFlags(SF_CITIZEN_NOT_COMMANDABLE))
+		if (HasSpawnFlags(SF.NotCommandable))
 			return false;
 
 		if (IsInAScript())

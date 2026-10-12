@@ -492,7 +492,7 @@ public partial class BaseCombatCharacter : BaseFlex
 
 			float curDist = (weapon.GetLocalOrigin() - GetLocalOrigin()).Length();
 
-			if (weapon.HasSpawnFlags(BaseCombatWeapon.SF_WEAPON_NO_PLAYER_PICKUP))
+			if (weapon.HasSpawnFlags(BaseCombatWeapon.SF.NoPlayerPickup))
 				curDist *= 0.5f;
 
 			if (bestWeapon != null) {
@@ -584,7 +584,7 @@ public partial class BaseCombatCharacter : BaseFlex
 		}
 
 		if (IsPlayer() == false) {
-			if (HasSpawnFlags(AI_BaseNPCGlobals.SF_NPC_LONG_RANGE)) {
+			if (HasSpawnFlags(AI_BaseNPC.SF.LongRange)) {
 				ActiveWeapon.Get()!.MaxRange1 = 999999999;
 				ActiveWeapon.Get()!.MaxRange2 = 999999999;
 			}
