@@ -532,11 +532,11 @@ class OptionsSubVideoAdvancedDlg : Frame
 	}
 
 	public bool RequiresRestart() {
-		if (GameUI().IsInLevel()) {
-			if (GameUI().IsInBackgroundLevel())
+		if (gameUI.IsInLevel()) {
+			if (gameUI.IsInBackgroundLevel())
 				return false;
 
-			// if (!GameUI().IsInMultiplayer()) //todo
+			// if (!gameUI.IsInMultiplayer()) //todo
 			// 	return false;
 
 			if (HDR.IsEnabled()) {

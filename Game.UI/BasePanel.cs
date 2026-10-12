@@ -509,7 +509,7 @@ public class SaveBeforeQuitQueryDialog : Frame
 		MoveToCenterOfScreen();
 		Surface.RestrictPaintToSinglePanel(this);
 
-		GameUI().PreventEngineHideGameUI();
+		gameUI.PreventEngineHideGameUI();
 	}
 
 	public override void OnKeyCodeTyped(ButtonCode code) {
@@ -554,7 +554,7 @@ public class SaveBeforeQuitQueryDialog : Frame
 	public override void OnClose() {
 		base.OnClose();
 		Surface.RestrictPaintToSinglePanel(null);
-		GameUI().AllowEngineHideGameUI();
+		gameUI.AllowEngineHideGameUI();
 	}
 }
 
@@ -565,7 +565,7 @@ public class QuitQueryBox : QueryBox
 	public override void DoModal(Frame? frameOver) {
 		base.DoModal(frameOver);
 		Surface.RestrictPaintToSinglePanel(this);
-		GameUI().PreventEngineHideGameUI();
+		gameUI.PreventEngineHideGameUI();
 	}
 	public override void OnKeyCodeTyped(ButtonCode code) {
 		if (code == ButtonCode.KeyEscape)
@@ -576,7 +576,7 @@ public class QuitQueryBox : QueryBox
 	public override void OnClose() {
 		base.OnClose();
 		Surface.RestrictPaintToSinglePanel(null);
-		GameUI().AllowEngineHideGameUI();
+		gameUI.AllowEngineHideGameUI();
 	}
 }
 public class BasePanel : Panel
@@ -647,7 +647,7 @@ public class BasePanel : Panel
 				engine.ClientCmd_Unrestricted("quit\n");
 				break;
 			case "QuitRestartNoConfirm": break;
-			case "ResumeGame": GameUI().HideGameUI(); break;
+			case "ResumeGame": gameUI.HideGameUI(); break;
 			case "Disconnect": engine.ClientCmd_Unrestricted("disconnect"); break;
 			case "DisconnectNoConfirm": break;
 			case "ReleaseModalWindow": Surface.RestrictPaintToSinglePanel(null); break;
@@ -695,11 +695,11 @@ public class BasePanel : Panel
 	}
 
 	public void OnOpenQuitConfirmationDialog() {
-		if (GameUI().IsConsoleUI()) {
+		if (gameUI.IsConsoleUI()) {
 			throw new NotImplementedException();
 		}
 
-		if (GameUI().IsInLevel() && engine.GetMaxClients() == 1) {
+		if (gameUI.IsInLevel() && engine.GetMaxClients() == 1) {
 			SaveBeforeQuitQueryDialog box = new SaveBeforeQuitQueryDialog(this, "SaveBeforeQuitQueryDialog");
 			box.DoModal();
 		}
@@ -737,7 +737,7 @@ public class BasePanel : Panel
 	IFont? FontTest;
 
 	public override void PaintBackground() {
-		if (!GameUI().IsInLevel() || GameUI.LoadingDialog != null || ExitingFrameCount > 0)
+		if (!gameUI.IsInLevel() || GameUI.LoadingDialog != null || ExitingFrameCount > 0)
 			DrawBackgroundImage();
 
 		if (BackgroundFillAlpha > 0) {
@@ -813,9 +813,9 @@ public class BasePanel : Panel
 	public void UpdateBackgroundState() {
 		if (ExitingFrameCount != 0)
 			SetBackgroundRenderState(BackgroundState.Exiting);
-		else if (GameUI().IsInLevel())
+		else if (gameUI.IsInLevel())
 			SetBackgroundRenderState(BackgroundState.Level);
-		else if (GameUI().IsInBackgroundLevel() && !LevelLoading)
+		else if (gameUI.IsInBackgroundLevel() && !LevelLoading)
 			SetBackgroundRenderState(BackgroundState.MainMenu);
 		else if (LevelLoading)
 			SetBackgroundRenderState(BackgroundState.Loading);
@@ -827,7 +827,7 @@ public class BasePanel : Panel
 
 		int i;
 		bool haveActiveDialogs = false;
-		bool isInLevel = GameUI().IsInLevel();
+		bool isInLevel = gameUI.IsInLevel();
 		for (i = 0; i < GetChildCount(); ++i) {
 			Panel? child = GetChild(i);
 			if (child != null && child.IsVisible() && child.IsPopup() && child != GameMenu)
@@ -1090,7 +1090,7 @@ public class BasePanel : Panel
 
 	int LastGameMenuState = -1;
 	private void UpdateGameMenus() {
-		bool isInGame = GameUI().IsInLevel();
+		bool isInGame = gameUI.IsInLevel();
 		bool isMulti = isInGame && engine.GetMaxClients() > 1;
 
 		int state = (isInGame ? 1 : 0) | (isMulti ? 2 : 0);
