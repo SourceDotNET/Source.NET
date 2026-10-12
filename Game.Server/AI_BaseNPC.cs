@@ -5309,8 +5309,11 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_CLEAR_COMMAND_GOAL:
 			case TASK_GET_PATH_TO_BESTSOUND:
 			case TASK_GET_PATH_TO_BESTSCENT:
-			case TASK_GET_PATH_AWAY_FROM_BEST_SOUND:
 			case TASK_MOVE_AWAY_PATH:
+				DesireStand();
+				break;
+
+			case TASK_GET_PATH_AWAY_FROM_BEST_SOUND:
 			case TASK_WEAPON_RUN_PATH:
 			case TASK_ITEM_RUN_PATH:
 			case TASK_STRAFE_PATH:
@@ -5673,8 +5676,107 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_GET_FLANK_RADIUS_PATH_TO_ENEMY_LOS:
 			case TASK_GET_FLANK_ARC_PATH_TO_ENEMY_LOS:
 			case TASK_GET_PATH_TO_ENEMY_LKP_LOS:
+			case TASK_MOVE_AWAY_PATH: {
+					QAngle ang = GetLocalAngles();
+					ang.Y = GetMotor()!.GetIdealYaw() + 180;
+					Vector3 move;
+
+					switch (GetTaskInterrupt()) {
+						case 0: {
+								if (IsPlayerAlly()) {
+									AI_Hint? hint;
+									HintCriteria hintCriteria = new();
+
+									hintCriteria.AddHintType(Hint.PlayerAllyMoveAwayDest);
+									hintCriteria.SetFlag(AI_HintNodeFlags.Nearest);
+									hintCriteria.AddIncludePosition(GetAbsOrigin(), 20.0f * 12.0f);
+									hintCriteria.AddExcludePosition(GetAbsOrigin(), 28.0f);
+
+									hint = AI_HintManager.FindHint(this, hintCriteria);
+
+									if (hint != null) {
+										BasePlayer? player = AI_GetClosestPlayer();
+										Vector3 goal = hint.GetAbsOrigin();
+
+										if (goal.DistToSqr(GetAbsOrigin()) < goal.DistToSqr(player!.GetAbsOrigin())) {
+											if (GetNavigator()!.SetGoal(new AI_NavGoal(goal))) {
+												hint.DisableForSeconds(0.1f);
+												TaskComplete();
+												break;
+											}
+										}
+									}
+								}
+
+								ref WorldSoundInstance bestSound = ref GetBestSound(SoundInstanceType.MoveAway);
+								if (!Unsafe.IsNullRef(ref bestSound) && bestSound.Owner.Get() != null && bestSound.Owner.Get()!.GetServerVehicle() != null) {
+									move = GetAbsOrigin() - bestSound.Owner.Get()!.WorldSpaceCenter();
+									MathLib.VectorNormalize(ref move);
+								}
+								else
+									MathLib.AngleVectors(ang, out move);
+
+								if (GetNavigator()!.SetVectorGoal(move, task.TaskData, Math.Min(36, task.TaskData), true) && IsValidMoveAwayDest(GetNavigator()!.GetGoalPos()))
+									TaskComplete();
+								else {
+									ang.Y = GetMotor()!.GetIdealYaw() + 91;
+									MathLib.AngleVectors(ang, out move);
+
+									if (GetNavigator()!.SetVectorGoal(move, task.TaskData, Math.Min(24, task.TaskData), true) && IsValidMoveAwayDest(GetNavigator()!.GetGoalPos()))
+										TaskComplete();
+									else
+										TaskInterrupt();
+								}
+							}
+							break;
+
+						case 1: {
+								ang.Y = GetMotor()!.GetIdealYaw() + 271;
+								MathLib.AngleVectors(ang, out move);
+
+								if (GetNavigator()!.SetVectorGoal(move, task.TaskData, Math.Min(24, task.TaskData), true) && IsValidMoveAwayDest(GetNavigator()!.GetGoalPos()))
+									TaskComplete();
+								else {
+									ang.Y = GetMotor()!.GetIdealYaw() + 180;
+									while (ang.Y < 0)
+										ang.Y += 360;
+									while (ang.Y >= 360)
+										ang.Y -= 360;
+									if (ang.Y < 45 || ang.Y >= 315)
+										ang.Y = 0;
+									else if (ang.Y < 135)
+										ang.Y = 90;
+									else if (ang.Y < 225)
+										ang.Y = 180;
+									else
+										ang.Y = 270;
+
+									MathLib.AngleVectors(ang, out move);
+
+									if (GetNavigator()!.SetVectorGoal(move, task.TaskData, Math.Min(6, task.TaskData), false) && IsValidMoveAwayDest(GetNavigator()!.GetGoalPos()))
+										TaskComplete();
+									else
+										TaskInterrupt();
+								}
+							}
+							break;
+
+						case 2: {
+								ClearTaskInterrupt();
+
+								if (GetTacticalServices()!.FindCoverPos(GetLocalOrigin(), EyePosition(), 0, CoverRadius(), out Vector3 coverPos) && IsValidMoveAwayDest(GetNavigator()!.GetGoalPos())) {
+									GetNavigator()!.SetGoal(new AI_NavGoal(coverPos, Activity.ACT_RUN));
+									MoveWaitFinished = gpGlobals.CurTime + 2;
+								}
+								else
+									TaskFail(AI_TaskFailureCode.NoRoute);
+							}
+							break;
+					}
+				}
+				break;
+
 			case TASK_GET_PATH_AWAY_FROM_BEST_SOUND:
-			case TASK_MOVE_AWAY_PATH:
 			case TASK_WEAPON_RUN_PATH:
 			case TASK_ITEM_RUN_PATH:
 			case TASK_WAIT_FOR_SPEAK_FINISH:
@@ -5872,6 +5974,10 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public void DesireStand() => CrouchDesired = false;
+
+	public virtual bool IsValidMoveAwayDest(in Vector3 dest) => true;
+
+	public virtual float CoverRadius() => 1024;
 
 	public virtual void OnChangeActivity(Activity newActivity) {
 		if (newActivity == Activity.ACT_RUN ||

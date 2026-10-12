@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Game.Server;
 
 public class AI_TacticalServices : AI_Component
@@ -12,6 +14,8 @@ public class AI_TacticalServices : AI_Component
 		Pathfinder = GetOuter()!.GetPathfinder();
 		Assert(Pathfinder != null);
 	}
+
+	public bool FindCoverPos(in Vector3 threatPos, in Vector3 threatEyePos, float minDist, float maxDist, out Vector3 result) => throw new NotImplementedException();
 
 	public AI_Network? Network;
 	public AI_Pathfinder? Pathfinder;
