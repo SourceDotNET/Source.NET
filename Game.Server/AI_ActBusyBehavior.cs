@@ -352,7 +352,7 @@ public class AI_ActBusyBehavior : AI_Behavior_AI_BaseNPC_100000
 		NextBusySearchTime = gpGlobals.CurTime + ai_actbusy_search_time.GetFloat();
 		EndBusyAt = 0;
 		VisibleOnly = visibleOnly;
-		InQueue = false;
+		InQueue = ActBusyGoal.Get() is AI_ActBusyQueueGoal;
 		ForcedActivity = Activity.ACT_INVALID;
 		SeeEntity.Set(null);
 		ExitedBusyToDueLostSeeEntity = false;
@@ -1782,5 +1782,318 @@ public class AI_ActBusyGoal : AI_GoalEntity
 		EHANDLE hNPC = new();
 		hNPC.Set(npc);
 		OnNPCSeeEnemy.Set(hNPC, npc, this);
+	}
+}
+
+[LinkEntityToClass("ai_goal_actbusy_queue")]
+public class AI_ActBusyQueueGoal : AI_ActBusyGoal
+{
+	public const int MAX_QUEUE_NODES = 20;
+
+	const string QUEUE_THINK_CONTEXT = "ActBusyQueueThinkContext";
+	const string QUEUE_MOVEUP_THINK_CONTEXT = "ActBusyQueueMoveUpThinkContext";
+
+	public static readonly new DataMap DataDesc = new(typeof(AI_ActBusyQueueGoal), AI_ActBusyGoal.DataDesc, [
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(ForceReachFront), FieldType.Boolean, "mustreachfront"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node01), FieldType.String, "node01"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node02), FieldType.String, "node02"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node03), FieldType.String, "node03"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node04), FieldType.String, "node04"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node05), FieldType.String, "node05"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node06), FieldType.String, "node06"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node07), FieldType.String, "node07"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node08), FieldType.String, "node08"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node09), FieldType.String, "node09"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node10), FieldType.String, "node10"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node11), FieldType.String, "node11"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node12), FieldType.String, "node12"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node13), FieldType.String, "node13"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node14), FieldType.String, "node14"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node15), FieldType.String, "node15"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node16), FieldType.String, "node16"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node17), FieldType.String, "node17"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node18), FieldType.String, "node18"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node19), FieldType.String, "node19"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(Node20), FieldType.String, "node20"),
+		DEFINE<AI_ActBusyQueueGoal>.KEYFIELD(nameof(ExitNodeName), FieldType.String, "node_exit"),
+
+		DEFINE<AI_ActBusyQueueGoal>.INPUTFUNC(FieldType.Integer, "PlayerStartedBlocking", nameof(InputPlayerStartedBlocking), (INPUTFUNCPTR)((self, data) => ((AI_ActBusyQueueGoal)self).InputPlayerStartedBlocking(data))),
+		DEFINE<AI_ActBusyQueueGoal>.INPUTFUNC(FieldType.Integer, "PlayerStoppedBlocking", nameof(InputPlayerStoppedBlocking), (INPUTFUNCPTR)((self, data) => ((AI_ActBusyQueueGoal)self).InputPlayerStoppedBlocking(data))),
+		DEFINE<AI_ActBusyQueueGoal>.INPUTFUNC(FieldType.Void, "MoveQueueUp", nameof(InputMoveQueueUp), (INPUTFUNCPTR)((self, data) => ((AI_ActBusyQueueGoal)self).InputMoveQueueUp(data))),
+
+		DEFINE<AI_ActBusyQueueGoal>.OUTPUT(nameof(OnQueueMoved), "OnQueueMoved", eventFuncs),
+		DEFINE<AI_ActBusyQueueGoal>.OUTPUT(nameof(OnNPCLeftQueue), "OnNPCLeftQueue", eventFuncs),
+		DEFINE<AI_ActBusyQueueGoal>.OUTPUT(nameof(OnNPCStartedLeavingQueue), "OnNPCStartedLeavingQueue", eventFuncs),
+	]);
+	public override DataMap? GetDataDescMap() => DataDesc;
+
+	int CurrentQueueCount;
+	Handle<AI_Hint>[] Nodes = new Handle<AI_Hint>[MAX_QUEUE_NODES];
+	bool[] PlayerBlockedNodes = new bool[MAX_QUEUE_NODES];
+	EHANDLE ExitNode = new();
+	EHANDLE ExitingNPC = new();
+	bool ForceReachFront;
+
+	string? Node01, Node02, Node03, Node04, Node05, Node06, Node07, Node08, Node09, Node10,
+		Node11, Node12, Node13, Node14, Node15, Node16, Node17, Node18, Node19, Node20;
+	string? ExitNodeName;
+
+	readonly OutputInt OnQueueMoved = new();
+	readonly OutputEHANDLE OnNPCLeftQueue = new();
+	readonly OutputEHANDLE OnNPCStartedLeavingQueue = new();
+
+	string? NodeName(int i) => i switch {
+		0 => Node01, 1 => Node02, 2 => Node03, 3 => Node04, 4 => Node05, 5 => Node06, 6 => Node07, 7 => Node08, 8 => Node09, 9 => Node10,
+		10 => Node11, 11 => Node12, 12 => Node13, 13 => Node14, 14 => Node15, 15 => Node16, 16 => Node17, 17 => Node18, 18 => Node19, 19 => Node20,
+		_ => null
+	};
+
+	public override void Spawn() {
+		base.Spawn();
+
+		RegisterThinkContext(QUEUE_MOVEUP_THINK_CONTEXT);
+	}
+
+	public override void DrawDebugGeometryOverlays() {
+		base.DrawDebugGeometryOverlays();
+
+		for (int i = 0; i < MAX_QUEUE_NODES; i++) {
+			if (Nodes[i].Get() == null)
+				continue;
+			if (PlayerBlockedNodes[i])
+				DebugOverlay.Box(Nodes[i].Get()!.GetAbsOrigin(), -new Vector3(5, 5, 5), new Vector3(5, 5, 5), 255, 0, 0, 0, 0.1f);
+			else
+				DebugOverlay.Box(Nodes[i].Get()!.GetAbsOrigin(), -new Vector3(5, 5, 5), new Vector3(5, 5, 5), 255, 255, 255, 0, 0.1f);
+		}
+	}
+
+	public override void InputActivate(InputData inputdata) {
+		if (!IsActive()) {
+			for (int i = 0; i < MAX_QUEUE_NODES; i++) {
+				string? nodeName = NodeName(i);
+				if (nodeName == null) {
+					Nodes[i].Set(null);
+					continue;
+				}
+
+				BaseEntity? entity = gEntList.FindEntityByName(null, nodeName);
+				if (entity == null) {
+					Warning($"Unable to find ai_goal_actbusy_queue {GetEntityName()}'s node {i}: {nodeName}\n");
+					Util.Remove(this);
+					return;
+				}
+				Nodes[i].Set(entity as AI_Hint);
+				if (Nodes[i].Get() == null) {
+					Warning($"ai_goal_actbusy_queue {GetEntityName()}'s node {i}: '{nodeName}' is not an ai_hint.\n");
+					Util.Remove(this);
+					return;
+				}
+
+				if (i == 0)
+					Nodes[i].Get()!.SetDisabled(false);
+				else
+					Nodes[i].Get()!.SetDisabled(true);
+			}
+
+			ExitNode.Set(gEntList.FindEntityByName(null, ExitNodeName));
+			if (ExitNode.Get() == null) {
+				Warning($"Unable to find ai_goal_actbusy_queue {GetEntityName()}'s exit node: {ExitNodeName}\n");
+				Util.Remove(this);
+				return;
+			}
+
+			RecalculateQueueCount();
+
+			SetContextThink(QueueThink, gpGlobals.CurTime + 5, QUEUE_THINK_CONTEXT);
+		}
+
+		base.InputActivate(inputdata);
+	}
+
+	public void RecalculateQueueCount() {
+		int count = 0;
+		for (int i = 0; i < MAX_QUEUE_NODES; i++) {
+			if (NodeIsOccupied(i) || PlayerBlockedNodes[i])
+				count = i + 1;
+		}
+
+		if (count == CurrentQueueCount)
+			return;
+
+		for (int i = 0; i < MAX_QUEUE_NODES; i++) {
+			AI_Hint? node = Nodes[i].Get();
+			if (node != null) {
+				if (i > count)
+					node.SetDisabled(true);
+				else {
+					node.SetDisabled(false);
+
+					if (i == count)
+						node.SetHintType(Hint.WorldWorkPosition);
+					else
+						node.SetHintType(Hint.None);
+				}
+			}
+		}
+
+		CurrentQueueCount = count;
+		OnQueueMoved.Set(CurrentQueueCount, this, this);
+	}
+
+	public void InputPlayerStartedBlocking(InputData inputdata) {
+		int node = inputdata.Value.Int() - 1;
+		Assert(node >= 0 && node < MAX_QUEUE_NODES);
+
+		PlayerBlockedNodes[node] = true;
+
+		AI_BaseNPC? npc = GetNPCOnNode(node);
+		PushNPCBackInQueue(npc, node);
+
+		RecalculateQueueCount();
+	}
+
+	public void PushNPCBackInQueue(AI_BaseNPC? npc, int startingNode) {
+		while (npc != null) {
+			AI_ActBusyBehavior behavior = GetQueueBehaviorForNPC(npc)!;
+			behavior.StopBusying();
+
+			for (int next = startingNode + 1; next < MAX_QUEUE_NODES; next++) {
+				if (!PlayerBlockedNodes[next]) {
+					AI_BaseNPC? targetNPC = GetNPCOnNode(next);
+					if (targetNPC != null) {
+						AI_ActBusyBehavior targetBehavior = GetQueueBehaviorForNPC(targetNPC)!;
+						targetBehavior.StopBusying();
+					}
+
+					behavior.ForceActBusyNow(this, Nodes[next].Get());
+
+					npc = targetNPC;
+					startingNode = next;
+					break;
+				}
+			}
+		}
+	}
+
+	public void InputPlayerStoppedBlocking(InputData inputdata) {
+		int node = inputdata.Value.Int() - 1;
+		Assert(node >= 0 && node < MAX_QUEUE_NODES);
+
+		PlayerBlockedNodes[node] = false;
+
+		RecalculateQueueCount();
+		MoveQueueUp();
+	}
+
+	public void InputMoveQueueUp(InputData inputdata) {
+		AI_BaseNPC? npc = null;
+		for (int i = 0; i < MAX_QUEUE_NODES; i++) {
+			npc = GetNPCOnNode(i);
+			if (npc != null) {
+				AI_ActBusyBehavior behavior = GetQueueBehaviorForNPC(npc)!;
+				if (!behavior.IsMovingToBusy() || !ForceReachFront)
+					break;
+
+				npc = null;
+			}
+
+			if (ForceReachFront)
+				break;
+		}
+
+		if (npc != null) {
+			AI_ActBusyBehavior behavior = GetQueueBehaviorForNPC(npc)!;
+			behavior.Disable();
+			ExitingNPC.Set(npc);
+		}
+	}
+
+	public override void NPCMovingToBusy(AI_BaseNPC npc) {
+		base.NPCMovingToBusy(npc);
+		RecalculateQueueCount();
+	}
+
+	public override void NPCStartedBusy(AI_BaseNPC npc) {
+		base.NPCStartedBusy(npc);
+		MoveQueueUp();
+	}
+
+	public void MoveQueueUp() {
+		if (GetNextThink(QUEUE_MOVEUP_THINK_CONTEXT) < gpGlobals.CurTime) {
+			TimeUnit_t time = gpGlobals.CurTime + random.RandomFloat(0.3f, 0.5f);
+			SetContextThink(MoveQueueUpThink, time, QUEUE_MOVEUP_THINK_CONTEXT);
+		}
+	}
+
+	public void MoveQueueUpThink() {
+		for (int emptyNode = 0; emptyNode < (MAX_QUEUE_NODES - 1); emptyNode++) {
+			if (!NodeIsOccupied(emptyNode) && !PlayerBlockedNodes[emptyNode]) {
+				for (int next = emptyNode + 1; next < MAX_QUEUE_NODES; next++) {
+					if (PlayerBlockedNodes[next])
+						break;
+
+					AI_BaseNPC? npc = GetNPCOnNode(next);
+					if (npc != null) {
+						AI_ActBusyBehavior behavior = GetQueueBehaviorForNPC(npc)!;
+
+						behavior.ForceActBusyNow(this, Nodes[emptyNode].Get());
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	public override void NPCAbortedMoveTo(AI_BaseNPC npc) {
+		base.NPCAbortedMoveTo(npc);
+
+		RemoveNPCFromQueue(npc);
+	}
+
+	public override void NPCFinishedBusy(AI_BaseNPC npc) {
+		base.NPCFinishedBusy(npc);
+
+		if (ExitingNPC.Get() == npc) {
+			npc.ScheduledMoveToGoalEntity(SCHED_IDLE_WALK, ExitNode.Get()!, Activity.ACT_WALK);
+			OnNPCLeftQueue.Set(npc.GetRefEHandle(), npc, this);
+			ExitingNPC.Set(null);
+		}
+
+		RemoveNPCFromQueue(npc);
+	}
+
+	public override void NPCStartedLeavingBusy(AI_BaseNPC npc) {
+		base.NPCStartedLeavingBusy(npc);
+
+		if (ExitingNPC.Get() == npc)
+			OnNPCStartedLeavingQueue.Set(npc.GetRefEHandle(), npc, this);
+	}
+
+	public void RemoveNPCFromQueue(AI_BaseNPC npc) {
+		RecalculateQueueCount();
+
+		MoveQueueUp();
+	}
+
+	public void QueueThink() {
+		if (GetNPCOnNode(0) == null)
+			MoveQueueUp();
+
+		SetContextThink(QueueThink, gpGlobals.CurTime + 5, QUEUE_THINK_CONTEXT);
+	}
+
+	public bool NodeIsOccupied(int i) => Nodes[i].Get() != null && !Nodes[i].Get()!.IsDisabled() && Nodes[i].Get()!.IsLocked();
+
+	public AI_BaseNPC? GetNPCOnNode(int node) {
+		if (Nodes[node].Get() == null)
+			return null;
+
+		return Nodes[node].Get()!.User() as AI_BaseNPC;
+	}
+
+	public AI_ActBusyBehavior? GetQueueBehaviorForNPC(AI_BaseNPC npc) {
+		npc.GetBehavior(out AI_ActBusyBehavior? behavior);
+		Assert(behavior != null);
+		return behavior;
 	}
 }
