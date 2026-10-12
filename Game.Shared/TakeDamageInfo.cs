@@ -104,7 +104,7 @@ public static class TakeDamageInfoGlobals
 		}
 	}
 
-	static readonly ConVar phys_pushscale = new( "phys_pushscale", "1", FCvar.Replicated);
+	public static readonly ConVar phys_pushscale = new( "phys_pushscale", "1", FCvar.Replicated);
 
 
 
