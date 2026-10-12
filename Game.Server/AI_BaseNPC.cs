@@ -4333,6 +4333,31 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public virtual float GetHintDelay(Hint hintType) => 0;
 
+	public void SetSequenceByName(ReadOnlySpan<char> sequenceName) {
+		int sequence = LookupSequence(sequenceName);
+
+		if (sequence > StudioHdr.ACTIVITY_NOT_AVAILABLE)
+			SetSequenceById(sequence);
+		else {
+			DevWarning(2, $"{GetClassname()} has no sequence {sequenceName} to match request\n");
+			SetSequence(0);
+		}
+	}
+
+	public void SetSequenceById(int sequence) {
+		if (sequence > StudioHdr.ACTIVITY_NOT_AVAILABLE) {
+			if (GetSequence() != sequence || !SequenceLoops)
+				SetCycle(0);
+
+			ResetSequence(sequence);
+			GetMotor()!.RecalculateYawSpeed();
+		}
+		else {
+			DevWarning(2, $"{GetClassname()} invalid sequence requested\n");
+			SetSequence(0);
+		}
+	}
+
 	public virtual Activity GetHintActivity(short hintType, Activity hintsActivity) {
 		if (hintsActivity != Activity.ACT_INVALID)
 			return hintsActivity;
@@ -7978,6 +8003,22 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public virtual bool FValidateHintType(AI_Hint hint) => false;
+
+	public bool GetBehavior<T>(out T? behavior) where T : AI_BehaviorBase {
+		List<AI_BehaviorBase>? behaviors = AccessBehaviors();
+
+		behavior = null;
+		if (behaviors != null) {
+			for (int i = 0; i < behaviors.Count; i++) {
+				behavior = behaviors[i] as T;
+				if (behavior != null)
+					return true;
+			}
+		}
+		return false;
+	}
+
+	protected virtual List<AI_BehaviorBase>? AccessBehaviors() => null;
 
 	public BaseEntity? GetEnemy() => Enemy.Get();
 

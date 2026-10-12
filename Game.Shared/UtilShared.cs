@@ -564,6 +564,24 @@ public struct TraceFilterLOS(IHandleEntity? handleEntity, CollisionGroup collisi
 }
 #endif
 
+public struct TraceFilterOnlyNPCsAndPlayer(IHandleEntity? passentity, CollisionGroup collisionGroup) : ITraceFilter
+{
+	TraceFilterSimple Inner = new(passentity, collisionGroup);
+
+	public readonly TraceType GetTraceType() => TraceType.EntitiesOnly;
+
+	public bool ShouldHitEntity(IHandleEntity handleEntity, Contents contentsMask) {
+		if (Inner.ShouldHitEntity(handleEntity, contentsMask)) {
+			BaseEntity? entity = EntityFromEntityHandle(handleEntity);
+			if (entity == null)
+				return false;
+
+			return entity.IsNPC() || entity.IsPlayer();
+		}
+		return false;
+	}
+}
+
 public struct TraceFilterNoNPCsOrPlayer(IHandleEntity? passentity, CollisionGroup collisionGroup) : ITraceFilter
 {
 	TraceFilterSimple Inner = new(passentity, collisionGroup);

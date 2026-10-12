@@ -218,6 +218,8 @@ public class NPC_MetroPolice : AI_BaseActor
 	Handle<PhysicsProp> BlockingProp = new();
 
 	readonly AI_PolicingBehavior PolicingBehavior = new();
+	readonly AI_ActBusyBehavior ActBusyBehavior = new();
+
 	readonly AI_Sentence_NPC_MetroPolice Sentences = new();
 
 	int RecentDamage;
@@ -1061,6 +1063,7 @@ public class NPC_MetroPolice : AI_BaseActor
 
 	public override bool CreateBehaviors() {
 		AddBehavior(PolicingBehavior);
+		AddBehavior(ActBusyBehavior);
 
 		return base.CreateBehaviors();
 	}

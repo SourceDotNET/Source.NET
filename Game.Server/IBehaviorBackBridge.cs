@@ -11,4 +11,11 @@ public interface IBehaviorBackBridge
 	float BackBridge_GetDefaultNavGoalTolerance();
 	bool BackBridge_IsCrouching();
 	bool BackBridge_OnCalcBaseMove(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result);
+	bool BackBridge_ShouldIgnoreSound(ref WorldSoundInstance sound);
+	void BackBridge_OnSeeEntity(BaseEntity entity);
+	bool BackBridge_IsInterruptable();
+	bool BackBridge_CanFlinch();
+	bool BackBridge_QueryHearSound(ref WorldSoundInstance sound);
+	float BackBridge_GetReasonableFacingDist();
+	void BackBridge_HandleAnimEvent(ref Game.Shared.AnimEvent animEvent);
 }

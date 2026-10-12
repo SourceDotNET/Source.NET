@@ -119,6 +119,74 @@ public abstract class AI_BehaviorBase : AI_Component
 	public bool BridgeIsCrouching() => IsCrouching();
 	public bool BridgeOnCalcBaseMove(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) => OnCalcBaseMove(ref moveGoal, distClear, ref result);
 
+	public bool BridgeFValidateHintType(AI_Hint hint, out bool result) {
+		bool prevOverride = Overrode;
+		Overrode = true;
+		result = FValidateHintType(hint);
+		bool overrode = Overrode;
+		Overrode = prevOverride;
+		return overrode;
+	}
+
+	public bool BridgeShouldIgnoreSound(ref WorldSoundInstance sound) => ShouldIgnoreSound(ref sound);
+	public void BridgeOnSeeEntity(BaseEntity entity) => OnSeeEntity(entity);
+	public bool BridgeIsInterruptable() => IsInterruptable();
+	public bool BridgeCanFlinch() => CanFlinch();
+	public bool BridgeQueryHearSound(ref WorldSoundInstance sound) => QueryHearSound(ref sound);
+	public float BridgeGetReasonableFacingDist() => GetReasonableFacingDist();
+	public void BridgeHandleAnimEvent(ref AnimEvent animEvent) => HandleAnimEvent(ref animEvent);
+
+	protected virtual bool FValidateHintType(AI_Hint hint) {
+		Overrode = false;
+		return false;
+	}
+
+	protected virtual bool ShouldIgnoreSound(ref WorldSoundInstance sound) {
+		Assert(BackBridge != null);
+
+		return BackBridge!.BackBridge_ShouldIgnoreSound(ref sound);
+	}
+
+	protected virtual void OnSeeEntity(BaseEntity entity) {
+		Assert(BackBridge != null);
+
+		BackBridge!.BackBridge_OnSeeEntity(entity);
+	}
+
+	protected virtual bool IsInterruptable() {
+		Assert(BackBridge != null);
+
+		return BackBridge!.BackBridge_IsInterruptable();
+	}
+
+	protected virtual bool CanFlinch() {
+		Assert(BackBridge != null);
+
+		return BackBridge!.BackBridge_CanFlinch();
+	}
+
+	protected virtual bool QueryHearSound(ref WorldSoundInstance sound) {
+		Assert(BackBridge != null);
+
+		return BackBridge!.BackBridge_QueryHearSound(ref sound);
+	}
+
+	protected virtual float GetReasonableFacingDist() {
+		Assert(BackBridge != null);
+
+		return BackBridge!.BackBridge_GetReasonableFacingDist();
+	}
+
+	protected virtual void HandleAnimEvent(ref AnimEvent animEvent) {
+		Assert(BackBridge != null);
+
+		BackBridge!.BackBridge_HandleAnimEvent(ref animEvent);
+	}
+
+	protected AI_Hint? GetHintNode() => GetOuter()!.GetHintNode();
+	protected void SetHintNode(AI_Hint? hintNode) => GetOuter()!.SetHintNode(hintNode);
+	protected void ClearHintNode(float reuseDelay = 0.0f) => GetOuter()!.ClearHintNode(reuseDelay);
+
 	public virtual void GatherConditions() {
 		Assert(BackBridge != null);
 

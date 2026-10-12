@@ -192,6 +192,67 @@ public class AI_BehaviorHost_AI_BaseNPC : AI_BaseNPC, IBehaviorBackBridge
 		return base.OnCalcBaseMove(ref moveGoal, distClear, ref result);
 	}
 
+	public override bool FValidateHintType(AI_Hint hint) {
+		if (CurBehavior != null && CurBehavior.BridgeFValidateHintType(hint, out bool result))
+			return result;
+		return base.FValidateHintType(hint);
+	}
+
+	public override bool ShouldIgnoreSound(ref WorldSoundInstance sound) {
+		if (CurBehavior != null)
+			return CurBehavior.BridgeShouldIgnoreSound(ref sound);
+
+		return base.ShouldIgnoreSound(ref sound);
+	}
+
+	public override void OnSeeEntity(BaseEntity entity) {
+		if (CurBehavior != null) {
+			CurBehavior.BridgeOnSeeEntity(entity);
+			return;
+		}
+
+		base.OnSeeEntity(entity);
+	}
+
+	public override bool IsInterruptable() {
+		if (CurBehavior != null)
+			return CurBehavior.BridgeIsInterruptable();
+
+		return base.IsInterruptable();
+	}
+
+	public override bool CanFlinch() {
+		if (CurBehavior != null)
+			return CurBehavior.BridgeCanFlinch();
+
+		return base.CanFlinch();
+	}
+
+	public override bool QueryHearSound(ref WorldSoundInstance sound) {
+		if (CurBehavior != null)
+			return CurBehavior.BridgeQueryHearSound(ref sound);
+
+		return base.QueryHearSound(ref sound);
+	}
+
+	public override float GetReasonableFacingDist() {
+		if (CurBehavior != null)
+			return CurBehavior.BridgeGetReasonableFacingDist();
+
+		return base.GetReasonableFacingDist();
+	}
+
+	public override void HandleAnimEvent(ref AnimEvent animEvent) {
+		if (CurBehavior != null) {
+			CurBehavior.BridgeHandleAnimEvent(ref animEvent);
+			return;
+		}
+
+		base.HandleAnimEvent(ref animEvent);
+	}
+
+	protected override List<AI_BehaviorBase>? AccessBehaviors() => Behaviors;
+
 	public virtual bool OnBehaviorChangeStatus(AI_BehaviorBase behavior, bool canFinishSchedule) {
 		if (behavior == GetRunningBehavior() && !behavior.CanSelectSchedule() && !canFinishSchedule) {
 			DeferSchedulingToBehavior(null);
@@ -286,6 +347,13 @@ public class AI_BehaviorHost_AI_BaseNPC : AI_BaseNPC, IBehaviorBackBridge
 	float IBehaviorBackBridge.BackBridge_GetDefaultNavGoalTolerance() => base.GetDefaultNavGoalTolerance();
 	bool IBehaviorBackBridge.BackBridge_IsCrouching() => base.IsCrouching();
 	bool IBehaviorBackBridge.BackBridge_OnCalcBaseMove(ref AILocalMoveGoal moveGoal, float distClear, ref AIMoveResult result) => base.OnCalcBaseMove(ref moveGoal, distClear, ref result);
+	bool IBehaviorBackBridge.BackBridge_ShouldIgnoreSound(ref WorldSoundInstance sound) => base.ShouldIgnoreSound(ref sound);
+	void IBehaviorBackBridge.BackBridge_OnSeeEntity(BaseEntity entity) => base.OnSeeEntity(entity);
+	bool IBehaviorBackBridge.BackBridge_IsInterruptable() => base.IsInterruptable();
+	bool IBehaviorBackBridge.BackBridge_CanFlinch() => base.CanFlinch();
+	bool IBehaviorBackBridge.BackBridge_QueryHearSound(ref WorldSoundInstance sound) => base.QueryHearSound(ref sound);
+	float IBehaviorBackBridge.BackBridge_GetReasonableFacingDist() => base.GetReasonableFacingDist();
+	void IBehaviorBackBridge.BackBridge_HandleAnimEvent(ref AnimEvent animEvent) => base.HandleAnimEvent(ref animEvent);
 
 	AI_BehaviorBase? CurBehavior;
 	readonly List<AI_BehaviorBase> Behaviors = [];
