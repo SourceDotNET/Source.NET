@@ -113,7 +113,7 @@ public class GameUI(IEngineClient engine) : IGameUI
 		// I have no idea why this one defines needed resource strings... TODO: Is this still needed?
 		localize.AddFile("Resource/itemtest_%language%.txt", "GAME", true);
 
-		staticPanel = new BasePanel(this);
+		staticPanel = new BasePanel();
 		staticPanel.SetBounds(0, 0, 400, 300);
 		staticPanel.SetPaintBorderEnabled(false);
 		staticPanel.SetPaintBackgroundEnabled(true);
@@ -232,7 +232,7 @@ public class GameUI(IEngineClient engine) : IGameUI
 		return true;
 	}
 
-	public LoadingDialog? LoadingDialog;
+	public static LoadingDialog? LoadingDialog;
 	string? PreviousStatusText;
 
 	public void StartProgressBar() {

@@ -25,8 +25,11 @@ public static class SourceDllMain
 	[Dependency] public static ISurface Surface { get; private set; } = null!;
 	[Dependency] public static IVGuiInput Input { get; private set; } = null!;
 	[Dependency] public static ILocalize Localize { get; private set; } = null!;
+	[Dependency] public static IGameUI gameUI { get; private set; } = null!;
 	[Dependency] public static IMaterialSystem Materials { get; private set; } = null!;
 	[Dependency] public static ISystem system { get; private set; } = null!;
+
+	public static IGameUI GameUI() => gameUI;
 
 	public static void Link(IServiceCollection services) {
 		services.AddSingleton<IGameConsole, GameConsole>();

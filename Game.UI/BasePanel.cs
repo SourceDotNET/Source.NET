@@ -495,16 +495,77 @@ public class BackgroundMenuButton : Button
 		SetTextInset(0, 0);
 	}
 }
+public class SaveBeforeQuitQueryDialog : Frame
+{
+	public SaveBeforeQuitQueryDialog(Panel parent, ReadOnlySpan<char> name) : base(parent, name) {
+		LoadControlSettings("resource/SaveBeforeQuitDialog.res");
+		SetDeleteSelfOnClose(true);
+		SetSizeable(false);
+	}
+
+	public override void DoModal() {
+		base.Activate();
+		Input.SetAppModalSurface(this);
+		MoveToCenterOfScreen();
+		Surface.RestrictPaintToSinglePanel(this);
+
+		GameUI().PreventEngineHideGameUI();
+	}
+
+	public override void OnKeyCodeTyped(ButtonCode code) {
+		if (code == ButtonCode.KeyEscape)
+			Close();
+		else
+			base.OnKeyCodeTyped(code);
+	}
+
+	public override void OnKeyCodePressed(ButtonCode code) {
+		switch (code) {
+			case ButtonCode.KeyXButtonB: Close(); break;
+			case ButtonCode.KeyXButtonA: OnCommand("SaveAndQuit"); break;
+			case ButtonCode.KeyXButtonX: OnCommand("Quit"); break;
+			default: base.OnKeyCodePressed(code); break;
+		}
+	}
+
+	public override void OnCommand(ReadOnlySpan<char> command) {
+		if (0 == stricmp(command, "Quit")) 
+			PostMessage(GetParent(), new KeyValues("Command", "command", "QuitNoConfirm"));
+		else if (0 == stricmp(command, "SaveAndQuit")) {
+			// find a new name to save
+			Span<char> saveName= stackalloc char[128];
+			// TODO: SaveGameDialog.FindSaveSlot(saveName, sizeof(saveName));
+			// TODO: if (saveName[0] != '\0') {
+			// TODO: 	// save the game
+			// TODO: 	Span<char> sz = stackalloc char[256];
+			// TODO: 	sprintf(sz, "save %s\n").S(saveName);
+			// TODO: 	engine.ClientCmd_Unrestricted(sz.SliceNullTerminatedString());
+			// TODO: }
+
+			// quit
+			PostMessage(GetParent(), new KeyValues("Command", "command", "QuitNoConfirm"));
+		}
+		else if (0 == stricmp(command, "Cancel")) 
+			Close();
+		else 
+			base.OnCommand(command);
+	}
+
+	public override void OnClose() {
+		base.OnClose();
+		Surface.RestrictPaintToSinglePanel(null);
+		GameUI().AllowEngineHideGameUI();
+	}
+}
+
 public class QuitQueryBox : QueryBox
 {
 	public QuitQueryBox(ReadOnlySpan<char> title, ReadOnlySpan<char> queryText, Panel? parent = null) : base(title, queryText, parent) { }
 
-	IGameUI GameUI = Singleton<IGameUI>();
-
 	public override void DoModal(Frame? frameOver) {
 		base.DoModal(frameOver);
 		Surface.RestrictPaintToSinglePanel(this);
-		GameUI.PreventEngineHideGameUI();
+		GameUI().PreventEngineHideGameUI();
 	}
 	public override void OnKeyCodeTyped(ButtonCode code) {
 		if (code == ButtonCode.KeyEscape)
@@ -515,7 +576,7 @@ public class QuitQueryBox : QueryBox
 	public override void OnClose() {
 		base.OnClose();
 		Surface.RestrictPaintToSinglePanel(null);
-		GameUI.AllowEngineHideGameUI();
+		GameUI().AllowEngineHideGameUI();
 	}
 }
 public class BasePanel : Panel
@@ -523,7 +584,6 @@ public class BasePanel : Panel
 	GameMenu? GameMenu;
 
 	readonly public IFileSystem FileSystem = Singleton<IFileSystem>();
-	readonly public GameUI GameUI;
 	readonly public IEngineClient engine = Singleton<IEngineClient>();
 	readonly public ModInfo ModInfo = Singleton<ModInfo>();
 
@@ -587,7 +647,7 @@ public class BasePanel : Panel
 				engine.ClientCmd_Unrestricted("quit\n");
 				break;
 			case "QuitRestartNoConfirm": break;
-			case "ResumeGame": GameUI.HideGameUI(); break;
+			case "ResumeGame": GameUI().HideGameUI(); break;
 			case "Disconnect": engine.ClientCmd_Unrestricted("disconnect"); break;
 			case "DisconnectNoConfirm": break;
 			case "ReleaseModalWindow": Surface.RestrictPaintToSinglePanel(null); break;
@@ -635,12 +695,13 @@ public class BasePanel : Panel
 	}
 
 	public void OnOpenQuitConfirmationDialog() {
-		if (GameUI.IsConsoleUI()) {
+		if (GameUI().IsConsoleUI()) {
 			throw new NotImplementedException();
 		}
 
-		if (GameUI.IsInLevel() && engine.GetMaxClients() == 1) {
-			throw new NotImplementedException();
+		if (GameUI().IsInLevel() && engine.GetMaxClients() == 1) {
+			SaveBeforeQuitQueryDialog box = new SaveBeforeQuitQueryDialog(this, "SaveBeforeQuitQueryDialog");
+			box.DoModal();
 		}
 		else {
 			QueryBox box = new QuitQueryBox("#GameUI_QuitConfirmationTitle", "#GameUI_QuitConfirmationText", this);
@@ -660,8 +721,7 @@ public class BasePanel : Panel
 		return button;
 	}
 
-	public BasePanel(GameUI gameUI) : base(null, "BaseGameUIPanel") {
-		GameUI = gameUI;
+	public BasePanel() : base(null, "BaseGameUIPanel") {
 		g_BasePanel = this;
 		CreateGameMenu();
 		CreateGameLogo();
@@ -677,7 +737,7 @@ public class BasePanel : Panel
 	IFont? FontTest;
 
 	public override void PaintBackground() {
-		if (!GameUI.IsInLevel() || GameUI.LoadingDialog != null || ExitingFrameCount > 0)
+		if (!GameUI().IsInLevel() || GameUI.LoadingDialog != null || ExitingFrameCount > 0)
 			DrawBackgroundImage();
 
 		if (BackgroundFillAlpha > 0) {
@@ -753,9 +813,9 @@ public class BasePanel : Panel
 	public void UpdateBackgroundState() {
 		if (ExitingFrameCount != 0)
 			SetBackgroundRenderState(BackgroundState.Exiting);
-		else if (GameUI.IsInLevel())
+		else if (GameUI().IsInLevel())
 			SetBackgroundRenderState(BackgroundState.Level);
-		else if (GameUI.IsInBackgroundLevel() && !LevelLoading)
+		else if (GameUI().IsInBackgroundLevel() && !LevelLoading)
 			SetBackgroundRenderState(BackgroundState.MainMenu);
 		else if (LevelLoading)
 			SetBackgroundRenderState(BackgroundState.Loading);
@@ -767,7 +827,7 @@ public class BasePanel : Panel
 
 		int i;
 		bool haveActiveDialogs = false;
-		bool isInLevel = GameUI.IsInLevel();
+		bool isInLevel = GameUI().IsInLevel();
 		for (i = 0; i < GetChildCount(); ++i) {
 			Panel? child = GetChild(i);
 			if (child != null && child.IsVisible() && child.IsPopup() && child != GameMenu)
@@ -1030,7 +1090,7 @@ public class BasePanel : Panel
 
 	int LastGameMenuState = -1;
 	private void UpdateGameMenus() {
-		bool isInGame = GameUI.IsInLevel();
+		bool isInGame = GameUI().IsInLevel();
 		bool isMulti = isInGame && engine.GetMaxClients() > 1;
 
 		int state = (isInGame ? 1 : 0) | (isMulti ? 2 : 0);
