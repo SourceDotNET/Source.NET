@@ -5687,6 +5687,21 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return ret;
 	}
 
+	public bool HasCondition(int condition, bool useIgnoreConditions) {
+		if (useIgnoreConditions)
+			return HasCondition(condition);
+
+		int interrupt = InterruptFromCondition(condition);
+
+		if (interrupt == -1) {
+			Assert(false);
+			return false;
+		}
+
+		bool ret = ConditionsPreIgnore.IsBitSet(interrupt);
+		return ret;
+	}
+
 	public void ClearCondition(int condition) {
 		int interrupt = InterruptFromCondition(condition);
 
@@ -7259,6 +7274,53 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public void SetLastAttackTime(TimeUnit_t time) => LastAttackTime = time;
+
+	protected readonly AI_ShotRegulator ShotRegulator = new();
+
+	public AI_ShotRegulator GetShotRegulator() => ShotRegulator;
+
+	public bool ConditionsGathered() => ConditionsGatheredValue;
+
+	public virtual BaseEntity? GetAlternateMoveShootTarget() => null;
+
+	public virtual bool OnBeginMoveAndShoot() => true;
+	public virtual void OnEndMoveAndShoot() { }
+
+	public virtual void OnUpdateShotRegulator() {
+		BaseCombatWeapon? weapon = GetActiveWeapon();
+		if (weapon == null)
+			return;
+
+		ShotRegulator.SetBurstInterval(weapon.GetFireRate(), weapon.GetFireRate());
+		ShotRegulator.SetBurstShotCountRange(weapon.GetMinBurst(), weapon.GetMaxBurst());
+		ShotRegulator.SetRestInterval((float)weapon.GetMinRestTime(), (float)weapon.GetMaxRestTime());
+
+		GetRunningBehavior()?.OnUpdateShotRegulator();
+	}
+
+	public override void OnChangeActiveWeapon(BaseCombatWeapon? oldWeapon, BaseCombatWeapon? newWeapon) {
+		base.OnChangeActiveWeapon(oldWeapon, newWeapon);
+
+		if (newWeapon != null) {
+			OnUpdateShotRegulator();
+			ShotRegulator.Reset(true);
+		}
+	}
+
+	public virtual void OnRangeAttack1() {
+		SetLastAttackTime(gpGlobals.CurTime);
+
+		Assert(GetShotRegulator().ShouldShoot());
+
+		ShotRegulator.OnFiredWeapon();
+		if (ShotRegulator.IsInRestInterval())
+			OnUpdateShotRegulator();
+
+		SetNextAttack(ShotRegulator.NextShotTime());
+
+		BaseCombatWeapon? wep = GetActiveWeapon();
+		wep?.OnRangeAttack1();
+	}
 
 	public void VacateStrategySlot() {
 		if (Squad != null) {

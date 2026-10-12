@@ -821,6 +821,9 @@ public partial class
 	public virtual TimeUnit_t GetMinRestTime() => 0.3;
 	public virtual TimeUnit_t GetMaxRestTime() => 0.6;
 	public virtual int GetRandomBurst() => random.RandomInt(GetMinBurst(), GetMaxBurst());
+#if !CLIENT_DLL
+	public virtual void OnRangeAttack1() { }
+#endif
 
 	public virtual void SecondaryAttack() { }
 	public bool DefaultReload(int clipSize1, int clipSize2, Activity activity) {

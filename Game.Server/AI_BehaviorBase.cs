@@ -26,6 +26,8 @@ public abstract class AI_BehaviorBase : AI_Component
 	public virtual void BeginScheduleSelection() { }
 	public virtual void EndScheduleSelection() { }
 
+	public virtual void OnUpdateShotRegulator() { }
+
 	public void SetBackBridge(IBehaviorBackBridge? backBridge) {
 		Assert(BackBridge == null || backBridge == null);
 		BackBridge = backBridge;

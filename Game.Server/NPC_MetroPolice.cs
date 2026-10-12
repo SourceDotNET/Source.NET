@@ -1061,6 +1061,20 @@ public class NPC_MetroPolice : AI_BaseActor
 		Sentences.Speak("METROPOLICE_DANGER", SentencePriority.High, SentenceCriteria.Normal);
 	}
 
+	public override bool OnBeginMoveAndShoot() {
+		if (base.OnBeginMoveAndShoot()) {
+			if (HasStrategySlotRange(SquadSlot.Attack1, SquadSlot.Attack2))
+				return true;
+
+			if (OccupyStrategySlotRange(SquadSlot.Attack1, SquadSlot.Attack2))
+				return true;
+		}
+
+		return false;
+	}
+
+	public override void OnEndMoveAndShoot() => VacateStrategySlot();
+
 	public override bool CreateBehaviors() {
 		AddBehavior(PolicingBehavior);
 		AddBehavior(ActBusyBehavior);
