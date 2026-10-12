@@ -10,14 +10,14 @@ namespace Game.Server;
 public class AI_GoalEntity : BaseEntity, IEntityListener
 {
 	[Flags]
-	enum GoalFlags
+	public enum GoalFlags
 	{
 		Active = 0x01,
 		ResolvedName = 0x02,
 		Dormant = 0x04,
 	}
 
-	enum SearchType
+	public enum SearchType
 	{
 		EntName,
 		ClassName,

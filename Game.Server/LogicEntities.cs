@@ -1737,7 +1737,7 @@ public class LogicBranchList : LogicalEntity
 {
 	const int MAX_LOGIC_BRANCH_NAMES = 16;
 
-	enum LogicBranchListenerLastState
+	public enum LogicBranchListenerLastState
 	{
 		NotInit = 0,
 		AllTrue,
