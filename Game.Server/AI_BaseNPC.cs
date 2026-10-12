@@ -2638,6 +2638,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public NPCState GetIdealState() => IdealNPCState;
 
+	public override bool IsTemplate() => HasSpawnFlags(SF_NPC_TEMPLATE);
+
 	public bool IsRunningDynamicInteraction() => InteractionState != NPCInteractionState.NotRunning && Cine.Get() != null;
 
 	public static readonly ConVar sv_test_scripted_sequences = new("sv_test_scripted_sequences", "0", FCvar.None, "Tests for scripted sequences that are embedded in the world. Run through your map with this set to check for NPCs falling through the world.");
