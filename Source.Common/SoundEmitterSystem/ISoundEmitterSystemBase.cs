@@ -5,7 +5,6 @@ using Source.Common.SoundEmitterSystem;
 using Source.Common.Utilities;
 
 using System;
-using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Reflection.Emit;
 using System.Numerics;
@@ -137,141 +136,197 @@ public struct SoundParametersInternal : IEquatable<SoundParametersInternal>
 	}
 
 
-	// NOTE:  Needs to reflect the soundlevel_t enum defined in soundflags.h
-	static readonly FrozenDictionary<SoundLevel, string> g_pSoundLevels = (new Dictionary<SoundLevel, string> {
-		{  Audio.SoundLevel.LvlNone, "SNDLVL_NONE" },
-		{ Audio.SoundLevel.Lvl20dB, "SNDLVL_20dB" },
-		{ Audio.SoundLevel.Lvl25dB, "SNDLVL_25dB" },
-		{ Audio.SoundLevel.Lvl30dB, "SNDLVL_30dB" },
-		{ Audio.SoundLevel.Lvl35dB, "SNDLVL_35dB" },
-		{ Audio.SoundLevel.Lvl40dB, "SNDLVL_40dB" },
-		{ Audio.SoundLevel.Lvl45dB, "SNDLVL_45dB" },
-		{ Audio.SoundLevel.Lvl50dB, "SNDLVL_50dB" },
-		{ Audio.SoundLevel.Lvl55dB, "SNDLVL_55dB" },
-		{ Audio.SoundLevel.Lvl60dB, "SNDLVL_60dB" },
-		{ Audio.SoundLevel.Lvl65dB, "SNDLVL_65dB" },
-		{ Audio.SoundLevel.Lvl70dB, "SNDLVL_70dB"  }   ,
-		{ Audio.SoundLevel.Lvl75dB, "SNDLVL_75dB"  }   ,
-		{ Audio.SoundLevel.Lvl80dB, "SNDLVL_80dB"  }   ,
-		{ Audio.SoundLevel.Lvl85dB, "SNDLVL_85dB"  }   ,
-		{ Audio.SoundLevel.Lvl90dB, "SNDLVL_90dB"  }   ,
-		{ Audio.SoundLevel.Lvl95dB, "SNDLVL_95dB"  }   ,
-		{ Audio.SoundLevel.Lvl100dB, "SNDLVL_100dB"  },
-		{ Audio.SoundLevel.Lvl105dB, "SNDLVL_105dB"  },
-		{ Audio.SoundLevel.Lvl110dB, "SNDLVL_110dB"  },
-		{ Audio.SoundLevel.Lvl120dB, "SNDLVL_120dB"  },
-		{ Audio.SoundLevel.Lvl130dB, "SNDLVL_130dB"  },
-		{ Audio.SoundLevel.Lvl140dB, "SNDLVL_140dB" },
-		{ Audio.SoundLevel.Lvl150dB, "SNDLVL_150dB" },
-		{ Audio.SoundLevel.Lvl180dB, "SNDLVL_180dB"  },
-	}).ToFrozenDictionary();
-
-	static readonly FrozenDictionary<ulong, SoundLevel> g_pSoundLevelsRev = (new Dictionary<ulong, SoundLevel> {
-		{ "SNDLVL_NONE".Hash(invariant: true) , Audio.SoundLevel.LvlNone},
-		{ "SNDLVL_20dB".Hash(invariant: true) , Audio.SoundLevel.Lvl20dB},
-		{ "SNDLVL_25dB".Hash(invariant: true) , Audio.SoundLevel.Lvl25dB},
-		{ "SNDLVL_30dB".Hash(invariant: true) , Audio.SoundLevel.Lvl30dB},
-		{ "SNDLVL_35dB".Hash(invariant: true) , Audio.SoundLevel.Lvl35dB},
-		{ "SNDLVL_40dB".Hash(invariant: true) , Audio.SoundLevel.Lvl40dB},
-		{ "SNDLVL_45dB".Hash(invariant: true) , Audio.SoundLevel.Lvl45dB},
-		{ "SNDLVL_50dB".Hash(invariant: true) , Audio.SoundLevel.Lvl50dB},
-		{ "SNDLVL_55dB".Hash(invariant: true) , Audio.SoundLevel.Lvl55dB},
-		{ "SNDLVL_IDLE".Hash(invariant: true) , Audio.SoundLevel.LvlIdle},
-		{ "SNDLVL_TALKING".Hash(invariant: true) , Audio.SoundLevel.LvlTalking},
-		{ "SNDLVL_60dB".Hash(invariant: true) , Audio.SoundLevel.Lvl60dB},
-		{ "SNDLVL_65dB".Hash(invariant: true) , Audio.SoundLevel.Lvl65dB},
-		{ "SNDLVL_STATIC" .Hash(invariant: true) , Audio.SoundLevel.LvlStatic},
-		{ "SNDLVL_70dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl70dB}   ,
-		{ "SNDLVL_NORM" .Hash(invariant: true) , Audio.SoundLevel.LvlNorm}   ,
-		{ "SNDLVL_75dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl75dB}   ,
-		{ "SNDLVL_80dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl80dB}   ,
-		{ "SNDLVL_85dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl85dB}   ,
-		{ "SNDLVL_90dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl90dB}   ,
-		{ "SNDLVL_95dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl95dB}   ,
-		{ "SNDLVL_100dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl100dB},
-		{ "SNDLVL_105dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl105dB},
-		{ "SNDLVL_110dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl110dB},
-		{ "SNDLVL_120dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl120dB},
-		{ "SNDLVL_130dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl130dB},
-		{ "SNDLVL_GUNFIRE".Hash(invariant: true) , Audio.SoundLevel.LvlGunfire},
-		{ "SNDLVL_140dB".Hash(invariant: true) , Audio.SoundLevel.Lvl140dB},
-		{ "SNDLVL_150dB".Hash(invariant: true) , Audio.SoundLevel.Lvl150dB},
-		{ "SNDLVL_180dB" .Hash(invariant: true) , Audio.SoundLevel.Lvl180dB},
-	}).ToFrozenDictionary();
-
-	static readonly FrozenDictionary<SoundEntityChannel, string> g_pChannelNames = (new Dictionary<SoundEntityChannel, string> {
-		{ SoundEntityChannel.Auto, "CHAN_AUTO"  },
-		{ SoundEntityChannel.Weapon, "CHAN_WEAPON"  },
-		{ SoundEntityChannel.Voice, "CHAN_VOICE"  },
-		{ SoundEntityChannel.Item, "CHAN_ITEM"  },
-		{ SoundEntityChannel.Body, "CHAN_BODY"  },
-		{ SoundEntityChannel.Stream, "CHAN_STREAM"  },
-		{ SoundEntityChannel.Static, "CHAN_STATIC"  },
-		{ SoundEntityChannel.Voice2, "CHAN_VOICE2"  },
-	}).ToFrozenDictionary();
-
-	static readonly FrozenDictionary<ulong, SoundEntityChannel> g_pChannelNamesRev =
-		g_pChannelNames
-		.Select(x => new KeyValuePair<ulong, SoundEntityChannel>(x.Value.Hash(invariant: true), x.Key))
-		.ToFrozenDictionary();
-
-	static readonly FrozenDictionary<float, string> g_pVolumeLevels = (new Dictionary<float, string> {
-		{ VOL_NORM, "VOL_NORM"  },
-	}).ToFrozenDictionary();
-
-	static readonly FrozenDictionary<ulong, float> g_pVolumeLevelsRev =
-		g_pVolumeLevels
-		.Select(x => new KeyValuePair<ulong, float>(x.Value.Hash(invariant: false), x.Key))
-		.ToFrozenDictionary();
-
-	static readonly FrozenDictionary<byte, string> g_pPitchLookup = (new Dictionary<byte, string> {
-		{ PITCH_NORM, "PITCH_NORM"  },
-		{ PITCH_LOW, "PITCH_LOW"  },
-		{ PITCH_HIGH, "PITCH_HIGH"  },
-	}).ToFrozenDictionary();
-
-	static readonly FrozenDictionary<ulong, byte> g_pPitchLookupRev =
-		g_pPitchLookup
-		.Select(x => new KeyValuePair<ulong, byte>(x.Value.Hash(invariant: false), x.Key))
-		.ToFrozenDictionary();
-
 	public static ReadOnlySpan<char> _SoundLevelToString(SoundLevel level) {
-		if (g_pSoundLevels.TryGetValue(level, out string? v))
-			return v;
+		switch (level) {
+			case Audio.SoundLevel.LvlNone: return "SNDLVL_NONE";
+			case Audio.SoundLevel.Lvl20dB: return "SNDLVL_20dB";
+			case Audio.SoundLevel.Lvl25dB: return "SNDLVL_25dB";
+			case Audio.SoundLevel.Lvl30dB: return "SNDLVL_30dB";
+			case Audio.SoundLevel.Lvl35dB: return "SNDLVL_35dB";
+			case Audio.SoundLevel.Lvl40dB: return "SNDLVL_40dB";
+			case Audio.SoundLevel.Lvl45dB: return "SNDLVL_45dB";
+			case Audio.SoundLevel.Lvl50dB: return "SNDLVL_50dB";
+			case Audio.SoundLevel.Lvl55dB: return "SNDLVL_55dB";
+			case Audio.SoundLevel.Lvl60dB: return "SNDLVL_60dB";
+			case Audio.SoundLevel.Lvl65dB: return "SNDLVL_65dB";
+			case Audio.SoundLevel.Lvl70dB: return "SNDLVL_70dB";
+			case Audio.SoundLevel.Lvl75dB: return "SNDLVL_75dB";
+			case Audio.SoundLevel.Lvl80dB: return "SNDLVL_80dB";
+			case Audio.SoundLevel.Lvl85dB: return "SNDLVL_85dB";
+			case Audio.SoundLevel.Lvl90dB: return "SNDLVL_90dB";
+			case Audio.SoundLevel.Lvl95dB: return "SNDLVL_95dB";
+			case Audio.SoundLevel.Lvl100dB: return "SNDLVL_100dB";
+			case Audio.SoundLevel.Lvl105dB: return "SNDLVL_105dB";
+			case Audio.SoundLevel.Lvl110dB: return "SNDLVL_110dB";
+			case Audio.SoundLevel.Lvl120dB: return "SNDLVL_120dB";
+			case Audio.SoundLevel.Lvl130dB: return "SNDLVL_130dB";
+			case Audio.SoundLevel.Lvl140dB: return "SNDLVL_140dB";
+			case Audio.SoundLevel.Lvl150dB: return "SNDLVL_150dB";
+			case Audio.SoundLevel.Lvl180dB: return "SNDLVL_180dB";
+		}
 
 		return $"{level}";
 	}
 
+	static bool NamedSoundLevel(ReadOnlySpan<char> name, out SoundLevel level) {
+		level = default;
+		if (name.IsEmpty)
+			return false;
+
+		switch (name[0] | 0x20) {
+			case 'n':
+				if (0 == stricmp(name, "NORM")) {
+					level = Audio.SoundLevel.LvlNorm;
+					return true;
+				}
+				if (0 == stricmp(name, "NONE")) {
+					level = Audio.SoundLevel.LvlNone;
+					return true;
+				}
+				break;
+			case 'i':
+				if (0 == stricmp(name, "IDLE")) {
+					level = Audio.SoundLevel.LvlIdle;
+					return true;
+				}
+				break;
+			case 't':
+				if (0 == stricmp(name, "TALKING")) {
+					level = Audio.SoundLevel.LvlTalking;
+					return true;
+				}
+				break;
+			case 's':
+				if (0 == stricmp(name, "STATIC")) {
+					level = Audio.SoundLevel.LvlStatic;
+					return true;
+				}
+				break;
+			case 'g':
+				if (0 == stricmp(name, "GUNFIRE")) {
+					level = Audio.SoundLevel.LvlGunfire;
+					return true;
+				}
+				break;
+		}
+
+		return false;
+	}
+
+	static string? ChannelName(SoundEntityChannel channel) {
+		switch (channel) {
+			case SoundEntityChannel.Auto: return "CHAN_AUTO";
+			case SoundEntityChannel.Weapon: return "CHAN_WEAPON";
+			case SoundEntityChannel.Voice: return "CHAN_VOICE";
+			case SoundEntityChannel.Item: return "CHAN_ITEM";
+			case SoundEntityChannel.Body: return "CHAN_BODY";
+			case SoundEntityChannel.Stream: return "CHAN_STREAM";
+			case SoundEntityChannel.Static: return "CHAN_STATIC";
+			case SoundEntityChannel.Voice2: return "CHAN_VOICE2";
+		}
+
+		return null;
+	}
+
+	static bool NamedChannel(ReadOnlySpan<char> name, out SoundEntityChannel channel) {
+		channel = default;
+		if (name.IsEmpty)
+			return false;
+
+		switch (name[0] | 0x20) {
+			case 'a':
+				if (0 == stricmp(name, "AUTO")) {
+					channel = SoundEntityChannel.Auto;
+					return true;
+				}
+				break;
+			case 'w':
+				if (0 == stricmp(name, "WEAPON")) {
+					channel = SoundEntityChannel.Weapon;
+					return true;
+				}
+				break;
+			case 'v':
+				if (0 == stricmp(name, "VOICE")) {
+					channel = SoundEntityChannel.Voice;
+					return true;
+				}
+				if (0 == stricmp(name, "VOICE2")) {
+					channel = SoundEntityChannel.Voice2;
+					return true;
+				}
+				break;
+			case 'i':
+				if (0 == stricmp(name, "ITEM")) {
+					channel = SoundEntityChannel.Item;
+					return true;
+				}
+				break;
+			case 'b':
+				if (0 == stricmp(name, "BODY")) {
+					channel = SoundEntityChannel.Body;
+					return true;
+				}
+				break;
+			case 's':
+				if (0 == stricmp(name, "STREAM")) {
+					channel = SoundEntityChannel.Stream;
+					return true;
+				}
+				if (0 == stricmp(name, "STATIC")) {
+					channel = SoundEntityChannel.Static;
+					return true;
+				}
+				break;
+		}
+
+		return false;
+	}
+
 	public static ReadOnlySpan<char> _ChannelToString(int channel) {
-		if (g_pChannelNames.TryGetValue((SoundEntityChannel)channel, out string? v))
+		string? v = ChannelName((SoundEntityChannel)channel);
+		if (v != null)
 			return v;
 
 		return $"{channel}";
 	}
 
 	public static ReadOnlySpan<char> _ChannelToString(SoundEntityChannel channel) {
-		if (g_pChannelNames.TryGetValue(channel, out string? v))
+		string? v = ChannelName(channel);
+		if (v != null)
 			return v;
 
 		return $"{channel}";
 	}
 
 	public static ReadOnlySpan<char> _VolumeToString(float volume) {
-		if (g_pVolumeLevels.TryGetValue(volume, out string? v))
-			return v;
+		if (volume == VOL_NORM)
+			return "VOL_NORM";
 
 		return $"{volume}";
 	}
 
+	static string? PitchName(byte pitch) {
+		switch (pitch) {
+			case PITCH_NORM: return "PITCH_NORM";
+			case PITCH_LOW: return "PITCH_LOW";
+			case PITCH_HIGH: return "PITCH_HIGH";
+		}
+
+		return null;
+	}
+
 	public static ReadOnlySpan<char> _PitchToString(float pitch) {
-		if (g_pPitchLookup.TryGetValue((byte)pitch, out string? v))
+		string? v = PitchName((byte)pitch);
+		if (v != null)
 			return v;
 
 		return $"{pitch}";
 	}
 
 	public static ReadOnlySpan<char> _PitchToString(byte pitch) {
-		if (g_pPitchLookup.TryGetValue(pitch, out string? v))
+		string? v = PitchName(pitch);
+		if (v != null)
 			return v;
 
 		return $"{pitch}";
@@ -315,7 +370,7 @@ public struct SoundParametersInternal : IEquatable<SoundParametersInternal>
 		if (strnicmp(name, "chan_", "chan_".Length) != 0)
 			return (SoundEntityChannel)atoi(name);
 
-		if (g_pChannelNamesRev.TryGetValue(name.Hash(invariant: true), out SoundEntityChannel chan))
+		if (NamedChannel(name["chan_".Length..], out SoundEntityChannel chan))
 			return chan;
 
 		// At this point, it starts with chan_ but is not recognized
@@ -336,11 +391,11 @@ public struct SoundParametersInternal : IEquatable<SoundParametersInternal>
 			return Audio.SoundLevel.LvlNorm;
 		}
 
-		if (g_pSoundLevelsRev.TryGetValue(key.Hash(invariant: true), out SoundLevel level))
-			return level;
-
 		if (0 == stricmp(key[..Math.Min((int)strlen(SNDLVL_PREFIX), key.Length)], SNDLVL_PREFIX)) {
 			ReadOnlySpan<char> val = key[(int)strlen(SNDLVL_PREFIX)..];
+			if (NamedSoundLevel(val, out SoundLevel level))
+				return level;
+
 			int sndlvl = atoi(val);
 			if (sndlvl > 0 && sndlvl <= 180)
 				return (SoundLevel)sndlvl;
