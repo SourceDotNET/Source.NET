@@ -7,7 +7,7 @@ using System.Numerics;
 
 public interface IStaticPropMgr
 {
-	void CreateVPhysicsRepresentations(IPhysicsEnvironment physenv, IVPhysicsKeyHandler defaults, object gameData);
+	void CreateVPhysicsRepresentations(IPhysicsEnvironment physenv, IVPhysicsKeyHandler defaults, object? gameData);
 
 	void TraceRayAgainstStaticProp(Ray ray, int staticPropIndex, Trace tr);
 

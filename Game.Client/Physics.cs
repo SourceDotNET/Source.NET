@@ -12,6 +12,8 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 
+using static Source.Engine.StaticPropMgrGlobals;
+
 namespace Game.Client;
 
 [EngineComponent]
@@ -82,6 +84,6 @@ public class PhysicsSystem : AutoGameSystemPerFrame
 
 		g_PhysWorldObject = PhysCreateWorld_Shared(C_World.GetClientWorldEntity(), modelinfo.GetVCollide(1), g_PhysDefaultObjectParams)!;
 
-		// TODO: staticpropmgr.CreateVPhysicsRepresentations(physenv, g_SolidSetup, NULL);
+		g_StaticPropMgr.CreateVPhysicsRepresentations(physenv, g_SolidSetup, null);
 	}
 }

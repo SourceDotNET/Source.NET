@@ -20,6 +20,8 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
+using static Source.Engine.StaticPropMgrGlobals;
+
 namespace Game.Server;
 
 [EngineComponent]
@@ -380,7 +382,7 @@ public class PhysicsHook : BaseGameSystemPerFrame
 	}
 
 	public static IPhysicsObject? PhysCreateWorld(BaseEntity world){
-		// todo staticpropmgr
+		g_StaticPropMgr.CreateVPhysicsRepresentations(physenv, g_SolidSetup, world);
 		VCollide? worldCollide = modelinfo.GetVCollide(1);
 		return PhysCreateWorld_Shared(world, worldCollide, g_PhysDefaultObjectParams);
 	}
