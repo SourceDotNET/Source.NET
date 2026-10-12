@@ -220,7 +220,7 @@ public class PhysicsNPCSolver : LogicalEntity, IMotionEvent
 
 			if ((obj!.GetGameFlags() & PhysicsFlags.PlayerHeld) != 0) {
 #if GMOD_DLL
-				for (int i = 0; i < gpGlobals.MaxClients; i++) {
+				for (int i = 1; i <= gpGlobals.MaxClients; i++) {
 					BasePlayer? player = Util.PlayerByIndex(i);
 					player?.ForceDropOfCarriedPhysObjects(Entity.Get());
 				}
