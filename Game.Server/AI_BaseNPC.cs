@@ -8938,7 +8938,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public virtual void PostRunStopMoving() {
-		SetIdealActivity(GetStoppedActivity());
+		if (!GetNavigator()!.SetGoalFromStoppingPath())
+			SetIdealActivity(GetStoppedActivity());
 	}
 
 	public virtual void RunAnimation() {
