@@ -389,7 +389,7 @@ public static class PhysicsSharedGlobals
 				Solid tmpSolid = default;
 				tmpSolid.Params = g_PhysDefaultObjectParams;
 
-				parse.ParseSolid(ref tmpSolid, null);
+				parse.ParseSolid(ref tmpSolid, g_SolidSetup);
 
 				if (solidIndex < 0 || tmpSolid.Index == solidIndex) {
 					parsed = true;
@@ -463,7 +463,7 @@ public static class PhysicsSharedGlobals
 			if (strcmpi(block, "solid") == 0 || strcmpi(block, "staticsolid") == 0) {
 				solid = default;
 				solid.Params = defaultParams;
-				parse.ParseSolid(ref solid, null);
+				parse.ParseSolid(ref solid, g_SolidSetup);
 				solid.Params.EnableCollisions = true;
 				solid.Params.GameData = world;
 				solid.Params.Name = "world";
@@ -478,6 +478,9 @@ public static class PhysicsSharedGlobals
 				IPhysicsObject? obj = physenv.CreatePolyObjectStatic(worldCollide.Solids[solid.Index]!, surfaceData, vec3_origin, vec3_angle, ref solid.Params);
 				if (obj == null)
 					continue;
+
+				Assert(g_SolidSetup.GetContentsMask() != 0);
+				obj.SetContents((uint)g_SolidSetup.GetContentsMask());
 
 				worldPhysics ??= obj;
 			}
