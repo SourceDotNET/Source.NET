@@ -136,11 +136,11 @@ public static class MapEntities
 			// dispatch their spawn now to free up the edict slot inside this loop. Those entity
 			// classes are not ported yet, so they fall through to the regular queue for now.
 
-			// if (entity is NodeEnt ne) {
-			// 	if (ne.Spawn(curMapData) < 0)
-			// 		gEntList.CleanupDeleteList();
-			// 	continue;
-			// }
+			if (entity is NodeEnt ne) {
+				if (ne.Spawn(curMapData) < 0)
+					gEntList.CleanupDeleteList();
+				continue;
+			}
 
 			// if (entity is Light light) {
 			// 	if (Util.DispatchSpawn(light) < 0)

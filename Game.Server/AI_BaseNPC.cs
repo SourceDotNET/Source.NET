@@ -4333,6 +4333,13 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public virtual float GetHintDelay(Hint hintType) => 0;
 
+	public virtual Activity GetHintActivity(short hintType, Activity hintsActivity) {
+		if (hintsActivity != Activity.ACT_INVALID)
+			return hintsActivity;
+
+		return Activity.ACT_IDLE;
+	}
+
 	public Activity GetIdealActivity() => IdealActivity;
 
 	public bool IsActivityStarted() => GetSequence() == IdealSequence;
@@ -4977,6 +4984,40 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				LifeState = (int)Source.LifeState.Dying;
 				break;
 
+			case TASK_FACE_HINTNODE:
+				Assert(GetMotor()!.IsYawLocked() == false);
+
+				GetMotor()!.SetIdealYaw(GetHintNode()!.Yaw());
+				GetMotor()!.SetIdealYaw(CalcReasonableFacing(true));
+				if (FacingIdeal())
+					TaskComplete();
+				else
+					SetTurnActivity();
+				break;
+
+			case TASK_GET_PATH_TO_HINTNODE: {
+					if (GetHintNode() == null)
+						TaskFail(AI_TaskFailureCode.NoHintNode);
+					else {
+						GetHintNode()!.GetPosition(this, out Vector3 hintPos);
+
+						GetNavigator()!.SetGoal(new AI_NavGoal(hintPos, Activity.ACT_RUN));
+						if (task.TaskData == 0)
+							GetNavigator()!.SetArrivalDirection(GetHintNode()!.GetDirection());
+						if (GetHintNode()!.HintActivityName() != null) {
+							Activity hintActivity = (Activity)GetActivityID(GetHintNode()!.HintActivityName());
+							if (hintActivity != Activity.ACT_INVALID)
+								GetNavigator()!.SetArrivalActivity(GetHintActivity((short)GetHintNode()!.HintType(), hintActivity));
+							else {
+								int sequence = LookupSequence(GetHintNode()!.HintActivityName());
+								if (sequence != (int)Activity.ACT_INVALID)
+									GetNavigator()!.SetArrivalSequence(sequence);
+							}
+						}
+					}
+					break;
+				}
+
 			case TASK_SOUND_DIE: {
 					TakeDamageInfo info = new();
 					DeathSound(info);
@@ -5180,7 +5221,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_FIND_COVER_FROM_ENEMY:
 			case TASK_FIND_COVER_FROM_ORIGIN:
 			case TASK_FIND_COVER_FROM_BEST_SOUND:
-			case TASK_FACE_HINTNODE:
 			case TASK_MOVE_TO_TARGET_RANGE:
 			case TASK_MOVE_TO_GOAL_RANGE:
 			case TASK_WAIT_UNTIL_NO_DANGER_SOUND:
@@ -5204,7 +5244,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_GET_PATH_TO_ENEMY_CORPSE:
 			case TASK_GET_PATH_TO_SAVEPOSITION_LOS:
 			case TASK_GET_PATH_TO_TARGET_WEAPON:
-			case TASK_GET_PATH_TO_HINTNODE:
 			case TASK_GET_PATH_TO_COMMAND_GOAL:
 			case TASK_MARK_COMMAND_GOAL_POS:
 			case TASK_CLEAR_COMMAND_GOAL:
@@ -7928,6 +7967,17 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	}
 
 	public void SetHintNode(AI_Hint? hintNode) => HintNode.Set(hintNode);
+
+	public void ClearHintNode(float reuseDelay = 0.0f) {
+		AI_Hint? hint = HintNode.Get();
+		if (hint != null) {
+			if (hint.IsLockedBy(this))
+				hint.Unlock(reuseDelay);
+			HintNode.Set(null);
+		}
+	}
+
+	public virtual bool FValidateHintType(AI_Hint hint) => false;
 
 	public BaseEntity? GetEnemy() => Enemy.Get();
 

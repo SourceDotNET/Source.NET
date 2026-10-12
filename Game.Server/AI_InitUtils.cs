@@ -43,6 +43,8 @@ public class HintNodeData
 	public NPCState MaxState;
 
 	public int WCNodeID;
+
+	public HintNodeData Copy() => (HintNodeData)MemberwiseClone();
 }
 
 [LinkEntityToClass("info_hint")]
@@ -62,7 +64,9 @@ public class NodeEnt : ServerOnlyPointEntity
 
 	public HintNodeData NodeData = new();
 
-	public override void Spawn() {
+	public override void Spawn() => Spawn(null);
+
+	public int Spawn(ReadOnlyMemory<byte>? mapData) {
 		NodeData.EntityName = GetEntityName();
 		NodeData.Position = GetAbsOrigin();
 		NodeData.NodeID = NO_NODE;
@@ -72,21 +76,41 @@ public class NodeEnt : ServerOnlyPointEntity
 			NodeData.MaxState = NPCState.Combat;
 
 		if (FClassnameIs(this, "info_hint")) {
-			if (NodeData.HintType == 0)
+			if (NodeData.HintType != 0)
+				AI_HintManager.CreateHint(NodeData, mapData);
+			else
 				Warning($"info_hint (HammerID: {NodeData.WCNodeID}, position ({NodeData.Position.X:0.00}, {NodeData.Position.Y:0.00}, {NodeData.Position.Z:0.00})) with no hint type.\n");
 			Util.RemoveImmediate(this);
-			return;
+			return -1;
+		}
+
+		AI_Hint? hint = null;
+
+		if (ClassMatches("info_node_hint") || ClassMatches("info_node_air_hint")) {
+			if (NodeData.HintType != 0 || NodeData.Group != null || NodeData.EntityName != null) {
+				NodeData.NodeID = NodeCount;
+				hint = AI_HintManager.CreateHint(NodeData, mapData);
+				hint!.AddSpawnFlags(SpawnFlags);
+			}
 		}
 
 		if (AI_NetworkManager.NetworksLoaded()) {
+			if (hint != null) {
+				AI_Node? node = g_pBigAINet!.GetNode(NodeCount);
+				if (node != null)
+					node.SetHint(hint);
+				else
+					DevMsg("AI node graph corrupt\n");
+			}
 			NodeCount++;
 			Util.RemoveImmediate(this);
-			return;
+			return -1;
 		}
 		else
 			NodeCount++;
 
 		AI_Node newNode = g_pBigAINet!.AddNode(GetAbsOrigin(), GetAbsAngles().Y);
+		newNode.SetHint(hint);
 
 		AI_NetworkEditTools editOps = g_pAINetworkManager!.GetEditOps();
 		if (editOps.NodeIndexTable != null)
@@ -104,5 +128,7 @@ public class NodeEnt : ServerOnlyPointEntity
 		newNode.NodeInfo = (NodeInfoBits)(SpawnFlags << AI_Node.NODE_ENT_FLAGS_SHIFT);
 
 		Util.RemoveImmediate(this);
+
+		return -1;
 	}
 }
