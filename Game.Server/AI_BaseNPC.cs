@@ -2640,6 +2640,37 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public override bool IsTemplate() => HasSpawnFlags(SF_NPC_TEMPLATE);
 
+	public static bool FindSpotForNPCInRadius(out Vector3 result, in Vector3 startPos, AI_BaseNPC npc, float radius, bool outOfPlayerViewcone = false) {
+		BasePlayer? player = npc.AI_GetClosestPlayer();
+		QAngle fan;
+
+		fan.X = 0;
+		fan.Z = 0;
+
+		for (fan.Y = 0; fan.Y < 360; fan.Y += 18.0f) {
+			MathLib.AngleVectors(fan, out Vector3 dir);
+
+			Vector3 test = startPos + dir * radius;
+
+			if (outOfPlayerViewcone && player != null && !player.FInViewCone(test))
+				continue;
+
+			Util.TraceLine(test, test - new Vector3(0, 0, 8192), Mask.Shot, npc, Source.CollisionGroup.None, out Trace tr);
+			if (tr.Fraction == 1.0f)
+				continue;
+
+			Util.TraceHull(tr.EndPos, tr.EndPos + new Vector3(0, 0, 10), npc.GetHullMins(), npc.GetHullMaxs(), Mask.NPCSolid, npc, Source.CollisionGroup.None, out tr);
+
+			if (tr.Fraction == 1.0f && npc.GetMoveProbe()!.CheckStandPosition(tr.EndPos, Mask.NPCSolid)) {
+				result = tr.EndPos;
+				return true;
+			}
+		}
+
+		result = default;
+		return false;
+	}
+
 	public bool IsRunningDynamicInteraction() => InteractionState != NPCInteractionState.NotRunning && Cine.Get() != null;
 
 	public static readonly ConVar sv_test_scripted_sequences = new("sv_test_scripted_sequences", "0", FCvar.None, "Tests for scripted sequences that are embedded in the world. Run through your map with this set to check for NPCs falling through the world.");

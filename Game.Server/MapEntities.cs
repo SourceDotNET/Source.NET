@@ -352,7 +352,7 @@ public static class MapEntities
 	//			entData - Data block to parse to extract entity keys.
 	// Output : Returns the current position in the entity data block.
 	//-----------------------------------------------------------------------------
-	static ReadOnlyMemory<byte> ParseEntity(out BaseEntity? entity, ReadOnlyMemory<byte> entDataMem, IMapEntityFilter? filter) {
+	public static ReadOnlyMemory<byte> ParseEntity(out BaseEntity? entity, ReadOnlyMemory<byte> entDataMem, IMapEntityFilter? filter) {
 		EntityMapData entData = new(entDataMem);
 		Span<byte> className = stackalloc byte[EntityMapData.MAPKEY_MAXLENGTH];
 

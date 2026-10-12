@@ -373,6 +373,16 @@ public static partial class Util
 		SetMinMaxSize(ent, min, max);
 	}
 
+	public static int EntitiesInBox(Span<BaseEntity> list, in Vector3 mins, in Vector3 maxs, EntityFlags flagMask) {
+		FlaggedEntitiesEnum boxEnum = new(list, flagMask);
+		return EntitiesInBox(mins, maxs, ref boxEnum);
+	}
+
+	public static int EntitiesInBox(in Vector3 mins, in Vector3 maxs, scoped ref FlaggedEntitiesEnum enumerator) {
+		partition.EnumerateElementsInBox((SpatialPartitionListMask_t)PartitionListMask.EngineNonStaticEdicts, mins, maxs, false, ref enumerator);
+		return enumerator.GetCount();
+	}
+
 	public static int EntitiesInSphere(Span<BaseEntity> list, in Vector3 center, float radius, EntityFlags flagMask) {
 		FlaggedEntitiesEnum sphereEnum = new(list, flagMask);
 		return EntitiesInSphere(center, radius, ref sphereEnum);

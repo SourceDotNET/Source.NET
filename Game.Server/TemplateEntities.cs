@@ -80,4 +80,15 @@ public static class Templates {
 
 		return g_Templates[index].iszMapData;
 	}
+
+	public static Memory<byte> FindByTargetName(ReadOnlySpan<char> name) {
+		int count = g_Templates.Count;
+		for (int i = 0; i < count; i++) {
+			TemplateEntityData template = g_Templates[i];
+			if (name.Equals(template.Name, StringComparison.OrdinalIgnoreCase))
+				return FindByIndex(i);
+		}
+
+		return default;
+	}
 }
