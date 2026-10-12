@@ -59,7 +59,7 @@ class LogicAuto : BaseEntity
 					OnMultiNewMap.FireOutput(null, this);
 			}
 
-			if ((SpawnFlags & SF_AUTO_FIREONCE) != 0)
+			if (HasSpawnFlags(SF_AUTO_FIREONCE))
 				Util.Remove(this);
 		}
 	}

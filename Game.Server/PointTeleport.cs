@@ -40,7 +40,7 @@ public class PointTeleport : BaseEntity
 		SaveOrigin = GetAbsOrigin();
 		SaveAngles = GetAbsAngles();
 
-		if ((SpawnFlags & SF_TELEPORT_TO_SPAWN_POS) != 0) {
+		if (HasSpawnFlags(SF_TELEPORT_TO_SPAWN_POS)) {
 			BaseEntity? target = gEntList.FindEntityByName(null, Target);
 			if (target != null) {
 				if (EntityMayTeleport(target)) {

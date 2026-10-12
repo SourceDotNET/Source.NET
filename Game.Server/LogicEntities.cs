@@ -187,7 +187,7 @@ public class TimerEntity : LogicalEntity
 			//
 			// Up/down timers alternate between two outputs.
 			//
-			if ((SpawnFlags & SF_TIMER_UPDOWN) != 0) {
+			if (HasSpawnFlags(SF_TIMER_UPDOWN)) {
 				if (UpDownState)
 					OnTimerHigh.FireOutput(this, this);
 				else
@@ -447,13 +447,13 @@ public class MathRemap : LogicalEntity
 		//
 		float clampValue = Math.Clamp(value, InMin, InMax);
 
-		if ((clampValue == value) || (SpawnFlags & SF_MATH_REMAP_IGNORE_OUT_OF_RANGE) == 0) {
+		if ((clampValue == value) || !HasSpawnFlags(SF_MATH_REMAP_IGNORE_OUT_OF_RANGE)) {
 			//
 			// Remap the input value to the desired output range and update the output.
 			//
 			float remappedValue = Out1 + (((value - InMin) * (Out2 - Out1)) / (InMax - InMin));
 
-			if ((SpawnFlags & SF_MATH_REMAP_CLAMP_OUTPUT_TO_RANGE) != 0)
+			if (HasSpawnFlags(SF_MATH_REMAP_CLAMP_OUTPUT_TO_RANGE))
 				remappedValue = remappedValue < Out1 ? Out1 : remappedValue > Out2 ? Out2 : remappedValue;
 
 			if (Enabled == true)
@@ -517,7 +517,7 @@ public class MathColorBlend : LogicalEntity
 		// Disallow out-of-range input values to avoid out-of-range output values.
 		//
 		float clampValue = Math.Clamp(value, InMin, InMax);
-		if ((clampValue == value) || (SpawnFlags & SF_COLOR_BLEND_IGNORE_OUT_OF_RANGE) == 0) {
+		if ((clampValue == value) || !HasSpawnFlags(SF_COLOR_BLEND_IGNORE_OUT_OF_RANGE)) {
 			//
 			// Remap the input value to the desired output color and update the output.
 			//
@@ -597,7 +597,7 @@ public class EnvGlobal : LogicalEntity
 			return;
 		}
 
-		if ((SpawnFlags & SF_GLOBAL_SET) != 0) {
+		if (HasSpawnFlags(SF_GLOBAL_SET)) {
 			if (!GlobalEntity.IsInTable(globalstate))
 				GlobalEntity.Add(globalstate, gpGlobals.MapName, (GlobalEState)initialstate);
 
@@ -752,7 +752,7 @@ public class MultiSource : LogicalEntity
 
 	public override void Spawn() {
 		SetNextThink(gpGlobals.CurTime + 0.1f);
-		SpawnFlags |= SF_MULTI_INIT;  // Until it's initialized
+		AddSpawnFlags(SF_MULTI_INIT);  // Until it's initialized
 		SetThink(Register);
 	}
 
@@ -791,7 +791,7 @@ public class MultiSource : LogicalEntity
 		int i = 0;
 
 		// Still initializing?
-		if ((SpawnFlags & SF_MULTI_INIT) != 0)
+		if (HasSpawnFlags(SF_MULTI_INIT))
 			return false;
 
 		while (i < Total) {
@@ -837,7 +837,7 @@ public class MultiSource : LogicalEntity
 			target = gEntList.FindEntityByClassname(target, "multi_manager");
 		}
 
-		SpawnFlags &= ~SF_MULTI_INIT;
+		RemoveSpawnFlags(SF_MULTI_INIT);
 	}
 }
 

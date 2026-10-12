@@ -115,7 +115,7 @@ public class AI_Senses : AI_Component
 		if (sightEnt.IsPlayer() && g_IgnorePlayers.GetBool())
 			return false;
 
-		if ((sightEnt.SpawnFlags & SF_NPC_WAIT_TILL_SEEN) != 0)
+		if (sightEnt.HasSpawnFlags(SF_NPC_WAIT_TILL_SEEN))
 			return false;
 
 		if (!sightEnt.CanBeSeenBy(GetOuter()!))
@@ -151,13 +151,13 @@ public class AI_Senses : AI_Component
 	}
 
 	bool WaitingUntilSeen(BaseEntity sightEnt) {
-		if ((GetOuter()!.SpawnFlags & SF_NPC_WAIT_TILL_SEEN) != 0) {
+		if (GetOuter()!.HasSpawnFlags(SF_NPC_WAIT_TILL_SEEN)) {
 			if (sightEnt.IsPlayer()) {
 				BasePlayer? player = ToBasePlayer(sightEnt);
 				if (player != null
 					&& player.FInViewCone(GetOuter()!)
 					&& FBoxVisible(sightEnt, GetOuter()!, out _)) {
-					GetOuter()!.SpawnFlags &= ~SF_NPC_WAIT_TILL_SEEN;
+					GetOuter()!.RemoveSpawnFlags(SF_NPC_WAIT_TILL_SEEN);
 					return false;
 				}
 			}

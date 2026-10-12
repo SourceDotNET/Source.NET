@@ -103,8 +103,8 @@ public abstract class BaseNPCMaker : BaseEntity
 		LiveChildren = 0;
 		Precache();
 
-		if ((SpawnFlags & SF_NPCMAKER_INF_CHILD) != 0)
-			SpawnFlags |= SF_NPCMAKER_FADE;
+		if (HasSpawnFlags(SF_NPCMAKER_INF_CHILD))
+			AddSpawnFlags(SF_NPCMAKER_FADE);
 
 		if (!Disabled) {
 			SetThink(MakerThink);
@@ -182,7 +182,7 @@ public abstract class BaseNPCMaker : BaseEntity
 		if (LiveChildren <= 0) {
 			OnAllLiveChildrenDead.FireOutput(this, this);
 
-			if ((SpawnFlags & SF_NPCMAKER_INF_CHILD) == 0 && IsDepleted())
+			if (!HasSpawnFlags(SF_NPCMAKER_INF_CHILD) && IsDepleted())
 				OnAllSpawnedDead.FireOutput(this, this);
 		}
 	}
@@ -216,7 +216,7 @@ public abstract class BaseNPCMaker : BaseEntity
 	}
 
 	public virtual bool IsDepleted() {
-		if ((SpawnFlags & SF_NPCMAKER_INF_CHILD) != 0 || MaxNumNPCs > 0)
+		if (HasSpawnFlags(SF_NPCMAKER_INF_CHILD) || MaxNumNPCs > 0)
 			return false;
 
 		return true;
@@ -310,7 +310,7 @@ public class NPCMaker : BaseNPCMaker
 
 		ent.AddSpawnFlags(SF_NPC_FALL_TO_GROUND);
 
-		if ((SpawnFlags & SF_NPCMAKER_FADE) != 0)
+		if (HasSpawnFlags(SF_NPCMAKER_FADE))
 			ent.AddSpawnFlags(SF_NPC_FADE_CORPSE);
 
 		ent.SpawnEquipment = SpawnEquipment;
@@ -330,7 +330,7 @@ public class NPCMaker : BaseNPCMaker
 
 		LiveChildren++;
 
-		if ((SpawnFlags & SF_NPCMAKER_INF_CHILD) == 0) {
+		if (!HasSpawnFlags(SF_NPCMAKER_INF_CHILD)) {
 			MaxNumNPCs--;
 
 			if (IsDepleted()) {
@@ -577,12 +577,12 @@ public class TemplateNPCMaker : BaseNPCMaker
 
 		OnSpawnNPC.Set(entity!.GetRefEHandle(), entity, this);
 
-		if ((SpawnFlags & SF_NPCMAKER_FADE) != 0)
+		if (HasSpawnFlags(SF_NPCMAKER_FADE))
 			ent.AddSpawnFlags(SF_NPC_FADE_CORPSE);
 
 		ent.RemoveSpawnFlags(SF_NPC_TEMPLATE);
 
-		if ((SpawnFlags & SF_NPCMAKER_NO_DROP) == 0)
+		if (!HasSpawnFlags(SF_NPCMAKER_NO_DROP))
 			ent.RemoveSpawnFlags(SF_NPC_FALL_TO_GROUND);
 
 		ChildPreSpawn(ent);
@@ -595,7 +595,7 @@ public class TemplateNPCMaker : BaseNPCMaker
 
 		LiveChildren++;
 
-		if ((SpawnFlags & SF_NPCMAKER_INF_CHILD) == 0) {
+		if (!HasSpawnFlags(SF_NPCMAKER_INF_CHILD)) {
 			MaxNumNPCs--;
 
 			if (IsDepleted()) {
@@ -639,7 +639,7 @@ public class TemplateNPCMaker : BaseNPCMaker
 
 		LiveChildren++;
 
-		if ((SpawnFlags & SF_NPCMAKER_INF_CHILD) == 0) {
+		if (!HasSpawnFlags(SF_NPCMAKER_INF_CHILD)) {
 			MaxNumNPCs--;
 
 			if (IsDepleted()) {
@@ -712,7 +712,7 @@ public class TemplateNPCMaker : BaseNPCMaker
 
 		LiveChildren++;
 
-		if ((SpawnFlags & SF_NPCMAKER_INF_CHILD) == 0) {
+		if (!HasSpawnFlags(SF_NPCMAKER_INF_CHILD)) {
 			MaxNumNPCs--;
 
 			if (IsDepleted()) {

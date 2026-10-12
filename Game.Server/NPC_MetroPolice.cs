@@ -1809,7 +1809,7 @@ public class NPC_MetroPolice : AI_BaseActor
 				throw new NotImplementedException();
 
 			case TASK_METROPOLICE_HARASS: {
-					if ((SpawnFlags & SF_METROPOLICE_NOCHATTER) == 0) {
+					if (!HasSpawnFlags(SF_METROPOLICE_NOCHATTER)) {
 						if (GetEnemy() != null && GetEnemy()!.GetWaterLevel() > 0)
 							EmitSound("NPC_MetroPolice.WaterSpeech");
 						else

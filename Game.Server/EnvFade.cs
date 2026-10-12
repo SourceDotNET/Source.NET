@@ -51,18 +51,18 @@ public class EnvFade : LogicalEntity
 	public void InputFade(InputData inputdata) {
 		FadeFlags fadeFlags = 0;
 
-		if ((SpawnFlags & SF_FADE_IN) != 0)
+		if (HasSpawnFlags(SF_FADE_IN))
 			fadeFlags |= FadeFlags.In;
 		else
 			fadeFlags |= FadeFlags.Out;
 
-		if ((SpawnFlags & SF_FADE_MODULATE) != 0)
+		if (HasSpawnFlags(SF_FADE_MODULATE))
 			fadeFlags |= FadeFlags.Modulate;
 
-		if ((SpawnFlags & SF_FADE_STAYOUT) != 0)
+		if (HasSpawnFlags(SF_FADE_STAYOUT))
 			fadeFlags |= FadeFlags.StayOut;
 
-		if ((SpawnFlags & SF_FADE_ONLYONE) != 0) {
+		if (HasSpawnFlags(SF_FADE_ONLYONE)) {
 			if (inputdata.Activator != null && inputdata.Activator.IsNetClient())
 				Util.ScreenFade(inputdata.Activator, ColorRender, GetDuration(), GetHoldTime(), fadeFlags);
 		}

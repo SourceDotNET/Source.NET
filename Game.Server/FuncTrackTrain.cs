@@ -258,7 +258,7 @@ public class FuncTrackTrain : BaseEntity
 				delta = 1;
 			else if (delta < -0.25f)
 				delta = -0.25f;
-			if ((SpawnFlags & SF_TRACKTRAIN_FORWARDONLY) != 0) {
+			if (HasSpawnFlags(SF_TRACKTRAIN_FORWARDONLY)) {
 				if (delta < 0)
 					delta = 0;
 			}
@@ -533,9 +533,9 @@ public class FuncTrackTrain : BaseEntity
 		FirePassInputs(node, node.GetNext(), true);
 
 		if (node.HasSpawnFlags(PathTrack.SF_PATH_DISABLE_TRAIN))
-			SpawnFlags |= SF_TRACKTRAIN_NOCONTROL;
+			AddSpawnFlags(SF_TRACKTRAIN_NOCONTROL);
 
-		if ((SpawnFlags & SF_TRACKTRAIN_NOCONTROL) != 0) {
+		if (HasSpawnFlags(SF_TRACKTRAIN_NOCONTROL)) {
 			if (node.Speed != 0) {
 				SetSpeed(node.Speed);
 				DevMsg(2, $"TrackTrain {GetDebugName()} arrived at {node.GetDebugName()}, speed to {node.Speed,4:F2}\n");
@@ -671,7 +671,7 @@ public class FuncTrackTrain : BaseEntity
 		else
 			angNext = angPrev;
 
-		if ((SpawnFlags & SF_TRACKTRAIN_NOPITCH) != 0)
+		if (HasSpawnFlags(SF_TRACKTRAIN_NOPITCH))
 			angNext[PITCH] = angPrev[PITCH];
 
 		float p = 0;
@@ -697,7 +697,7 @@ public class FuncTrackTrain : BaseEntity
 			MathLib.QuaternionAngles(qtNew, out angNew);
 		}
 
-		if ((SpawnFlags & SF_TRACKTRAIN_NOPITCH) != 0)
+		if (HasSpawnFlags(SF_TRACKTRAIN_NOPITCH))
 			angNew[PITCH] = angPrev[PITCH];
 
 		DoUpdateOrientation(GetLocalAngles(), angNew, interval);
@@ -705,7 +705,7 @@ public class FuncTrackTrain : BaseEntity
 
 	void DoUpdateOrientation(in QAngle curAngles, in QAngle angles, float interval) {
 		float vy, vx;
-		if ((SpawnFlags & SF_TRACKTRAIN_NOPITCH) == 0)
+		if (!HasSpawnFlags(SF_TRACKTRAIN_NOPITCH))
 			vx = MathLib.AngleDistance(angles.X, curAngles.X);
 		else
 			vx = 0;
@@ -902,7 +902,7 @@ public class FuncTrackTrain : BaseEntity
 	public override bool OnControls(BaseEntity test) {
 		Vector3 offset = test.GetLocalOrigin() - GetLocalOrigin();
 
-		if ((SpawnFlags & SF_TRACKTRAIN_NOCONTROL) != 0)
+		if (HasSpawnFlags(SF_TRACKTRAIN_NOCONTROL))
 			return false;
 
 		Matrix4x4 tmp = default;
@@ -1044,7 +1044,7 @@ public class FuncTrackTrain : BaseEntity
 
 		if (HasSpawnFlags(SF_TRACKTRAIN_UNBLOCKABLE_BY_PLAYER))
 			AddFlag(EntityFlags.UnblockableByPlayer);
-		if ((SpawnFlags & SF_TRACKTRAIN_PASSABLE) != 0)
+		if (HasSpawnFlags(SF_TRACKTRAIN_PASSABLE))
 			AddSolidFlags(SolidFlags.NotSolid);
 
 		ControlMins = CollisionProp().OBBMins();

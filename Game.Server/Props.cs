@@ -430,7 +430,7 @@ public class PhysicsProp : BreakableProp
 		return false;
 	}
 
-	public bool IsGib() => (SpawnFlags & SF_PHYSPROP_IS_GIB) != 0;
+	public bool IsGib() => HasSpawnFlags(SF_PHYSPROP_IS_GIB);
 
 	public virtual bool CreateVPhysics() {
 		bool asleep = HasSpawnFlags(SF_PHYSPROP_START_ASLEEP);

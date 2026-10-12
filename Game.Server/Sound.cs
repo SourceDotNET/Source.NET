@@ -364,7 +364,7 @@ public class AmbientGeneric : PointEntity
 	// Spawn
 	//-----------------------------------------------------------------------------
 	public override void Spawn() {
-		SoundLevel = ComputeSoundlevel(Radius, (SpawnFlags & SF_AMBIENT_SOUND_EVERYWHERE) != 0);
+		SoundLevel = ComputeSoundlevel(Radius, HasSpawnFlags(SF_AMBIENT_SOUND_EVERYWHERE));
 		ComputeMaxAudibleDistance();
 
 		ValidateSoundFile();
@@ -387,7 +387,7 @@ public class AmbientGeneric : PointEntity
 
 		Active = false;
 
-		if ((SpawnFlags & SF_AMBIENT_SOUND_NOT_LOOPING) != 0)
+		if (HasSpawnFlags(SF_AMBIENT_SOUND_NOT_LOOPING))
 			Looping = false;
 		else
 			Looping = true;
@@ -552,7 +552,7 @@ public class AmbientGeneric : PointEntity
 				PrecacheScriptSound(SoundFile);
 		}
 
-		if ((SpawnFlags & SF_AMBIENT_SOUND_START_SILENT) == 0) {
+		if (!HasSpawnFlags(SF_AMBIENT_SOUND_START_SILENT)) {
 			// start the sound ASAP
 			if (Looping)
 				Active = true;
@@ -580,7 +580,7 @@ public class AmbientGeneric : PointEntity
 				SoundSourceEntIndex = EntIndex();
 			}
 			else {
-				if ((SpawnFlags & SF_AMBIENT_SOUND_EVERYWHERE) == 0)
+				if (!HasSpawnFlags(SF_AMBIENT_SOUND_EVERYWHERE))
 					AddEFlags(EFL.ForceCheckTransmit);
 			}
 		}
@@ -619,7 +619,7 @@ public class AmbientGeneric : PointEntity
 			return;
 
 		// Don't bother sending the position of the source if we have to play everywhere
-		if ((SpawnFlags & SF_AMBIENT_SOUND_EVERYWHERE) != 0)
+		if (HasSpawnFlags(SF_AMBIENT_SOUND_EVERYWHERE))
 			return;
 
 		Assert(info.ClientEnt != null);
@@ -1004,7 +1004,7 @@ public class AmbientGeneric : PointEntity
 				Active = false;
 
 				// HACKHACK - this makes the code in Precache() work properly after a save/restore
-				SpawnFlags |= SF_AMBIENT_SOUND_START_SILENT;
+				AddSpawnFlags(SF_AMBIENT_SOUND_START_SILENT);
 
 				if (Dpv.SpinDownSav != 0 || Dpv.FadeOutSav != 0) {
 					// spin it down (or fade it) before shutoff if spindown is set

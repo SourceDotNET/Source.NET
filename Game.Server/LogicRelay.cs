@@ -45,7 +45,7 @@ public class LogicRelay : LogicalEntity
 	public override void Think() {
 		OnSpawn.FireOutput(this, this);
 
-		if ((SpawnFlags & SF_REMOVE_ON_FIRE) != 0)
+		if (HasSpawnFlags(SF_REMOVE_ON_FIRE))
 			Util.Remove(this);
 	}
 
@@ -66,9 +66,9 @@ public class LogicRelay : LogicalEntity
 		if (!Disabled && !WaitForRefire) {
 			OnTrigger.FireOutput(inputdata.Activator, this);
 
-			if ((SpawnFlags & SF_REMOVE_ON_FIRE) != 0)
+			if (HasSpawnFlags(SF_REMOVE_ON_FIRE))
 				Util.Remove(this);
-			else if ((SpawnFlags & SF_ALLOW_FAST_RETRIGGER) == 0) {
+			else if (!HasSpawnFlags(SF_ALLOW_FAST_RETRIGGER)) {
 				WaitForRefire = true;
 				g_EventQueue.AddEvent(this, "EnableRefire", OnTrigger.GetMaxDelay() + 0.001f, this, this);
 			}
