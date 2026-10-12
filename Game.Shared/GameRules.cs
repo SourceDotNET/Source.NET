@@ -310,7 +310,25 @@ public abstract class
 	public virtual void Precache() { return; }
 
 	public virtual void RefreshSkillData(bool forceUpdate) {
-		// todo
+#if !CLIENT_DLL
+		if (!forceUpdate) {
+			if (GlobalEntity.IsInTable("skill.cfg"))
+				return;
+		}
+		GlobalEntity.Add("skill.cfg", gpGlobals.MapName, GlobalEState.On);
+
+		ConVarRef skill = new("skill");
+
+		SetSkillLevel(skill.IsValid() ? skill.GetInt() : 1);
+
+#if HL2_DLL
+		engine.ServerCommand("exec skill_manifest.cfg\n");
+		engine.ServerExecute();
+#elif !TF_DLL && !DOD_DLL
+		engine.ServerCommand($"exec skill{GetSkillLevel()}.cfg\n");
+		engine.ServerExecute();
+#endif
+#endif
 	}
 
 	// Called each frame. This just forwards the call to Think().
