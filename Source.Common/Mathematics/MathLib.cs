@@ -2269,6 +2269,7 @@ public static class MathLib
 		return l;
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static float VectorNormalize(ref Vector3 vec) {
 		float radius = MathF.Sqrt(vec.X * vec.X + vec.Y * vec.Y + vec.Z * vec.Z);
 
