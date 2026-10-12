@@ -4,6 +4,15 @@
 using Game.Client;
 #endif
 
+#if GMOD_DLL
+#if CLIENT_DLL
+using Game.Client.GarrysMod;
+#else
+using Game.Server.GarrysMod;
+#endif
+using Source.Common.GarrysMod.Lua;
+#endif
+
 using Source;
 using Source.Common;
 using Source.Common.Mathematics;
@@ -44,7 +53,38 @@ public class HL2MPPlayerAnimState : MultiPlayerAnimState
 
 	public override void ClearAnimationState() => base.ClearAnimationState();
 
+#if GMOD_DLL
+	public override Activity CalcMainActivity() {
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.CalcMainActivity)) {
+			GetOuterAbsVelocity(out Vector3 velocity);
+			LuaEntity.Push_Entity(HL2MPPlayer);
+			LuaVector.Push_Vector(velocity);
+			if (gGM.CallReturns(2, 2)) {
+				ILuaObject ideal = g_Lua!.GetReturn(1);
+				ILuaObject seqOverride = g_Lua.GetReturn(0);
+				if (!ideal.isNil() && !seqOverride.isNil()) {
+					SpecificMainSequence = seqOverride.GetInt();
+					ShowDebugInfo();
+					return (Activity)ideal.GetInt();
+				}
+			}
+		}
+		return 0;
+	}
+#endif
+
 	public override Activity TranslateActivity(Activity actDesired) {
+#if GMOD_DLL
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.TranslateActivity)) {
+			LuaEntity.Push_Entity(GetHL2MPPlayer());
+			g_Lua!.PushNumber((int)actDesired);
+			if (gGM.CallReturns(2, 1)) {
+				ILuaObject ret = g_Lua.GetReturn(0);
+				if (!ret.isNil())
+					return (Activity)ret.GetInt();
+			}
+		}
+#endif
 		Activity translateActivity = actDesired;
 
 		bool required = false;
@@ -79,12 +119,132 @@ public class HL2MPPlayerAnimState : MultiPlayerAnimState
 			ComputePoseParam_AimYaw(studioHdr);
 		}
 
+#if GMOD_DLL
+#if CLIENT_DLL
+		hl2mpPlayer.UpdateLookAt();
+#endif
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.UpdateAnimation)) {
+			BasePlayer player = GetBasePlayer();
+			float maxSeqGroundSpeed = (float)player.GetSequenceGroundSpeed(player.GetModelPtr(), player.GetSequence());
+			GetOuterAbsVelocity(out Vector3 velocity);
+			LuaEntity.Push_Entity(HL2MPPlayer);
+			LuaVector.Push_Vector(velocity);
+			g_Lua!.PushNumber(maxSeqGroundSpeed);
+			gGM.CallNoReturns(3);
+		}
+
+		if (hl2mpPlayer.GetMoveParent() == null && hl2mpPlayer.RestrictPlayerPitch()) {
+			AngRender[PITCH] = 0;
+			AngRender[ROLL] = 0;
+		}
+		else
+			AngRender = hl2mpPlayer.GetAbsAngles();
+#else
 #if CLIENT_DLL
 		if (C_BasePlayer.ShouldDrawLocalPlayer())
 			HL2MPPlayer!.SetPlaybackRate(1.0f);
 #endif
+#endif
 	}
-	public override void DoAnimationEvent(PlayerAnimEvent evt, int data = 0) => throw new NotImplementedException();
+
+	public override void DoAnimationEvent(PlayerAnimEvent evt, int data = 0) {
+		Activity gestureActivity = Activity.ACT_INVALID;
+
+#if GMOD_DLL
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.DoAnimationEvent)) {
+			LuaEntity.Push_Entity(HL2MPPlayer);
+			g_Lua!.PushNumber((int)evt);
+			g_Lua.PushNumber(data);
+			if (gGM.CallReturns(3, 1)) {
+				ILuaObject ret = g_Lua.GetReturn(0);
+				if (!ret.isNil()) {
+#if CLIENT_DLL
+					PlayWeaponGesture((Activity)ret.GetInt());
+#endif
+					return;
+				}
+			}
+		}
+#endif
+
+		switch (evt) {
+			case PlayerAnimEvent.AttackPrimary:
+				if ((HL2MPPlayer!.GetFlags() & EntityFlags.Ducking) != 0)
+					RestartGesture((int)GestureSlotIndex.AttackAndReload, Activity.ACT_MP_ATTACK_CROUCH_PRIMARYFIRE);
+				else
+					RestartGesture((int)GestureSlotIndex.AttackAndReload, Activity.ACT_MP_ATTACK_STAND_PRIMARYFIRE);
+
+				gestureActivity = Activity.ACT_VM_PRIMARYATTACK;
+				break;
+			case PlayerAnimEvent.VoiceCommandGesture:
+				if (!IsGestureSlotActive((int)GestureSlotIndex.AttackAndReload))
+					RestartGesture((int)GestureSlotIndex.AttackAndReload, (Activity)data);
+				break;
+			case PlayerAnimEvent.AttackSecondary:
+				if ((HL2MPPlayer!.GetFlags() & EntityFlags.Ducking) != 0)
+					RestartGesture((int)GestureSlotIndex.AttackAndReload, Activity.ACT_MP_ATTACK_CROUCH_SECONDARYFIRE);
+				else
+					RestartGesture((int)GestureSlotIndex.AttackAndReload, Activity.ACT_MP_ATTACK_STAND_SECONDARYFIRE);
+
+				gestureActivity = Activity.ACT_VM_PRIMARYATTACK;
+				break;
+			case PlayerAnimEvent.AttackPre:
+				if ((HL2MPPlayer!.GetFlags() & EntityFlags.Ducking) != 0)
+					gestureActivity = Activity.ACT_MP_ATTACK_CROUCH_PREFIRE;
+				else
+					gestureActivity = Activity.ACT_MP_ATTACK_STAND_PREFIRE;
+
+				RestartGesture((int)GestureSlotIndex.AttackAndReload, gestureActivity, false);
+				break;
+			case PlayerAnimEvent.AttackPost:
+				RestartGesture((int)GestureSlotIndex.AttackAndReload, Activity.ACT_MP_ATTACK_STAND_POSTFIRE);
+				break;
+			case PlayerAnimEvent.Reload:
+				if ((GetBasePlayer().GetFlags() & EntityFlags.Ducking) != 0)
+					RestartGesture((int)GestureSlotIndex.AttackAndReload, Activity.ACT_MP_RELOAD_CROUCH);
+				else
+					RestartGesture((int)GestureSlotIndex.AttackAndReload, Activity.ACT_MP_RELOAD_STAND);
+				break;
+			case PlayerAnimEvent.ReloadLoop:
+				if ((GetBasePlayer().GetFlags() & EntityFlags.Ducking) != 0)
+					RestartGesture((int)GestureSlotIndex.AttackAndReload, Activity.ACT_MP_RELOAD_CROUCH_LOOP);
+				else
+					RestartGesture((int)GestureSlotIndex.AttackAndReload, Activity.ACT_MP_RELOAD_STAND_LOOP);
+				break;
+			case PlayerAnimEvent.ReloadEnd:
+				if ((GetBasePlayer().GetFlags() & EntityFlags.Ducking) != 0)
+					RestartGesture((int)GestureSlotIndex.AttackAndReload, Activity.ACT_MP_RELOAD_CROUCH_END);
+				else
+					RestartGesture((int)GestureSlotIndex.AttackAndReload, Activity.ACT_MP_RELOAD_STAND_END);
+				break;
+			default:
+				base.DoAnimationEvent(evt, data);
+				break;
+		}
+
+#if CLIENT_DLL
+		PlayWeaponGesture(gestureActivity);
+#endif
+	}
+
+#if CLIENT_DLL
+	void PlayWeaponGesture(Activity gestureActivity) {
+#if GMOD_DLL
+		if (GetHL2MPPlayer().EntIndex() == engine.GetLocalPlayer() && !C_BasePlayer.ShouldDrawLocalPlayer())
+			return;
+#endif
+		if (gestureActivity != Activity.ACT_INVALID) {
+			BaseCombatWeapon? weapon = GetHL2MPPlayer().GetActiveWeapon();
+			if (weapon != null) {
+				weapon.SendWeaponAnim(gestureActivity);
+#if GMOD_DLL
+				weapon.ClearPrevResetEventsParity();
+#endif
+				weapon.DoAnimationEvents(weapon.GetModelPtr()!);
+			}
+		}
+	}
+#endif
 	protected override bool HandleSwimming(ref Activity idealActivity) {
 		bool inWater = base.HandleSwimming(ref idealActivity);
 
@@ -149,6 +309,7 @@ public class HL2MPPlayerAnimState : MultiPlayerAnimState
 		return false;
 	}
 
+#if !GMOD_DLL
 	new bool SetupPoseParameters(StudioHdr? studioHdr) {
 		if (PoseParameterInit)
 			return true;
@@ -313,6 +474,7 @@ public class HL2MPPlayerAnimState : MultiPlayerAnimState
 
 		return speed;
 	}
+#endif
 
 	public HL2MP_Player GetHL2MPPlayer() => HL2MPPlayer!;
 }

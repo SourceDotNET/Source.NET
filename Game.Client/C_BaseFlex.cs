@@ -933,6 +933,26 @@ public partial class C_BaseFlex : C_BaseAnimatingOverlay, IHasLocalToGlobalFlexS
 
 	public virtual bool CheckSceneEventCompletion(SceneEventInfo info, TimeUnit_t currenttime, ChoreoScene scene, ChoreoEvent ev) => true;
 
+#if GMOD_DLL
+	public void SetFlexWeight(LocalFlexController index, float value, bool clamp) {
+		if (index >= 0 && index < GetNumFlexControllers() && (int)index < 96) {
+			StudioHdr? studioHdr = GetModelPtr();
+			if (studioHdr == null)
+				return;
+
+			MStudioFlexController flexcontroller = studioHdr.FlexController(index);
+
+			if (flexcontroller.Max != flexcontroller.Min) {
+				value = (value - flexcontroller.Min) / (flexcontroller.Max - flexcontroller.Min);
+				if (clamp)
+					value = Math.Clamp(value, 0.0f, 1.0f);
+			}
+
+			FlexWeight[(int)index] = value;
+		}
+	}
+#endif
+
 	public void SetFlexWeight(LocalFlexController index, float value) {
 		if (index >= 0 && index < GetNumFlexControllers()) {
 			StudioHdr? studioHdr = GetModelPtr();

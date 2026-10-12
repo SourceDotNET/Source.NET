@@ -525,6 +525,9 @@ public partial class BasePlayer : BaseCombatCharacter
 	public IServerVehicle? GetVehicle() => Vehicle.Get()?.GetServerVehicle();
 	public override BaseEntity? GetVehicleEntity() => Vehicle.Get();
 	public override bool IsInAVehicle() => Vehicle.Get() != null;
+#if GMOD_DLL
+	public virtual bool RestrictPlayerPitch() => false;
+#endif
 	public float GetStepSize() => Local.StepSize;
 
 	public BaseEntity? GetViewEntity() => ViewEntity.Get();
@@ -579,6 +582,11 @@ public partial class BasePlayer : BaseCombatCharacter
 	EHANDLE ColorCorrectionCtrl = new();
 	[NetworkName("m_bUseWeaponsInVehicle")]
 	bool UseWeaponsInVehicle;
+	public bool GetAllowWeaponsInVehicle() => UseWeaponsInVehicle;
+
+	public virtual void StopObserverMode() {
+		// todo
+	}
 	public bool OnTarget;
 	[NetworkName("m_flDeathTime")]
 	public TimeUnit_t DeathTime;

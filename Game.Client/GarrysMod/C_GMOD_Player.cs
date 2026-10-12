@@ -4,6 +4,8 @@ using Game.Shared;
 using Source;
 using Source.Common;
 using Source.Common.Commands;
+using Source.Common.GarrysMod.Lua;
+using Source.Common.Mathematics;
 
 using System.Numerics;
 
@@ -79,4 +81,19 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 	public float Gravity;
 	[NetworkName("m_bSprintEnabled")]
 	public bool SprintEnabled;
+
+	public override void UpdateClientSideAnimation() {
+		if (Driving.Get() != null) {
+			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerDriveAnimate)) {
+				LuaEntity.Push_Entity(this);
+				gGM.CallNoReturns(1);
+			}
+		}
+		else {
+			QAngle eyeAngles = EyeAngles();
+			PlayerAnimState.Update(eyeAngles[YAW], eyeAngles[PITCH]);
+		}
+
+		UpdateBaseClientSideAnimation();
+	}
 }

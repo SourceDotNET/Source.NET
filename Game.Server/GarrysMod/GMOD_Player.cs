@@ -6,6 +6,7 @@ using Game.Shared;
 using Source;
 using Source.Common;
 using Source.Common.Engine;
+using Source.Common.GarrysMod.Lua;
 
 using System.Numerics;
 
@@ -55,9 +56,29 @@ public partial class GMOD_Player : HL2MP_Player
 	]);
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_GMOD_Player);
 
+	public bool Transition;
+
 	public override void InitialSpawn() {
+		SetModel("models/player.mdl");
 		base.InitialSpawn();
+
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerInitialSpawn)) {
+			LuaEntity.Push_Entity(this);
+			g_Lua!.PushBool(Transition);
+			gGM.CallNoReturns(2);
+		}
+
 		LuaNetworkedVars.g_LuaNetworkedVars!.PlayerInsert(this);
+	}
+
+	public override void Spawn() {
+		base.Spawn();
+
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerSpawn)) {
+			LuaEntity.Push_Entity(this);
+			g_Lua!.PushBool(Transition);
+			gGM.CallNoReturns(2);
+		}
 	}
 
 	public override BaseEntity EntSelectSpawnPoint() {

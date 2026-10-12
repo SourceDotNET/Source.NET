@@ -1,10 +1,15 @@
+using Source;
 #if CLIENT_DLL || GAME_DLL
+using Game.Shared;
+
 using Source.Common.GarrysMod.Lua;
 using Source.Common.Mathematics;
 
 using System.Numerics;
 
 #if CLIENT_DLL
+using GMOD_Player = Game.Client.GarrysMod.C_GMOD_Player;
+
 namespace Game.Client.GarrysMod;
 #else
 namespace Game.Server.GarrysMod;
@@ -105,6 +110,157 @@ public static partial class LuaPlayer
 		BasePlayer player = Get_Player(1, false)!;
 		LuaEntity.Push_Entity(player.GetActiveWeapon());
 		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__TranslateWeaponActivity(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		int act = (int)lua.CheckNumber(2);
+		BaseCombatWeapon? weapon = player.GetActiveWeapon();
+		if (weapon != null) {
+			bool required = false;
+			act = (int)weapon.ActivityOverride((Activity)act, ref required);
+		}
+		lua.PushNumber(act);
+		return 1;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Player__UnSpectate(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.StopObserverMode();
+		player.ResetObserverMode();
+		player.RemoveEFlags(EFL.NoClipActive);
+		player.SetMoveType(MoveType.Walk);
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
+	static int Player__SetClassID(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		int classID = (int)lua.CheckNumber(2);
+		if (gpGlobals.MaxClients > 1 && (uint)(classID + 16384) > 32767)
+			lua.ErrorNoHalt($"Out of bounds value {classID} for networking in range {-16384} to {16383}\n");
+
+		GMOD_Player gmodPlayer = (GMOD_Player)player;
+#if GAME_DLL
+		if (gmodPlayer.PlayerClass != classID)
+			gmodPlayer.NetworkStateChanged();
+#endif
+		gmodPlayer.PlayerClass = classID;
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetClassID(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber(((GMOD_Player)player).PlayerClass);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetAllowWeaponsInVehicle(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(player.GetAllowWeaponsInVehicle());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__IsPlayingTaunt(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(((GMOD_Player)player).GestureEndTime > gpGlobals.CurTime);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__IsTyping(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(((GMOD_Player)player).IsTyping);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__IsSpeaking(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+#if CLIENT_DLL
+		if (player.IsLocalPlayer())
+			lua.PushBool(GetClientVoiceMgr()!.IsLocalPlayerSpeaking());
+		else
+			lua.PushBool(GetClientVoiceMgr()!.IsPlayerSpeaking(player.EntIndex()));
+#else
+		lua.PushBool(gpGlobals.CurTime - player.LastTimePlayerTalked() < 0.1);
+#endif
+		return 1;
+	}
+
+#if CLIENT_DLL
+	[LuaMethod]
+	static int Player__VoiceVolume(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		int index = player.EntIndex();
+		if ((uint)(index - 1) < 128) {
+			lua.PushNumber(HLClient.g_VoiceVolume[index - 1]);
+			return 1;
+		}
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
+	static int Player__InVehicle(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(player.IsInAVehicle());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__AnimResetGestureSlot(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		HL2MPPlayerAnimState? animState = (player as HL2MP_Player)?.PlayerAnimState;
+		if (animState == null)
+			return 0;
+
+		animState.ResetGestureSlot((int)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__AnimRestartGesture(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		HL2MPPlayerAnimState? animState = (player as HL2MP_Player)?.PlayerAnimState;
+		if (animState == null)
+			return 0;
+
+		animState.RestartGesture((int)lua.CheckNumber(2), (Activity)(int)lua.CheckNumber(3), lua.GetBool(4));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__AnimRestartMainSequence(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		HL2MPPlayerAnimState? animState = (player as HL2MP_Player)?.PlayerAnimState;
+		if (animState == null)
+			return 0;
+
+		animState.RestartMainSequence();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__AnimSetGestureWeight(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		HL2MPPlayerAnimState? animState = (player as HL2MP_Player)?.PlayerAnimState;
+		if (animState == null)
+			return 0;
+
+		AnimationLayerRef? layer = animState.GetGestureSlotLayer((int)lua.CheckNumber(2));
+		if (layer == null)
+			return 0;
+
+		layer.Weight = (float)lua.CheckNumber(3);
+		return 0;
 	}
 
 	[LuaMethod]

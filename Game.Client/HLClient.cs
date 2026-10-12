@@ -761,8 +761,18 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		throw new NotImplementedException();
 	}
 
+	public static InlineArray128<float> g_VoiceVolume;
+
 	public void GMOD_VoiceVolume(uint playerID, float volume) {
-		throw new NotImplementedException();
+		if (playerID == 512) {
+			C_BasePlayer? localPlayer = C_BasePlayer.GetLocalPlayer();
+			if (localPlayer == null)
+				return;
+			playerID = (uint)localPlayer.EntIndex();
+		}
+
+		if (playerID - 1U < 128)
+			g_VoiceVolume[(int)playerID - 1] = volume;
 	}
 
 	public void GMOD_OnDrawSkybox() {

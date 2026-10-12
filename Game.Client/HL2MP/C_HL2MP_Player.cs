@@ -102,10 +102,18 @@ public partial class C_HL2MP_Player : C_BaseHLPlayer
 		AngEyeAngles = EyeAngles();
 	}
 
+#if GMOD_DLL
+	public override void UpdateClientSideAnimation() {
+		QAngle eyeAngles = EyeAngles();
+		PlayerAnimState.Update(eyeAngles[YAW], eyeAngles[PITCH]);
+		UpdateBaseClientSideAnimation();
+	}
+#else
 	public override void ClientThink() {
 		base.ClientThink();
 		PlayerAnimState.Update(AngEyeAngles[YAW], AngEyeAngles[PITCH]);
 	}
+#endif
 
 	public override ShadowType ShadowCastType() {
 		if (!IsVisible())
