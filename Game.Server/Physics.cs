@@ -49,8 +49,8 @@ public static class PhysicsHookGlobals {
 
 	class SkipKeys : IVPhysicsKeyHandler
 	{
-		public void ParseKeyValue<T>(T data, ReadOnlySpan<char> key, ReadOnlySpan<char> value) { }
-		public void SetDefaults<T>(T data) { }
+		public void ParseKeyValue<T>(ref T data, ReadOnlySpan<char> key, ReadOnlySpan<char> value) { }
+		public void SetDefaults<T>(ref T data) { }
 	}
 
 	public static void PhysSolidOverride(ref Solid solid, string? overrideScript) {
