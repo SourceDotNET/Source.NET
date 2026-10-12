@@ -7624,6 +7624,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public Activity GetActivity() => Activity;
 
+	public void ResetActivity() => Activity = Activity.ACT_RESET;
+
 	public virtual void SetActivity(Activity newActivity) {
 		if (Activity == newActivity)
 			return;
