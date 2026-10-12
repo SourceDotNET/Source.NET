@@ -276,7 +276,7 @@ public abstract class BaseClient : IGameEventListener2, IClient, IClientMessageH
 	public static readonly ConVar sv_max_userinfo_rate = new("sv_max_userinfo_rate", "1500", 0, "The max amount of userinfo ConVars clients are allowed to send to the server in 1 second.", 0, 60000);
 
 	ushort UserInfoCount;
-	float UserInfoResetTime;
+	TimeUnit_t UserInfoResetTime;
 
 	protected virtual bool ProcessSetConVar(NET_SetConVar msg) {
 		int unique = 0;
@@ -320,7 +320,7 @@ public abstract class BaseClient : IGameEventListener2, IClient, IClientMessageH
 
 			if (Platform.Time > UserInfoResetTime) {
 				UserInfoCount = 0;
-				UserInfoResetTime = (float)(Platform.Time + 1.0);
+				UserInfoResetTime = Platform.Time + 1.0;
 			}
 
 			ConVars!.SetString(name, value);
