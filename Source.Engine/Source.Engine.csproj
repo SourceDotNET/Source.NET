@@ -31,8 +31,14 @@
 	</ItemGroup>
 
 	<PropertyGroup>
-		<SourceRevisionId>
-			build$([System.DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ss:fffZ"))
-		</SourceRevisionId>
+		<BuildStampFile>$(MSBuildProjectDirectory)\$(BaseIntermediateOutputPath)$(Configuration)\BuildStamp.txt</BuildStampFile>
 	</PropertyGroup>
+	<Target Name="UpdateBuildStamp" Inputs="@(Compile);$(MSBuildProjectFullPath);$(MSBuildThisFileDirectory)..\Directory.Build.props" Outputs="$(BuildStampFile)">
+		<WriteLinesToFile File="$(BuildStampFile)" Lines="build$([System.DateTime]::UtcNow.ToString(&quot;yyyy-MM-ddTHH:mm:ss:fffZ&quot;))" Overwrite="true" />
+	</Target>
+	<Target Name="SetBuildStampRevision" DependsOnTargets="UpdateBuildStamp" BeforeTargets="AddSourceRevisionToInformationalVersion">
+		<ReadLinesFromFile File="$(BuildStampFile)">
+			<Output TaskParameter="Lines" PropertyName="SourceRevisionId" />
+		</ReadLinesFromFile>
+	</Target>
 </Project>
