@@ -26,6 +26,7 @@ public static class MathLibConsts
 	public static readonly Vector3 vec3_origin = new(0, 0, 0);
 	public static readonly QAngle vec3_angle = new(0, 0, 0);
 	public static readonly Vector3 vec3_invalid = new(float.MaxValue, float.MaxValue, float.MaxValue);
+	public static readonly Vector2 vec2_invalid = new(float.MaxValue, float.MaxValue);
 
 	public static Vector3 RandomAngularImpulse(float minVal, float maxVal) {
 		Vector3 angImp = default;
@@ -1388,6 +1389,36 @@ public static class MathLib
 		Assert(MathlibInitialized);
 		CalcClosestPointOnLine(P, vLineA, vLineB, out Vector3 vClosest, out outT);
 		return P.DistToSqr(vClosest);
+	}
+
+	public static float CalcClosestPointToLineT2D(in Vector2 P, in Vector2 vLineA, in Vector2 vLineB, out Vector2 vDir) {
+		Assert(MathlibInitialized);
+		vDir = vLineB - vLineA;
+
+		float div = Vector2.Dot(vDir, vDir);
+		if (div < 0.00001f)
+			return 0;
+		else
+			return (Vector2.Dot(vDir, P) - Vector2.Dot(vDir, vLineA)) / div;
+	}
+
+	public static void CalcClosestPointOnLine2D(in Vector2 P, in Vector2 vLineA, in Vector2 vLineB, out Vector2 vClosest, out float outT) {
+		Assert(MathlibInitialized);
+		float t = CalcClosestPointToLineT2D(P, vLineA, vLineB, out Vector2 vDir);
+		outT = t;
+		vClosest = vLineA + vDir * t;
+	}
+
+	public static float CalcDistanceToLine2D(in Vector2 P, in Vector2 vLineA, in Vector2 vLineB, out float outT) {
+		Assert(MathlibInitialized);
+		CalcClosestPointOnLine2D(P, vLineA, vLineB, out Vector2 vClosest, out outT);
+		return Vector2.Distance(P, vClosest);
+	}
+
+	public static float CalcDistanceSqrToLine2D(in Vector2 P, in Vector2 vLineA, in Vector2 vLineB, out float outT) {
+		Assert(MathlibInitialized);
+		CalcClosestPointOnLine2D(P, vLineA, vLineB, out Vector2 vClosest, out outT);
+		return Vector2.DistanceSquared(P, vClosest);
 	}
 
 

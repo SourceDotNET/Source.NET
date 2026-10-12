@@ -377,6 +377,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		DEFINE.OUTPUT(nameof(OnWake), "OnWake", eventFuncs),
 		DEFINE.FIELD(nameof(DidDeathCleanup), FieldType.Boolean),
 		DEFINE.OUTPUT(nameof(OnDeath), "OnDeath", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnDenyCommanderUse), "OnDenyCommanderUse", eventFuncs),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
@@ -533,6 +534,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public OutputEvent OnLostPlayer = new();
 	public OutputEvent OnWake = new();
 	public OutputEvent OnDeath = new();
+	public OutputEvent OnDenyCommanderUse = new();
 	public bool DidDeathCleanup;
 	public bool WakeSquad;
 	public long WakeTick;
@@ -6892,7 +6894,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public bool IsMovingToPickupWeapon() => IsCurSchedule(SCHED_NEW_WEAPON);
 
-	public bool ShouldLookForBetterWeapon() {
+	public virtual bool ShouldLookForBetterWeapon() {
 		if (NextWeaponSearchTime > gpGlobals.CurTime)
 			return false;
 
@@ -7193,6 +7195,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 		return Capability;
 	}
+
+	public void CapabilitiesClear() => Capability = 0;
 
 	public void SetHullSizeNormal(bool force = false) {
 		if (IsUsingSmallHullValue || force) {
@@ -8003,6 +8007,144 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		CommandMoveMonitor.ClearMark();
 	}
 
+	public Vector3 GetCommandGoal() => CommandGoal;
+
+	public void SentenceStop() => EmitSound("AI_BaseNPC.SentenceStop");
+
+	public virtual bool CanBeUsedAsAFriend() {
+		if (IsCurSchedule(SCHED_FORCED_GO) || IsCurSchedule(SCHED_FORCED_GO_RUN))
+			return false;
+		return true;
+	}
+
+	public bool ConditionInterruptsCurSchedule(int condition) {
+		if (GetCurSchedule() == null)
+			return false;
+
+		int interrupt = InterruptFromCondition(condition);
+
+		if (interrupt == -1) {
+			Assert(false);
+			return false;
+		}
+		return GetCurSchedule()!.HasInterrupt(interrupt);
+	}
+
+	public void TestPlayerPushing(BaseEntity? entity) {
+		if (HasSpawnFlags(SF_NPC_NO_PLAYER_PUSHAWAY))
+			return;
+
+		BasePlayer? player = ToBasePlayer(entity);
+		if (player != null && (player.GetFlags() & EntityFlags.NoTarget) == 0) {
+			if (g_IgnorePlayers.GetBool())
+				return;
+
+			if ((player.Buttons & (InButtons.Forward | InButtons.Back | InButtons.MoveLeft | InButtons.MoveRight)) != 0 ||
+				 player.GetAbsVelocity().AsVector2D().LengthSquared() > 50 * 50) {
+				SetCondition((int)SCOND_t.COND_PLAYER_PUSHING);
+				Vector3 push = GetAbsOrigin() - player.GetAbsOrigin();
+				MathLib.VectorNormalize(ref push);
+				CascadePlayerPush(push, player.WorldSpaceCenter());
+			}
+		}
+	}
+
+	public void CascadePlayerPush(in Vector3 push, in Vector3 pushOrigin) {
+		float hullWidth = GetHullWidth();
+		Vector3 origin = GetAbsOrigin();
+		Vector2 origin2D = origin.AsVector2D();
+
+		float MIN_Z_TO_TRANSMIT = GetHullHeight() * 0.5f + 0.1f;
+		float DIST_REQD_TO_TRANSMIT_PUSH_SQ = (hullWidth * 5 + 0.1f) * (hullWidth * 5 + 0.1f);
+		float DIST_FROM_PUSH_VECTOR_REQD_SQ = (hullWidth + 0.1f) * (hullWidth + 0.1f);
+
+		Vector2 pushTestPoint = vec2_invalid;
+
+		for (int i = 0; i < g_AI_Manager.NumAIs(); i++) {
+			AI_BaseNPC other = g_AI_Manager.AccessAIs()[i];
+			if (other != this && other.IRelationType(this) == Disposition.LI && !other.HasCondition((int)SCOND_t.COND_PLAYER_PUSHING)) {
+				Vector3 friendOrigin = other.GetAbsOrigin();
+				if (MathF.Abs(friendOrigin.Z - origin.Z) < MIN_Z_TO_TRANSMIT &&
+					 (friendOrigin.AsVector2D() - origin.AsVector2D()).LengthSquared() < DIST_REQD_TO_TRANSMIT_PUSH_SQ) {
+					if (pushTestPoint == vec2_invalid) {
+						pushTestPoint = origin2D - pushOrigin.AsVector2D();
+						pushTestPoint *= 2000;
+						pushTestPoint += origin2D;
+					}
+					float distSq = MathLib.CalcDistanceSqrToLine2D(friendOrigin.AsVector2D(), origin2D, pushTestPoint, out float t);
+					if (t > 0 && distSq < DIST_FROM_PUSH_VECTOR_REQD_SQ)
+						other.SetCondition((int)SCOND_t.COND_PLAYER_PUSHING);
+				}
+			}
+		}
+	}
+
+	public bool IsSquadmateInSpread(in Vector3 sourcePos, in Vector3 targetPos, float spread, float maxDistOffCenter) {
+		if (Squad == null)
+			return false;
+
+		AI_BaseNPC? squadmate = Squad.GetFirstMember(out int iter);
+		while (squadmate != null) {
+			if (squadmate.m_takedamage != (byte)Damage.No) {
+				if (squadmate != this) {
+					if (PointInSpread(squadmate, sourcePos, targetPos, squadmate.GetAbsOrigin(), spread, maxDistOffCenter))
+						return true;
+				}
+			}
+			squadmate = Squad.GetNextMember(ref iter);
+		}
+		return false;
+	}
+
+	public bool PointInSpread(BaseCombatCharacter? checkEntity, in Vector3 sourcePos, in Vector3 targetPos, in Vector3 testPoint, float spread, float maxDistOffCenter) {
+		float distOffLine = MathLib.CalcDistanceToLine2D(testPoint.AsVector2D(), sourcePos.AsVector2D(), targetPos.AsVector2D(), out _);
+		if (distOffLine < maxDistOffCenter) {
+			Vector3 toTarget = targetPos - sourcePos;
+			float distTarget = MathLib.VectorNormalize(ref toTarget);
+
+			Vector3 toTest = testPoint - sourcePos;
+			float distTest = MathLib.VectorNormalize(ref toTest);
+			if (distTarget > distTest) {
+				toTarget.Z = 0.0f;
+				toTest.Z = 0.0f;
+
+				float dotProduct = Vector3.Dot(toTarget, toTest);
+				if (dotProduct > spread)
+					return true;
+				else if (dotProduct > 0.0f) {
+					if (checkEntity != null) {
+						float bboxDist = NAI_Hull.Width(checkEntity.GetHullType());
+						bboxDist *= 1.414f;
+
+						distOffLine = MathLib.CalcDistanceToLine(testPoint, sourcePos, targetPos, out _);
+						if (distOffLine < bboxDist)
+							return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	public int NumWeaponsInSquad(ReadOnlySpan<char> weaponClassname) {
+		if (GetSquad() == null) {
+			if (GetActiveWeapon() != null && GetActiveWeapon()!.ClassMatches(weaponClassname))
+				return 1;
+
+			return 0;
+		}
+
+		int count = 0;
+		AI_BaseNPC? squadmate = Squad!.GetFirstMember(out int iter);
+		while (squadmate != null) {
+			if (squadmate.GetActiveWeapon() != null && squadmate.GetActiveWeapon()!.ClassMatches(weaponClassname))
+				count++;
+			squadmate = Squad.GetNextMember(ref iter);
+		}
+
+		return count;
+	}
+
 	public void ClearSchedule(string? reason) {
 		if (reason != null && (DebugOverlays & DebugOverlayBits.TaskText) != 0)
 			DevMsg($"  Schedule cleared: {reason}\n");
@@ -8601,7 +8743,15 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 	}
 
-	public bool SoundIsVisible(ref WorldSoundInstance sound) => throw new NotImplementedException();
+	public bool SoundIsVisible(ref WorldSoundInstance sound) {
+		if (!FVisible(sound.GetSoundReactOrigin(), Mask.BlockLOS, out BaseEntity? blocker)) {
+			if (blocker != null && blocker == sound.Owner.Get())
+				return true;
+
+			return false;
+		}
+		return true;
+	}
 
 	static Vector3 UpdateEfficiencyPlayerEyePosition;
 	static Vector3 UpdateEfficiencyPlayerForward;
