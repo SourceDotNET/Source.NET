@@ -438,6 +438,27 @@ public partial class BaseAnimating : BaseEntity
 		return false;
 	}
 
+	public void GetBonePosition(int bone, out Vector3 origin, out QAngle angles) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null) {
+			AssertMsg(false, "BaseAnimating.GetBonePosition: model missing");
+			origin = default;
+			angles = default;
+			return;
+		}
+
+		if (bone < 0 || bone >= studioHdr.NumBones()) {
+			AssertMsg(false, "BaseAnimating.GetBonePosition: invalid bone index");
+			origin = default;
+			angles = default;
+			return;
+		}
+
+		GetBoneTransform(bone, out Matrix3x4 boneToWorld);
+
+		MathLib.MatrixAngles(boneToWorld, out angles, out origin);
+	}
+
 	public void GetBoneTransform(int bone, out Matrix3x4 boneToWorld) {
 		StudioHdr? studioHdr = GetModelPtr();
 
@@ -740,6 +761,17 @@ public partial class BaseAnimating : BaseEntity
 		else
 			interval = Math.Clamp(AnimTime - PrevAnimTime, 0, MAX_ANIMTIME_INTERVAL);
 		return interval;
+	}
+
+	public bool HasMovement(int sequence) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return false;
+
+		if (BoneSetup.Studio_SeqMovement(studioHdr, sequence, 0.0f, 1.0f, GetPoseParameterArray(), out _, out _))
+			return true;
+
+		return false;
 	}
 
 	public bool GetIntervalMovement(TimeUnit_t intervalUsed, out bool moveSeqFinished, out Vector3 newPosition, out QAngle newAngles) {

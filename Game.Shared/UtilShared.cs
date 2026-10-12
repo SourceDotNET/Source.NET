@@ -289,6 +289,17 @@ public static partial class Util
 #endif
 	}
 
+	public static void TraceEntity(BaseEntity entity, in Vector3 absStart, in Vector3 absEnd, Mask mask, IHandleEntity? ignore, CollisionGroup collisionGroup, out Trace ptr) {
+		ICollideable collision = entity.GetCollideable()!;
+
+		Assert(collision.GetCollisionAngles() == vec3_angle);
+
+		TraceFilterEntityIgnoreOther traceFilter = new(entity, ignore, collisionGroup);
+
+		ptr = default;
+		enginetrace.SweepCollideable(collision, absStart, absEnd, collision.GetCollisionAngles(), mask, ref traceFilter, ref ptr);
+	}
+
 	public static void TraceEntity<IF>(BaseEntity entity, in Vector3 absStart, in Vector3 absEnd, Mask mask, scoped ref IF filter, out Trace ptr) where IF : struct, ITraceFilter {
 		ICollideable collision = entity.GetCollideable()!;
 
@@ -508,6 +519,19 @@ public struct TraceFilterEntity(BaseEntity entity, CollisionGroup collisionGroup
 		}
 
 		return TraceFilterSimple.ShouldHitEntity(handleEntity, contentsMask);
+	}
+}
+
+public struct TraceFilterEntityIgnoreOther(BaseEntity entity, IHandleEntity? ignore, CollisionGroup collisionGroup) : ITraceFilter
+{
+	public TraceFilterEntity TraceFilterEntity = new(entity, collisionGroup);
+	public IHandleEntity? IgnoreOther = ignore;
+
+	public bool ShouldHitEntity(IHandleEntity handleEntity, Contents contentsMask) {
+		if (handleEntity == IgnoreOther)
+			return false;
+
+		return TraceFilterEntity.ShouldHitEntity(handleEntity, contentsMask);
 	}
 }
 

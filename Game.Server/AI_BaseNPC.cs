@@ -262,6 +262,13 @@ public enum ScriptStateType
 	CustomMoveToMark,
 }
 
+public enum CanPlaySequence_t
+{
+	CannotPlay = 0,
+	CanPlayNow,
+	CanPlayEnqueued,
+}
+
 public enum NPCInteractionState
 {
 	NotRunning = 0,
@@ -356,6 +363,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		DEFINE.KEYFIELD(nameof(HintGroupNavLimiting), FieldType.Boolean, "hintlimiting"),
 		DEFINE.KEYFIELD(nameof(IgnoreUnseenEnemies), FieldType.Boolean, "ignoreunseenenemies"),
 		DEFINE.KEYFIELD(nameof(EnemyFilterName), FieldType.String, "enemyfilter"),
+		DEFINE.KEYFIELD(nameof(WakeSquad), FieldType.Boolean, "wakesquad"),
 
 		DEFINE.OUTPUT(nameof(OnHearWorld), "OnHearWorld", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnHearPlayer), "OnHearPlayer", eventFuncs),
@@ -366,6 +374,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		DEFINE.OUTPUT(nameof(OnFoundPlayer), "OnFoundPlayer", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnLostPlayerLOS), "OnLostPlayerLOS", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnLostPlayer), "OnLostPlayer", eventFuncs),
+		DEFINE.OUTPUT(nameof(OnWake), "OnWake", eventFuncs),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
@@ -520,6 +529,9 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public OutputEvent OnHearCombat = new();
 	public OutputEvent OnLostEnemy = new();
 	public OutputEvent OnLostPlayer = new();
+	public OutputEvent OnWake = new();
+	public bool WakeSquad;
+	public long WakeTick;
 	public OutputEHANDLE OnFoundEnemy = new();
 	public OutputEvent OnLostEnemyLOS = new();
 	public OutputEHANDLE OnFoundPlayer = new();
@@ -2618,7 +2630,364 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public bool IsInAScript() => InAScript;
 	public void SetInAScript(bool script) => InAScript = script;
 
-	public bool CineCleanup() => throw new NotImplementedException();
+	public NPCState GetIdealState() => IdealNPCState;
+
+	public bool IsRunningDynamicInteraction() => InteractionState != NPCInteractionState.NotRunning && Cine.Get() != null;
+
+	public static readonly ConVar sv_test_scripted_sequences = new("sv_test_scripted_sequences", "0", FCvar.None, "Tests for scripted sequences that are embedded in the world. Run through your map with this set to check for NPCs falling through the world.");
+
+	public bool CineCleanup() {
+		AI_ScriptedSequence? oldCine = Cine.Get();
+		EntityFlags savedFlags = oldCine != null ? oldCine.SavedFlags : GetFlags();
+
+		bool destroyCine = false;
+		if (IsRunningDynamicInteraction())
+			throw new NotImplementedException();
+
+		if (oldCine != null) {
+			oldCine.SetTarget(null);
+			SetEffects(oldCine.SavedEffects);
+
+			SetCollisionGroup(oldCine.SavedCollisionGroup);
+		}
+		else
+			AddSolidFlags(SolidFlags.NotStandable);
+
+		Cine.Set(null);
+		SetTarget(null);
+		SetGoalEnt(null);
+		if (LifeState == (int)Source.LifeState.Dying)
+			throw new NotImplementedException();
+
+		if (oldCine != null && !string.IsNullOrEmpty(oldCine.Play) && oldCine.PlayedSequence()) {
+			if (!oldCine.HasSpawnFlags(AI_ScriptedSequence.SF_SCRIPT_DONT_TELEPORT_AT_END)) {
+				GetBonePosition(0, out Vector3 newOrigin, out _);
+
+				Vector3 oldOrigin = GetLocalOrigin();
+
+				if ((oldOrigin - newOrigin).Length2D() < 8.0)
+					newOrigin = oldOrigin;
+
+				Vector3 origin = GetLocalOrigin();
+
+				origin.X = newOrigin.X;
+				origin.Y = newOrigin.Y;
+				origin.Z += 1;
+
+				if ((savedFlags & EntityFlags.Fly) != 0) {
+					origin.Z = newOrigin.Z;
+					SetLocalOrigin(origin);
+				}
+				else {
+					SetLocalOrigin(origin);
+
+					int drop = Util.DropToFloor(this, Mask.NPCSolid, AI_GetClosestPlayer());
+
+					if (drop < 0 || sv_test_scripted_sequences.GetBool())
+						SetLocalOrigin(oldOrigin);
+					else if (drop == 0) {
+						Vector3 dropOrigin = GetLocalOrigin();
+						dropOrigin.Z = newOrigin.Z;
+						SetLocalOrigin(dropOrigin);
+						SetGroundEntity(null);
+					}
+				}
+
+				origin = GetLocalOrigin();
+
+				if ((oldOrigin - origin).Length() > 8.0) {
+					Teleport(origin, null, null);
+					SetLocalOrigin(origin);
+					IncrementInterpolationFrame();
+				}
+
+				if (Health <= 0) {
+					SetIdealState(NPCState.Dead);
+					SetCondition((int)SCOND_t.COND_LIGHT_DAMAGE);
+					LifeState = (int)Source.LifeState.Dying;
+				}
+			}
+
+			Activity = Activity.ACT_RESET;
+		}
+
+		if (Health > 0)
+			SetIdealState(NPCState.Idle);
+		else {
+			SetIdealState(NPCState.Dead);
+			SetCondition((int)SCOND_t.COND_LIGHT_DAMAGE);
+		}
+
+		RemoveSpawnFlags(SF_NPC_WAIT_FOR_SCRIPT);
+
+		if (destroyCine)
+			Util.Remove(oldCine);
+
+		return true;
+	}
+
+	public override void HandleAnimEvent(ref AnimEvent animEvent) {
+		switch (animEvent.Event) {
+			case SCRIPT_EVENT_DEAD:
+				if (NPCState == NPCState.Script) {
+					LifeState = (int)Source.LifeState.Dying;
+					Health = 0;
+				}
+				break;
+			case SCRIPT_EVENT_NOT_DEAD:
+				if (NPCState == NPCState.Script) {
+					LifeState = (int)Source.LifeState.Alive;
+					Health = MaxHealth;
+				}
+				break;
+
+			case SCRIPT_EVENT_SOUND:
+				EmitSound(animEvent.Options);
+				break;
+
+			case SCRIPT_EVENT_SOUND_VOICE:
+				EmitSound(animEvent.Options);
+				break;
+
+			case SCRIPT_EVENT_SENTENCE_RND1:
+				if (random.RandomInt(0, 2) == 0)
+					break;
+				goto case SCRIPT_EVENT_SENTENCE;
+			case SCRIPT_EVENT_SENTENCE:
+				SENTENCEG_PlayRndSz(Edict()!, animEvent.Options, 1.0f, Source.Common.Audio.SoundLevel.LvlTalking, 0, 100);
+				break;
+
+			case SCRIPT_EVENT_FIREEVENT:
+				Cine.Get()?.FireScriptEvent(atoi(animEvent.Options));
+				break;
+			case SCRIPT_EVENT_FIRE_INPUT: {
+					Variant_t emptyVariant = default;
+					AcceptInput(animEvent.Options, this, this, emptyVariant, 0);
+					break;
+				}
+
+			case SCRIPT_EVENT_NOINTERRUPT:
+				Cine.Get()?.AllowInterrupt(false);
+				break;
+
+			case SCRIPT_EVENT_CANINTERRUPT:
+				Cine.Get()?.AllowInterrupt(true);
+				break;
+
+			case SCRIPT_EVENT_BODYGROUPON:
+			case SCRIPT_EVENT_BODYGROUPOFF:
+			case SCRIPT_EVENT_BODYGROUPTEMP:
+				DevMsg("Bodygroup!\n");
+				break;
+
+			case (int)Animevent.AE_NPC_ATTACK_BROADCAST:
+				break;
+
+			case NPC_EVENT_BODYDROP_HEAVY:
+				if ((GetFlags() & EntityFlags.OnGround) != 0)
+					EmitSound("AI_BaseNPC.BodyDrop_Heavy");
+				break;
+
+			case NPC_EVENT_BODYDROP_LIGHT:
+				if ((GetFlags() & EntityFlags.OnGround) != 0)
+					EmitSound("AI_BaseNPC.BodyDrop_Light");
+				break;
+
+			case NPC_EVENT_SWISHSOUND:
+				EmitSound("AI_BaseNPC.SwishSound");
+				break;
+
+			case NPC_EVENT_180TURN:
+				SetIdealActivity(Activity.ACT_IDLE);
+				Forget(AI_MemoryFlags.Turning);
+				SetBoneController(0, GetLocalAngles().Y);
+				IncrementInterpolationFrame();
+				break;
+
+			case NPC_EVENT_ITEM_PICKUP:
+				throw new NotImplementedException();
+
+			case NPC_EVENT_WEAPON_SET_SEQUENCE_NUMBER: {
+					BaseCombatWeapon? weapon = GetActiveWeapon();
+					if (weapon != null && animEvent.Options != null) {
+						int sequence = atoi(animEvent.Options);
+						if (sequence != -1)
+							weapon.ResetSequence(sequence);
+					}
+					break;
+				}
+
+			case NPC_EVENT_WEAPON_SET_SEQUENCE_NAME: {
+					BaseCombatWeapon? weapon = GetActiveWeapon();
+					if (weapon != null && animEvent.Options != null) {
+						int sequence = weapon.LookupSequence(animEvent.Options);
+						if (sequence != -1)
+							weapon.ResetSequence(sequence);
+					}
+					break;
+				}
+
+			case NPC_EVENT_WEAPON_SET_ACTIVITY: {
+					BaseCombatWeapon? weapon = GetActiveWeapon();
+					if (weapon != null && animEvent.Options != null) {
+						Activity act = weapon.LookupActivity(animEvent.Options);
+						if (act != Activity.ACT_INVALID)
+							Weapon_SetActivity(act, 0);
+					}
+					break;
+				}
+
+			case NPC_EVENT_WEAPON_DROP:
+				throw new NotImplementedException();
+
+			case EVENT_WEAPON_RELOAD: {
+					BaseCombatWeapon? weapon = GetActiveWeapon();
+					if (weapon != null) {
+						weapon.WeaponSound(WeaponSound.ReloadNPC);
+						weapon.iClip1 = weapon.GetMaxClip1();
+						ClearCondition((int)SCOND_t.COND_LOW_PRIMARY_AMMO);
+						ClearCondition((int)SCOND_t.COND_NO_PRIMARY_AMMO);
+						ClearCondition((int)SCOND_t.COND_NO_SECONDARY_AMMO);
+					}
+					break;
+				}
+
+			case EVENT_WEAPON_RELOAD_SOUND:
+				GetActiveWeapon()?.WeaponSound(WeaponSound.ReloadNPC);
+				break;
+
+			case EVENT_WEAPON_RELOAD_FILL_CLIP: {
+					BaseCombatWeapon? weapon = GetActiveWeapon();
+					if (weapon != null) {
+						weapon.iClip1 = weapon.GetMaxClip1();
+						ClearCondition((int)SCOND_t.COND_LOW_PRIMARY_AMMO);
+						ClearCondition((int)SCOND_t.COND_NO_PRIMARY_AMMO);
+						ClearCondition((int)SCOND_t.COND_NO_SECONDARY_AMMO);
+					}
+					break;
+				}
+
+			case NPC_EVENT_LEFTFOOT:
+			case NPC_EVENT_RIGHTFOOT:
+				break;
+
+			case NPC_EVENT_OPEN_DOOR:
+				throw new NotImplementedException();
+
+			default:
+				if ((animEvent.Type & AnimEventType.NewEventSystem) != 0 && (animEvent.Type & AnimEventType.Server) != 0) {
+					if (animEvent.Event == (int)Animevent.AE_NPC_HOLSTER) {
+						BaseCombatWeapon? weapon = GetActiveWeapon();
+
+						Assert(weapon != null);
+
+						GetActiveWeapon()!.Holster();
+						SetActiveWeapon(null);
+
+						GetNavigator()!.SetArrivalSequence((int)Activity.ACT_INVALID);
+
+						if (DesiredWeaponState == DesiredWeaponState.ChangingDestroy)
+							Util.Remove(weapon);
+
+						if (DesiredWeaponState != DesiredWeaponState.Ignore) {
+							DesiredWeaponState = DesiredWeaponState.Ignore;
+							Activity = Activity.ACT_RESET;
+						}
+
+						return;
+					}
+					else if (animEvent.Event == (int)Animevent.AE_NPC_DRAW) {
+						if (GetActiveWeapon() != null) {
+							GetActiveWeapon()!.Deploy();
+
+							GetNavigator()!.SetArrivalSequence((int)Activity.ACT_INVALID);
+
+							if (DesiredWeaponState != DesiredWeaponState.Ignore) {
+								DesiredWeaponState = DesiredWeaponState.Ignore;
+								Activity = Activity.ACT_RESET;
+							}
+						}
+						return;
+					}
+					else if (animEvent.Event == (int)Animevent.AE_NPC_BODYDROP_HEAVY) {
+						if ((GetFlags() & EntityFlags.OnGround) != 0)
+							EmitSound("AI_BaseNPC.BodyDrop_Heavy");
+						return;
+					}
+					else if (animEvent.Event == (int)Animevent.AE_NPC_LEFTFOOT || animEvent.Event == (int)Animevent.AE_NPC_RIGHTFOOT)
+						return;
+					else if (animEvent.Event == (int)Animevent.AE_NPC_RAGDOLL)
+						throw new NotImplementedException();
+					else if (animEvent.Event == (int)Animevent.AE_NPC_ADDGESTURE) {
+						Activity act = LookupActivity(animEvent.Options);
+						if (act != Activity.ACT_INVALID) {
+							act = TranslateActivity(act);
+							if (act != Activity.ACT_INVALID)
+								AddGesture(act);
+						}
+						return;
+					}
+					else if (animEvent.Event == (int)Animevent.AE_NPC_RESTARTGESTURE)
+						throw new NotImplementedException();
+					else if (animEvent.Event == (int)Animevent.AE_NPC_WEAPON_DROP)
+						throw new NotImplementedException();
+					else if (animEvent.Event == (int)Animevent.AE_NPC_WEAPON_SET_ACTIVITY) {
+						BaseCombatWeapon? weapon = GetActiveWeapon();
+						if (weapon != null && animEvent.Options != null) {
+							Activity act = weapon.LookupActivity(animEvent.Options);
+							if (act == Activity.ACT_INVALID)
+								{
+								bool required = false;
+								act = Weapon_TranslateActivity((Activity)GetActivityID(animEvent.Options), ref required);
+							}
+
+							if (act != Activity.ACT_INVALID)
+								Weapon_SetActivity(act, 0);
+						}
+						return;
+					}
+					else if (animEvent.Event == (int)Animevent.AE_NPC_SET_INTERACTION_CANTDIE)
+						throw new NotImplementedException();
+					else if (animEvent.Event == (int)Animevent.AE_NPC_HURT_INTERACTION_PARTNER)
+						throw new NotImplementedException();
+				}
+
+				if (animEvent.Source != this || ((animEvent.Type & AnimEventType.NewEventSystem) != 0 && (animEvent.Type & AnimEventType.Weapon) != 0) || (animEvent.Event >= EVENT_WEAPON && animEvent.Event <= EVENT_WEAPON_LAST))
+					Weapon_HandleAnimEvent(ref animEvent);
+				else
+					base.HandleAnimEvent(ref animEvent);
+				break;
+		}
+	}
+
+	public CanPlaySequence_t CanPlaySequence(bool disregardNPCState, ScriptInterrupt interruptLevel) {
+		CanPlaySequence_t ret = CanPlaySequence_t.CanPlayNow;
+
+		AI_ScriptedSequence? cine = Cine.Get();
+		if (cine != null) {
+			if (!cine.CanEnqueueAfter())
+				return CanPlaySequence_t.CannotPlay;
+
+			ret = CanPlaySequence_t.CanPlayEnqueued;
+		}
+
+		if (!IsAlive())
+			return CanPlaySequence_t.CannotPlay;
+
+		if (IsInAVehicle())
+			return CanPlaySequence_t.CannotPlay;
+
+		if (disregardNPCState)
+			return ret;
+
+		if (NPCState == NPCState.None || NPCState == NPCState.Idle || IdealNPCState == NPCState.Idle)
+			return ret;
+
+		if (NPCState == NPCState.Alert && interruptLevel >= ScriptInterrupt.ByName)
+			return ret;
+
+		return CanPlaySequence_t.CannotPlay;
+	}
 
 	public bool IsInLockedScene() => SceneTime > gpGlobals.CurTime;
 	public void AddSceneLock(TimeUnit_t duration = 0.2) => SceneTime = Math.Max(gpGlobals.CurTime + duration, SceneTime);
@@ -4598,6 +4967,123 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 				TaskComplete();
 				break;
 
+			case TASK_SCRIPT_RUN_TO_TARGET:
+			case TASK_SCRIPT_WALK_TO_TARGET:
+			case TASK_SCRIPT_CUSTOM_MOVE_TO_TARGET:
+				StartScriptMoveToTargetTask(task.Task);
+				break;
+
+			case TASK_WAIT_FOR_SCRIPT: {
+					if (Cine.Get() == null) {
+						DevMsg("Scripted sequence destroyed while in use\n");
+						TaskFail(AI_TaskFailureCode.ScheduleNotFound);
+						break;
+					}
+
+					break;
+				}
+
+			case TASK_PUSH_SCRIPT_ARRIVAL_ACTIVITY: {
+					AI_ScriptedSequence? cine = Cine.Get();
+					if (cine == null) {
+						DevMsg("Scripted sequence destroyed while in use\n");
+						TaskFail(AI_TaskFailureCode.ScheduleNotFound);
+						break;
+					}
+
+					string? arrivalText;
+
+					if (!string.IsNullOrEmpty(cine.EntryName))
+						arrivalText = cine.EntryName;
+					else if (!string.IsNullOrEmpty(cine.Play))
+						arrivalText = cine.Play;
+					else if (!string.IsNullOrEmpty(cine.PostIdle))
+						arrivalText = cine.PostIdle;
+					else
+						arrivalText = null;
+
+					ScriptArrivalActivity = AIN_DEF_ACTIVITY;
+					ScriptArrivalSequence = null;
+
+					if (arrivalText != null) {
+						ScriptArrivalActivity = (Activity)GetActivityID(arrivalText);
+						if (ScriptArrivalActivity == Activity.ACT_INVALID)
+							ScriptArrivalSequence = arrivalText;
+					}
+
+					TaskComplete();
+					break;
+				}
+
+			case TASK_PLAY_SCRIPT: {
+					GetNavigator()!.IgnoreStoppingPath();
+
+					if (HasMovement(GetSequence()) || Cine.Get()!.IgnoreGravity) {
+						AddFlag(EntityFlags.Fly);
+						SetGroundEntity(null);
+					}
+
+					Cine.Get()?.SynchronizeSequence(this);
+
+					ScriptState = ScriptStateType.Playing;
+					break;
+				}
+
+			case TASK_PLAY_SCRIPT_POST_IDLE:
+				ScriptState = ScriptStateType.PostIdle;
+				break;
+
+			case TASK_PRE_SCRIPT: {
+					if (!AI_ScriptedSequence.ai_task_pre_script.GetBool())
+						TaskComplete();
+					else if (Cine.Get() == null)
+						TaskComplete();
+					else {
+						Cine.Get()!.DelayStart(true);
+						TaskComplete();
+					}
+					break;
+				}
+
+			case TASK_ENABLE_SCRIPT: {
+					AI_ScriptedSequence cine = Cine.Get()!;
+					if (!string.IsNullOrEmpty(cine.PreIdle)) {
+						cine.StartSequence(this, cine.PreIdle, false);
+						if (cine.PreIdle == cine.Play)
+							PlaybackRate = 0;
+					}
+					else if (ScriptState != ScriptStateType.CustomMoveToMark) {
+						if (GetActivity() == Activity.ACT_WALK ||
+							 GetActivity() == Activity.ACT_RUN ||
+							 GetActivity() == Activity.ACT_WALK_AIM ||
+							 GetActivity() == Activity.ACT_RUN_AIM)
+							SetActivity(Activity.ACT_IDLE);
+					}
+					break;
+				}
+
+			case TASK_PLANT_ON_SCRIPT: {
+					if (TargetEnt.Get() != null)
+						SetLocalOrigin(TargetEnt.Get()!.GetAbsOrigin());
+
+					TaskComplete();
+					break;
+				}
+
+			case TASK_FACE_SCRIPT: {
+					if (TargetEnt.Get() != null)
+						GetMotor()!.SetIdealYaw(Util.AngleMod(TargetEnt.Get()!.GetLocalAngles().Y));
+
+					if (ScriptState != ScriptStateType.CustomMoveToMark) {
+						SetTurnActivity();
+
+						SetActivity(GetIdealActivity());
+					}
+
+					GetNavigator()!.StopMoving();
+					break;
+				}
+
 			case TASK_GET_CHASE_PATH_TO_ENEMY: {
 					BaseEntity? enemy = GetEnemy();
 					if (enemy == null) {
@@ -4682,9 +5168,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_MOVE_TO_GOAL_RANGE:
 			case TASK_WAIT_UNTIL_NO_DANGER_SOUND:
 			case TASK_TARGET_PLAYER:
-			case TASK_SCRIPT_RUN_TO_TARGET:
-			case TASK_SCRIPT_WALK_TO_TARGET:
-			case TASK_SCRIPT_CUSTOM_MOVE_TO_TARGET:
 			case TASK_CLEAR_MOVE_WAIT:
 			case TASK_MELEE_ATTACK1:
 			case TASK_MELEE_ATTACK2:
@@ -4724,14 +5207,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_SOUND_PAIN:
 			case TASK_SOUND_ANGRY:
 			case TASK_WAIT_FOR_SPEAK_FINISH:
-			case TASK_WAIT_FOR_SCRIPT:
-			case TASK_PUSH_SCRIPT_ARRIVAL_ACTIVITY:
-			case TASK_PLAY_SCRIPT:
-			case TASK_PLAY_SCRIPT_POST_IDLE:
-			case TASK_PRE_SCRIPT:
-			case TASK_ENABLE_SCRIPT:
-			case TASK_PLANT_ON_SCRIPT:
-			case TASK_FACE_SCRIPT:
 			case TASK_WEAPON_FIND:
 			case TASK_ITEM_PICKUP:
 			case TASK_WEAPON_PICKUP:
@@ -4994,6 +5469,80 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 					break;
 				}
 
+			case TASK_SCRIPT_RUN_TO_TARGET:
+			case TASK_SCRIPT_WALK_TO_TARGET:
+			case TASK_SCRIPT_CUSTOM_MOVE_TO_TARGET:
+				StartScriptMoveToTargetTask(task.Task);
+				break;
+
+			case TASK_WAIT_FOR_SCRIPT: {
+					AI_ScriptedSequence? cine = Cine.Get();
+					if (cine != null && cine.IsTimeToStart()) {
+						TaskComplete();
+						cine.OnBeginSequence();
+
+						if (!string.IsNullOrEmpty(cine.EntryName))
+							cine.StartSequence(this, cine.EntryName, true);
+						else
+							cine.StartSequence(this, cine.Play, true);
+
+						if (Cine.Get() == null)
+							ClearSchedule("Waiting for script, but lost script!");
+
+						PlaybackRate = 1.0;
+					}
+					else if (cine == null) {
+						DevMsg("Cine died!\n");
+						TaskComplete();
+					}
+					else if (IsRunningDynamicInteraction())
+						throw new NotImplementedException();
+					break;
+				}
+
+			case TASK_PLAY_SCRIPT: {
+					AutoMovement();
+
+					if (IsSequenceFinished()) {
+						if (Cine.Get()!.FinishedActionSequence(this)) {
+							Cine.Get()?.SequenceDone(this);
+
+							TaskComplete();
+						}
+						else if (Cine.Get() != null && Cine.Get()!.ForceSynch)
+							Cine.Get()!.SynchronizeSequence(this);
+					}
+					break;
+				}
+
+			case TASK_PLAY_SCRIPT_POST_IDLE: {
+					AI_ScriptedSequence? cine = Cine.Get();
+					if (cine == null) {
+						DevMsg("Scripted sequence destroyed while in use\n");
+						TaskFail(AI_TaskFailureCode.ScheduleNotFound);
+						break;
+					}
+
+					if (IsSequenceFinished() || cine.NextCine.Get() != null)
+						cine.PostIdleDone(this);
+					break;
+				}
+
+			case TASK_ENABLE_SCRIPT: {
+					AI_ScriptedSequence? cine = Cine.Get();
+					if (cine == null) {
+						DevMsg("Scripted sequence destroyed while in use\n");
+						TaskFail(AI_TaskFailureCode.ScheduleNotFound);
+						break;
+					}
+
+					if (!cine.IsWaitingForBegin()) {
+						cine.DelayStart(false);
+						TaskComplete();
+					}
+					break;
+				}
+
 			case TASK_PLAY_HINT_ACTIVITY:
 			case TASK_ADD_GESTURE_WAIT:
 			case TASK_FIND_COVER_FROM_BEST_SOUND:
@@ -5012,9 +5561,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_ITEM_RUN_PATH:
 			case TASK_DIE:
 			case TASK_WAIT_FOR_SPEAK_FINISH:
-			case TASK_SCRIPT_RUN_TO_TARGET:
-			case TASK_SCRIPT_WALK_TO_TARGET:
-			case TASK_SCRIPT_CUSTOM_MOVE_TO_TARGET:
 			case TASK_RANGE_ATTACK1:
 			case TASK_RANGE_ATTACK2:
 			case TASK_MELEE_ATTACK1:
@@ -5024,10 +5570,6 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 			case TASK_RELOAD:
 			case TASK_SMALL_FLINCH:
 			case TASK_BIG_FLINCH:
-			case TASK_WAIT_FOR_SCRIPT:
-			case TASK_PLAY_SCRIPT:
-			case TASK_PLAY_SCRIPT_POST_IDLE:
-			case TASK_ENABLE_SCRIPT:
 			case TASK_WEAPON_PICKUP:
 			case TASK_ITEM_PICKUP:
 				throw new NotImplementedException();
@@ -6983,7 +7525,98 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return idealActivity;
 	}
 
-	public virtual int GetScriptCustomMoveSequence() => throw new NotImplementedException();
+	public Activity GetScriptCustomMoveActivity() {
+		Activity activity = Activity.ACT_WALK;
+
+		AI_ScriptedSequence? cine = Cine.Get();
+		if (cine != null && !string.IsNullOrEmpty(cine.CustomMove)) {
+			activity = LookupActivity(cine.CustomMove);
+			if (activity == Activity.ACT_INVALID) {
+				if (LookupSequence(cine.CustomMove) != (int)Activity.ACT_INVALID)
+					activity = Activity.ACT_SCRIPT_CUSTOM_MOVE;
+				else
+					activity = Activity.ACT_WALK;
+			}
+		}
+		else if (!string.IsNullOrEmpty(SceneCustomMoveSeq))
+			activity = Activity.ACT_SCRIPT_CUSTOM_MOVE;
+
+		return activity;
+	}
+
+	public virtual int GetScriptCustomMoveSequence() {
+		int sequence = StudioHdr.ACTIVITY_NOT_AVAILABLE;
+
+		AI_ScriptedSequence? cine = Cine.Get();
+		if (cine != null) {
+			sequence = LookupSequence(cine.CustomMove);
+			if (sequence == StudioHdr.ACTIVITY_NOT_AVAILABLE)
+				DevMsg($"SCRIPT_CUSTOM_MOVE: {GetClassname()} has no sequence:{cine.CustomMove}\n");
+		}
+		else if (!string.IsNullOrEmpty(SceneCustomMoveSeq)) {
+			sequence = LookupSequence(SceneCustomMoveSeq);
+			if (sequence == StudioHdr.ACTIVITY_NOT_AVAILABLE)
+				Warning($"SCRIPT_CUSTOM_MOVE: {GetClassname()} failed scripted custom move. Has no sequence called: {SceneCustomMoveSeq}\n");
+		}
+
+		if (sequence == StudioHdr.ACTIVITY_NOT_AVAILABLE)
+			sequence = SelectWeightedSequence(Activity.ACT_WALK);
+
+		return sequence;
+	}
+
+	public void StartScriptMoveToTargetTask(int task) {
+		Activity newActivity;
+
+		if (TargetEnt.Get() == null)
+			TaskFail(AI_TaskFailureCode.NoTarget);
+		else if ((TargetEnt.Get()!.GetAbsOrigin() - GetLocalOrigin()).Length() < 1)
+			TaskComplete();
+		else {
+			if (task == TASK_SCRIPT_WALK_TO_TARGET)
+				newActivity = Activity.ACT_WALK;
+			else if (task == TASK_SCRIPT_RUN_TO_TARGET)
+				newActivity = Activity.ACT_RUN;
+			else
+				newActivity = GetScriptCustomMoveActivity();
+
+			if (newActivity != Activity.ACT_SCRIPT_CUSTOM_MOVE && TranslateActivity(newActivity) == Activity.ACT_INVALID)
+				Assert(false);
+			else {
+				if (TargetEnt.Get() == null)
+					TaskFail(AI_TaskFailureCode.NoTarget);
+				else {
+					AI_NavGoal goal = new(NavGoalType.TargetEnt, newActivity);
+
+					if (GetState() == NPCState.Script &&
+						 (ScriptArrivalActivity != AIN_DEF_ACTIVITY ||
+						   ScriptArrivalSequence != null)) {
+						if (ScriptArrivalActivity != AIN_DEF_ACTIVITY)
+							goal.ArrivalActivity = ScriptArrivalActivity;
+						else
+							goal.ArrivalSequence = LookupSequence(ScriptArrivalSequence);
+					}
+
+					if (!GetNavigator()!.SetGoal(goal, AI_NavSetGoalFlags.DiscardIfFail)) {
+						if (GetNavigator()!.GetNavFailCounter() == 0) {
+							DevWarning($"{GetDebugName()} {TaskName(task)} failed Urgent Movement, retrying\n");
+							return;
+						}
+
+						DevWarning($"{GetDebugName()} {TaskName(task)} failed Urgent Movement, abandoning schedule\n");
+						TaskFail(AI_TaskFailureCode.NoRoute);
+					}
+					else
+						GetNavigator()!.SetArrivalDirection(TargetEnt.Get()!.GetAbsAngles());
+				}
+			}
+		}
+
+		ScriptArrivalActivity = AIN_DEF_ACTIVITY;
+		ScriptArrivalSequence = null;
+
+		TaskComplete();
+	}
 
 	static AI_BaseNPC? ResolveLastWarn;
 	static Activity ResolveLastWarnActivity;
@@ -7608,7 +8241,26 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 	}
 
-	public void Wake(bool fireOutput = true) => throw new NotImplementedException();
+	public bool WokeThisTick() => WakeTick == gpGlobals.TickCount;
+
+	public void Wake(bool fireOutput = true) {
+		if (GetSleepState() != AI_SleepState.Awake) {
+			WakeTick = gpGlobals.TickCount;
+			SetSleepState(AI_SleepState.Awake);
+			RemoveEffects(EntityEffects.NoDraw);
+			if (fireOutput)
+				OnWake.FireOutput(this, this);
+
+			if (WakeSquad && GetSquad() != null) {
+				for (AI_BaseNPC? squadMember = GetSquad()!.GetFirstMember(out int iter); squadMember != null; squadMember = GetSquad()!.GetNextMember(ref iter)) {
+					if (squadMember.IsAlive() && squadMember != this) {
+						squadMember.WakeSquad = false;
+						squadMember.Wake();
+					}
+				}
+			}
+		}
+	}
 
 	public void UpdateSleepState(bool inPVS) {
 		if (GetSleepState() > AI_SleepState.Awake) {
@@ -7969,6 +8621,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		ScheduleState.TaskRanAutomovement = true;
 
 		if (GetIntervalMovement(interval, out _, out Vector3 newPos, out QAngle newAngles)) {
+			Cine.Get()?.ModifyScriptedAutoMovement(ref newPos);
+
 			if (GetMoveType() == Source.MoveType.Step) {
 				if ((GetFlags() & EntityFlags.Fly) == 0) {
 					target ??= GetNavTargetEntity();

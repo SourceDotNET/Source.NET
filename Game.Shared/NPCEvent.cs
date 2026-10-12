@@ -25,6 +25,19 @@ public static class NPCEventGlobals
 	public const int EVENT_WEAPON = 3000;
 	public const int EVENT_CLIENT = 5000;
 
+	public const int NPC_EVENT_BODYDROP_LIGHT = 2001;
+	public const int NPC_EVENT_BODYDROP_HEAVY = 2002;
+	public const int NPC_EVENT_SWISHSOUND = 2010;
+	public const int NPC_EVENT_180TURN = 2020;
+	public const int NPC_EVENT_ITEM_PICKUP = 2040;
+	public const int NPC_EVENT_WEAPON_DROP = 2041;
+	public const int NPC_EVENT_WEAPON_SET_SEQUENCE_NAME = 2042;
+	public const int NPC_EVENT_WEAPON_SET_SEQUENCE_NUMBER = 2043;
+	public const int NPC_EVENT_WEAPON_SET_ACTIVITY = 2044;
+	public const int NPC_EVENT_LEFTFOOT = 2050;
+	public const int NPC_EVENT_RIGHTFOOT = 2051;
+	public const int NPC_EVENT_OPEN_DOOR = 2060;
+
 	public const int EVENT_WEAPON_MELEE_HIT = 3001;
 	public const int EVENT_WEAPON_SMG1 = 3002;
 	public const int EVENT_WEAPON_MELEE_SWISH = 3003;

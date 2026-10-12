@@ -256,10 +256,12 @@ public static partial class Util
 			DevMsg(1, $"{dest.GetClassname()} ({dest.GetDebugName()}) was unable to point at an entity named: {target}\n");
 	}
 
-	public static int DropToFloor(BaseEntity entity, Mask mask) {
+	public static int DropToFloor(BaseEntity entity, Mask mask) => DropToFloor(entity, mask, null);
+
+	public static int DropToFloor(BaseEntity entity, Mask mask, BaseEntity? ignore) {
 		entity.SetGroundEntity(null);
 
-		TraceEntity(entity, entity.GetAbsOrigin(), entity.GetAbsOrigin() - new Vector3(0, 0, 256), mask, out Trace trace);
+		TraceEntity(entity, entity.GetAbsOrigin(), entity.GetAbsOrigin() - new Vector3(0, 0, 256), mask, ignore, entity.GetCollisionGroup(), out Trace trace);
 
 		if (trace.AllSolid)
 			return -1;
