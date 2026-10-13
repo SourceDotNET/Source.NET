@@ -165,7 +165,27 @@ public static partial class LuaRender
 	// todo: GetFullScreenDepthTexture
 	// todo: GetResolvedFullFrameDepth
 	// todo: BindLocalCubemap
-	// todo: UpdateScreenEffectTexture
+	static readonly Vector3[] SuppressedAmbientLight = [new(1, 1, 1), new(1, 1, 1), new(1, 1, 1), new(1, 1, 1), new(1, 1, 1), new(1, 1, 1)];
+
+	[LuaFunction]
+	static int SuppressEngineLighting(ILuaInterface lua) {
+		bool suppress = lua.GetBool(1);
+		modelrender.SuppressEngineLighting(suppress);
+		if (suppress) {
+			studiorender.SetAmbientLightColors(SuppressedAmbientLight);
+			studiorender.SetLocalLights(0, null);
+		}
+		return 0;
+	}
+
+	[LuaFunction]
+	static int UpdateScreenEffectTexture(ILuaInterface lua) {
+		int textureIndex = 0;
+		if (lua.GetType(1) == LuaType.Number)
+			textureIndex = (int)lua.GetNumber(1);
+		ViewScene.UpdateScreenEffectTexture(textureIndex, 0, 0, ScreenWidth(), ScreenHeight(), false);
+		return 0;
+	}
 	// todo: UpdateRefractTexture
 	// todo: GetRefractTexture
 	// todo: UpdatePowerOfTwoTexture

@@ -93,6 +93,12 @@ public static partial class LuaPlayer
 	}
 
 	[LuaMethod]
+	static int Player__IsPlayer(ILuaInterface lua) {
+		lua.PushBool(true);
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Player__SteamID(ILuaInterface lua) {
 		BasePlayer player = Get_Player(1, false)!;
 		lua.PushString(player.GetNetworkIDString());

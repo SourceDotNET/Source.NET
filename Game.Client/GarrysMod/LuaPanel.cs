@@ -77,6 +77,17 @@ public static partial class LuaVGUI
 	}
 
 	[LuaMethod]
+	static int Panel__PaintAt(ILuaInterface lua) {
+		Panel? panel = Get_Panel(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+		panel.PaintAt((int)lua.CheckNumber(2), (int)lua.CheckNumber(3));
+		return 0;
+	}
+
+	[LuaMethod]
 	static int Panel____newindex(ILuaInterface lua) {
 		Panel? panel = Get_Panel(1);
 		if (panel == null)

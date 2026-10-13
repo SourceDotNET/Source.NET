@@ -96,6 +96,25 @@ public static partial class LuaUtil
 	}
 
 	[LuaFunction]
+	static int AimVector(ILuaInterface lua) {
+		QAngle angles = LuaAngle.Get_Angle(1);
+		float fov = (float)lua.GetNumber(2);
+		float x = (float)lua.GetNumber(3);
+		float y = (float)lua.GetNumber(4);
+		float w = (float)lua.GetNumber(5);
+		float h = (float)lua.GetNumber(6);
+		float halfW = w * 0.5f;
+		float right = x - halfW;
+		float up = h * 0.5f - y;
+		float forward = halfW / MathF.Tan(fov * (MathF.PI / 360.0f));
+		MathLib.AngleVectors(angles, out Vector3 fwd, out Vector3 rt, out Vector3 upv);
+		Vector3 dir = fwd * forward + rt * right + upv * up;
+		MathLib.VectorNormalize(ref dir);
+		LuaVector.Push_Vector(dir);
+		return 1;
+	}
+
+	[LuaFunction]
 	static int IsValidRagdoll(ILuaInterface lua) {
 		string? name = lua.CheckString(1);
 		if (!string.IsNullOrEmpty(name) && ' ' < name[0]) {

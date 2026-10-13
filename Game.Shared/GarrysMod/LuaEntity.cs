@@ -568,6 +568,28 @@ public static partial class LuaEntity
 #endif
 
 	[LuaMethod]
+	static int Entity__SetNoDraw(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (lua.GetBool(2))
+			ent.AddEffects(EntityEffects.NoDraw);
+		else
+			ent.RemoveEffects(EntityEffects.NoDraw);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__IsPlayer(ILuaInterface lua) {
+		lua.PushBool(false);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__IsNPC(ILuaInterface lua) {
+		lua.PushBool(false);
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Entity__IsScripted(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		ReadOnlySpan<char> name = ent.GetLuaScriptName();

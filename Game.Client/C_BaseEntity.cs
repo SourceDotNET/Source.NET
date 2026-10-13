@@ -2143,7 +2143,7 @@ public partial class C_BaseEntity : IClientEntity
 	public virtual void Precache() { }
 
 	public PredictionContext? PredictionContext;
-	bool Dormant;
+	public bool Dormant;
 	bool Predictable;
 	bool DormantPredictable;
 	long IncomingPacketEntityBecameDormant;
