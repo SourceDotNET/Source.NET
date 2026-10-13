@@ -72,7 +72,8 @@ public unsafe class SDL3_OpenGL46_Context(nint window, nint ctx) : IGraphicsCont
 	public nint HardwareHandle => ctx;
 
 	public void MakeCurrent() {
-		SDL3.SDL_GL_MakeCurrent((SDL_Window*)window, (SDL_GLContextState*)ctx);
+		if (!SDL3.SDL_GL_MakeCurrent((SDL_Window*)window, (SDL_GLContextState*)ctx))
+			Warning($"Could not make GL context current: {SDL3.SDL_GetError()}\n");
 	}
 
 	public void SetSwapInterval(float swapInterval) {
@@ -87,18 +88,26 @@ public unsafe class SDL3_OpenGL46_Context(nint window, nint ctx) : IGraphicsCont
 	}
 
 	public IGraphicsContext? CreateSharedContext() {
-		MakeCurrent();
-		SDL3.SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
-		nint shared = (nint)SDL3.SDL_GL_CreateContext((SDL_Window*)window);
-		SDL3.SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
-		MakeCurrent();
-
-		if (shared == 0) {
-			Warning($"Could not create shared GL context: {SDL3.SDL_GetError()}\n");
+		SDL_Window* sharedWindow = SDL3.SDL_CreateWindow("", 1, 1, SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN);
+		if (sharedWindow == null) {
+			Warning($"Could not create shared GL context window: {SDL3.SDL_GetError()}\n");
 			return null;
 		}
 
-		return new SDL3_OpenGL46_Context(window, shared);
+		MakeCurrent();
+		SDL3.SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
+		nint shared = (nint)SDL3.SDL_GL_CreateContext(sharedWindow);
+		SDL3.SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
+
+		if (shared == 0) {
+			Warning($"Could not create shared GL context: {SDL3.SDL_GetError()}\n");
+			MakeCurrent();
+			SDL3.SDL_DestroyWindow(sharedWindow);
+			return null;
+		}
+
+		MakeCurrent();
+		return new SDL3_OpenGL46_Context((nint)sharedWindow, shared);
 	}
 }
 
