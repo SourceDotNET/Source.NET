@@ -16,7 +16,7 @@ public enum ShaderUsingFlags
 public interface IShaderSystem
 {
 	public static bool IsTranslucent(IShaderShadow renderState) {
-		return (renderState.GetFlags() & ShaderFlags.OpacityTranslucent) != 0;
+		return (renderState.GetFlags() & ShaderRenderStateFlags.OpacityTranslucent) != 0;
 	}
 
 	void BindTexture(Sampler sampler, ITexture texture, int frame = 0);

@@ -1361,7 +1361,7 @@ public class Material : IMaterialInternal
 	public bool IsAlphaTested() {
 		Precache();
 		if (Shader != null && IsValidRenderState())
-			return (ShaderRenderState.GetFlags() & ShaderFlags.OpacityAlphaTest) != 0 || GetMaterialVarFlag(MaterialVarFlags.AlphaTest);
+			return (ShaderRenderState.GetFlags() & ShaderRenderStateFlags.OpacityAlphaTest) != 0 || GetMaterialVarFlag(MaterialVarFlags.AlphaTest);
 
 		return false;
 	}

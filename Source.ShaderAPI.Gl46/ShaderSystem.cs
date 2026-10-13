@@ -293,12 +293,12 @@ public class ShaderSystem : IShaderSystemInternal
 
 	private void ComputeRenderStateFlagsFromSnapshot(IShaderShadow renderState) {
 		if (ShaderAPI.IsTranslucent(renderState))
-			renderState.SetFlags(renderState.GetFlags() | ShaderFlags.OpacityTranslucent);
+			renderState.SetFlags(renderState.GetFlags() | ShaderRenderStateFlags.OpacityTranslucent);
 		else {
 			if (ShaderAPI.IsAlphaTested(renderState))
-				renderState.SetFlags(renderState.GetFlags() | ShaderFlags.OpacityAlphaTest);
+				renderState.SetFlags(renderState.GetFlags() | ShaderRenderStateFlags.OpacityAlphaTest);
 			else
-				renderState.SetFlags(renderState.GetFlags() | ShaderFlags.OpacityOpaque);
+				renderState.SetFlags(renderState.GetFlags() | ShaderRenderStateFlags.OpacityOpaque);
 		}
 	}
 

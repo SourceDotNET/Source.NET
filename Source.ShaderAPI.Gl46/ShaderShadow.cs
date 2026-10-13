@@ -123,9 +123,9 @@ public class ShadowStateGl46 : IShaderShadow
 		glDeleteBuffers(BASE_UBO, VERTEX_UBO, PIXEL_UBO);
 	}
 
-	ShaderFlags Flags;
-	public ShaderFlags GetFlags() => Flags;
-	public void SetFlags(ShaderFlags flags) => Flags = flags;
+	ShaderRenderStateFlags Flags;
+	public ShaderRenderStateFlags GetFlags() => Flags;
+	public void SetFlags(ShaderRenderStateFlags flags) => Flags = flags;
 
 	public unsafe void Activate() {
 		CreateShaderObjects(); // Recreate UBO's, if we were lazy-loaded
