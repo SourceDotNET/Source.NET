@@ -27,11 +27,6 @@ public struct DecodeInfo
 	}
 }
 
-public static class PackedEntitiesManager
-{
-	public static ReadOnlySpan<char> GetObjectClassName(int objectID) => "[unknown]";
-}
-
 public delegate void EncodeFn(object instance, ref DVariant var, SendProp prop, bf_write writeOut, int objectID);
 public delegate void DecodeFn(ref DecodeInfo info);
 public delegate int CompareDeltasFn(SendProp prop, bf_read p1, bf_read p2);
@@ -87,13 +82,13 @@ public struct PropTypeFns
 				val = 0;
 
 				if ((flags & PropFlags.RoundUp) == 0)
-					Warning($"(class {PackedEntitiesManager.GetObjectClassName(objectID)}): Out-of-range value ({incoming} < {prop.LowValue}) in SendPropFloat '{prop.FieldInfo}', clamping.\n");
+					Warning($"(class {Server.PackedEntities.GetObjectClassName(objectID)}): Out-of-range value ({incoming} < {prop.LowValue}) in SendPropFloat '{prop.GetName()}', clamping.\n");
 			}
 			else if (incoming > prop.HighValue) {
 				val = (uint)((1 << prop.Bits) - 1);
 
 				if ((flags & PropFlags.RoundDown) == 0)
-					Warning($"(class {PackedEntitiesManager.GetObjectClassName(objectID)}): Out-of-range value ({incoming} > {prop.HighValue}) in SendPropFloat '{prop.FieldInfo}', clamping.\n");
+					Warning($"(class {Server.PackedEntities.GetObjectClassName(objectID)}): Out-of-range value ({incoming} > {prop.HighValue}) in SendPropFloat '{prop.GetName()}', clamping.\n");
 			}
 			else {
 				float fRangeVal = (incoming - prop.LowValue) * prop.HighLowMul;

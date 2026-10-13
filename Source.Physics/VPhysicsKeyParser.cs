@@ -107,7 +107,7 @@ internal class VPhysicsKeyParser : IVPhysicsKeyParser
 	}
 
 	public void ParseSolid(ref Solid solid, IVPhysicsKeyHandler? unknownKeyHandler) {
-		unknownKeyHandler?.SetDefaults(solid);
+		unknownKeyHandler?.SetDefaults(ref solid);
 
 		for (KeyValues? prop = CurrentBlock?.GetFirstSubKey(); prop != null; prop = prop.GetNextKey()) {
 			ReadOnlySpan<char> value = prop.GetString();
@@ -124,7 +124,7 @@ internal class VPhysicsKeyParser : IVPhysicsKeyParser
 				case "inertia": solid.Params.Inertia = prop.GetFloat(); break;
 				case "rotinertialimit": solid.Params.RotInertiaLimit = prop.GetFloat(); break;
 				case "volume": solid.Params.Volume = prop.GetFloat(); break;
-				default: unknownKeyHandler?.ParseKeyValue(solid, prop.Name, value); break;
+				default: unknownKeyHandler?.ParseKeyValue(ref solid, prop.Name, value); break;
 			}
 		}
 
@@ -133,7 +133,7 @@ internal class VPhysicsKeyParser : IVPhysicsKeyParser
 
 	public void ParseFluid(ref Fluid fluid, IVPhysicsKeyHandler? unknownKeyHandler) {
 		if (unknownKeyHandler != null)
-			unknownKeyHandler.SetDefaults(fluid);
+			unknownKeyHandler.SetDefaults(ref fluid);
 		else {
 			fluid = default;
 			CopyString(fluid.SurfaceProp, "water");
@@ -148,7 +148,7 @@ internal class VPhysicsKeyParser : IVPhysicsKeyParser
 				case "surfaceplane": fluid.Params.SurfacePlane = ParseVector4(value); break;
 				case "currentvelocity": fluid.Params.CurrentVelocity = ParseVector(value); break;
 				case "contents": fluid.Params.Contents = (Contents)prop.GetInt(); break;
-				default: unknownKeyHandler?.ParseKeyValue(fluid, prop.Name, value); break;
+				default: unknownKeyHandler?.ParseKeyValue(ref fluid, prop.Name, value); break;
 			}
 		}
 
@@ -157,7 +157,7 @@ internal class VPhysicsKeyParser : IVPhysicsKeyParser
 
 	public void ParseRagdollConstraint(ref ConstraintRagdollParams constraint, IVPhysicsKeyHandler? unknownKeyHandler) {
 		if (unknownKeyHandler != null)
-			unknownKeyHandler.SetDefaults(constraint);
+			unknownKeyHandler.SetDefaults(ref constraint);
 		else {
 			constraint = default;
 			constraint.ChildIndex = -1;
@@ -189,7 +189,7 @@ internal class VPhysicsKeyParser : IVPhysicsKeyParser
 					constraint.Axes[2].Torque = prop.GetFloat();
 					constraint.Axes[2].AngularVelocity = 0;
 					break;
-				default: unknownKeyHandler?.ParseKeyValue(constraint, prop.Name, value); break;
+				default: unknownKeyHandler?.ParseKeyValue(ref constraint, prop.Name, value); break;
 			}
 		}
 
@@ -208,18 +208,18 @@ internal class VPhysicsKeyParser : IVPhysicsKeyParser
 		NextBlock();
 	}
 
-	static void ParseCustomRecursive(KeyValues kv, object? custom, IVPhysicsKeyHandler? unknownKeyHandler) {
+	static void ParseCustomRecursive(KeyValues kv, ref object? custom, IVPhysicsKeyHandler? unknownKeyHandler) {
 		for (KeyValues? prop = kv.GetFirstSubKey(); prop != null; prop = prop.GetNextKey()) {
-			unknownKeyHandler?.ParseKeyValue(custom, prop.Name, prop.GetString());
-			ParseCustomRecursive(prop, custom, unknownKeyHandler);
+			unknownKeyHandler?.ParseKeyValue(ref custom, prop.Name, prop.GetString());
+			ParseCustomRecursive(prop, ref custom, unknownKeyHandler);
 		}
 	}
 
 	public void ParseCustom(ref object? custom, IVPhysicsKeyHandler? unknownKeyHandler) {
-		unknownKeyHandler?.SetDefaults(custom);
+		unknownKeyHandler?.SetDefaults(ref custom);
 
 		if (CurrentBlock != null)
-			ParseCustomRecursive(CurrentBlock, custom, unknownKeyHandler);
+			ParseCustomRecursive(CurrentBlock, ref custom, unknownKeyHandler);
 
 		NextBlock();
 	}
