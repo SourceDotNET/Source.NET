@@ -5,6 +5,7 @@ using Source.Common;
 using Source.Common.Engine;
 
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace Game.Client;
 
@@ -32,7 +33,11 @@ public class ClientRenderablesList : IPoolableObject
 	public readonly int[] RenderGroupCounts = new int[RENDER_GROUP_COUNT];
 
 	public void Init() {
-		Array.Clear(RenderGroups);
+		for (int i = 0; i < RENDER_GROUP_COUNT; i++) {
+			int count = RenderGroupCounts[i];
+			if (count > 0)
+				MemoryMarshal.CreateSpan(ref RenderGroups[i, 0], count).Clear();
+		}
 		Array.Clear(RenderGroupCounts);
 	}
 
