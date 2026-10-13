@@ -37,8 +37,9 @@ internal sealed unsafe class BoxPhysConvex : PhysConvex
 		ReadOnlySpan<Box3D.Plane> planes = Hull.Planes;
 
 		float inflate = SourceToBox.Distance(0.25f);
+		float tolerance = 0.01f * inflate;
 
-		Vector3[] verts = new Vector3[vertexCount];
+		List<Vector3> verts = new(vertexCount);
 		Span<int> faces = stackalloc int[32];
 		for (int v = 0; v < vertexCount; v++) {
 			Vector3 p = BoxToSource.Unitless(points[v]);
@@ -84,17 +85,28 @@ internal sealed unsafe class BoxPhysConvex : PhysConvex
 				float d2 = planes[faces[i2]].offset + inflate;
 				x = (d0 * Vector3.Cross(n1, n2) + d1 * Vector3.Cross(n2, n0) + d2 * Vector3.Cross(n0, n1)) * (1.0f / det);
 			}
-			if (i2 < 0 || (x - p).Length() > 20.0f * inflate) {
-				Vector3 sum = n0;
-				for (int i = 1; i < faceCount; i++)
-					sum += BoxToSource.Unitless(planes[faces[i]].normal);
-				float len = sum.Length();
-				x = p + inflate * (len > 1e-6f ? sum * (1.0f / len) : n0);
+			bool valid = i2 >= 0 && (x - p).Length() <= 2.0f * inflate;
+			for (int j = 0; valid && j < planes.Length; j++) {
+				if (Vector3.Dot(BoxToSource.Unitless(planes[j].normal), x) > planes[j].offset + inflate + tolerance)
+					valid = false;
 			}
-			verts[v] = SourceToBox.Unitless(x);
+
+			if (valid) {
+				verts.Add(SourceToBox.Unitless(x));
+				continue;
+			}
+
+			for (int i = 0; i < faceCount; i++) {
+				Vector3 normal = BoxToSource.Unitless(planes[faces[i]].normal);
+				bool duplicate = false;
+				for (int k = 0; k < i && !duplicate; k++)
+					duplicate = Vector3.Dot(normal, BoxToSource.Unitless(planes[faces[k]].normal)) > 0.999f;
+				if (!duplicate)
+					verts.Add(SourceToBox.Unitless(p + inflate * normal));
+			}
 		}
 
-		SimHull = BoxHullCooking.CreateHullSafe(verts, BoxHullCooking.MaxHullVertices);
+		SimHull = BoxHullCooking.CreateHullSafe(CollectionsMarshal.AsSpan(verts), BoxHullCooking.MaxHullVertices);
 		return !SimHull.IsNull ? SimHull : Hull;
 	}
 
