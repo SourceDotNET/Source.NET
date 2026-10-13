@@ -14444,6 +14444,12 @@ public unsafe static class Gl46
 
 #endif
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void PFNGLMAXSHADERCOMPILERTHREADSKHRPROC(GLuint count);
+    private static PFNGLMAXSHADERCOMPILERTHREADSKHRPROC _glMaxShaderCompilerThreadsKHR;
+    public static bool glMaxShaderCompilerThreadsKHRLoaded => _glMaxShaderCompilerThreadsKHR != null;
+    public static void glMaxShaderCompilerThreadsKHR(GLuint count) => _glMaxShaderCompilerThreadsKHR(count);
+
     /// <summary>
     /// Loads OpenGL functions using the specified loader delegate.
     /// </summary>
@@ -15144,6 +15150,10 @@ public unsafe static class Gl46
         _glMultiDrawElementsIndirectCount = Marshal.GetDelegateForFunctionPointer<PFNGLMULTIDRAWELEMENTSINDIRECTCOUNTPROC>(loader.Invoke("glMultiDrawElementsIndirectCount"));
         _glPolygonOffsetClamp = Marshal.GetDelegateForFunctionPointer<PFNGLPOLYGONOFFSETCLAMPPROC>(loader.Invoke("glPolygonOffsetClamp"));
 #endif
+        IntPtr maxShaderCompilerThreads = loader.Invoke("glMaxShaderCompilerThreadsKHR");
+        if (maxShaderCompilerThreads == IntPtr.Zero)
+            maxShaderCompilerThreads = loader.Invoke("glMaxShaderCompilerThreadsARB");
+        _glMaxShaderCompilerThreadsKHR = maxShaderCompilerThreads != IntPtr.Zero ? Marshal.GetDelegateForFunctionPointer<PFNGLMAXSHADERCOMPILERTHREADSKHRPROC>(maxShaderCompilerThreads) : null!;
     }
 #endif
 }

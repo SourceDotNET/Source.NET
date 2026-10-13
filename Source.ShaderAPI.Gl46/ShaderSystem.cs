@@ -1,14 +1,17 @@
 using Microsoft.Extensions.DependencyInjection;
 
 using Source.Common.Filesystem;
+using Source.Common.Launcher;
 using Source.Common.MaterialSystem;
 using Source.Common.ShaderAPI;
 using Source.Common.ShaderLib;
 using Source.MaterialSystem;
 
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Source.ShaderAPI.Gl46;
@@ -16,6 +19,37 @@ namespace Source.ShaderAPI.Gl46;
 public interface IShaderSystemInternal : IShaderInit, IShaderSystem;
 
 public readonly record struct ShaderCombo(string Name, int Min, int Range);
+
+internal sealed class ShaderObject(int glType, string name, string defines, string typeName)
+{
+	public readonly int GLType = glType;
+	public readonly string Name = name;
+	public readonly string Defines = defines;
+	public readonly string TypeName = typeName;
+	public uint Handle;
+	public ShaderCompileState State;
+	public ShaderCompileJob? Job;
+}
+
+internal sealed class ShaderProgram
+{
+	public uint Handle;
+	public ShaderCompileState State;
+}
+
+internal sealed class ShaderCompileJob
+{
+	public required ShaderObject Shader;
+	public uint ShaderHandle;
+	public uint Handle;
+	public string? Error;
+	public List<string>? SourceFiles;
+	public bool LinkFailed;
+	public bool Taken;
+	public bool HighPriority;
+}
+
+internal sealed record ShaderCompileBatch(ShaderCompileJob[] Jobs, nint Fence);
 
 public class ShaderSystem : IShaderSystemInternal
 {
@@ -486,48 +520,269 @@ public class ShaderSystem : IShaderSystemInternal
 		return Encoding.ASCII.GetBytes(source);
 	}
 
-	private unsafe uint CompileShader(int glType, ReadOnlySpan<char> name, ReadOnlySpan<char> defines, string typeName) {
+	private byte[]? LoadShaderSource(string name, string defines, List<string> sourceFiles) {
 		using IFileHandle? handle = FileSystem.Open($"shaders/{name}", FileOpenOptions.Read, "game");
-		List<string> sourceFiles = [];
-		byte[]? built;
 		if (handle == null) {
-			if ((built = LoadVcs(name)) == null)
-				return 0;
-			sourceFiles.Add(new(name));
-		}
-		else {
-			Span<byte> source = stackalloc byte[(int)handle.Stream.Length];
-			handle.Stream.Read(source);
-
-			built = BuildShaderSource(source, defines, new string(name), sourceFiles);
-			if (built == null)
-				return 0;
+			byte[]? vcs = LoadVcs(name);
+			if (vcs != null)
+				sourceFiles.Add(name);
+			return vcs;
 		}
 
-		uint pShader = glCreateShader(glType);
+		byte[] source = new byte[handle.Stream.Length];
+		handle.Stream.ReadExactly(source);
+		return BuildShaderSource(source, defines, name, sourceFiles);
+	}
+
+	private unsafe void CompileProgram(ShaderCompileJob job) {
+		ShaderObject shader = job.Shader;
+		job.SourceFiles = [];
+		byte[]? built = LoadShaderSource(shader.Name, shader.Defines, job.SourceFiles);
+		if (built == null)
+			return;
+
+		job.ShaderHandle = glCreateShader(shader.GLType);
 		int len = built.Length;
 		fixed (byte* pSrc = built)
-			glShaderSource(pShader, 1, &pSrc, &len);
-		glCompileShader(pShader);
+			glShaderSource(job.ShaderHandle, 1, &pSrc, &len);
+		glCompileShader(job.ShaderHandle);
 
-		if (!IsValidShader(pShader, out string? error)) {
-			Warning($"WARNING: {typeName} shader compilation error in {name}.\n");
-			Warning(error);
-			Warning("\n");
-			for (int i = 0; i < sourceFiles.Count; i++)
-				Warning($"  [source string {i}] = {sourceFiles[i]}\n");
-			Warning("\n");
-			return 0;
+		job.Handle = glCreateProgram();
+		glProgramParameteri(job.Handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+		glAttachShader(job.Handle, job.ShaderHandle);
+		glLinkProgram(job.Handle);
+	}
+
+	private void SubmitCompileJob(ShaderCompileJob job) {
+		CompileProgram(job);
+	}
+
+	private unsafe void FinishCompileJob(ShaderCompileJob job) {
+		if (job.Handle == 0)
+			return;
+
+		if (!IsValidShader(job.ShaderHandle, out job.Error)) {
+			glDeleteProgram(job.Handle);
+			job.Handle = 0;
+			return;
 		}
-		else {
-			ReadOnlySpan<char> combos = defines.SliceNullTerminatedString();
+
+		glDetachShader(job.Handle, job.ShaderHandle);
+		glDeleteShader(job.ShaderHandle);
+
+		if (!IsValidProgram(job.Handle, out job.Error)) {
+			job.LinkFailed = true;
+			job.Handle = 0;
+		}
+	}
+
+	private static void ApplyCompileJob(ShaderCompileJob job) {
+		ShaderObject shader = job.Shader;
+		shader.Handle = job.Handle;
+		shader.State = job.Handle != 0 ? ShaderCompileState.Ready : ShaderCompileState.Failed;
+		shader.Job = null;
+
+		if (job.LinkFailed) {
+			Warning("WARNING: Shader combobulation linker error.\n");
+			Warning(job.Error!);
+			Warning("\n");
+		}
+		else if (job.Error != null) {
+			Warning($"WARNING: {shader.TypeName} shader compilation error in {shader.Name}.\n");
+			Warning(job.Error);
+			Warning("\n");
+			for (int i = 0; i < job.SourceFiles!.Count; i++)
+				Warning($"  [source string {i}] = {job.SourceFiles[i]}\n");
+			Warning("\n");
+		}
+		else if (job.Handle != 0) {
+			ReadOnlySpan<char> combos = shader.Defines.AsSpan().SliceNullTerminatedString();
 			if (combos.IsEmpty)
-				Msg($"Compiled shader: {name} ({typeName})\n");
+				Msg($"Compiled shader: {shader.Name} ({shader.TypeName})\n");
 			else
-				Msg($"Compiled shader: {name} ({typeName}) [{combos}]\n");
+				Msg($"Compiled shader: {shader.Name} ({shader.TypeName}) [{combos}]\n");
+		}
+	}
+
+	const int MaxCompileJobsPerBatch = 32;
+
+	readonly List<ShaderObject> ShaderObjects = [];
+	readonly Dictionary<ulong, ShaderProgram> ShaderPrograms = [];
+	readonly Queue<ShaderCompileJob> PendingCompileJobs = [];
+	readonly Queue<ShaderCompileJob> HighPriorityCompileJobs = [];
+	readonly ConcurrentQueue<ShaderCompileBatch> FinishedCompileBatches = [];
+	readonly List<ShaderCompileBatch> FencedCompileBatches = [];
+	IGraphicsContext? CompileContext;
+	Thread? CompileThread;
+	bool CompileWorkerStarted;
+	int OutstandingCompileJobs;
+	bool ParallelShaderCompile;
+
+	private static unsafe bool HasGLExtension(ReadOnlySpan<byte> extension) {
+		int count;
+		glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+		for (uint i = 0; i < count; i++) {
+			if (MemoryMarshal.CreateReadOnlySpanFromNullTerminated(glGetStringi(GL_EXTENSIONS, i)).SequenceEqual(extension))
+				return true;
+		}
+		return false;
+	}
+
+	private void StartCompileWorker() {
+		CompileWorkerStarted = true;
+		CompileContext = ShaderAPI.Device?.CreateSharedContext();
+		if (CompileContext == null) {
+			Warning("Shader compile worker unavailable, compiling shaders on the main thread\n");
+			return;
 		}
 
-		return pShader;
+		ParallelShaderCompile = glMaxShaderCompilerThreadsKHRLoaded && (HasGLExtension("GL_KHR_parallel_shader_compile"u8) || HasGLExtension("GL_ARB_parallel_shader_compile"u8));
+		CompileThread = new Thread(CompileWorker) { Name = "ShaderCompile", IsBackground = true };
+		CompileThread.Start();
+	}
+
+	private unsafe void CompileWorker() {
+		CompileContext!.MakeCurrent();
+		if (ParallelShaderCompile)
+			glMaxShaderCompilerThreadsKHR(2);
+
+		List<ShaderCompileJob> jobs = [];
+		while (true) {
+			lock (PendingCompileJobs) {
+				while (HighPriorityCompileJobs.Count == 0 && PendingCompileJobs.Count == 0)
+					Monitor.Wait(PendingCompileJobs);
+				TakeCompileJobs(HighPriorityCompileJobs, jobs);
+				TakeCompileJobs(PendingCompileJobs, jobs);
+			}
+
+			if (jobs.Count == 0)
+				continue;
+
+			foreach (ShaderCompileJob job in jobs)
+				SubmitCompileJob(job);
+			foreach (ShaderCompileJob job in jobs)
+				FinishCompileJob(job);
+
+			ShaderCompileBatch batch = new([.. jobs], (nint)glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
+			glFlush();
+			FinishedCompileBatches.Enqueue(batch);
+			jobs.Clear();
+		}
+	}
+
+	private static void TakeCompileJobs(Queue<ShaderCompileJob> queue, List<ShaderCompileJob> jobs) {
+		while (queue.Count > 0 && jobs.Count < MaxCompileJobsPerBatch) {
+			ShaderCompileJob job = queue.Dequeue();
+			if (job.Taken)
+				continue;
+			job.Taken = true;
+			jobs.Add(job);
+		}
+	}
+
+	private void QueueCompileJob(ShaderCompileJob job, bool highPriority) {
+		if (!CompileWorkerStarted)
+			StartCompileWorker();
+
+		if (CompileContext == null) {
+			SubmitCompileJob(job);
+			FinishCompileJob(job);
+			ApplyCompileJob(job);
+			return;
+		}
+
+		++OutstandingCompileJobs;
+		lock (PendingCompileJobs) {
+			job.HighPriority = highPriority;
+			(highPriority ? HighPriorityCompileJobs : PendingCompileJobs).Enqueue(job);
+			Monitor.Pulse(PendingCompileJobs);
+		}
+	}
+
+	internal void PrioritizeShader(nint handle) {
+		if (handle < 0 || handle >= ShaderObjects.Count)
+			return;
+
+		ShaderObject shader = ShaderObjects[(int)handle];
+		ShaderCompileJob? job = shader.Job;
+		if (shader.State != ShaderCompileState.Pending || job == null || job.HighPriority)
+			return;
+
+		lock (PendingCompileJobs) {
+			if (job.Taken)
+				return;
+			job.HighPriority = true;
+			HighPriorityCompileJobs.Enqueue(job);
+			Monitor.Pulse(PendingCompileJobs);
+		}
+	}
+
+	public void BeginFrame() => ProcessFinishedCompileJobs();
+
+	private unsafe void ProcessFinishedCompileJobs() {
+		while (FinishedCompileBatches.TryDequeue(out ShaderCompileBatch? batch))
+			FencedCompileBatches.Add(batch);
+
+		for (int i = 0; i < FencedCompileBatches.Count; i++) {
+			ShaderCompileBatch batch = FencedCompileBatches[i];
+			if (glClientWaitSync((void*)batch.Fence, 0, 0) == GL_TIMEOUT_EXPIRED)
+				continue;
+
+			glDeleteSync((void*)batch.Fence);
+			foreach (ShaderCompileJob job in batch.Jobs)
+				ApplyCompileJob(job);
+			OutstandingCompileJobs -= batch.Jobs.Length;
+			FencedCompileBatches.RemoveAt(i--);
+		}
+	}
+
+	private nint QueueShader(int glType, ReadOnlySpan<char> name, ReadOnlySpan<char> defines, string typeName) {
+		ShaderObject shader = new(glType, new(name), new(defines), typeName);
+		int index = ShaderObjects.Count;
+		ShaderObjects.Add(shader);
+		shader.Job = new() { Shader = shader };
+		QueueCompileJob(shader.Job, false);
+		return index;
+	}
+
+	internal uint GetShaderProgram(nint handle) {
+		if (handle < 0 || handle >= ShaderObjects.Count)
+			return 0;
+		return ShaderObjects[(int)handle].Handle;
+	}
+
+	internal unsafe uint GetProgram(VertexShaderHandle vertexShader, PixelShaderHandle pixelShader) {
+		if (!vertexShader.IsValid() || !pixelShader.IsValid())
+			return 0;
+
+		ulong key = ((ulong)(uint)vertexShader.Handle << 32) | (uint)pixelShader.Handle;
+		if (!ShaderPrograms.TryGetValue(key, out ShaderProgram? program)) {
+			// Even invalid program states should be hashed... for now.
+			// Maybe a time based thing for invalid programs, to try allowing for the shader developer to recover, etc...
+			program = new();
+			ShaderPrograms[key] = program;
+		}
+
+		if (program.State == ShaderCompileState.Pending) {
+			ShaderObject vertex = ShaderObjects[(int)vertexShader.Handle];
+			ShaderObject pixel = ShaderObjects[(int)pixelShader.Handle];
+			if (vertex.State == ShaderCompileState.Failed || pixel.State == ShaderCompileState.Failed)
+				program.State = ShaderCompileState.Failed;
+			else if (vertex.State == ShaderCompileState.Ready && pixel.State == ShaderCompileState.Ready) {
+				uint pipeline;
+				glCreateProgramPipelines(1, &pipeline);
+				glUseProgramStages(pipeline, (uint)GL_VERTEX_SHADER_BIT, vertex.Handle);
+				glUseProgramStages(pipeline, (uint)GL_FRAGMENT_SHADER_BIT, pixel.Handle);
+				program.Handle = pipeline;
+				program.State = ShaderCompileState.Ready;
+			}
+			else {
+				PrioritizeShader(vertexShader.Handle);
+				PrioritizeShader(pixelShader.Handle);
+			}
+		}
+
+		return program.Handle;
 	}
 
 	Dictionary<string, (List<ShaderCombo> Static, List<ShaderCombo> Dynamic)> comboCache = [];
@@ -602,11 +857,7 @@ public class ShaderSystem : IShaderSystemInternal
 		if (vshs.TryGetValue(symbol, out VertexShaderHandle value))
 			return value;
 
-		uint pShader = CompileShader(GL_VERTEX_SHADER, name, defines, "Vertex");
-		if (pShader == 0)
-			return VertexShaderHandle.INVALID;
-
-		VertexShaderHandle vsh = new((nint)pShader);
+		VertexShaderHandle vsh = new(QueueShader(GL_VERTEX_SHADER, name, defines, "Vertex"));
 		vshs[symbol] = vsh;
 		return vsh;
 	}
@@ -616,11 +867,7 @@ public class ShaderSystem : IShaderSystemInternal
 		if (pshs.TryGetValue(symbol, out PixelShaderHandle value))
 			return value;
 
-		uint pShader = CompileShader(GL_FRAGMENT_SHADER, name, defines, "Pixel");
-		if (pShader == 0)
-			return PixelShaderHandle.INVALID;
-
-		PixelShaderHandle psh = new((nint)pShader);
+		PixelShaderHandle psh = new(QueueShader(GL_FRAGMENT_SHADER, name, defines, "Pixel"));
 		pshs[symbol] = psh;
 		return psh;
 	}

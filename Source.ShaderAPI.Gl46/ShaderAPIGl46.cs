@@ -998,16 +998,15 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	MeshGl46? RenderMesh;
 	IMaterialInternal? Material;
 	uint CombobulateShadersIfChanged() {
-		uint program;
 		if (pipelineChanged) {
-			program = ShaderCombobulator();
+			uint program = ShaderCombobulator();
 			if (lastShader != program) {
 				lastShader = program;
-				glUseProgram(program);
+				glBindProgramPipeline(program);
 			}
+			pipelineChanged = program == 0;
 		}
 
-		pipelineChanged = false;
 		return lastShader;
 	}
 
@@ -1015,7 +1014,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		if (IsDeactivated())
 			return;
 
-		CombobulateShadersIfChanged();
+		if (CombobulateShadersIfChanged() == 0)
+			return;
 
 		if (RenderMesh != null)
 			RenderMesh.RenderPass();
@@ -1023,35 +1023,10 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			MeshMgr.RenderPassWithVertexAndIndexBuffers();
 	}
 
-	Dictionary<ulong, uint> shaderCombinations = [];
-	private unsafe uint ShaderCombobulator() {
+	private uint ShaderCombobulator() {
 		// Determines the shader program used given the current shader handles.
 		// If one does not exist, it is created.
-		Span<nint> hashedData = [activeVertexShader.Handle, activePixelShader.Handle];
-		ulong hash;
-		fixed (nint* data = hashedData)
-			hash = XXH64.DigestOf(data, hashedData.Length * sizeof(nint), 0);
-
-		if (shaderCombinations.TryGetValue(hash, out var program))
-			return program; // We have already linked a program for this shader combination
-
-		// We need to create a program then
-		program = glCreateProgram();
-		glAttachShader(program, (uint)activeVertexShader.Handle);
-		glAttachShader(program, (uint)activePixelShader.Handle);
-		glLinkProgram(program);
-		// Even invalid program states should be hashed... for now.
-		// Maybe a time based thing for invalid programs, to try allowing for the shader developer to recover, etc...
-		shaderCombinations[hash] = program;
-
-		if (!ShaderSystem.IsValidProgram(program, out string? error)) {
-			Warning("WARNING: Shader combobulation linker error.\n");
-			Warning(error);
-			Warning("\n");
-			return 0;
-		}
-
-		return program;
+		return ((ShaderSystem)ShaderManager).GetProgram(activeVertexShader, activePixelShader);
 	}
 
 	private bool IsDeactivated() {
@@ -1541,6 +1516,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	nint TextureMemoryUsedLastFrame;
 
 	public void BeginFrame() {
+		ShaderManager.BeginFrame();
+
 		if (ResetRenderStateNeeded) {
 			ResetRenderState(false);
 			ResetRenderStateNeeded = false;
@@ -1824,8 +1801,21 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			name = name[1..];
 
 		// Combobulate
-		uint shader = CombobulateShadersIfChanged();
+		if (CombobulateShadersIfChanged() == 0)
+			return -1;
 
+		ShaderSystem shaders = (ShaderSystem)ShaderManager;
+		int loc = LocateStageUniform(shaders.GetShaderProgram(activePixelShader), name);
+		if (loc != -1)
+			return loc;
+
+		loc = LocateStageUniform(shaders.GetShaderProgram(activeVertexShader), name);
+		return loc == -1 ? -1 : loc | VertexStageUniform;
+	}
+
+	const int VertexStageUniform = 0x40000000;
+
+	private unsafe int LocateStageUniform(uint shader, ReadOnlySpan<char> name) {
 		// Then get shader ID -> shader uniform lookup table
 		if (!locs.TryGetValue(shader, out var lookup))
 			lookup = locs[shader] = [];
@@ -1848,8 +1838,21 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	uint GetCurrentProgramInternal() => CombobulateShadersIfChanged();
 
 	readonly Dictionary<uint, Dictionary<int, float[]>> uniformValues = [];
-	bool UniformChanged(int uniform, ReadOnlySpan<float> values, out uint program) {
-		program = GetCurrentProgramInternal();
+	bool UniformChanged(ref int uniform, ReadOnlySpan<float> values, out uint program) {
+		program = 0;
+		if (uniform < 0 || GetCurrentProgramInternal() == 0)
+			return false;
+
+		ShaderSystem shaders = (ShaderSystem)ShaderManager;
+		if ((uniform & VertexStageUniform) != 0) {
+			uniform &= ~VertexStageUniform;
+			program = shaders.GetShaderProgram(activeVertexShader);
+		}
+		else
+			program = shaders.GetShaderProgram(activePixelShader);
+
+		if (program == 0)
+			return false;
 
 		if (!uniformValues.TryGetValue(program, out var cache))
 			cache = uniformValues[program] = [];
@@ -1865,7 +1868,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public void SetShaderUniform(int uniform, int integer) {
-		if (!UniformChanged(uniform, [BitConverter.Int32BitsToSingle(integer)], out uint program))
+		if (!UniformChanged(ref uniform, [BitConverter.Int32BitsToSingle(integer)], out uint program))
 			return;
 #if GL_DEBUG
 		int i = glGetError();
@@ -1878,21 +1881,21 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public void SetShaderUniform(int uniform, uint integer) {
-		if (!UniformChanged(uniform, [BitConverter.UInt32BitsToSingle(integer)], out uint program))
+		if (!UniformChanged(ref uniform, [BitConverter.UInt32BitsToSingle(integer)], out uint program))
 			return;
 
 		glProgramUniform1ui(program, uniform, integer);
 	}
 
 	public void SetShaderUniform(int uniform, float fl) {
-		if (!UniformChanged(uniform, [fl], out uint program))
+		if (!UniformChanged(ref uniform, [fl], out uint program))
 			return;
 
 		glProgramUniform1f(program, uniform, fl);
 	}
 
 	public void SetShaderUniform(int uniform, ReadOnlySpan<float> flConsts) {
-		if (!UniformChanged(uniform, flConsts, out uint program))
+		if (!UniformChanged(ref uniform, flConsts, out uint program))
 			return;
 
 		glProgramUniform1fv(program, uniform, flConsts);

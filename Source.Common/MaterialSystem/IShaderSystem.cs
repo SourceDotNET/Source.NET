@@ -13,6 +13,13 @@ public enum ShaderUsingFlags
 	Editor = 0x10,
 }
 
+public enum ShaderCompileState
+{
+	Pending,
+	Ready,
+	Failed
+}
+
 public interface IShaderSystem
 {
 	public static bool IsTranslucent(IShaderShadow renderState) {
@@ -33,6 +40,7 @@ public interface IShaderSystem
 	void ResetShaderState();
 	// void CleanupRenderState(ref ShaderRenderState renderState);
 	void DrawElements(IShader shader, IMaterialVar[] parms, IShaderShadow renderState, VertexCompressionType vertexCompression, uint materialVarTimeStamp);
+	void BeginFrame();
 	IEnumerable<IShader> GetShaders();
 	ReadOnlySpan<char> ShaderStateString(int i);
 	int GetShaderAPITextureBindHandle(ITexture? texture, int v, int textureChannel);
