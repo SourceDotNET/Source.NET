@@ -59,7 +59,14 @@ public struct SoundInterval<T> where T : INumber<T>
 public struct SoundParametersInternal : IEquatable<SoundParametersInternal>
 {
 	public SoundParametersInternal() {
-
+		Channel = SoundEntityChannel.Auto;
+		SetVolume(VOL_NORM);
+		SetPitch(PITCH_NORM);
+		SetSoundLevel((float)Audio.SoundLevel.LvlNorm);
+		DelayMsec = 0;
+		bPlayToOwnerOnly = false;
+		bHadMissingWaveFiles = false;
+		bUsesGenderToken = false;
 	}
 
 	public void CopyFrom(in SoundParametersInternal src) {
