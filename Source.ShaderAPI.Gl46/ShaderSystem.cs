@@ -683,6 +683,8 @@ public class ShaderSystem : IShaderSystemInternal
 	readonly List<ShaderObject> ShaderObjects = [];
 	readonly Dictionary<ulong, ShaderProgram> ShaderPrograms = [];
 	readonly Dictionary<string, ulong> ShaderSourceHashes = [];
+	readonly HashSet<(ShaderType Type, string File, int StaticIndex)> StaticCombos = [];
+	readonly List<(ShaderType Type, string File, int StaticIndex)> NewStaticCombos = [];
 	string? ProgramCacheDir;
 	readonly Queue<ShaderCompileJob> PendingCompileJobs = [];
 	readonly Queue<ShaderCompileJob> HighPriorityCompileJobs = [];
@@ -808,6 +810,16 @@ public class ShaderSystem : IShaderSystemInternal
 
 	public void BeginFrame() => ProcessFinishedCompileJobs();
 
+	public void WaitForPendingCompiles(Action<int, int>? progress) {
+		int total = OutstandingCompileJobs;
+		while (OutstandingCompileJobs > 0) {
+			ProcessFinishedCompileJobs();
+			progress?.Invoke(total - OutstandingCompileJobs, total);
+			if (OutstandingCompileJobs > 0)
+				Thread.Sleep(1);
+		}
+	}
+
 	private unsafe void ProcessFinishedCompileJobs() {
 		while (FinishedCompileBatches.TryDequeue(out ShaderCompileBatch? batch))
 			FencedCompileBatches.Add(batch);
@@ -874,6 +886,27 @@ public class ShaderSystem : IShaderSystemInternal
 		return program.Handle;
 	}
 
+	internal void RegisterStaticCombo(ShaderType type, string file, int staticIndex) {
+		if (StaticCombos.Add((type, file, staticIndex)))
+			NewStaticCombos.Add((type, file, staticIndex));
+	}
+
+	public void QueueAllShaderCombos() {
+		foreach (var (type, file, staticIndex) in NewStaticCombos) {
+			ShaderComboState combos = new(this, type);
+			combos.Configure(file, staticIndex);
+			bool vertex = type == ShaderType.Vertex;
+			for (int i = 0; i < combos.DynamicComboCount; i++) {
+				string defines = combos.GetVariantDefines(i);
+				if (vertex)
+					LoadVertexShader(file, defines);
+				else
+					LoadPixelShader(file, defines);
+			}
+		}
+
+		NewStaticCombos.Clear();
+	}
 	Dictionary<string, (List<ShaderCombo> Static, List<ShaderCombo> Dynamic)> comboCache = [];
 
 	internal (List<ShaderCombo> Static, List<ShaderCombo> Dynamic) GetShaderCombos(ReadOnlySpan<char> name) {

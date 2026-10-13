@@ -41,6 +41,8 @@ public interface IShaderSystem
 	// void CleanupRenderState(ref ShaderRenderState renderState);
 	void DrawElements(IShader shader, IMaterialVar[] parms, IShaderShadow renderState, VertexCompressionType vertexCompression, uint materialVarTimeStamp);
 	void BeginFrame();
+	void QueueAllShaderCombos();
+	void WaitForPendingCompiles(Action<int, int>? progress);
 	IEnumerable<IShader> GetShaders();
 	ReadOnlySpan<char> ShaderStateString(int i);
 	int GetShaderAPITextureBindHandle(ITexture? texture, int v, int textureChannel);

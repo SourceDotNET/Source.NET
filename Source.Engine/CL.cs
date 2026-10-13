@@ -9,6 +9,7 @@ using Source.Common.Client;
 using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Launcher;
+using Source.Common.MaterialSystem;
 using Source.Common.Networking;
 using Source.Engine.Client;
 using Source.Engine.Server;
@@ -223,6 +224,19 @@ public partial class CL(IServiceProvider services, Net Net,
 
 		// Level init post entity
 		clientDLL.LevelInitPostEntity();
+
+#if !SWDS
+		IShaderSystem shaderSystem = Singleton<IShaderSystem>();
+		shaderSystem.QueueAllShaderCombos();
+		int lastShaderPercent = -1;
+		shaderSystem.WaitForPendingCompiles((done, total) => {
+			int percent = done * 100 / total;
+			if (percent == lastShaderPercent)
+				return;
+			lastShaderPercent = percent;
+			EngineVGui?.UpdateCustomProgressBar((float)done / total, "#LoadingProgress_LoadResources");
+		});
+#endif
 
 		// Start notifying dependencies
 		uint ip = cl.NetChannel!.GetRemoteAddress()!.GetIPHostByteOrder();
