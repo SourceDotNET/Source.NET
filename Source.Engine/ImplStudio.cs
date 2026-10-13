@@ -715,7 +715,8 @@ public class ModelRender : IModelRender
 
 #if !SWDS
 		ITexture? envCubemapTexture = null;
-		LightingState lightingState = default;
+		LightingState lightingStateStorage = default;
+		ref LightingState lightingState = ref lightingStateStorage;
 
 		Span<Vector3> saveLightPos = stackalloc Vector3[Render.MAXLOCALLIGHTS];
 		Vector3? debugLightingOrigin = null;
@@ -747,9 +748,9 @@ public class ModelRender : IModelRender
 			if (staticLighting) {
 				if (HardwareConfig.SupportsStaticPlusDynamicLighting()) {
 					if (Render.StaticLightCacheAffectedByDynamicLight(lightcache))
-						lightingState = Render.LightcacheGetStatic(lightcache, out envCubemapTexture);
+						lightingState = ref Render.LightcacheGetStatic(lightcache, out envCubemapTexture);
 					else
-						lightingState = Render.LightcacheGetStatic(lightcache, out envCubemapTexture, LightCacheFlags.Dynamic | LightCacheFlags.LightStyle);
+						lightingState = ref Render.LightcacheGetStatic(lightcache, out envCubemapTexture, LightCacheFlags.Dynamic | LightCacheFlags.LightStyle);
 				}
 				else {
 					if (Render.StaticLightCacheAffectedByDynamicLight(lightcache) ||
@@ -761,7 +762,7 @@ public class ModelRender : IModelRender
 			}
 
 			if (!staticLighting)
-				lightingState = Render.LightcacheGetStatic(lightcache, out envCubemapTexture);
+				lightingState = ref Render.LightcacheGetStatic(lightcache, out envCubemapTexture);
 
 			if (r_decalstaticprops.GetBool() && modelInst != null && drawInfo.StaticLighting && hasDecals) {
 				for (int iCube = 0; iCube < 6; ++iCube)
