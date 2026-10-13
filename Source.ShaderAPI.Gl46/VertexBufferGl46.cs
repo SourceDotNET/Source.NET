@@ -21,10 +21,12 @@ public unsafe class VertexBufferGl46 : IDisposable
 	internal bool ExternalMemory;
 	internal bool SoftwareVertexProcessing;
 	internal bool LateCreateShouldDiscard;
+	internal bool Written;
 
 	int vbo = -1;
+	PersistentBufferRing? ring;
 
-	internal uint VBO() => vbo > 0 ? (uint)vbo : throw new NullReferenceException("Vertex Buffer Object was null");
+	internal uint VBO() => ring != null ? ring.Buffer : vbo > 0 ? (uint)vbo : throw new NullReferenceException("Vertex Buffer Object was null");
 
 	public VertexBufferGl46(bool dynamic) {
 		Dynamic = dynamic;
@@ -134,6 +136,16 @@ public unsafe class VertexBufferGl46 : IDisposable
 	int lastBufferSize = -1;
 
 	public void RecomputeVBO() {
+		if (Dynamic) {
+			if (BufferSize > lastBufferSize) {
+				lastBufferSize = BufferSize;
+				ring?.Dispose();
+				ring = new PersistentBufferRing(BufferSize);
+				Written = false;
+			}
+			return;
+		}
+
 		// Create the VBO if it doesn't exist
 		if (vbo == -1)
 			vbo = (int)glCreateBuffer();
@@ -175,11 +187,22 @@ public unsafe class VertexBufferGl46 : IDisposable
 
 		int lockOffset = NextLockOffset();
 		baseVertexIndex = VertexSize == 0 ? 0 : (lockOffset / VertexSize);
+		if (Dynamic) {
+			if (ring == null)
+				RecomputeVBO();
+			else if (discard && Written)
+				ring.Advance();
+
+			if (discard)
+				Written = false;
+
+			Locked = true;
+			Position = lockOffset;
+			return ring!.Memory + lockOffset;
+		}
+
 		if (SysmemBuffer == null)
 			RecomputeVBO();
-		else if (discard)
-			glNamedBufferData((uint)vbo, BufferSize, null, GL_DYNAMIC_DRAW);
-
 
 		Locked = true;
 		Position = lockOffset;
@@ -193,8 +216,12 @@ public unsafe class VertexBufferGl46 : IDisposable
 		int lockOffset = NextLockOffset();
 		int bufferSize = vertexCount * VertexSize;
 
-		if (bufferSize > 0)
-			glNamedBufferSubData((uint)vbo, lockOffset, bufferSize, (byte*)SysmemBuffer + lockOffset);
+		if (bufferSize > 0) {
+			if (Dynamic)
+				Written = true;
+			else
+				glNamedBufferSubData((uint)vbo, lockOffset, bufferSize, (byte*)SysmemBuffer + lockOffset);
+		}
 		Position = lockOffset + bufferSize;
 		Locked = false;
 	}
@@ -204,11 +231,19 @@ public unsafe class VertexBufferGl46 : IDisposable
 	public byte* ModifyLock(int firstVertex, int numVerts, out int baseVertexIndex) {
 		Assert(!Locked);
 
+		modifyOffset = firstVertex * VertexSize;
+		baseVertexIndex = firstVertex;
+		if (Dynamic) {
+			if (ring == null)
+				RecomputeVBO();
+
+			Locked = true;
+			return ring!.Memory + modifyOffset;
+		}
+
 		if (SysmemBuffer == null)
 			RecomputeVBO();
 
-		modifyOffset = firstVertex * VertexSize;
-		baseVertexIndex = firstVertex;
 		Locked = true;
 		return (byte*)SysmemBuffer + modifyOffset;
 	}
@@ -217,8 +252,12 @@ public unsafe class VertexBufferGl46 : IDisposable
 		if (!Locked)
 			return;
 
-		if (vertexCount > 0)
-			glNamedBufferSubData((uint)vbo, modifyOffset, vertexCount * VertexSize, (byte*)SysmemBuffer + modifyOffset);
+		if (vertexCount > 0) {
+			if (Dynamic)
+				Written = true;
+			else
+				glNamedBufferSubData((uint)vbo, modifyOffset, vertexCount * VertexSize, (byte*)SysmemBuffer + modifyOffset);
+		}
 		Locked = false;
 	}
 
@@ -362,6 +401,12 @@ public unsafe class VertexBufferGl46 : IDisposable
 	}
 
 	public void Dispose() {
+		if (ring != null) {
+			ring.Dispose();
+			ring = null;
+			lastBufferSize = -1;
+		}
+
 		if (vbo != -1) {
 			Assert(SysmemBuffer != null);
 			fixed (int* ugh = &vbo)

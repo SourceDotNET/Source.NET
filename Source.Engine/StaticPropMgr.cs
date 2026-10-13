@@ -341,8 +341,17 @@ public class StaticPropMgrImpl : IStaticPropMgrEngine, IStaticPropMgrClient, ISt
 		if (!r_drawstaticprops.GetBool())
 			return;
 
-		// todo: fast pipeline
-		DrawStaticProps_Slow(ref props, count, shadowDepth, drawVCollideWireframe);
+		if (IsUsingStaticPropDebugModes() || drawVCollideWireframe)
+			DrawStaticProps_Slow(ref props, count, shadowDepth, drawVCollideWireframe);
+		else {
+			if (pipeline_static_props.GetBool() &&
+				HardwareConfig.GetDXSupportLevel() >= 80 &&
+				HardwareConfig.SupportsColorOnSecondStream() &&
+				HardwareConfig.SupportsStaticPlusDynamicLighting())
+				DrawStaticProps_FastPipeline(props, count, shadowDepth);
+			else
+				DrawStaticProps_Fast(ref props, count, shadowDepth);
+		}
 	}
 
 	void DrawStaticProps_Slow(ref InlineArray512<IClientRenderable> props, int count, bool shadowDepth, bool drawVCollideWireframe) {
@@ -359,7 +368,32 @@ public class StaticPropMgrImpl : IStaticPropMgrEngine, IStaticPropMgrClient, ISt
 	}
 
 	void DrawStaticProps_Fast(ref InlineArray512<IClientRenderable> props, int count, bool shadowDepth) => throw new NotImplementedException();
-	void DrawStaticProps_FastPipeline(ref InlineArray512<IClientRenderable> props, int count, bool shadowDepth) => throw new NotImplementedException();
+
+	const int MAX_OBJECTS = 2048;
+	readonly StaticPropRenderInfo[] PropList = new StaticPropRenderInfo[MAX_OBJECTS];
+
+	void DrawStaticProps_FastPipeline(Span<IClientRenderable> props, int count, bool shadowDepth) {
+		Span<StaticPropRenderInfo> propList = PropList;
+		int listCount = 0;
+		if (count > MAX_OBJECTS)
+			DrawStaticProps_FastPipeline(props[MAX_OBJECTS..], count - MAX_OBJECTS, shadowDepth);
+
+		for (int i = 0; i < count; i++) {
+			StaticProp prop = (StaticProp)props[i];
+			if (prop.Model == null)
+				continue;
+			propList[listCount].ModelToWorld = prop.ModelToWorld;
+			propList[listCount].Model = prop.Model;
+			propList[listCount].Instance = prop.ModelInstance;
+			propList[listCount].Skin = prop.Skin;
+			propList[listCount].Renderable = prop;
+			propList[listCount].LightingOrigin = prop.LightingOrigin;
+			listCount++;
+		}
+		modelrender.DrawStaticPropArrayFast(propList, listCount, shadowDepth);
+	}
+
+	static readonly ConVar pipeline_static_props = new("pipeline_static_props", "1");
 
 	void OutputLevelStats() => throw new NotImplementedException();
 	void PrecacheLighting() { // FIXME: This is very slow... 
@@ -593,12 +627,12 @@ public class StaticProp : IClientUnknown, IClientRenderable, ICollideable
 
 	Vector3 Origin;
 	QAngle Angles;
-	Model? Model;
+	internal Model? Model;
 	SpatialPartitionHandle_t Partition;
-	ModelInstanceHandle_t ModelInstance;
+	internal ModelInstanceHandle_t ModelInstance;
 	byte Alpha;
 	byte Solid;
-	byte Skin;
+	internal byte Skin;
 	byte flags;
 	ushort firstLeaf;
 	ushort leafCount;
@@ -609,13 +643,13 @@ public class StaticProp : IClientUnknown, IClientRenderable, ICollideable
 
 	Vector3 RenderBBoxMin;
 	Vector3 RenderBBoxMax;
-	Matrix3x4 ModelToWorld;
+	internal Matrix3x4 ModelToWorld;
 	float radius;
 
 	Vector3 WorldRenderBBoxMin;
 	Vector3 WorldRenderBBoxMax;
 
-	Vector3 LightingOrigin;
+	internal Vector3 LightingOrigin;
 
 	public StaticProp() {
 		ModelInstance = MODEL_INSTANCE_INVALID;

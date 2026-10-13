@@ -102,26 +102,53 @@ public class KeyValues : IEnumerable<KeyValues>
 		// Clear();
 		if (stream == null) return false;
 
-		using KeyValuesReader reader = new KeyValuesReader(stream);
-		return LoadFromBuffer(reader);
+		// Size the buffer to the stream when we can, so the text is decoded in one piece.
+		int bufferSize = stream.CanSeek ? (int)Math.Clamp(stream.Length - stream.Position, 1024, 1 << 20) : 1024;
+		using StreamReader streamReader = new(stream, System.Text.Encoding.UTF8, true, bufferSize);
+		return LoadFromBuffer(new KeyValuesReader(streamReader.ReadToEnd()));
 	}
 
-	public sealed class KeyValuesReader(Stream stream) : StreamReader(stream)
+	public sealed class KeyValuesReader(string text)
 	{
-		int Pushback = -1;
+		readonly string text = text;
+		int position;
 
-		public void Unread(char c) => Pushback = c;
+		public ReadOnlySpan<char> Remaining => text.AsSpan(position);
 
-		public override int Peek() => Pushback != -1 ? Pushback : base.Peek();
+		public void Advance(int count) => position += count;
 
-		public override int Read() {
-			if (Pushback != -1) {
-				int c = Pushback;
-				Pushback = -1;
-				return c;
-			}
-			return base.Read();
+		public string ReadString(int count) {
+			string str = text.Substring(position, count);
+			position += count;
+			return str;
 		}
+
+		public void Unread(char c) {
+			Debug.Assert(position > 0 && text[position - 1] == c, "can only unread the character that was just read");
+			position--;
+		}
+
+		public unsafe bool SkipWhitespace() {
+			int start = position;
+			fixed (char* chars = text) {
+				int i = position, length = text.Length;
+				while (i < length) {
+					char c = chars[i];
+					if (c != ' ' && (c < '\t' || c > '\r') && (c < 0x80 || !char.IsWhiteSpace(c)))
+						break;
+					i++;
+				}
+				position = i;
+			}
+
+			return position != start;
+		}
+
+		public int Position => position;
+
+		public int Peek() => position < text.Length ? text[position] : -1;
+
+		public int Read() => position < text.Length ? text[position++] : -1;
 	}
 
 	public bool WriteToStream(Stream? stream) {
@@ -199,18 +226,7 @@ public class KeyValues : IEnumerable<KeyValues>
 
 	// Returns true if we did anything at all to skip whitespace.
 	public static bool SkipWhitespace(KeyValuesReader reader) {
-		bool didAnything = false;
-		while (true) {
-			int c = reader.Peek();
-			if (c == -1)
-				break;
-			if (!char.IsWhiteSpace((char)c))
-				break;
-			reader.Read();
-			didAnything = true;
-		}
-
-		return didAnything;
+		return reader.SkipWhitespace();
 	}
 
 	public override string ToString() {
@@ -224,8 +240,12 @@ public class KeyValues : IEnumerable<KeyValues>
 		//    2. Anything else, we read until whitespace
 
 		while (true) {
-			if (reader.Peek() == -1)
+			int c = reader.Peek();
+			if (c == -1)
 				return false;
+			// Most calls land directly on a token: no whitespace or comment can start with these characters.
+			if (c > ' ' && c < 0x7F && c != '/')
+				return true;
 			// If no whitespace was skipped and no comments were skipped, continue
 			if (!SkipWhitespace(reader) && !SkipComments(reader))
 				return true;
@@ -281,14 +301,13 @@ public class KeyValues : IEnumerable<KeyValues>
 		return false;
 	}
 	public static bool ReadConditional(KeyValuesReader reader, Span<char> condition, out bool match) {
-		// Zero out if it's existing memory
-		for (int si = 0; si < condition.Length; si++)
-			condition[si] = '\0';
-
 		if (reader.Peek() != '[') {
 			match = false;
 			return false;
 		}
+
+		// Zero out if it's existing memory
+		condition.Clear();
 
 		reader.Read();
 		// Determine if we're inverted.
@@ -356,9 +375,8 @@ public class KeyValues : IEnumerable<KeyValues>
 		return notSupported;
 	}
 
+	// The reader must already be positioned on the key; both callers skip to parseable text first.
 	private bool ReadKV(KeyValuesReader reader) {
-		SkipUntilParseableTextOrEOF(reader);
-
 		bool quoteTerminated = (char)reader.Peek() == '"';
 
 		string key = quoteTerminated ? ReadQuoteTerminatedString(reader, useEscapeSequences) : ReadWhitespaceTerminatedString(reader);
@@ -367,10 +385,13 @@ public class KeyValues : IEnumerable<KeyValues>
 		SkipUntilParseableTextOrEOF(reader);
 
 		Span<char> conditional = stackalloc char[16];
+		int beforeConditional = reader.Position;
 		bool isBlockConditional = ReadConditional(reader, conditional, out bool mustMatch);
 		bool matches = isBlockConditional ? HandleConditional(conditional, mustMatch) : true;
 
-		SkipUntilParseableTextOrEOF(reader);
+		// Nothing was consumed unless there was a conditional, so there is nothing new to skip.
+		if (reader.Position != beforeConditional)
+			SkipUntilParseableTextOrEOF(reader);
 
 		// Determine what we're reading next.
 		// If we run into a {, we read another KVObject and set our value to that.
@@ -433,25 +454,16 @@ public class KeyValues : IEnumerable<KeyValues>
 
 	// Returns true if we did anything at all to skip comments.
 	public static bool SkipComments(KeyValuesReader reader) {
-		bool didAnything = false;
-		if (reader.Peek() == '/') {
-			// We need to check the stream for another /
-			reader.Read();
-			if (reader.Peek() == '/') { // We got //, its a comment
-										// We read until the end of the line.
-				didAnything = true;
-				int val;
-				while ((val = reader.Read()) != -1) {
-					char c = (char)val;
-					if (c == '\n')
-						break;
-				}
-			}
-			else
-				reader.Unread('/');
-		}
+		ReadOnlySpan<char> text = reader.Remaining;
+		// We need to check the stream for another /
+		if (text.Length < 2 || text[0] != '/' || text[1] != '/')
+			return false;
 
-		return didAnything;
+		// We got //, its a comment
+		// We read until the end of the line.
+		int newline = text.IndexOf('\n');
+		reader.Advance(newline == -1 ? text.Length : newline + 1);
+		return true;
 	}
 
 	private void DetermineValueType(string input) {
@@ -516,29 +528,39 @@ public class KeyValues : IEnumerable<KeyValues>
 	}
 
 	public static string ReadWhitespaceTerminatedString(KeyValuesReader reader) {
-		Span<char> work = stackalloc char[1024];
-		int i, len;
-		for (i = 0, len = work.Length; i < len; i++) {
-			int c = reader.Peek();
-			if (c == -1) break;
-			char ch = (char)c;
-			if (char.IsWhiteSpace(ch)) break;
-			work[i] = ch;
-			reader.Read();
-		}
+		ReadOnlySpan<char> text = reader.Remaining;
+		int len = Math.Min(text.Length, MAX_TOKEN_LENGTH);
+		int i = 0;
+		while (i < len && !char.IsWhiteSpace(text[i]))
+			i++;
 
-		if (i >= len) {
+		if (i >= MAX_TOKEN_LENGTH) {
 			Warning("KeyValues: string overflow, ignoring (should we allocate more space?)\n");
 			AssertMsg(false, "KeyValues string overflow");
 		}
 
-		return new(work[..i]);
+		return reader.ReadString(i);
 	}
+
+	const int MAX_TOKEN_LENGTH = 1024;
 
 	public static string ReadQuoteTerminatedString(KeyValuesReader reader, bool useEscapeSequences) {
 		int rd = reader.Read();
 		Debug.Assert(rd == '"', "invalid quote-terminated string");
-		Span<char> work = stackalloc char[1024];
+
+		// Nearly every string closes within the token limit and has nothing to unescape
+		ReadOnlySpan<char> text = reader.Remaining;
+		if (text.Length > MAX_TOKEN_LENGTH)
+			text = text[..MAX_TOKEN_LENGTH];
+
+		int end = useEscapeSequences ? text.IndexOfAny('"', '\\') : text.IndexOf('"');
+		if (end != -1 && text[end] == '"') {
+			string str = reader.ReadString(end);
+			reader.Advance(1);
+			return str;
+		}
+
+		Span<char> work = stackalloc char[MAX_TOKEN_LENGTH];
 		int i, len;
 		bool lastCharacterWasEscape = false;
 		int charI = 0;
@@ -574,7 +596,7 @@ public class KeyValues : IEnumerable<KeyValues>
 			AssertMsg(false, "KeyValues string overflow");
 		}
 
-		return new(work[..i]);
+		return new(work[..charI]);
 	}
 
 	public bool LoadFromFile(string? filepath) {
@@ -646,7 +668,7 @@ public class KeyValues : IEnumerable<KeyValues>
 		Span<char> buf = stackalloc char[12];
 		sprintf(buf, $"{newID}");
 
-		return CreateKey(buf);
+		return CreateKey(((ReadOnlySpan<char>)buf).SliceNullTerminatedString());
 	}
 
 	public KeyValues CreateKey(ReadOnlySpan<char> keyName) {
