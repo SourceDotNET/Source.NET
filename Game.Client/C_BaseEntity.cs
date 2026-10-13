@@ -1894,14 +1894,12 @@ public partial class C_BaseEntity : IClientEntity
 		if (RenderMode == (int)Source.RenderMode.None)
 			return RenderGroup.OpaqueEntity;
 
-		// todo
-		// int tempComputeFrame = FXComputeFrame;
-		// FXComputeFrame = gpGlobals.FrameCount;
+		long tempComputeFrame = FXComputeFrame;
+		FXComputeFrame = gpGlobals.FrameCount;
 
 		int fxBlend = GetFxBlend();
 
-		// todo
-		// FXComputeFrame = tempComputeFrame;
+		FXComputeFrame = tempComputeFrame;
 
 		if (fxBlend == 0)
 			return RenderGroup.OpaqueEntity;
@@ -2479,8 +2477,125 @@ public partial class C_BaseEntity : IClientEntity
 		return null;
 	}
 
+	long FXComputeFrame = -1;
+
+	public virtual byte GetClientSideFade() => 255;
+
 	public virtual void ComputeFxBlend() {
-		// todo
+		if (FXComputeFrame == gpGlobals.FrameCount)
+			return;
+
+		int blend = 0;
+		float offset = EntIndex() * 363.0f;
+
+		switch ((RenderFx)RenderFX) {
+			case RenderFx.PulseSlowWide:
+				blend = (int)(ColorRender.A + 64 * MathF.Sin((float)gpGlobals.CurTime * 2 + offset));
+				break;
+			case RenderFx.PulseFastWide:
+				blend = (int)(ColorRender.A + 64 * MathF.Sin((float)gpGlobals.CurTime * 8 + offset));
+				break;
+			case RenderFx.PulseFastWider:
+				blend = (int)(255 * MathF.Abs(MathF.Sin((float)gpGlobals.CurTime * 12 + offset)));
+				break;
+			case RenderFx.PulseSlow:
+				blend = (int)(ColorRender.A + 16 * MathF.Sin((float)gpGlobals.CurTime * 2 + offset));
+				break;
+			case RenderFx.PulseFast:
+				blend = (int)(ColorRender.A + 16 * MathF.Sin((float)gpGlobals.CurTime * 8 + offset));
+				break;
+			case RenderFx.FadeSlow:
+				if (ColorRender.A > 0)
+					SetRenderColorA((byte)(ColorRender.A - 1));
+				else
+					SetRenderColorA(0);
+				blend = ColorRender.A;
+				break;
+			case RenderFx.FadeFast:
+				if (ColorRender.A > 3)
+					SetRenderColorA((byte)(ColorRender.A - 4));
+				else
+					SetRenderColorA(0);
+				blend = ColorRender.A;
+				break;
+			case RenderFx.SolidSlow:
+				if (ColorRender.A < 255)
+					SetRenderColorA((byte)(ColorRender.A + 1));
+				else
+					SetRenderColorA(255);
+				blend = ColorRender.A;
+				break;
+			case RenderFx.SolidFast:
+				if (ColorRender.A < 252)
+					SetRenderColorA((byte)(ColorRender.A + 4));
+				else
+					SetRenderColorA(255);
+				blend = ColorRender.A;
+				break;
+			case RenderFx.StrobeSlow:
+				blend = (int)(20 * MathF.Sin((float)gpGlobals.CurTime * 4 + offset));
+				blend = blend < 0 ? 0 : ColorRender.A;
+				break;
+			case RenderFx.StrobeFast:
+				blend = (int)(20 * MathF.Sin((float)gpGlobals.CurTime * 16 + offset));
+				blend = blend < 0 ? 0 : ColorRender.A;
+				break;
+			case RenderFx.StrobeFaster:
+				blend = (int)(20 * MathF.Sin((float)gpGlobals.CurTime * 36 + offset));
+				blend = blend < 0 ? 0 : ColorRender.A;
+				break;
+			case RenderFx.FlickerSlow:
+				blend = (int)(20 * (MathF.Sin((float)gpGlobals.CurTime * 2) + MathF.Sin((float)gpGlobals.CurTime * 17 + offset)));
+				blend = blend < 0 ? 0 : ColorRender.A;
+				break;
+			case RenderFx.FlickerFast:
+				blend = (int)(20 * (MathF.Sin((float)gpGlobals.CurTime * 16) + MathF.Sin((float)gpGlobals.CurTime * 23 + offset)));
+				blend = blend < 0 ? 0 : ColorRender.A;
+				break;
+			case RenderFx.Hologram:
+			case RenderFx.Distort: {
+					Vector3 tmp = GetAbsOrigin() - ViewAccessors.CurrentViewOrigin();
+					float dist = MathLib.DotProduct(tmp, ViewAccessors.CurrentViewForward());
+					if ((RenderFx)RenderFX == RenderFx.Distort)
+						dist = 1;
+					if (dist <= 0)
+						blend = 0;
+					else {
+						SetRenderColorA(180);
+						if (dist <= 100)
+							blend = ColorRender.A;
+						else
+							blend = (int)((1.0 - (dist - 100) * (1.0 / 400.0)) * ColorRender.A);
+						blend += random.RandomInt(-32, 31);
+					}
+				}
+				break;
+			default:
+				if (RenderMode == (int)Source.RenderMode.Normal)
+					blend = 255;
+				else
+					blend = ColorRender.A;
+				break;
+		}
+
+		blend = Math.Clamp(blend, 0, 255);
+
+		byte fadeAlpha = GetClientSideFade();
+		if (fadeAlpha != 255) {
+			float flBlend = blend / 255.0f;
+			float flFade = fadeAlpha / 255.0f;
+			blend = (int)(flBlend * flFade * 255.0f + 0.5f);
+			blend = Math.Clamp(blend, 0, 255);
+		}
+
+		RenderFXBlend = (byte)blend;
+		FXComputeFrame = gpGlobals.FrameCount;
+
+		if (renderHandle != INVALID_CLIENT_RENDER_HANDLE)
+			clientLeafSystem.SetRenderGroup(renderHandle, GetRenderGroup());
+
+		if (ShadowHandle != CLIENTSHADOW_INVALID_HANDLE)
+			g_ClientShadowMgr.SetFalloffBias(ShadowHandle, (byte)(255 - RenderFXBlend));
 	}
 
 	public virtual object GetDataTableBasePtr() {

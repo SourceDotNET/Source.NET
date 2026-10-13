@@ -1082,7 +1082,7 @@ public class ClientShadowMgr : IClientShadowMgr
 	public void SetShadowBlobbyCutoffArea(float minArea) => MinShadowArea = minArea;
 	public float GetBlobbyCutoffArea() => MinShadowArea;
 
-	public void SetFalloffBias(ClientShadowHandle_t handle, byte bias) => throw new NotImplementedException();
+	public void SetFalloffBias(ClientShadowHandle_t handle, byte bias) => g_ShadowMgr.SetFalloffBias(Shadows[handle].Shadow.ShadowHandle, bias);
 
 	public void RestoreRenderState() {
 		foreach (ClientShadowHandle_t h in ValidShadowHandles)

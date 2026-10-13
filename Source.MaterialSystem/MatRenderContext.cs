@@ -1006,9 +1006,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		return h;
 	}
 
-	public void CullMode(MaterialCullMode cullMode) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void CullMode(MaterialCullMode cullMode) => shaderAPI.CullMode(cullMode);
 
 	public void DestroyMorph(IMorph morph) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");

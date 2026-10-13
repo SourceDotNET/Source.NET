@@ -3305,8 +3305,15 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		return (ShaderAPIOcclusionQuery_t)query;
 	}
 
+	MaterialCullMode DesiredCullMode = MaterialCullMode.CounterClockwise;
+
 	public void CullMode(MaterialCullMode cullMode) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		if (DesiredCullMode == cullMode)
+			return;
+
+		FlushBufferedPrimitives();
+		DesiredCullMode = cullMode;
+		glFrontFace(cullMode == MaterialCullMode.Clockwise ? GL_CCW : GL_CW);
 	}
 
 	public void DXSupportLevelChanged() {

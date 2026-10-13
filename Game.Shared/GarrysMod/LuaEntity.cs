@@ -558,6 +558,23 @@ public static partial class LuaEntity
 		return 1;
 	}
 
+#if CLIENT_DLL
+	[LuaMethod]
+	static int Entity__DrawModel(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.DrawModel((StudioFlags)(int)lua.CheckNumberOpt(2, 0));
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
+	static int Entity__IsScripted(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ReadOnlySpan<char> name = ent.GetLuaScriptName();
+		lua.PushBool(!name.IsEmpty && name[0] != '\0');
+		return 1;
+	}
+
 	[LuaMethod]
 	static int Entity__GetSequence(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
