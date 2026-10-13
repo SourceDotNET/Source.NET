@@ -1,0 +1,7 @@
+<Project>
+	<!-- Every [SourceDll] assembly links Usings/GlobalUsings.cs. Those get the ConVar/ConCommand registration generator,
+	     which emits Source.Generated.CvarRegistration for EngineBuilder.ConVar_Register to use instead of reflection. -->
+	<ItemGroup Condition="'@(Compile->WithMetadataValue('Identity', '..\Usings\GlobalUsings.cs'))' != ''">
+		<ProjectReference Include="$(MSBuildThisFileDirectory)Source.CodeAnalysis.ConVars\Source.CodeAnalysis.ConVars.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+	</ItemGroup>
+</Project>

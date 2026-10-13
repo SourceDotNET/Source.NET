@@ -1246,7 +1246,8 @@ public partial class Render
 		}
 
 		Assert(cache.DynamicLightingState.NumLights >= 0 && cache.DynamicLightingState.NumLights <= MAXLOCALLIGHTS);
-		lightingState = cache.DynamicLightingState;
+		if (!Unsafe.AreSame(ref lightingState, ref cache.DynamicLightingState))
+			lightingState = cache.DynamicLightingState;
 		return vis;
 	}
 

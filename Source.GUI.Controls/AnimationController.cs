@@ -7,7 +7,6 @@ using Source.Common.GUI;
 using Source.Common.Mathematics;
 using Source.Common.Utilities;
 
-using System.Collections.Frozen;
 using System.Text;
 
 using static Source.GUI.Controls.AnimationController;
@@ -1192,30 +1191,26 @@ public class AnimationController : Panel, IAnimationController
 		output = (float)pos;
 	}
 
-	static readonly FrozenDictionary<ulong, Alignment> g_AlignmentLookup = new Dictionary<ulong, Alignment>(){
-		{ "northwest".Hash(), Alignment.Northwest },
-		{ "north".Hash(), Alignment.North },
-		{ "northeast".Hash(), Alignment.Northeast },
-		{ "west".Hash(), Alignment.West },
-		{ "center".Hash(), Alignment.Center },
-		{ "east".Hash(), Alignment.East },
-		{ "southwest".Hash(), Alignment.Southwest },
-		{ "south".Hash(), Alignment.South },
-		{ "southeast".Hash(), Alignment.Southeast },
-		{ "nw".Hash(), Alignment.Northwest },
-		{ "n".Hash(), Alignment.North },
-		{ "ne".Hash(), Alignment.Northeast },
-		{ "w".Hash(), Alignment.West },
-		{ "c".Hash(), Alignment.Center },
-		{ "e".Hash(), Alignment.East },
-		{ "sw".Hash(), Alignment.Southwest },
-		{ "s".Hash(), Alignment.South },
-		{ "se".Hash(), Alignment.Southeast },
-	}.ToFrozenDictionary();
-
 	private static Alignment LookupAlignment(ReadOnlySpan<char> sz) {
 		sz = sz.SliceNullTerminatedString();
-		return g_AlignmentLookup.TryGetValue(sz.Hash(), out Alignment al) ? al : Alignment.Northwest;
+		if (sz.Length > "northwest".Length)
+			return Alignment.Northwest;
+
+		Span<char> lower = stackalloc char[sz.Length];
+		sz.ToLowerInvariant(lower);
+		switch (lower) {
+			case "northwest": case "nw": return Alignment.Northwest;
+			case "north": case "n": return Alignment.North;
+			case "northeast": case "ne": return Alignment.Northeast;
+			case "west": case "w": return Alignment.West;
+			case "center": case "c": return Alignment.Center;
+			case "east": case "e": return Alignment.East;
+			case "southwest": case "sw": return Alignment.Southwest;
+			case "south": case "s": return Alignment.South;
+			case "southeast": case "se": return Alignment.Southeast;
+		}
+
+		return Alignment.Northwest;
 	}
 
 	private bool ParseScriptFile(ReadOnlySpan<char> mem) {

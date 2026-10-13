@@ -731,6 +731,13 @@ public class StudioRenderContext(IMaterialSystem materialSystem, IStudioDataCach
 		studioRenderImp.DrawModel(ref info, RC, boneToWorld, flexWeightsOrZero, flexDelayedWeightsOrWeights, flags);
 	}
 
+	public void DrawModelStaticProp(ref DrawModelInfo info, in Matrix3x4 modelToWorld, StudioRenderFlags flags = StudioRenderFlags.DrawEntireModel) {
+		if (info.Lod < info.HardwareData.RootLOD)
+			info.Lod = info.HardwareData.RootLOD;
+
+		studioRenderImp.DrawModelStaticProp(ref info, RC, in modelToWorld, flags);
+	}
+
 	private void InvokeBindProxies(ref DrawModelInfo info) {
 		if (RC.ForcedMaterial != null) {
 			if (RC.ForcedMaterialType == OverrideType.Normal && RC.ForcedMaterial.HasProxy()) {

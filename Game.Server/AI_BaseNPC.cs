@@ -6674,11 +6674,11 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		UpdateTargetPos();
 	}
 
-	public void RememberUnreachable(BaseEntity entity, float duration = -1) {
+	public void RememberUnreachable(BaseEntity entity, TimeUnit_t duration = -1) {
 		if (entity == GetEnemy())
 			ForceChooseNewEnemy();
 
-		float NPC_UNREACHABLE_TIMEOUT = (duration > 0.0) ? duration : 3;
+		TimeUnit_t NPC_UNREACHABLE_TIMEOUT = (duration > 0.0) ? duration : 3;
 		for (int i = UnreachableEnts.Count - 1; i >= 0; i--) {
 			if (entity == UnreachableEnts[i].UnreachableEntity.Get()) {
 				UnreachableEnt existing = UnreachableEnts[i];

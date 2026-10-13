@@ -18,6 +18,8 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 
+using CvarRegistrar = System.Action<int, System.Type, System.Type, Source.Common.Commands.ICvar, System.Func<System.Type, bool, string, object>>;
+
 namespace Source.Engine;
 
 /// <summary>
@@ -381,18 +383,105 @@ public class EngineBuilder(ICommandLine cmdLine) : ServiceCollection
 	public static void ConVar_Register() {
 		var engineAPI = Singleton<IEngineAPI>();
 		ICvar cvar = engineAPI.GetRequiredService<ICvar>();
-		var assemblies = AppDomain.CurrentDomain.GetAssemblies()
-			.Where(ReflectionUtils.IsSourceEngineAssembly);
+		Assembly[] assemblies = [.. AppDomain.CurrentDomain.GetAssemblies().Where(ReflectionUtils.IsSourceEngineAssembly)];
 
-		Type CVAR = typeof(ConVar);
-		Type CCMD = typeof(ConCommand);
+		// Source.CodeAnalysis.ConVars emits Source.Generated.CvarRegistration into each Source assembly. Types it lists
+		// are registered through generated code; anything else falls back to the reflection path below.
+		Dictionary<Type, CvarRegistrar> declared = [];
+		Dictionary<Type, CvarRegistrar> inherited = [];
+		HashSet<Type> reflected = [];
+		HashSet<Assembly> generated = [];
+		foreach (var assembly in assemblies) {
+			if (LoadGeneratedCvarRegistration(assembly, declared, inherited, reflected))
+				generated.Add(assembly);
+		}
+
+		Func<Type, bool, string, object> resolve = (type, concommand, name) => DetermineInstance(engineAPI, type, concommand, name)!;
+		List<(Type Declaring, CvarRegistrar Registrar)> registrars = [];
 
 		foreach (var assembly in assemblies) {
 			cvar.SetAssemblyIdentifier(assembly);
+			bool hasGenerated = generated.Contains(assembly);
 			foreach (var type in assembly.GetTypes()) {
 				if (type.IsAssignableTo(typeof(ConVar)) || type == typeof(ConVarRef))
 					continue;
 
+				if (!hasGenerated || !FindGeneratedCvarRegistrars(type, assemblies, generated, declared, inherited, reflected, registrars)) {
+					ConVar_RegisterByReflection(engineAPI, cvar, type);
+					continue;
+				}
+
+				RunStaticConstructor(type);
+
+				// Properties, then fields, then methods; the same order the reflection path uses.
+				for (int phase = 0; phase < 3 && registrars.Count > 0; phase++) {
+					foreach (var (declaring, registrar) in registrars)
+						registrar(phase, declaring, type, cvar, resolve);
+				}
+			}
+		}
+	}
+
+	static bool LoadGeneratedCvarRegistration(Assembly assembly, Dictionary<Type, CvarRegistrar> declared, Dictionary<Type, CvarRegistrar> inherited, HashSet<Type> reflected) {
+		MethodInfo? populate = assembly.GetType("Source.Generated.CvarRegistration")?.GetMethod("Populate", BindingFlags.Public | BindingFlags.Static);
+		if (populate == null)
+			return false;
+
+		Dictionary<string, CvarRegistrar> declaredNames = [];
+		Dictionary<string, CvarRegistrar> inheritedNames = [];
+		List<string> reflectedNames = [];
+		populate.CreateDelegate<Action<Dictionary<string, CvarRegistrar>, Dictionary<string, CvarRegistrar>, List<string>>>()(declaredNames, inheritedNames, reflectedNames);
+
+		foreach (var (name, registrar) in declaredNames)
+			declared.Add(assembly.GetType(name, true)!, registrar);
+		foreach (var (name, registrar) in inheritedNames)
+			inherited.Add(assembly.GetType(name, true)!, registrar);
+		foreach (string name in reflectedNames)
+			reflected.Add(assembly.GetType(name, true)!);
+
+		return true;
+	}
+
+	/// <summary>
+	/// Collects the generated registrars that apply to <paramref name="type"/>: its own, then those of each base type
+	/// (reflection returns inherited non-private instance members, so derived types register them too).
+	/// Returns false if the type has to go through reflection instead.
+	/// </summary>
+	static bool FindGeneratedCvarRegistrars(Type type, Assembly[] sourceAssemblies, HashSet<Assembly> generated, Dictionary<Type, CvarRegistrar> declared, Dictionary<Type, CvarRegistrar> inherited, HashSet<Type> reflected, List<(Type Declaring, CvarRegistrar Registrar)> registrars) {
+		registrars.Clear();
+		if (reflected.Contains(type))
+			return false;
+
+		if (declared.TryGetValue(type, out CvarRegistrar? registrar))
+			registrars.Add((type, registrar));
+
+		for (Type? baseType = type.BaseType; baseType != null; baseType = baseType.BaseType) {
+			Type key = baseType.IsConstructedGenericType ? baseType.GetGenericTypeDefinition() : baseType;
+			if (reflected.Contains(key))
+				return false;
+			if (!generated.Contains(key.Assembly) && Array.IndexOf(sourceAssemblies, key.Assembly) != -1)
+				return false;
+			if (inherited.TryGetValue(key, out registrar))
+				registrars.Add((key, registrar));
+		}
+
+		return true;
+	}
+
+	static void RunStaticConstructor(Type type) {
+		try {
+			RuntimeHelpers.RunClassConstructor(type.TypeHandle);
+		}
+		catch (TypeInitializationException tie) when (tie.InnerException != null) {
+			ExceptionDispatchInfo.Capture(tie.InnerException).Throw();
+			throw;
+		}
+	}
+
+	static void ConVar_RegisterByReflection(IEngineAPI engineAPI, ICvar cvar, Type type) {
+		Type CVAR = typeof(ConVar);
+		{
+			{
 				var props = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
 				var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
 				var methods = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
