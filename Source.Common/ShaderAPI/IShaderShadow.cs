@@ -227,7 +227,7 @@ public enum StandardTextureId
 	Max = 32
 }
 
-public enum ShaderFlags
+public enum ShaderRenderStateFlags
 {
 	OpacityAlphaTest = 0x0010,
 	OpacityOpaque = 0x0020,
@@ -328,8 +328,8 @@ public interface IShaderShadow
 	VertexFormat GetVertexFormat();
 	void Activate();
 
-	ShaderFlags GetFlags();
-	void SetFlags(ShaderFlags flags);
+	ShaderRenderStateFlags GetFlags();
+	void SetFlags(ShaderRenderStateFlags flags);
 	void EnableSRGBRead(Sampler sampler, bool state);
 	void EnableSRGBWrite(bool state);
 }

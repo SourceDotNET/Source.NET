@@ -4,12 +4,12 @@
 // DYNAMIC: "AMBIENT_LIGHT"				"0..1"
 // DYNAMIC: "WRITE_DEPTH_TO_DESTALPHA"	"0..1"
 
-in vec2 vs_BaseTexCoord;
-in vec4 vs_WorldVertToEyeVector_Darkening;
-in mat3 vs_TangentSpace;
-in vec4 vs_WorldPos_ProjPosZ;
-in vec2 vs_LightAtten01;
-in vec2 vs_LightAtten23;
+layout(location = 0) in vec2 vs_BaseTexCoord;
+layout(location = 1) in vec4 vs_WorldVertToEyeVector_Darkening;
+layout(location = 2) in mat3 vs_TangentSpace;
+layout(location = 5) in vec4 vs_WorldPos_ProjPosZ;
+layout(location = 6) in vec2 vs_LightAtten01;
+layout(location = 7) in vec2 vs_LightAtten23;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];

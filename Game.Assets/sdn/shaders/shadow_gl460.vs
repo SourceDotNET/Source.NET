@@ -19,12 +19,12 @@ layout(std140, binding = 5) uniform source_vs_constants {
 #define cTextureJitter0 vs_const[50]
 #define cTextureJitter1 vs_const[51]
 
-centroid out vec2 vs_TexCoord0;
-centroid out vec2 vs_TexCoord1;
-centroid out vec2 vs_TexCoord2;
-centroid out vec2 vs_TexCoord3;
-centroid out vec2 vs_TexCoord4;
-out vec4 vs_ShadowColor;
+layout(location = 0) centroid out vec2 vs_TexCoord0;
+layout(location = 1) centroid out vec2 vs_TexCoord1;
+layout(location = 2) centroid out vec2 vs_TexCoord2;
+layout(location = 3) centroid out vec2 vs_TexCoord3;
+layout(location = 4) centroid out vec2 vs_TexCoord4;
+layout(location = 5) out vec4 vs_ShadowColor;
 
 #include "common_clipplanes_gl460.vs"
 

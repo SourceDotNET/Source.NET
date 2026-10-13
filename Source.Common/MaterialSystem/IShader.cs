@@ -16,11 +16,17 @@ public struct ShaderParamInfo
 	public ShaderParamFlags Flags;
 }
 
+[Flags]
+public enum ShaderFlags
+{
+	None = 0,
+	NotEditable = 0x1
+}
 
 public interface IShader
 {
 	string? GetName();
-	int GetFlags();
+	ShaderFlags GetFlags();
 	int GetNumParams();
 	ReadOnlySpan<char> GetParamName(int paramIndex);
 	ReadOnlySpan<char> GetParamHelp(int paramIndex);

@@ -7,10 +7,10 @@ namespace Source.StdShader.Gl46;
 public class BlurFilterX : BaseVSShader
 {
 	public static string HelpString = "Help for BlurFilterX";
-	public static int Flags = (int)ShaderParamFlags.NotEditable;
+	public static ShaderFlags Flags = ShaderFlags.NotEditable;
 
 	public override string? GetFallbackShader(IMaterialVar[] vars) => null;
-	public override int GetFlags() => Flags;
+	public override ShaderFlags GetFlags() => Flags;
 
 	protected override void OnInitShaderInstance(IMaterialVar[] vars, ReadOnlySpan<char> materialName) {
 		if (vars[(int)ShaderMaterialVars.BaseTexture].IsDefined())

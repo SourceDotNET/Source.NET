@@ -63,23 +63,23 @@ const bool g_bVertexAlphaTexBlendFactor		= VERTEXALPHATEXBLENDFACTOR != 0;
 const bool g_BumpMask						= BUMPMASK != 0;
 
 #if SEAMLESS
-out vec3 vs_SeamlessTexCoord;						// x y z
-out vec4 vs_DetailOrBumpAndEnvmapMaskTexCoord;		// envmap mask
+layout(location = 0) out vec3 vs_SeamlessTexCoord;						// x y z
+layout(location = 1) out vec4 vs_DetailOrBumpAndEnvmapMaskTexCoord;		// envmap mask
 #else
-out vec2 vs_BaseTexCoord;
+layout(location = 2) out vec2 vs_BaseTexCoord;
 // detail textures and bumpmaps are mutually exclusive so that we have enough texcoords.
-out vec4 vs_DetailOrBumpAndEnvmapMaskTexCoord;
+layout(location = 1) out vec4 vs_DetailOrBumpAndEnvmapMaskTexCoord;
 #endif
-centroid out vec4 vs_LightmapTexCoord1And2;
-centroid out vec4 vs_LightmapTexCoord3;						// and basetexcoord*mask_scale
-out vec4 vs_WorldPos_ProjPosZ;
+layout(location = 3) centroid out vec4 vs_LightmapTexCoord1And2;
+layout(location = 4) centroid out vec4 vs_LightmapTexCoord3;						// and basetexcoord*mask_scale
+layout(location = 5) out vec4 vs_WorldPos_ProjPosZ;
 
 #if TANGENTSPACE || (LIGHTING_PREVIEW)
-out mat3 vs_TangentSpaceTranspose;
+layout(location = 6) out mat3 vs_TangentSpaceTranspose;
 #endif
 
-out vec4 vs_Color;									// in seamless, r g b = blend weights
-out float vs_VertexBlendX;
+layout(location = 9) out vec4 vs_Color;									// in seamless, r g b = blend weights
+layout(location = 10) out float vs_VertexBlendX;
 
 #include "common_clipplanes_gl460.vs"
 

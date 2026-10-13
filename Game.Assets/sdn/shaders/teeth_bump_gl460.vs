@@ -42,12 +42,12 @@ const bool g_bSkinning	= SKINNING != 0;
 #define modelOrigin			const4.xyz
 #endif
 
-out vec2 vs_BaseTexCoord;
-out vec4 vs_WorldVertToEyeVector_Darkening;
-out mat3 vs_TangentSpace;
-out vec4 vs_WorldPos_ProjPosZ;
-out vec2 vs_LightAtten01;
-out vec2 vs_LightAtten23;
+layout(location = 0) out vec2 vs_BaseTexCoord;
+layout(location = 1) out vec4 vs_WorldVertToEyeVector_Darkening;
+layout(location = 2) out mat3 vs_TangentSpace;
+layout(location = 5) out vec4 vs_WorldPos_ProjPosZ;
+layout(location = 6) out vec2 vs_LightAtten01;
+layout(location = 7) out vec2 vs_LightAtten23;
 
 #include "common_clipplanes_gl460.vs"
 

@@ -30,9 +30,9 @@ const bool g_bSkinning	= SKINNING != 0;
 #define cBaseTexCoordTransform2_0	vs_const[SHADER_SPECIFIC_CONST_2 + 0]
 #define cBaseTexCoordTransform2_1	vs_const[SHADER_SPECIFIC_CONST_2 + 1]
 
-out vec2 vs_BaseTexCoord;
-out vec2 vs_BaseTexCoord2;
-out vec4 vs_WorldPos_ProjPosZ;
+layout(location = 0) out vec2 vs_BaseTexCoord;
+layout(location = 1) out vec2 vs_BaseTexCoord2;
+layout(location = 2) out vec4 vs_WorldPos_ProjPosZ;
 
 #include "common_clipplanes_gl460.vs"
 

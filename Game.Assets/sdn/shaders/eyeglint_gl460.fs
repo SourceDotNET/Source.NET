@@ -1,8 +1,8 @@
 #version 460
 
-in vec2 vs_TexCoord;
-in vec2 vs_GlintCenter;
-in vec3 vs_GlintColor;
+layout(location = 0) in vec2 vs_TexCoord;
+layout(location = 1) in vec2 vs_GlintCenter;
+layout(location = 2) in vec3 vs_GlintColor;
 
 out vec4 fragColor;
 

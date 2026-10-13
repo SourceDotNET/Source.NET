@@ -22,11 +22,11 @@ layout(std140, binding = 5) uniform source_vs_constants {
 #define U_TO_PIXEL_COORD_SCALE (g_vTextureSizeInfo.z)
 #define V_TO_PIXEL_COORD_SCALE (g_vTextureSizeInfo.w)
 
-out vec2 vs_BaseTexCoord00;
-out vec2 vs_BaseTexCoord01;
-out vec2 vs_BaseTexCoord10;
-out vec2 vs_BaseTexCoord11;
-out vec2 vs_BaseTexCoord_In_Pixels;
+layout(location = 0) out vec2 vs_BaseTexCoord00;
+layout(location = 1) out vec2 vs_BaseTexCoord01;
+layout(location = 2) out vec2 vs_BaseTexCoord10;
+layout(location = 3) out vec2 vs_BaseTexCoord11;
+layout(location = 4) out vec2 vs_BaseTexCoord_In_Pixels;
 
 #include "common_clipplanes_gl460.vs"
 

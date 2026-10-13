@@ -56,8 +56,8 @@ public class ShadowStateGl46 : IShaderShadow
 	public SourceVertexSharedShadowState Vertex;
 	public SourcePixelSharedShadowState Pixel;
 
-	public VertexShaderHandle VertexShader;
-	public PixelShaderHandle PixelShader;
+	public VertexShaderHandle VertexShader = VertexShaderHandle.INVALID;
+	public PixelShaderHandle PixelShader = PixelShaderHandle.INVALID;
 
 	public BasePerMaterialContextData? ContextData;
 	public ShaderUsingFlags ModulationFlags;
@@ -123,9 +123,9 @@ public class ShadowStateGl46 : IShaderShadow
 		glDeleteBuffers(BASE_UBO, VERTEX_UBO, PIXEL_UBO);
 	}
 
-	ShaderFlags Flags;
-	public ShaderFlags GetFlags() => Flags;
-	public void SetFlags(ShaderFlags flags) => Flags = flags;
+	ShaderRenderStateFlags Flags;
+	public ShaderRenderStateFlags GetFlags() => Flags;
+	public void SetFlags(ShaderRenderStateFlags flags) => Flags = flags;
 
 	public unsafe void Activate() {
 		CreateShaderObjects(); // Recreate UBO's, if we were lazy-loaded
@@ -440,6 +440,15 @@ internal sealed class ShaderComboState(IShaderSystemInternal shaders, ShaderType
 	readonly StringBuilder defines = new(256);
 
 	public nint SetShader(string fileName, int staticIndex) {
+		Configure(fileName, staticIndex);
+		((ShaderSystem)shaders).RegisterStaticCombo(type, fileName, staticIndex);
+
+		variants.Clear();
+
+		return GetVariant(0);
+	}
+
+	public void Configure(string fileName, int staticIndex) {
 		file = fileName;
 		staticComboIndex = staticIndex;
 
@@ -450,11 +459,9 @@ internal sealed class ShaderComboState(IShaderSystemInternal shaders, ShaderType
 
 		staticComboScales = ComputeComboScales(staticCombos, out _);
 		dynamicComboScales = ComputeComboScales(dynamicCombos, out numDynamicCombos);
-
-		variants.Clear();
-
-		return GetVariant(0);
 	}
+
+	public int DynamicComboCount => numDynamicCombos;
 
 	private static int[] ComputeComboScales(ShaderCombo[] combos, out int total) {
 		int[] scales = new int[combos.Length];
@@ -498,22 +505,22 @@ internal sealed class ShaderComboState(IShaderSystemInternal shaders, ShaderType
 		}
 	}
 
-	private nint Compile(int variant) {
-		int staticIndex = variant / numDynamicCombos;
-		int dynamicIndex = variant % numDynamicCombos;
-
+	public string GetVariantDefines(int dynamicIndex) {
 		defines.Clear();
-		AppendComboDefines(defines, staticCombos, staticComboScales, staticIndex);
+		AppendComboDefines(defines, staticCombos, staticComboScales, staticComboIndex);
 		AppendComboDefines(defines, dynamicCombos, dynamicComboScales, dynamicIndex);
+		return defines.ToString();
+	}
 
-		string source = defines.ToString();
+	private nint Compile(int dynamicIndex) {
+		string source = GetVariantDefines(dynamicIndex);
 		return type == ShaderType.Vertex ? (nint)shaders.LoadVertexShader(file!, source) : shaders.LoadPixelShader(file!, source);
 	}
 
 	public nint GetVariant(int dynamicIndex) {
 		int variant = staticComboIndex * numDynamicCombos + dynamicIndex;
 		if (!variants.TryGetValue(variant, out nint handle)) {
-			handle = Compile(variant);
+			handle = Compile(dynamicIndex);
 			variants.Add(variant, handle);
 		}
 		return handle;

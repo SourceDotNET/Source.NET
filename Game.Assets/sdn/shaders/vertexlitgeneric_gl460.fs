@@ -27,28 +27,28 @@
 // DYNAMIC: "PIXELFOGTYPE"				"0..2"
 
 #if SEAMLESS_BASE
-in vec3 vs_SeamlessTexCoord;
+layout(location = 0) in vec3 vs_SeamlessTexCoord;
 #define i_baseTexCoord vs_SeamlessTexCoord
 #else
-in vec2 vs_BaseTexCoord;
+layout(location = 1) in vec2 vs_BaseTexCoord;
 #define i_baseTexCoord vs_BaseTexCoord
 #endif
 #if SEAMLESS_DETAIL
-in vec3 vs_SeamlessDetailTexCoord;
+layout(location = 2) in vec3 vs_SeamlessDetailTexCoord;
 #define i_detailTexCoord vs_SeamlessDetailTexCoord
 #else
-in vec2 vs_DetailTexCoord;
+layout(location = 3) in vec2 vs_DetailTexCoord;
 #define i_detailTexCoord vs_DetailTexCoord
 #endif
-in vec4 vs_Color;
+layout(location = 4) in vec4 vs_Color;
 #if CUBEMAP
-in vec3 vs_WorldVertToEyeVector;
+layout(location = 5) in vec3 vs_WorldVertToEyeVector;
 #endif
-in vec3 vs_WorldSpaceNormal;
-in vec4 vs_ProjPos;
-in vec4 vs_WorldPos_ProjPosZ;
+layout(location = 6) in vec3 vs_WorldSpaceNormal;
+layout(location = 7) in vec4 vs_ProjPos;
+layout(location = 8) in vec4 vs_WorldPos_ProjPosZ;
 #if SEAMLESS_DETAIL || SEAMLESS_BASE
-in vec3 vs_SeamlessWeights;
+layout(location = 9) in vec3 vs_SeamlessWeights;
 #endif
 
 layout(std140, binding = 6) uniform source_ps_constants {

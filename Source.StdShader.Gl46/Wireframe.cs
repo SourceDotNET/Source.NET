@@ -6,7 +6,7 @@ namespace Source.StdShader.Gl46;
 public class Wireframe : BaseVSShader
 {
 	public static string HelpString = "Help for Wireframe";
-	public static int Flags = 0;
+	public static ShaderFlags Flags = ShaderFlags.None;
 	protected override void OnInitShaderParams(IMaterialVar[] vars, ReadOnlySpan<char> materialName) {
 		vars[(int)ShaderMaterialVars.BaseTexture].SetStringValue("white");
 		InitParamsUnlitGeneric((int)ShaderMaterialVars.BaseTexture, -1, -1, -1, -1, -1, -1);

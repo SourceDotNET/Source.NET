@@ -9,17 +9,17 @@
 // DYNAMIC: "PIXELFOGTYPE"				"0..1"
 // DYNAMIC: "WRITE_DEPTH_TO_DESTALPHA"	"0..1"
 
-in vec2 vs_BumpTexCoord;
-in vec3 vs_TangentEyeVect;
-in vec4 vs_ReflectXY_RefractYX;
-in float vs_W;
-in vec4 vs_ProjPos;
+layout(location = 0) in vec2 vs_BumpTexCoord;
+layout(location = 1) in vec3 vs_TangentEyeVect;
+layout(location = 2) in vec4 vs_ReflectXY_RefractYX;
+layout(location = 3) in float vs_W;
+layout(location = 4) in vec4 vs_ProjPos;
 #if MULTITEXTURE
-in vec4 vs_ExtraBumpTexCoord;
+layout(location = 5) in vec4 vs_ExtraBumpTexCoord;
 #endif
 #if BASETEXTURE
-centroid in vec4 vs_LightmapTexCoord1And2;
-centroid in vec4 vs_LightmapTexCoord3;
+layout(location = 6) centroid in vec4 vs_LightmapTexCoord1And2;
+layout(location = 7) centroid in vec4 vs_LightmapTexCoord3;
 #endif
 
 layout(std140, binding = 6) uniform source_ps_constants {

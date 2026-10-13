@@ -42,17 +42,17 @@ const bool g_bSkinning	= SKINNING != 0;
 //-----------------------------------------------------------------------------
 // Output vertex format
 //-----------------------------------------------------------------------------
-out vec4 vs_BaseTexCoord2_TangentSpaceVertToEyeVectorXY;
-out vec3 vs_LightAtten;
-out vec4 vs_WorldVertToEyeVectorXYZ_TangentSpaceVertToEyeVectorZ;
-out vec3 vs_WorldNormal;		// World-space normal
-out vec4 vs_WorldTangent;
+layout(location = 0) out vec4 vs_BaseTexCoord2_TangentSpaceVertToEyeVectorXY;
+layout(location = 1) out vec3 vs_LightAtten;
+layout(location = 2) out vec4 vs_WorldVertToEyeVectorXYZ_TangentSpaceVertToEyeVectorZ;
+layout(location = 3) out vec3 vs_WorldNormal;		// World-space normal
+layout(location = 4) out vec4 vs_WorldTangent;
 #if USE_WITH_2B
-out vec4 vs_ProjPos;
+layout(location = 5) out vec4 vs_ProjPos;
 #else
 #endif
-out vec4 vs_WorldPos_ProjPosZ;
-out vec3 vs_DetailTexCoord_Atten3;
+layout(location = 6) out vec4 vs_WorldPos_ProjPosZ;
+layout(location = 7) out vec3 vs_DetailTexCoord_Atten3;
 
 //-----------------------------------------------------------------------------
 // Main shader entry point

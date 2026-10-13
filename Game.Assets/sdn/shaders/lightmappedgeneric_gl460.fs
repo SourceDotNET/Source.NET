@@ -30,21 +30,21 @@
 // DYNAMIC: "LIGHTING_PREVIEW"			"0..1"
 
 #if SEAMLESS
-in vec3 vs_SeamlessTexCoord;						// zy xz
-in vec4 vs_DetailOrBumpAndEnvmapMaskTexCoord;		// envmap mask
+layout(location = 0) in vec3 vs_SeamlessTexCoord;						// zy xz
+layout(location = 1) in vec4 vs_DetailOrBumpAndEnvmapMaskTexCoord;		// envmap mask
 #else
-in vec2 vs_BaseTexCoord;
+layout(location = 2) in vec2 vs_BaseTexCoord;
 // detail textures and bumpmaps are mutually exclusive so that we have enough texcoords.
-in vec4 vs_DetailOrBumpAndEnvmapMaskTexCoord;
+layout(location = 1) in vec4 vs_DetailOrBumpAndEnvmapMaskTexCoord;
 #endif
-centroid in vec4 vs_LightmapTexCoord1And2;
-centroid in vec4 vs_LightmapTexCoord3;
-in vec4 vs_WorldPos_ProjPosZ;
+layout(location = 3) centroid in vec4 vs_LightmapTexCoord1And2;
+layout(location = 4) centroid in vec4 vs_LightmapTexCoord3;
+layout(location = 5) in vec4 vs_WorldPos_ProjPosZ;
 #if CUBEMAP || (LIGHTING_PREVIEW)
-in mat3 vs_TangentSpaceTranspose;
+layout(location = 6) in mat3 vs_TangentSpaceTranspose;
 #endif
-in vec4 vs_Color;
-in float vs_VertexBlendX;
+layout(location = 9) in vec4 vs_Color;
+layout(location = 10) in float vs_VertexBlendX;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];

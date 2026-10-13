@@ -2,9 +2,9 @@
 // DYNAMIC: "PIXELFOGTYPE"				"0..1"
 // DYNAMIC: "WRITE_DEPTH_TO_DESTALPHA"	"0..1"
 
-in vec2 vs_BaseTexCoord;
-in vec2 vs_BaseTexCoord2;
-in vec4 vs_WorldPos_ProjPosZ;
+layout(location = 0) in vec2 vs_BaseTexCoord;
+layout(location = 1) in vec2 vs_BaseTexCoord2;
+layout(location = 2) in vec4 vs_WorldPos_ProjPosZ;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];

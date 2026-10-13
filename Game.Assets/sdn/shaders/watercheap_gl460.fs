@@ -8,12 +8,12 @@
 // DYNAMIC: "HDRENABLED"				"0..1"
 // DYNAMIC: "PIXELFOGTYPE"				"0..1"
 
-in vec2 vs_NormalMapTexCoord;
-in vec3 vs_WorldVertToEyeVector;
-in mat3 vs_TangentSpaceTranspose;
-in vec4 vs_Refract_W_ProjZ;
+layout(location = 0) in vec2 vs_NormalMapTexCoord;
+layout(location = 1) in vec3 vs_WorldVertToEyeVector;
+layout(location = 2) in mat3 vs_TangentSpaceTranspose;
+layout(location = 5) in vec4 vs_Refract_W_ProjZ;
 #if MULTITEXTURE
-in vec4 vs_ExtraBumpTexCoord;
+layout(location = 6) in vec4 vs_ExtraBumpTexCoord;
 #endif
 
 layout(std140, binding = 6) uniform source_ps_constants {
