@@ -171,7 +171,7 @@ public class CollisionBSPData
 				var = material.FindVar("$surfaceprop", out varFound, false);
 				if (varFound) {
 					ReadOnlySpan<char> props = var.GetStringValue();
-					// TODO: set surface properties.
+					MapSurfaces.AsSpan()[i].SurfaceProps = (ushort)physprop.GetSurfaceIndex(props);
 				}
 			}
 		}
