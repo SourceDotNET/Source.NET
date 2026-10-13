@@ -1132,6 +1132,8 @@ public partial class BaseAnimating : BaseEntity
 			return sequence;
 	}
 
+	public int GetNumBodyGroups() => Animation.GetNumBodyGroups(GetModelPtr());
+
 	public void SetBodygroup(int group, int value) {
 		int newBody = Body;
 		Animation.SetBodygroup(GetModelPtr(), ref newBody, group, value);

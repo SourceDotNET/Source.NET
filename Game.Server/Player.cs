@@ -248,6 +248,32 @@ public enum PlayerPhysFlag
 [NetworkName("CBasePlayer")]
 public partial class BasePlayer : BaseCombatCharacter
 {
+	[NetworkName("m_ArmorValue")]
+	public int ArmorValue;
+
+	public int GetArmorValue() => ArmorValue;
+
+	public void SetArmorValue(int value) {
+		if (ArmorValue != value) {
+			NetworkStateChanged();
+			ArmorValue = value;
+		}
+	}
+
+	static InlineArray1024<char> InfoBuffer;
+
+	public ReadOnlySpan<char> GetInfo(ReadOnlySpan<char> name) {
+		strcpy(InfoBuffer, engine.GetClientConVarValue(engine.IndexOfEdict(Edict()), name));
+		return ((ReadOnlySpan<char>)InfoBuffer).SliceNullTerminatedString();
+	}
+
+	public float GetInfoNum(ReadOnlySpan<char> name, float fallback) {
+		strcpy(InfoBuffer, engine.GetClientConVarValue(engine.IndexOfEdict(Edict()), name));
+		if (InfoBuffer[0] == '\0')
+			return fallback;
+		return (float)atof(InfoBuffer);
+	}
+
 	[Flags]
 	public enum SF
 	{
@@ -853,15 +879,15 @@ public partial class BasePlayer : BaseCombatCharacter
 		}
 
 		pent.SetLocalOrigin(GetLocalOrigin());
-		// pent.AddSpawnFlags(SF_NORESPAWN);
+		pent.AddSpawnFlags(SF.NoRespawn);
 
 		BaseCombatWeapon? weapon = (BaseCombatWeapon?)((BaseEntity)pent);
 		weapon?.SetSubType(subType);
 
 		Util.DispatchSpawn(pent);
 
-		// if (pent != null && !(pent.IsMarkedForDeletion()))
-		// 	pent.Touch(this);
+		if (pent != null && !(pent.IsMarkedForDeletion()))
+			pent.Touch(this);
 
 		return pent;
 	}

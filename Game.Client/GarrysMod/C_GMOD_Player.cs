@@ -73,6 +73,18 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 	public Vector3 PlayerColor;
 	[NetworkName("m_WeaponColor")]
 	public Vector3 WeaponColor;
+
+	public virtual Vector3 GetPlayerColor() => PlayerColor;
+
+	public virtual void SetPlayerColor(in Vector3 color) {
+		if (PlayerColor != color)
+			PlayerColor = color;
+	}
+
+	public virtual void SetWeaponColor(in Vector3 color) {
+		if (WeaponColor != color)
+			WeaponColor = color;
+	}
 	[NetworkName("m_Hands")]
 	public EHANDLE Hands = new();
 	[NetworkName("m_iMaxArmor")]

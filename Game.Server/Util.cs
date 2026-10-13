@@ -675,6 +675,18 @@ public static partial class Util
 		return 0;
 	}
 
+#if GMOD_DLL
+	public static void RemoveSafe(BaseEntity? entity) {
+		if (entity == null)
+			return;
+		if (Game.Client.GarrysMod.GarrysMod.IsSacredEntity(entity.Classname ?? "")) {
+			Warning($"Refusing to delete entity '{entity.Classname ?? ""}'!\n");
+			return;
+		}
+		Remove(entity.NetworkProp());
+	}
+#endif
+
 	public static void Remove(BaseEntity? entity) {
 		if (entity == null)
 			return;

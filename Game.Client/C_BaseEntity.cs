@@ -887,7 +887,7 @@ public partial class C_BaseEntity : IClientEntity
 		return 0 == strcmp(entity.GetClassname(), classname);
 	}
 
-	public void SetParent(C_BaseEntity parentEntity, int parentAttachment = 0) {
+	public void SetParent(C_BaseEntity? parentEntity, int parentAttachment = 0) {
 		EHANDLE newParentHandle = default;
 		newParentHandle.Set(parentEntity);
 		if (newParentHandle.Index == MoveParent.Index)

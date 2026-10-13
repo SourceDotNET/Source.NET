@@ -109,6 +109,15 @@ public static partial class LuaEntity
 		return ent;
 	}
 
+	public static BaseCombatWeapon? Get_Weapon(int stackPos, bool allowNull) {
+		BaseEntity? ent = Get_Entity(stackPos, allowNull);
+		if (ent != null && ent.IsBaseCombatWeapon())
+			return (BaseCombatWeapon)ent;
+		if (!allowNull)
+			g_Lua!.Error("Weapon is NULL/Not a Weapon");
+		return null;
+	}
+
 	public static void Push_Entity(BaseEntity? ent) {
 		if (g_Lua == null || g_Lua.Global() == null)
 			return;
@@ -241,6 +250,157 @@ public static partial class LuaEntity
 			if (value >= 0)
 				animating.SetBodygroup(i, value);
 		}
+		return 0;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__DeleteOnRemove(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.DeleteOnRemove(Get_Entity(2, false));
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
+	static int Entity__AddEffects(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.AddEffects((EntityEffects)(int)lua.GetNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__DrawShadow(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (lua.GetBool(2)) {
+			ent.RemoveEffects(EntityEffects.NoShadow);
+			return 0;
+		}
+		ent.AddEffects(EntityEffects.NoShadow);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetMoveType(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		float moveType = (int)lua.GetNumber(2);
+		if (moveType <= 0.0f)
+			moveType = 0.0f;
+		if (11.0f <= moveType)
+			moveType = 11.0f;
+		ent.SetMoveType((MoveType)(int)moveType, MoveCollide.Default);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetNotSolid(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		SolidFlags flags;
+		if (!lua.GetBool(2))
+			flags = ent.GetSolidFlags() & ~SolidFlags.NotSolid;
+		else
+			flags = ent.GetSolidFlags() | SolidFlags.NotSolid;
+		ent.CollisionProp().SetSolidFlags(flags);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetTransmitWithParent(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+#if GAME_DLL
+		if (lua.GetBool(2)) {
+			ent.NetworkStateChanged();
+			ent.GModFlags |= 1 << 6; // TODO, need an enum
+			return 0;
+		}
+		ent.NetworkStateChanged();
+		ent.GModFlags &= ~(1 << 6);
+#else
+		ent.GModFlags = lua.GetBool(2) ? ent.GModFlags | 1 << 6 : ent.GModFlags & ~(1 << 6);
+#endif
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetParent(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaType type = lua.GetType(2);
+		if (type != LuaType.Entity && type != LuaType.Nil)
+			lua.TypeError("Entity", 2);
+		BaseEntity? parent = UserGet(2);
+		if (ent == parent)
+			return 0;
+#if CLIENT_DLL
+		int attachment;
+		if (lua.GetType(3) == LuaType.Number) {
+			attachment = (int)lua.GetNumber(3);
+			if ((uint)(attachment + 1) > 256)
+				lua.ErrorFromLua("Invalid attachment supplied to Entity.SetParent, must be 0 or above, and less than the attachment count.");
+		}
+		else
+			attachment = 0;
+		ent.SetParent(parent, attachment);
+#else
+		if (lua.GetType(3) == LuaType.Number) {
+			int attachment = (int)lua.GetNumber(3);
+			if ((uint)(attachment + 1) > 256)
+				lua.ErrorFromLua("Invalid attachment supplied to Entity.SetParent, must be 0 or above, and less than the attachment count.");
+			ent.SetParent(parent, attachment);
+			return 0;
+		}
+		ent.SetParent(parent, -1);
+#endif
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetOwner(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseEntity? owner;
+		if (ent is BaseViewModel viewModel)
+			owner = viewModel.GetOwner();
+		else
+			owner = ent.GetOwnerEntity();
+		Push_Entity(owner);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetOwner(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaType type = lua.GetType(2);
+		if (type != LuaType.Entity && type != LuaType.Nil)
+			lua.TypeError("Entity", 2);
+		ent.SetOwnerEntity(UserGet(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetNumBodyGroups(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating != null && !ent.IsMarkedForDeletion()) {
+			lua.PushNumber(animating.GetNumBodyGroups());
+			return 1;
+		}
+		lua.PushNumber(0);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetBodygroup(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || IsEntityRemoving(ent, false))
+			return 0;
+
+		int value = 0;
+		if ((int)lua.GetNumber(3) > 0)
+			value = (int)lua.GetNumber(3);
+		int group = 0;
+		if ((int)lua.GetNumber(2) > 0)
+			group = (int)lua.GetNumber(2);
+		animating.SetBodygroup(group, value);
 		return 0;
 	}
 
@@ -401,6 +561,30 @@ public static partial class LuaEntity
 		phys.SetPosition(pos, angles, true);
 		return 0;
 	}
+
+	[LuaMethod]
+	static int Entity__SetHealth(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int health = (int)lua.GetNumber(2);
+#if CLIENT_DLL
+		ent.SetHealth(health);
+#else
+		if (ent.Health != health) {
+			ent.NetworkStateChanged();
+			ent.SetHealth(health);
+		}
+#endif
+		return 0;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__SetMaxHealth(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetMaxHealth((int)lua.GetNumber(2));
+		return 0;
+	}
+#endif
 
 	[LuaMethod]
 	static int Entity__SetSkin(ILuaInterface lua) {

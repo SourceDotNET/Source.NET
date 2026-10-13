@@ -91,6 +91,7 @@ public partial class GMOD_Player : HL2MP_Player
 		return base.EntSelectSpawnPoint();
 	}
 
+	public bool ShouldDropWeapon;
 	[NetworkName("m_iGModPlayerFlags")]
 	public int GModPlayerFlags;
 	[NetworkName("m_HoveredWidget")]
@@ -121,6 +122,22 @@ public partial class GMOD_Player : HL2MP_Player
 	public Vector3 PlayerColor = new(255, 255, 255);
 	[NetworkName("m_WeaponColor")]
 	public Vector3 WeaponColor = new(255, 255, 255);
+
+	public virtual Vector3 GetPlayerColor() => PlayerColor;
+
+	public virtual void SetPlayerColor(in Vector3 color) {
+		if (PlayerColor != color) {
+			NetworkStateChanged();
+			PlayerColor = color;
+		}
+	}
+
+	public virtual void SetWeaponColor(in Vector3 color) {
+		if (WeaponColor != color) {
+			NetworkStateChanged();
+			WeaponColor = color;
+		}
+	}
 	[NetworkName("m_Hands")]
 	public EHANDLE Hands = new();
 	[NetworkName("m_iMaxArmor")]

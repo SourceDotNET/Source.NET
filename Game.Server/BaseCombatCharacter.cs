@@ -548,6 +548,10 @@ public partial class BaseCombatCharacter : BaseFlex
 
 		return weapon;
 	}
+	public bool NoAmmo;
+
+	public override BaseCombatCharacter? MyCombatCharacterPointer() => this;
+
 	public virtual void Weapon_Equip(BaseCombatWeapon weapon) {
 		for (int i = 0; i < MAX_WEAPONS; i++) {
 			if (MyWeapons[i].Get() == null) {
@@ -558,18 +562,20 @@ public partial class BaseCombatCharacter : BaseFlex
 
 		weapon.ChangeTeam(GetTeamNumber());
 
-		if (weapon.GetMaxClip1() == -1)
-			GiveAmmo(weapon.GetDefaultClip1(), weapon.PrimaryAmmoType);
-		else if (weapon.GetDefaultClip1() > weapon.GetMaxClip1()) {
-			weapon.iClip1 = weapon.GetMaxClip1();
-			GiveAmmo(weapon.GetDefaultClip1() - weapon.GetMaxClip1(), weapon.PrimaryAmmoType);
-		}
+		if (!NoAmmo && !weapon.WasDropped()) {
+			if (weapon.GetMaxClip1() == -1)
+				GiveAmmo(weapon.GetDefaultClip1(), weapon.PrimaryAmmoType);
+			else if (weapon.GetDefaultClip1() > weapon.GetMaxClip1()) {
+				weapon.iClip1 = weapon.GetMaxClip1();
+				GiveAmmo(weapon.GetDefaultClip1() - weapon.GetMaxClip1(), weapon.PrimaryAmmoType);
+			}
 
-		if (weapon.GetMaxClip2() == -1)
-			GiveAmmo(weapon.GetDefaultClip2(), weapon.SecondaryAmmoType);
-		else if (weapon.GetDefaultClip2() > weapon.GetMaxClip2()) {
-			weapon.iClip2 = weapon.GetMaxClip2();
-			GiveAmmo(weapon.GetDefaultClip2() - weapon.GetMaxClip2(), weapon.SecondaryAmmoType);
+			if (weapon.GetMaxClip2() == -1)
+				GiveAmmo(weapon.GetDefaultClip2(), weapon.SecondaryAmmoType);
+			else if (weapon.GetDefaultClip2() > weapon.GetMaxClip2()) {
+				weapon.iClip2 = weapon.GetMaxClip2();
+				GiveAmmo(weapon.GetDefaultClip2() - weapon.GetMaxClip2(), weapon.SecondaryAmmoType);
+			}
 		}
 
 		weapon.Equip(this);

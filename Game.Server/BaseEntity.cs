@@ -895,6 +895,16 @@ public partial class BaseEntity : IServerEntity
 	public virtual void UpdateOnRemove() {
 		Util.g_bReceivedChainedUpdateOnRemove = true;
 
+#if GMOD_DLL
+		for (int i = 0; i < DeleteOnRemoveList.Count; i++) {
+			BaseEntity? ent = DeleteOnRemoveList[i].Get();
+			if (ent == null)
+				continue;
+			Util.RemoveSafe(ent);
+			DeleteOnRemoveList[i] = new();
+		}
+#endif
+
 		// Virtual call to shut down any looping sounds.
 		StopLoopingSounds();
 
@@ -1724,6 +1734,16 @@ public partial class BaseEntity : IServerEntity
 
 	public virtual int GetMaxHealth() => MaxHealth;
 	public void GetMaxHealth(int amt) => MaxHealth = amt;
+	public void SetMaxHealth(int amt) => MaxHealth = amt;
+	public virtual BaseCombatCharacter? MyCombatCharacterPointer() => null;
+
+	public readonly List<EHANDLE> DeleteOnRemoveList = [];
+
+	public virtual void DeleteOnRemove(BaseEntity? ent) {
+		EHANDLE handle = new();
+		handle.Set(ent);
+		DeleteOnRemoveList.Add(handle);
+	}
 
 	public int GetHealth() => Health;
 	public int SetHealth(int amt) => Health = amt;
