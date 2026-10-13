@@ -8,12 +8,12 @@ public static class VirtualMeshConstants
 	public const int MAX_VIRTUAL_TRIANGLES = 1024;
 }
 
-[InlineArray(VirtualMeshConstants.MAX_VIRTUAL_TRIANGLES)]
+[InlineArray(VirtualMeshConstants.MAX_VIRTUAL_TRIANGLES * 3)]
 public struct InlineArrayMaxVirtualTriangles<T> { T first; }
 
 public struct VirtualMeshList
 {
-	public Vector3 Verts;
+	public List<Vector3>? Verts;
 	public int IndexCount;
 	public int TriangleCount;
 	public int VertexCount;
@@ -30,9 +30,9 @@ public struct VirtualMeshTriangleList
 
 public interface IVirtualMeshEvent
 {
-	void GetVirtualMesh(object userData, Span<VirtualMeshList> list);
+	void GetVirtualMesh(object userData, ref VirtualMeshList list);
 	void GetWorldspaceBounds(object userData, out Vector3 mins, out Vector3 maxs);
-	void GetTrianglesInSphere(object userData, in Vector3 center, float radius, Span<VirtualMeshTriangleList> list);
+	void GetTrianglesInSphere(object userData, in Vector3 center, float radius, ref VirtualMeshTriangleList list);
 }
 
 public struct VirtualMeshParams

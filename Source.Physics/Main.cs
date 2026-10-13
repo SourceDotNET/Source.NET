@@ -4,6 +4,7 @@ using Box3D;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Source.Common.Commands;
 using Source.Common.Physics;
 
 using System.Runtime.CompilerServices;
@@ -75,6 +76,19 @@ public unsafe class PhysicsInterface : IPhysics
 
 		Environments.Remove(env);
 		(env as PhysicsEnvironment)?.Destroy();
+	}
+
+	[ConCommand("vbox_dumpcollide", "Dumps collision and mass data of physics objects whose name contains the argument.", FCvar.Cheat)]
+	void vbox_dumpcollide(in TokenizedCommand args) {
+		if (args.ArgC() < 2) {
+			Msg("Usage: vbox_dumpcollide <object name substring>\n");
+			return;
+		}
+
+		for (int i = 0; i < Environments.Count; i++) {
+			if (Environments[i] is PhysicsEnvironment environment)
+				environment.DumpCollide(i, args[1]);
+		}
 	}
 
 	public IPhysicsEnvironment? GetActiveEnvironmentByIndex(int index) {

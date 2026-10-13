@@ -11,7 +11,7 @@
 		<Compile Include="..\Usings\GlobalUsings.cs" Link="Usings/GlobalUsings.cs" />
 	</ItemGroup>
 	<ItemGroup>
-	  <PackageReference Include="Box3D.Sharp" Version="0.1.1" />
+	  <PackageReference Include="Box3D.Sharp" Version="0.1.2" />
 	</ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Source.Common\Source.Common.csproj" />

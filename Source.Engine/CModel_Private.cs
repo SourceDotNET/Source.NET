@@ -6,6 +6,7 @@ using Source.Common;
 using Source.Common.Commands;
 using Source.Common.Formats.BSP;
 using Source.Common.Mathematics;
+using Source.Common.Physics;
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -118,6 +119,23 @@ public struct AlignedBBox
 		SetCounter(counterIn);
 		Maxs = maxsIn;
 		SetContents(contentsIn);
+	}
+}
+
+class VirtualTerrain : IVirtualMeshEvent
+{
+	public void GetVirtualMesh(object userData, ref VirtualMeshList list) {
+		int index = (int)userData;
+		Assert(index >= 0 && index < CM.g_DispCollTreeCount);
+		g_DispCollTrees![index].GetVirtualMeshList(ref list);
+	}
+	public void GetWorldspaceBounds(object userData, out Vector3 mins, out Vector3 maxs) {
+		int index = (int)userData;
+		mins = g_DispBounds![index].Mins;
+		maxs = g_DispBounds[index].Maxs;
+	}
+	public void GetTrianglesInSphere(object userData, in Vector3 center, float radius, ref VirtualMeshTriangleList list) {
+		throw new NotImplementedException();
 	}
 }
 
@@ -310,6 +328,42 @@ public static partial class CM
 	}
 
 	public static nint g_DispCollTreeCount = 0;
+
+	static readonly VirtualTerrain g_VirtualTerrain = new();
+	static PhysCollide?[] g_TerrainList = [];
+
+	public static PhysCollide? PhysCollideForDisp(int index) {
+		if (index < 0 || index >= g_DispCollTreeCount)
+			return null;
+
+		return g_TerrainList[index];
+	}
+
+	public static void CreateDispPhysCollide(int dispLumpSize) {
+		g_TerrainList = new PhysCollide?[g_DispCollTreeCount];
+		for (int i = 0; i < g_DispCollTreeCount; i++) {
+			DispCollTree dispTree = g_DispCollTrees![i];
+			if (dispTree != null && dispTree.CheckFlags(CoreDispInfo.SURF_NOPHYSICS_COLL)) {
+				g_TerrainList[i] = null;
+				continue;
+			}
+			VirtualMeshParams meshParams = default;
+			meshParams.MeshEventHandler = g_VirtualTerrain;
+			meshParams.UserData = i;
+			meshParams.BuildOuterHull = dispLumpSize > 0 ? false : true;
+
+			g_TerrainList[i] = physcollision.CreateVirtualMesh(meshParams);
+		}
+	}
+
+	public static void DestroyDispPhysCollide() {
+		for (int i = g_TerrainList.Length - 1; i >= 0; --i) {
+			PhysCollide? collide = g_TerrainList[i];
+			if (collide != null)
+				physcollision.DestroyCollide(collide);
+		}
+		g_TerrainList = [];
+	}
 
 	internal static TraceInfo BeginTrace() {
 		TraceInfo traceInfo = g_TraceInfoPool.Alloc();
