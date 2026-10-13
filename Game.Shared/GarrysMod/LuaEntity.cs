@@ -376,6 +376,189 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__SetDTBool(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		bool value = lua.GetBool(3);
+		int index = (int)lua.GetNumber(2);
+		if ((uint)index < 32 && ent.GMOD_bool[index] != value) {
+#if GAME_DLL
+			ent.NetworkStateChanged();
+#endif
+			ent.GMOD_bool[index] = value;
+		}
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetDTBool(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int index = (int)lua.GetNumber(2);
+		lua.PushBool(ent.GMOD_bool[(uint)index < 32 ? index : 0]);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetDTFloat(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		float value = (float)lua.GetNumber(3);
+		int index = (int)lua.GetNumber(2);
+		if ((uint)index < 32 && ent.GMOD_float[index] != value) {
+#if GAME_DLL
+			ent.NetworkStateChanged();
+#endif
+			ent.GMOD_float[index] = value;
+		}
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetDTFloat(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int index = (int)lua.GetNumber(2);
+		lua.PushNumber(ent.GMOD_float[(uint)index < 32 ? index : 0]);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetDTInt(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int value = (int)lua.GetNumber(3);
+		int index = (int)lua.GetNumber(2);
+		if ((uint)index < 32 && ent.GMOD_int[index] != value) {
+#if GAME_DLL
+			ent.NetworkStateChanged();
+#endif
+			ent.GMOD_int[index] = value;
+		}
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetDTInt(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int index = (int)lua.GetNumber(2);
+		lua.PushNumber(ent.GMOD_int[(uint)index < 32 ? index : 0]);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetDTVector(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Vector3 value = LuaVector.Get_Vector(3);
+		int index = (int)lua.GetNumber(2);
+		if ((uint)index < 32 && ent.GMOD_Vector[index] != value) {
+#if GAME_DLL
+			ent.NetworkStateChanged();
+#endif
+			ent.GMOD_Vector[index] = value;
+		}
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetDTVector(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int index = (int)lua.GetNumber(2);
+		LuaVector.Push_Vector(ent.GMOD_Vector[(uint)index < 32 ? index : 0]);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetDTAngle(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		QAngle value = LuaAngle.Get_Angle(3);
+		int index = (int)lua.GetNumber(2);
+		if ((uint)index < 32 && ent.GMOD_QAngle[index] != value) {
+#if GAME_DLL
+			ent.NetworkStateChanged();
+#endif
+			ent.GMOD_QAngle[index] = value;
+		}
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetDTAngle(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int index = (int)lua.GetNumber(2);
+		LuaAngle.Push_Angle(ent.GMOD_QAngle[(uint)index < 32 ? index : 0]);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetDTEntity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaType type = lua.GetType(3);
+		if (type != LuaType.Entity && type != LuaType.Nil)
+			lua.TypeError("Entity", 3);
+		BaseEntity? value = UserGet(3);
+		int index = (int)lua.GetNumber(2);
+		if ((uint)index < 32 && ent.GMOD_EHANDLE[index].Get() != value) {
+#if GAME_DLL
+			ent.NetworkStateChanged();
+#endif
+			ent.GMOD_EHANDLE[index].Set(value);
+		}
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetDTEntity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int index = (int)lua.GetNumber(2);
+		Push_Entity(ent.GMOD_EHANDLE[(uint)index < 32 ? index : 0].Get());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetDTString(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		string? value = lua.GetString(3);
+		switch ((int)lua.GetNumber(2)) {
+			case 0:
+#if GAME_DLL
+				ent.NetworkStateChanged();
+#endif
+				strcpy(ent.GMOD_String0, value);
+				break;
+			case 1:
+#if GAME_DLL
+				ent.NetworkStateChanged();
+#endif
+				strcpy(ent.GMOD_String1, value);
+				break;
+			case 2:
+#if GAME_DLL
+				ent.NetworkStateChanged();
+#endif
+				strcpy(ent.GMOD_String2, value);
+				break;
+			case 3:
+#if GAME_DLL
+				ent.NetworkStateChanged();
+#endif
+				strcpy(ent.GMOD_String3, value);
+				break;
+		}
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetDTString(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int index = (int)lua.GetNumber(2);
+		if (index == 1)
+			lua.PushString(((ReadOnlySpan<char>)ent.GMOD_String1).SliceNullTerminatedString());
+		else if (index == 2)
+			lua.PushString(((ReadOnlySpan<char>)ent.GMOD_String2).SliceNullTerminatedString());
+		else if (index == 3)
+			lua.PushString(((ReadOnlySpan<char>)ent.GMOD_String3).SliceNullTerminatedString());
+		else
+			lua.PushString(((ReadOnlySpan<char>)ent.GMOD_String0).SliceNullTerminatedString());
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Entity__GetSequence(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		BaseAnimating? animating = ent.GetBaseAnimating();
