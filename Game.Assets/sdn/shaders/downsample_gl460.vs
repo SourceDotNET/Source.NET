@@ -12,10 +12,10 @@ layout(std140, binding = 5) uniform source_vs_constants {
 #define vsTapOffs2 vs_const[50].xy
 #define vsTapOffs3 vs_const[51].xy
 
-out vec2 vs_CoordTap0;
-out vec2 vs_CoordTap1;
-out vec2 vs_CoordTap2;
-out vec2 vs_CoordTap3;
+layout(location = 0) out vec2 vs_CoordTap0;
+layout(location = 1) out vec2 vs_CoordTap1;
+layout(location = 2) out vec2 vs_CoordTap2;
+layout(location = 3) out vec2 vs_CoordTap3;
 
 vec2 FlipV(vec2 uv)
 {

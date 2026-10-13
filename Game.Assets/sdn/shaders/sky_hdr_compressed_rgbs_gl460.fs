@@ -1,11 +1,11 @@
 #version 460
 // DYNAMIC: "WRITE_DEPTH_TO_DESTALPHA"	"0..1"
 
-in vec2 vs_BaseTexCoord00;
-in vec2 vs_BaseTexCoord01;
-in vec2 vs_BaseTexCoord10;
-in vec2 vs_BaseTexCoord11;
-in vec2 vs_BaseTexCoord_In_Pixels;
+layout(location = 0) in vec2 vs_BaseTexCoord00;
+layout(location = 1) in vec2 vs_BaseTexCoord01;
+layout(location = 2) in vec2 vs_BaseTexCoord10;
+layout(location = 3) in vec2 vs_BaseTexCoord11;
+layout(location = 4) in vec2 vs_BaseTexCoord_In_Pixels;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];

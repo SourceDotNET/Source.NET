@@ -19,8 +19,8 @@ const int VertexAlpha = 32;
 
 uniform int flags;
 
-out vec2 vs_TexCoord;
-out vec4 vs_Color;
+layout(location = 0) out vec2 vs_TexCoord;
+layout(location = 1) out vec4 vs_Color;
 
 #include "common_clipplanes_gl460.vs"
 

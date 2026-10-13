@@ -19,12 +19,12 @@
 // DYNAMIC: "WRITE_DEPTH_TO_DESTALPHA"	"0..1"
 // DYNAMIC: "FLASHLIGHTSHADOWS"			"0..1"
 
-in vec4 vs_BaseTexCoord;			// xy=base zw=detail
-in vec3 vs_LightAtten;				// Scalar light attenuation factors for FOUR lights
-in vec3 vs_WorldVertToEyeVector;
-in mat3 vs_TangentSpaceTranspose;
-in vec4 vs_WorldPos_Atten3;
-in vec4 vs_ProjPos_WrinkleWeight;
+layout(location = 0) in vec4 vs_BaseTexCoord;			// xy=base zw=detail
+layout(location = 1) in vec3 vs_LightAtten;				// Scalar light attenuation factors for FOUR lights
+layout(location = 2) in vec3 vs_WorldVertToEyeVector;
+layout(location = 3) in mat3 vs_TangentSpaceTranspose;
+layout(location = 6) in vec4 vs_WorldPos_Atten3;
+layout(location = 7) in vec4 vs_ProjPos_WrinkleWeight;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];

@@ -25,11 +25,11 @@ layout(std140, binding = 5) uniform source_vs_constants {
 #define flOneOverShadowDist cShadowConstants.y
 #define flShadowScale cShadowConstants.z
 
-out vec3 vs_T0;
-out vec3 vs_T1;
-out vec3 vs_T2;
-out float vs_T3;
-out vec4 vs_Color;
+layout(location = 0) out vec3 vs_T0;
+layout(location = 1) out vec3 vs_T1;
+layout(location = 2) out vec3 vs_T2;
+layout(location = 3) out float vs_T3;
+layout(location = 4) out vec4 vs_Color;
 
 #include "common_clipplanes_gl460.vs"
 

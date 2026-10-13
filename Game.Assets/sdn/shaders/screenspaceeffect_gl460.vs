@@ -12,11 +12,11 @@ layout(std140, binding = 0) uniform source_matrices {
     mat4 modelMatrix;
 };
 
-out vec2 vs_BaseTexCoord;
-out vec4 vs_TexCoord0;
-out vec4 vs_TexCoord1;
-out vec4 vs_TexCoord2;
-out vec4 vs_Color0;
+layout(location = 0) out vec2 vs_BaseTexCoord;
+layout(location = 1) out vec4 vs_TexCoord0;
+layout(location = 2) out vec4 vs_TexCoord1;
+layout(location = 3) out vec4 vs_TexCoord2;
+layout(location = 4) out vec4 vs_Color0;
 
 #include "common_clipplanes_gl460.vs"
 

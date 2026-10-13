@@ -1,11 +1,11 @@
 #version 460
 
-centroid in vec2 vs_TexCoord0;
-centroid in vec2 vs_TexCoord1;
-centroid in vec2 vs_TexCoord2;
-centroid in vec2 vs_TexCoord3;
-centroid in vec2 vs_TexCoord4;
-in vec4 vs_ShadowColor;
+layout(location = 0) centroid in vec2 vs_TexCoord0;
+layout(location = 1) centroid in vec2 vs_TexCoord1;
+layout(location = 2) centroid in vec2 vs_TexCoord2;
+layout(location = 3) centroid in vec2 vs_TexCoord3;
+layout(location = 4) centroid in vec2 vs_TexCoord4;
+layout(location = 5) in vec4 vs_ShadowColor;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];

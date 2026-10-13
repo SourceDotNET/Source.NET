@@ -24,11 +24,11 @@ const int SHADER_SPECIFIC_CONST_3 = 51;
 #define VSHADER_VECT_SCALE			1.0
 #define TexOffsets					vs_const[SHADER_SPECIFIC_CONST_3]
 
-out vec2 vs_NormalMapTexCoord;
-out vec3 vs_WorldVertToEyeVector;
-out mat3 vs_TangentSpaceTranspose;
-out vec4 vs_Refract_W_ProjZ;
-out vec4 vs_ExtraBumpTexCoord;
+layout(location = 0) out vec2 vs_NormalMapTexCoord;
+layout(location = 1) out vec3 vs_WorldVertToEyeVector;
+layout(location = 2) out mat3 vs_TangentSpaceTranspose;
+layout(location = 5) out vec4 vs_Refract_W_ProjZ;
+layout(location = 6) out vec4 vs_ExtraBumpTexCoord;
 
 #include "common_clipplanes_gl460.vs"
 

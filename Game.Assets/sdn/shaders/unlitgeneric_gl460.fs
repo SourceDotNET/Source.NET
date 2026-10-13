@@ -1,8 +1,8 @@
 #version 460
 // STATIC: "BASETEXTURE"				"0..1"
 
-in vec2 vs_TexCoord;
-in vec4 vs_Color;
+layout(location = 0) in vec2 vs_TexCoord;
+layout(location = 1) in vec4 vs_Color;
 
 layout(std140, binding = 3) uniform source_pixel_sharedUBO {
     bool isAlphaTesting;
