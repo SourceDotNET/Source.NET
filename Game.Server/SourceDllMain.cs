@@ -8,6 +8,7 @@ using Source.Common.Commands;
 using Source.Common.DataCache;
 using Source.Common.Engine;
 using Source.Common.Filesystem;
+using Source.Common.MaterialSystem;
 using Source.Common.SceneFileCache;
 using Source.Common.Server;
 using Source.Common.SoundEmitterSystem;
@@ -35,6 +36,7 @@ public static class SourceDllMain
 	[Dependency] public static IVoiceServer g_pVoiceServer { get; private set; } = null!;
 	[Dependency] public static UserMessages usermessages { get; private set; } = null!;
 	[Dependency] public static IMDLCache mdlcache { get; private set; } = null!;
+	[Dependency] public static IMaterialSystem materials { get; private set; } = null!;
 	[Dependency] public static ISceneFileCache scenefilecache { get; private set; } = null!;
 	[KeyedDependency(Key = Realm.Server)] public static IVModelInfo modelinfo { get; private set; } = null!;
 	[Dependency] public static GlobalEntityList gEntList { get; private set; } = null!;
