@@ -376,7 +376,7 @@ internal unsafe class PhysicsObject : IPhysicsObject
 			return;
 
 		float friction = MathF.Max(surface.Physics.Friction, 0.0f);
-		float restitution = Math.Clamp(surface.Physics.Elasticity, 0.0f, 1.0f);
+		float restitution = MathF.Max(surface.Physics.Elasticity, 0.0f);
 		ForEachShape(shape => {
 			shape.Friction = friction;
 			shape.Restitution = restitution;
@@ -739,7 +739,7 @@ internal unsafe class PhysicsObject : IPhysicsObject
 		SurfaceData_ptr? surface = physprops.GetSurfaceData(materialIndex);
 		if (surface != null) {
 			shapeDef.baseMaterial.friction = MathF.Max(surface.Physics.Friction, 0.0f);
-			shapeDef.baseMaterial.restitution = Math.Clamp(surface.Physics.Elasticity, 0.0f, 1.0f);
+			shapeDef.baseMaterial.restitution = MathF.Max(surface.Physics.Elasticity, 0.0f);
 			if (surface.Physics.Density > 0.0f)
 				shapeDef.density = surface.Physics.Density;
 		}

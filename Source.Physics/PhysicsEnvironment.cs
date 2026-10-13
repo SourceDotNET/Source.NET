@@ -93,7 +93,7 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 		def.contactSpeed = SourceToBox.Distance(100.0f);
 		def.workerCount = (uint)Math.Clamp(Environment.ProcessorCount / 2, 1, MaxWorkers);
 		def.frictionMixingRule = MixingRule.Multiply;
-		def.restitutionMixingRule = MixingRule.GeometricMean;
+		def.restitutionMixingRule = MixingRule.MultiplyClamp;
 		WorldId = World.Create(def);
 
 		WorldId.SetCustomFilterHandler(this);
