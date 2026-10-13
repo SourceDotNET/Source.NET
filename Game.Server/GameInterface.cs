@@ -786,12 +786,13 @@ public class ServerGameClients : IServerGameClients
 		throw new NotImplementedException();
 	}
 
+	static readonly UserCmd[] ProcessUsercmdsBuffer = new UserCmd[CMD_MAXBACKUP];
 	public TimeUnit_t ProcessUsercmds(Edict player, bf_read buf, int numCmds, int totalCmds, int droppedPackets, bool ignore, bool paused) {
 		int i;
 
 		UserCmd from, to;
 
-		UserCmd[] cmds = new UserCmd[CMD_MAXBACKUP];
+		UserCmd[] cmds = ProcessUsercmdsBuffer;
 
 		UserCmd cmdNull = new();
 

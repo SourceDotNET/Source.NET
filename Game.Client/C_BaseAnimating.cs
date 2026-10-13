@@ -1160,6 +1160,11 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		UpdateRelevantInterpolatedVars();
 	}
 
+	public override void Term() {
+		RemoveFromClientSideAnimationList(true);
+		base.Term();
+	}
+
 	public void RemoveFromClientSideAnimationList(bool beingDestroyed = false) {
 		if (INVALID_CLIENTSIDEANIMATION_LIST_HANDLE == ClientSideAnimationListHandle)
 			return;
