@@ -148,12 +148,6 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			glStencilMask(0xFF);
 
 		if (flags != 0) {
-			bool* colorMask = stackalloc bool[4];
-			glGetBooleanv(GL_COLOR_WRITEMASK, colorMask);
-			bool scissorWasEnabled = glIsEnabled(GL_SCISSOR_TEST);
-			if (clearColor)
-				glColorMask(true, true, true, true);
-
 			bool renderTargetMatchesViewport =
 				(renderTargetWidth == -1 && renderTargetHeight == -1) ||
 				(renderTargetWidth == Viewport.Width && renderTargetHeight == Viewport.Height);
@@ -169,10 +163,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 				glDisable(GL_SCISSOR_TEST);
 			}
 
-			if (scissorWasEnabled)
+			if (ScissorEnabled)
 				glEnable(GL_SCISSOR_TEST);
-			if (clearColor)
-				glColorMask(colorMask[0], colorMask[1], colorMask[2], colorMask[3]);
 		}
 
 		if (boardStateValid) {
@@ -578,8 +570,11 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 	void ApplyStencilFunc() => glStencilFunc(StencilCompareFunction.GLEnum(), StencilReferenceValue, StencilTestMask);
 
+	bool ScissorEnabled;
+
 	public void SetScissorRect(int left, int top, int right, int bottom, bool enableScissor) {
 		FlushBufferedPrimitives();
+		ScissorEnabled = enableScissor;
 		if (!enableScissor) {
 			glDisable(GL_SCISSOR_TEST);
 			return;
