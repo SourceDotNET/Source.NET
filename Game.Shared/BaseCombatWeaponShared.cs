@@ -1432,9 +1432,9 @@ public partial class
 		HudHintMinDisplayTime = 0;
 	}
 
-	public bool VisibleInWeaponSelection() => true;
-	public int GetPosition() => GetWpnData().Position;
-	public int GetSlot() => GetWpnData().Slot;
+	public virtual bool VisibleInWeaponSelection() => true;
+	public virtual int GetPosition() => GetWpnData().Position;
+	public virtual int GetSlot() => GetWpnData().Slot;
 
 	WEAPON_FILE_INFO_HANDLE WeaponFileInfoHandle;
 	public WEAPON_FILE_INFO_HANDLE GetWeaponFileInfoHandle() => WeaponFileInfoHandle;
@@ -1443,8 +1443,8 @@ public partial class
 		return WeaponParse.GetFileWeaponInfoFromHandle(WeaponFileInfoHandle);
 	}
 
-	public ReadOnlySpan<char> GetName() => GetWpnData().ClassName.SliceNullTerminatedString();
-	public ReadOnlySpan<char> GetPrintName() => GetWpnData().PrintName.SliceNullTerminatedString();
+	public virtual ReadOnlySpan<char> GetName() => GetWpnData().ClassName.SliceNullTerminatedString();
+	public virtual ReadOnlySpan<char> GetPrintName() => GetWpnData().PrintName.SliceNullTerminatedString();
 #if CLIENT_DLL
 	public HudTexture GetSpriteActive() => GetWpnData().IconActive;
 	public HudTexture GetSpriteInactive() => GetWpnData().IconInactive;
@@ -1477,10 +1477,10 @@ public partial class
 		return HasAmmo();
 	}
 
-	public int GetMaxClip1() => GetWpnData().MaxClip1;
-	public int GetMaxClip2() => GetWpnData().MaxClip2;
-	public int GetDefaultClip1() => GetWpnData().DefaultClip1;
-	public int GetDefaultClip2() => GetWpnData().DefaultClip2;
+	public virtual int GetMaxClip1() => GetWpnData().MaxClip1;
+	public virtual int GetMaxClip2() => GetWpnData().MaxClip2;
+	public virtual int GetDefaultClip1() => GetWpnData().DefaultClip1;
+	public virtual int GetDefaultClip2() => GetWpnData().DefaultClip2;
 	public bool IsMeleeWeapon() => GetWpnData().MeleeWeapon;
 
 	public int SubType;
@@ -1489,13 +1489,13 @@ public partial class
 
 	public bool UsesClipsForAmmo1() => GetMaxClip1() != WEAPON_NOCLIP;
 	public bool UsesClipsForAmmo2() => GetMaxClip2() != WEAPON_NOCLIP;
-	public int GetWeight() => GetWpnData().Weight;
-	public bool AllowsAutoSwitchTo() => GetWpnData().AutoSwitchTo;
-	public bool AllowsAutoSwitchFrom() => GetWpnData().AutoSwitchFrom;
+	public virtual int GetWeight() => GetWpnData().Weight;
+	public virtual bool AllowsAutoSwitchTo() => GetWpnData().AutoSwitchTo;
+	public virtual bool AllowsAutoSwitchFrom() => GetWpnData().AutoSwitchFrom;
 	public bool UsesPrimaryAmmo() => PrimaryAmmoType >= 0;
 	public bool UsesSecondaryAmmo() => SecondaryAmmoType >= 0;
-	public ReadOnlySpan<char> GetViewModel(int _ = 0) => GetWpnData().ViewModel.SliceNullTerminatedString();
-	public ReadOnlySpan<char> GetWorldModel() => GetWpnData().WorldModel.SliceNullTerminatedString();
+	public virtual ReadOnlySpan<char> GetViewModel(int _ = 0) => GetWpnData().ViewModel.SliceNullTerminatedString();
+	public virtual ReadOnlySpan<char> GetWorldModel() => GetWpnData().WorldModel.SliceNullTerminatedString();
 	public ReadOnlySpan<char> GetAnimPrefix() => GetWpnData().AnimationPrefix.SliceNullTerminatedString();
 }
 #endif
