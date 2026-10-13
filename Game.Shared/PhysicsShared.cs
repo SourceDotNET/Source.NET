@@ -473,6 +473,18 @@ public static class PhysicsSharedGlobals
 		oparams.GameData = world;
 		oparams.Name = "world";
 
+		Span<nint> surfaceTable = stackalloc nint[128];
+		IVPhysicsKeyParser tableParse = physcollision.VPhysicsKeyParserCreate(worldCollide.KeyValues!);
+		while (!tableParse.Finished()) {
+			if (strcmpi(tableParse.GetCurrentBlockName(), "materialtable") == 0) {
+				tableParse.ParseSurfaceTable(surfaceTable, null);
+				physprops.SetWorldMaterialIndexTable(surfaceTable);
+			}
+			else
+				tableParse.SkipBlock();
+		}
+		physcollision.VPhysicsKeyParserDestroy(tableParse);
+
 		IPhysicsObject? worldPhysics = physenv.CreatePolyObjectStatic(worldCollide.Solids[0]!, surfaceData, vec3_origin, vec3_angle, ref oparams);
 
 		IVPhysicsKeyParser parse = physcollision.VPhysicsKeyParserCreate(worldCollide.KeyValues!);
