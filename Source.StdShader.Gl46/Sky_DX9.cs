@@ -9,7 +9,7 @@ namespace Source.StdShader.Gl46;
 public class Sky_DX9 : BaseVSShader
 {
 	public static string HelpString = "Help for Sky_DX9 shader";
-	public static int Flags = 0;
+	public static ShaderFlags Flags = ShaderFlags.None;
 
 	public override string? GetFallbackShader(IMaterialVar[] vars) => null;
 

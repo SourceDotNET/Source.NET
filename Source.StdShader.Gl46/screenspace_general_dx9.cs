@@ -8,7 +8,7 @@ namespace Source.StdShader.Gl46;
 public class screenspace_general_dx9 : BaseVSShader
 {
 	public static string HelpString = "Help for screenspace_general";
-	public static int Flags = (int)ShaderParamFlags.NotEditable;
+	public static ShaderFlags Flags = ShaderFlags.NotEditable;
 	public static List<ShaderParam> ShaderParams = [];
 	public static ShaderParam[] ShaderParamOverrides = new ShaderParam[(int)ShaderMaterialVars.Count];
 
@@ -113,7 +113,7 @@ public class screenspace_general_dx9 : BaseVSShader
 	}
 
 	public override string? GetFallbackShader(IMaterialVar[] vars) => null;
-	public override int GetFlags() => Flags;
+	public override ShaderFlags GetFlags() => Flags;
 	public override int GetNumParams() => base.GetNumParams() + ShaderParams.Count;
 	public override ReadOnlySpan<char> GetParamName(int paramIndex) {
 		int baseClassParamCount = base.GetNumParams();

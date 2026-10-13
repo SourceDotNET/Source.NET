@@ -10,7 +10,7 @@ namespace Source.StdShader.Gl46;
 public class Sky_HDR_DX9 : BaseVSShader
 {
 	public static string HelpString = "Help for Sky_HDR_DX9 shader";
-	public static int Flags = 0;
+	public static ShaderFlags Flags = ShaderFlags.None;
 	public static List<ShaderParam> ShaderParams = [];
 
 	public class ShaderParam
@@ -47,7 +47,7 @@ public class Sky_HDR_DX9 : BaseVSShader
 			return "Sky_DX9";
 		return null;
 	}
-	public override int GetFlags() => Flags;
+	public override ShaderFlags GetFlags() => Flags;
 	public override int GetNumParams() => base.GetNumParams() + ShaderParams.Count;
 	public override ReadOnlySpan<char> GetParamName(int paramIndex) {
 		int baseClassParamCount = base.GetNumParams();

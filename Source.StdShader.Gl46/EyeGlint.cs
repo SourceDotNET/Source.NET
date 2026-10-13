@@ -7,7 +7,7 @@ namespace Source.StdShader.Gl46;
 public class EyeGlint : BaseVSShader
 {
 	public static string HelpString = "Help for EyeGlint";
-	public static int Flags = 0;
+	public static ShaderFlags Flags = ShaderFlags.None;
 
 	public override string? GetFallbackShader(IMaterialVar[] vars) => null;
 

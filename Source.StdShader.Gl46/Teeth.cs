@@ -8,7 +8,7 @@ namespace Source.StdShader.Gl46;
 public class Teeth : BaseVSShader
 {
 	public static string HelpString = "Help for Teeth_DX9";
-	public static int Flags = 0;
+	public static ShaderFlags Flags = ShaderFlags.None;
 	public static List<ShaderParam> ShaderParams = [];
 	public static ShaderParam[] ShaderParamOverrides = new ShaderParam[(int)ShaderMaterialVars.Count];
 
@@ -71,7 +71,7 @@ public class Teeth : BaseVSShader
 	}
 
 	public override string? GetFallbackShader(IMaterialVar[] vars) => null;
-	public override int GetFlags() => Flags;
+	public override ShaderFlags GetFlags() => Flags;
 	public override int GetNumParams() => base.GetNumParams() + ShaderParams.Count;
 	public override ReadOnlySpan<char> GetParamName(int paramIndex) {
 		int baseClassParamCount = base.GetNumParams();

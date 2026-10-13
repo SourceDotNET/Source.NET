@@ -7,7 +7,7 @@ public class UnlitGeneric : BaseVSShader
 {
 
 	public static string HelpString = "Help for UnlitGeneric";
-	public static int Flags = 0;
+	public static ShaderFlags Flags = ShaderFlags.None;
 	public static List<ShaderParam> ShaderParams = [];
 	public static ShaderParam[] ShaderParamOverrides = new ShaderParam[(int)ShaderMaterialVars.Count];
 
@@ -76,7 +76,7 @@ public class UnlitGeneric : BaseVSShader
 	public override string? GetFallbackShader(IMaterialVar[] vars) {
 		return null;
 	}
-	public override int GetFlags() => Flags;
+	public override ShaderFlags GetFlags() => Flags;
 	public override int GetNumParams() => base.GetNumParams() + ShaderParams.Count;
 	public override ReadOnlySpan<char> GetParamName(int paramIndex) {
 		int baseClassParamCount = base.GetNumParams();

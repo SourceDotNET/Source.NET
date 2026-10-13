@@ -7,7 +7,7 @@ namespace Source.StdShader.Gl46;
 public class BlurFilterY : BaseVSShader
 {
 	public static string HelpString = "Help for BlurFilterY";
-	public static int Flags = (int)ShaderParamFlags.NotEditable;
+	public static ShaderFlags Flags = ShaderFlags.NotEditable;
 	public static List<ShaderParam> ShaderParams = [];
 
 	public class ShaderParam
@@ -35,7 +35,7 @@ public class BlurFilterY : BaseVSShader
 	public static readonly ShaderParam FRAMETEXTURE = new($"${nameof(FRAMETEXTURE)}", ShaderParamType.Texture, "_rt_SmallHDR0", "");
 
 	public override string? GetFallbackShader(IMaterialVar[] vars) => null;
-	public override int GetFlags() => Flags;
+	public override ShaderFlags GetFlags() => Flags;
 	public override int GetNumParams() => base.GetNumParams() + ShaderParams.Count;
 	public override ReadOnlySpan<char> GetParamName(int paramIndex) {
 		int baseClassParamCount = base.GetNumParams();

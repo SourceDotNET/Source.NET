@@ -9,7 +9,7 @@ public class Shadow : BaseVSShader
 {
 
 	public static string HelpString = "Help for Shadow";
-	public static int Flags = (int)ShaderParamFlags.NotEditable;
+	public static ShaderFlags Flags = ShaderFlags.NotEditable;
 	public static List<ShaderParam> ShaderParams = [];
 	public static ShaderParam[] ShaderParamOverrides = new ShaderParam[(int)ShaderMaterialVars.Count];
 
@@ -58,7 +58,7 @@ public class Shadow : BaseVSShader
 	public override string? GetFallbackShader(IMaterialVar[] vars) {
 		return null;
 	}
-	public override int GetFlags() => Flags;
+	public override ShaderFlags GetFlags() => Flags;
 	public override int GetNumParams() => base.GetNumParams() + ShaderParams.Count;
 	public override ReadOnlySpan<char> GetParamName(int paramIndex) {
 		int baseClassParamCount = base.GetNumParams();

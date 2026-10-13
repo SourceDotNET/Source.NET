@@ -38,7 +38,7 @@ public abstract class BaseShader : IShader
 	];
 
 	public string GetName() => GetType().Name;
-	public virtual int GetFlags() => 0;
+	public virtual ShaderFlags GetFlags() => ShaderFlags.None;
 
 	public int CurrentMaterialVarFlags() {
 		return Params![(int)ShaderMaterialVars.Flags].GetIntValue();

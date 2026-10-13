@@ -10,7 +10,7 @@ namespace Source.StdShader.Gl46;
 public class Water_DX90 : BaseVSShader
 {
 	public static string HelpString = "Help for Water";
-	public static int Flags = 0;
+	public static ShaderFlags Flags = ShaderFlags.None;
 	public static List<ShaderParam> ShaderParams = [];
 
 	public class ShaderParam
@@ -69,7 +69,7 @@ public class Water_DX90 : BaseVSShader
 	const float PSHADER_VECT_SCALE = 1.0f;
 	const float VSHADER_VECT_SCALE = 1.0f;
 
-	public override int GetFlags() => Flags;
+	public override ShaderFlags GetFlags() => Flags;
 	public override int GetNumParams() => base.GetNumParams() + ShaderParams.Count;
 	public override ReadOnlySpan<char> GetParamName(int paramIndex) {
 		int baseClassParamCount = base.GetNumParams();
