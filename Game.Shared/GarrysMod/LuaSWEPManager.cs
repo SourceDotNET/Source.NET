@@ -1,5 +1,6 @@
 #if CLIENT_DLL || GAME_DLL
 using Source;
+using Source.Common;
 using Source.Common.GarrysMod;
 using Source.Common.GarrysMod.Lua;
 
@@ -94,6 +95,36 @@ public class LuaSWEPManager
 		primary.UnReference();
 		swep.UnReference();
 	}
+
+#if GAME_DLL
+	public IServerNetworkable? CreateEntity(ReadOnlySpan<char> name) {
+		if (IsSacredEntity(name) || g_Lua == null)
+			return null;
+
+		LuaObject get = new();
+		GetWeaponFunction("Get", get);
+		if (!get.isFunction()) {
+			get.UnReference();
+			return null;
+		}
+
+		IServerNetworkable? ent = null;
+		LuaObject swep = new();
+		get.Push();
+		g_Lua.PushString(name);
+		if (!g_Lua.CallInternalGet(1, swep))
+			Warning($"Error creating scripted weapon {name} (errored?)\n");
+		else if (swep.isTable()) {
+			ent = EntityFactoryDictionary().Create("weapon_swep");
+			if (ent != null)
+				((BaseEntity)ent.GetBaseEntity()!).InitializeScriptedEntity(name);
+		}
+
+		swep.UnReference();
+		get.UnReference();
+		return ent;
+	}
+#endif
 
 	public void ReloadSpecific(ReadOnlySpan<char> name) => LoadScript(name);
 

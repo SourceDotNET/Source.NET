@@ -34,6 +34,12 @@ namespace Game.Server;
 #endif
 
 using Source.Common.SoundEmitterSystem;
+using Source.Common.Commands;
+#if GMOD_DLL && CLIENT_DLL
+using Game.Client.GarrysMod;
+#elif GMOD_DLL
+using Game.Server.GarrysMod;
+#endif
 
 using System.Runtime.CompilerServices;
 
@@ -288,6 +294,23 @@ public partial class
 
 #if GMOD_DLL
 	public virtual ReadOnlySpan<char> GetHoldType() => "normal";
+	public virtual void SetHoldType(ReadOnlySpan<char> holdType) { }
+	public static readonly ConVar sv_defaultdeployspeed = new("sv_defaultdeployspeed", "4", FCvar.Replicated, "", 0.1, 10.0);
+
+	public TimeUnit_t LastShootTimeValue;
+	public virtual TimeUnit_t LastShootTime() => LastShootTimeValue;
+	public virtual void SetLastShootTime(TimeUnit_t time) => LastShootTimeValue = time;
+
+	public float GetDeploySpeed() {
+		LuaObject? table = GetLuaTable();
+		if (table == null)
+			return sv_defaultdeployspeed.GetFloat() > 0.1f ? sv_defaultdeployspeed.GetFloat() : 0.1f;
+		if (table.GetMemberFloat("m_WeaponDeploySpeed", sv_defaultdeployspeed.GetFloat()) > 0.1f)
+			return table.GetMemberFloat("m_WeaponDeploySpeed", sv_defaultdeployspeed.GetFloat());
+		return 0.1f;
+	}
+
+	public void SetDeploySpeed(float speed) => GetLuaTable()?.SetMember("m_WeaponDeploySpeed", speed);
 #endif
 
 	public override void Activate() {
@@ -1432,9 +1455,9 @@ public partial class
 		HudHintMinDisplayTime = 0;
 	}
 
-	public bool VisibleInWeaponSelection() => true;
-	public int GetPosition() => GetWpnData().Position;
-	public int GetSlot() => GetWpnData().Slot;
+	public virtual bool VisibleInWeaponSelection() => true;
+	public virtual int GetPosition() => GetWpnData().Position;
+	public virtual int GetSlot() => GetWpnData().Slot;
 
 	WEAPON_FILE_INFO_HANDLE WeaponFileInfoHandle;
 	public WEAPON_FILE_INFO_HANDLE GetWeaponFileInfoHandle() => WeaponFileInfoHandle;
@@ -1443,8 +1466,8 @@ public partial class
 		return WeaponParse.GetFileWeaponInfoFromHandle(WeaponFileInfoHandle);
 	}
 
-	public ReadOnlySpan<char> GetName() => GetWpnData().ClassName.SliceNullTerminatedString();
-	public ReadOnlySpan<char> GetPrintName() => GetWpnData().PrintName.SliceNullTerminatedString();
+	public virtual ReadOnlySpan<char> GetName() => GetWpnData().ClassName.SliceNullTerminatedString();
+	public virtual ReadOnlySpan<char> GetPrintName() => GetWpnData().PrintName.SliceNullTerminatedString();
 #if CLIENT_DLL
 	public HudTexture GetSpriteActive() => GetWpnData().IconActive;
 	public HudTexture GetSpriteInactive() => GetWpnData().IconInactive;
@@ -1477,10 +1500,10 @@ public partial class
 		return HasAmmo();
 	}
 
-	public int GetMaxClip1() => GetWpnData().MaxClip1;
-	public int GetMaxClip2() => GetWpnData().MaxClip2;
-	public int GetDefaultClip1() => GetWpnData().DefaultClip1;
-	public int GetDefaultClip2() => GetWpnData().DefaultClip2;
+	public virtual int GetMaxClip1() => GetWpnData().MaxClip1;
+	public virtual int GetMaxClip2() => GetWpnData().MaxClip2;
+	public virtual int GetDefaultClip1() => GetWpnData().DefaultClip1;
+	public virtual int GetDefaultClip2() => GetWpnData().DefaultClip2;
 	public bool IsMeleeWeapon() => GetWpnData().MeleeWeapon;
 
 	public int SubType;
@@ -1489,13 +1512,13 @@ public partial class
 
 	public bool UsesClipsForAmmo1() => GetMaxClip1() != WEAPON_NOCLIP;
 	public bool UsesClipsForAmmo2() => GetMaxClip2() != WEAPON_NOCLIP;
-	public int GetWeight() => GetWpnData().Weight;
-	public bool AllowsAutoSwitchTo() => GetWpnData().AutoSwitchTo;
-	public bool AllowsAutoSwitchFrom() => GetWpnData().AutoSwitchFrom;
+	public virtual int GetWeight() => GetWpnData().Weight;
+	public virtual bool AllowsAutoSwitchTo() => GetWpnData().AutoSwitchTo;
+	public virtual bool AllowsAutoSwitchFrom() => GetWpnData().AutoSwitchFrom;
 	public bool UsesPrimaryAmmo() => PrimaryAmmoType >= 0;
 	public bool UsesSecondaryAmmo() => SecondaryAmmoType >= 0;
-	public ReadOnlySpan<char> GetViewModel(int _ = 0) => GetWpnData().ViewModel.SliceNullTerminatedString();
-	public ReadOnlySpan<char> GetWorldModel() => GetWpnData().WorldModel.SliceNullTerminatedString();
+	public virtual ReadOnlySpan<char> GetViewModel(int _ = 0) => GetWpnData().ViewModel.SliceNullTerminatedString();
+	public virtual ReadOnlySpan<char> GetWorldModel() => GetWpnData().WorldModel.SliceNullTerminatedString();
 	public ReadOnlySpan<char> GetAnimPrefix() => GetWpnData().AnimationPrefix.SliceNullTerminatedString();
 }
 #endif

@@ -1,7 +1,12 @@
+#if CLIENT_DLL || GAME_DLL
 using Source.Common.GarrysMod.Lua;
 using Source.Common.MaterialSystem;
 
+#if CLIENT_DLL
 namespace Game.Client.GarrysMod;
+#else
+namespace Game.Server.GarrysMod;
+#endif
 
 public static partial class LuaTexture
 {
@@ -22,3 +27,4 @@ public static partial class LuaTexture
 	[LuaMethod]
 	static string ITexture__GetName(ITexture texture) => new(texture.GetName());
 }
+#endif

@@ -2673,8 +2673,10 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			}
 
 			bool alphaWrite = OverrideAlphaWrite ? OverriddenAlphaWriteValue : state.AlphaWrite;
-			if (force || state.ColorWrite != last.ColorWrite || alphaWrite != AppliedAlphaWrite) {
-				glColorMask(state.ColorWrite, state.ColorWrite, state.ColorWrite, alphaWrite);
+			bool colorWrite = OverrideColorWrite ? OverriddenColorWriteValue : state.ColorWrite;
+			if (force || colorWrite != AppliedColorWrite || alphaWrite != AppliedAlphaWrite) {
+				glColorMask(colorWrite, colorWrite, colorWrite, alphaWrite);
+				AppliedColorWrite = colorWrite;
 				AppliedAlphaWrite = alphaWrite;
 			}
 
@@ -3338,8 +3340,15 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		return (ShaderAPIOcclusionQuery_t)query;
 	}
 
+	MaterialCullMode DesiredCullMode = MaterialCullMode.CounterClockwise;
+
 	public void CullMode(MaterialCullMode cullMode) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		if (DesiredCullMode == cullMode)
+			return;
+
+		FlushBufferedPrimitives();
+		DesiredCullMode = cullMode;
+		glFrontFace(cullMode == MaterialCullMode.Clockwise ? GL_CCW : GL_CW);
 	}
 
 	public void DXSupportLevelChanged() {
@@ -3521,8 +3530,17 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		throw new NotImplementedException("Incomplete port of IShaderAPI");
 	}
 
+	bool OverrideColorWrite;
+	bool OverriddenColorWriteValue;
+	bool AppliedColorWrite;
+
 	public void OverrideColorWriteEnable(bool overrideEnable, bool colorWriteEnable) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		if (overrideEnable != OverrideColorWrite || colorWriteEnable != OverriddenColorWriteValue) {
+			FlushBufferedPrimitives();
+			OverrideColorWrite = overrideEnable;
+			OverriddenColorWriteValue = colorWriteEnable;
+			lastBoardUploadHash = 0;
+		}
 	}
 
 	bool OverrideDepth;

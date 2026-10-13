@@ -2,6 +2,7 @@ using Source;
 #if CLIENT_DLL || GAME_DLL
 using Game.Shared;
 
+using Source.Common.Commands;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.Mathematics;
 
@@ -90,6 +91,50 @@ public static partial class LuaPlayer
 		return 0;
 #endif
 	}
+
+	[LuaMethod]
+	static int Player__IsPlayer(ILuaInterface lua) {
+		lua.PushBool(true);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__SteamID(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushString(player.GetNetworkIDString());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__SteamID64(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		if (!player.GetSteamID(out Steamworks.CSteamID steamID)) {
+			lua.PushString("0");
+			return 1;
+		}
+		lua.PushString(steamID.m_SteamID.ToString());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__AccountID(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		if (!player.GetSteamID(out Steamworks.CSteamID steamID)) {
+			lua.PushNumber(0);
+			return 1;
+		}
+		lua.PushNumber(steamID.GetAccountID().m_AccountID);
+		return 1;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Player__OwnerSteamID64(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushString(engine.GMOD_GetPlayerOwnerSteamID(player.Edict()).m_SteamID.ToString());
+		return 1;
+	}
+#endif
 
 	[LuaMethod]
 	static int Player__KeyDown(ILuaInterface lua) {
@@ -349,6 +394,279 @@ public static partial class LuaPlayer
 		BasePlayer player = Get_Player(1, false)!;
 		LuaVector.Push_Vector(player.Weapon_ShootPosition());
 		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__SetRunSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.SetSprintSpeed((float)lua.GetNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetWalkSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.SetWalkSpeed((float)lua.GetNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetSlowWalkSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.SetSlowWalkSpeed((float)lua.GetNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetCrouchedWalkSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.SetCrouchedWalkSpeed((float)lua.GetNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetDuckSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.SetDuckSpeed((float)lua.GetNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetUnDuckSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.SetUnDuckSpeed((float)lua.GetNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetJumpPower(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		float power = (float)lua.GetNumber(2);
+		if (player.JumpPower != power) {
+#if GAME_DLL
+			player.NetworkStateChanged();
+#endif
+			player.JumpPower = power;
+		}
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetAvoidPlayers(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		int flags = lua.GetBool(2) ? player.GModPlayerFlags | 8 : player.GModPlayerFlags & ~8;
+#if GAME_DLL
+		if (player.GModPlayerFlags != flags)
+			player.NetworkStateChanged();
+#endif
+		player.GModPlayerFlags = flags;
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetNoCollideWithTeammates(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		int flags = lua.GetBool(2) ? player.GModPlayerFlags | 2 : player.GModPlayerFlags & ~2;
+#if GAME_DLL
+		if (player.GModPlayerFlags != flags)
+			player.NetworkStateChanged();
+#endif
+		player.GModPlayerFlags = flags;
+		return 0;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Player__SetArmor(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.SetArmorValue((int)lua.GetNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetMaxArmor(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		int armor = (int)lua.GetNumber(2);
+		if (player.MaxArmor != armor) {
+			player.NetworkStateChanged();
+			player.MaxArmor = armor;
+		}
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__ShouldDropWeapon(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		player.ShouldDropWeapon = lua.GetBool(2);
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
+	static int Player__GetInfo(ILuaInterface lua) {
+		if (!LuaConVar.IsAllowedToGetConvarInfo(lua.GetString(2)))
+			return 0;
+#if CLIENT_DLL
+		ConVar? convar = cvar.FindVar(lua.GetString(2));
+		if (convar == null)
+			return 0;
+		lua.PushString(convar.GetString());
+		return 1;
+#else
+		BasePlayer player = Get_Player(1, false)!;
+		if (player.IsFakeClient()) {
+			lua.PushString("");
+			return 1;
+		}
+		lua.PushString(player.GetInfo(lua.GetString(2)));
+		return 1;
+#endif
+	}
+
+	[LuaMethod]
+	static int Player__GetInfoNum(ILuaInterface lua) {
+		if (!LuaConVar.IsAllowedToGetConvarInfo(lua.GetString(2)))
+			return 0;
+		float fallback = (float)lua.GetNumber(3);
+#if CLIENT_DLL
+		ConVar? convar = cvar.FindVar(lua.GetString(2));
+		if (convar != null)
+			fallback = convar.GetFloat();
+		lua.PushNumber(fallback);
+		return 1;
+#else
+		BasePlayer player = Get_Player(1, false)!;
+		if (player.IsFakeClient()) {
+			lua.PushNumber(0);
+			return 1;
+		}
+		lua.PushNumber(player.GetInfoNum(lua.GetString(2), fallback));
+		return 1;
+#endif
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Player__RemoveAllAmmo(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.RemoveAllAmmo();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SelectWeapon(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		if (lua.GetType(2) == LuaType.Entity) {
+			BaseCombatWeapon? weapon = LuaEntity.Get_Weapon(2, true);
+			if (weapon != null) {
+				player.SelectItem(weapon.Classname ?? "", 0);
+				return 0;
+			}
+		}
+		player.SelectItem(lua.GetString(2), 0);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__Give(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		bool noAmmo = false;
+		if (lua.GetType(3) != LuaType.Nil) {
+			noAmmo = lua.GetBool(3);
+			if (noAmmo && player.MyCombatCharacterPointer() != null)
+				player.MyCombatCharacterPointer()!.NoAmmo = true;
+		}
+		BaseEntity? ent = player.GiveNamedItem(lua.GetString(2), 0);
+		if (noAmmo && player.MyCombatCharacterPointer() != null) {
+			player.MyCombatCharacterPointer()!.NoAmmo = false;
+			if (ent is BaseCombatWeapon weapon) {
+				int clip1 = weapon.iClip1 >= 0 ? 0 : weapon.iClip1;
+				if (weapon.iClip1 != clip1)
+					weapon.iClip1 = clip1;
+				int clip2 = weapon.iClip2 >= 0 ? 0 : weapon.iClip2;
+				if (weapon.iClip2 != clip2)
+					weapon.iClip2 = clip2;
+			}
+		}
+		LuaEntity.Push_Entity(ent);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GiveAmmo(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		int count = (int)lua.GetNumber(2);
+		if (count < 1)
+			return 0;
+		if (lua.GetType(3) == LuaType.String) {
+			bool suppress = lua.GetBool(4);
+			int ammoIndex = GetAmmoDef().Index(lua.GetString(3));
+			lua.PushNumber(player.GiveAmmo(count, ammoIndex, suppress));
+		}
+		else {
+			bool suppress = lua.GetBool(4);
+			lua.PushNumber(player.GiveAmmo(count, (int)lua.GetNumber(3), suppress));
+		}
+		return 1;
+	}
+#endif
+
+	[LuaMethod]
+	static int Player__GetViewModel(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		int index = 0;
+		if (lua.GetType(2) == LuaType.Number) {
+			int value = (int)lua.GetNumber(2);
+			if (value > -1) {
+				if (value > 2)
+					value = 2;
+				index = value;
+			}
+		}
+		LuaEntity.Push_Entity(player.GetViewModel(index, true));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetHands(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		LuaEntity.Push_Entity(player.Hands.Get());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__SetHands(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		BaseEntity? hands = LuaEntity.Get_Entity(2, false);
+#if GAME_DLL
+		if (player.Hands.Get() != hands)
+			player.NetworkStateChanged();
+#endif
+		player.Hands.Set(hands);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__GetPlayerColor(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		LuaVector.Push_Vector(player.GetPlayerColor());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__SetPlayerColor(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		Vector3 color = LuaVector.Get_Vector(2);
+		player.SetPlayerColor(color);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetWeaponColor(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		Vector3 color = LuaVector.Get_Vector(2);
+		player.SetWeaponColor(color);
+		return 0;
 	}
 
 	[LuaFunction]

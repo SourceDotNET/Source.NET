@@ -1006,9 +1006,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		return h;
 	}
 
-	public void CullMode(MaterialCullMode cullMode) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void CullMode(MaterialCullMode cullMode) => shaderAPI.CullMode(cullMode);
 
 	public void DestroyMorph(IMorph morph) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -1169,9 +1167,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void OverrideColorWriteEnable(bool overrideEnable, bool colorWriteEnable) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void OverrideColorWriteEnable(bool overrideEnable, bool colorWriteEnable) => shaderAPI.OverrideColorWriteEnable(overrideEnable, colorWriteEnable);
 
 	public void OverrideDepthEnable(bool enable, bool depthEnable) => shaderAPI.OverrideDepthEnable(enable, depthEnable);
 

@@ -75,6 +75,8 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		}
 	}
 
+	public int GetNumBodyGroups() => Animation.GetNumBodyGroups(GetModelPtr());
+
 	public void SetBodygroup(int group, int value) {
 		Animation.SetBodygroup(GetModelPtr(), ref Body, group, value);
 	}
@@ -1156,6 +1158,11 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		ClientSideAnimationChanged();
 
 		UpdateRelevantInterpolatedVars();
+	}
+
+	public override void Term() {
+		RemoveFromClientSideAnimationList(true);
+		base.Term();
 	}
 
 	public void RemoveFromClientSideAnimationList(bool beingDestroyed = false) {

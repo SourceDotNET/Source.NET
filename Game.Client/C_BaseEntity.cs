@@ -34,6 +34,13 @@ public static class BaseEntityConsts
 	public const int MULTIPLAYER_BACKUP = 90;
 }
 
+public enum CollideType
+{
+	ShouldNotCollide = 0,
+	ShouldCollide,
+	ShouldRespond
+}
+
 public enum InterpolateResult
 {
 	Stop = 0,
@@ -182,6 +189,10 @@ public partial class C_BaseEntity : IClientEntity
 	public virtual bool IsNextBot() => false;
 	public virtual bool IsBaseCombatWeapon() => false;
 	public virtual bool IsCombatItem() => false;
+
+	public void SetClassname(ReadOnlySpan<char> classname) {
+		// todo
+	}
 
 	static readonly char[] GetClassname__outstr = new char[256];
 	public ReadOnlySpan<char> GetClassname() {
@@ -554,7 +565,7 @@ public partial class C_BaseEntity : IClientEntity
 		RecvPropInt(FIELD.OF(nameof(CollisionGroup))),
 		RecvPropFloat(FIELD.OF(nameof(Elasticity))),
 		RecvPropFloat(FIELD.OF(nameof(ShadowCastDistance))),
-		RecvPropEHandle(FIELD.OF(nameof(OwnerEntity))),
+		RecvPropEHandle(FIELD.OF(nameof(OwnerEntity)), RecvProxy_OwnerEntity),
 		RecvPropEHandle(FIELD.OF(nameof(EffectEntity))),
 		RecvPropInt(FIELD.OF(nameof(NetworkMoveParent)), 0, RecvProxy_IntToMoveParent),
 		RecvPropInt(FIELD.OF(nameof(ParentAttachment))),
@@ -586,9 +597,9 @@ public partial class C_BaseEntity : IClientEntity
 		RecvPropBool(FIELD.OF(nameof(OnFire))),
 		RecvPropFloat(FIELD.OF(nameof(CreationTime))),
 
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 0)),
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 1)),
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 2)),
+		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 0), 0, RecvProxy_LocalVelocityX),
+		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 1), 0, RecvProxy_LocalVelocityY),
+		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 2), 0, RecvProxy_LocalVelocityZ),
 
 		// NW2 table
 		RecvPropGModTable(FIELD.OF(nameof(GMOD_DataTable))),
@@ -609,6 +620,50 @@ public partial class C_BaseEntity : IClientEntity
 		RecvPropInt(FIELD.OF(nameof(CreationID))),
 		RecvPropInt(FIELD.OF(nameof(MapCreatedID))),
 	]);
+
+	private static void RecvProxy_OwnerEntity(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+		RecvProxy_IntToEHandle(in data, instance, field);
+		((C_BaseEntity)instance).OnOwnerChanged();
+	}
+
+	public virtual void OnOwnerChanged() { }
+
+	private static void RecvProxy_LocalVelocityX(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+		C_BaseEntity ent = (C_BaseEntity)instance;
+		float newVelX = data.Value.Float;
+		Vector3 velocity = ent.GetLocalVelocity();
+		if (velocity.X != newVelX) {
+			velocity.X = newVelX;
+			ent.SetLocalVelocity(velocity);
+		}
+	}
+
+	private static void RecvProxy_LocalVelocityY(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+		C_BaseEntity ent = (C_BaseEntity)instance;
+		float newVelY = data.Value.Float;
+		Vector3 velocity = ent.GetLocalVelocity();
+		if (velocity.Y != newVelY) {
+			velocity.Y = newVelY;
+			ent.SetLocalVelocity(velocity);
+		}
+	}
+
+	private static void RecvProxy_LocalVelocityZ(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+		C_BaseEntity ent = (C_BaseEntity)instance;
+		float newVelZ = data.Value.Float;
+		Vector3 velocity = ent.GetLocalVelocity();
+		if (velocity.Z != newVelZ) {
+			velocity.Z = newVelZ;
+			ent.SetLocalVelocity(velocity);
+		}
+	}
+
+	public void SetLocalVelocity(in Vector3 velocity) {
+		if (Velocity != velocity) {
+			InvalidatePhysicsRecursive(InvalidatePhysicsBits.VelocityChanged);
+			Velocity = velocity;
+		}
+	}
 
 	private static void RecvProxy_MoveCollide(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
 		((C_BaseEntity)instance).SetMoveCollide((MoveCollide)data.Value.Int);
@@ -876,7 +931,7 @@ public partial class C_BaseEntity : IClientEntity
 		return 0 == strcmp(entity.GetClassname(), classname);
 	}
 
-	public void SetParent(C_BaseEntity parentEntity, int parentAttachment = 0) {
+	public void SetParent(C_BaseEntity? parentEntity, int parentAttachment = 0) {
 		EHANDLE newParentHandle = default;
 		newParentHandle.Set(parentEntity);
 		if (newParentHandle.Index == MoveParent.Index)
@@ -1090,8 +1145,13 @@ public partial class C_BaseEntity : IClientEntity
 	}
 	void SetModelIndex(int index) {
 		ModelIndex = index;
+#if GMOD_DLL
+		if (index != -1)
+			SetModelPointer(modelinfo.GetModel(ModelIndex));
+#else
 		Model? model = modelinfo.GetModel(ModelIndex);
 		SetModelPointer(model);
+#endif
 	}
 	public void SetModelByIndex(int modelIndex) {
 		SetModelIndex(modelIndex);
@@ -1846,14 +1906,12 @@ public partial class C_BaseEntity : IClientEntity
 		if (RenderMode == (int)Source.RenderMode.None)
 			return RenderGroup.OpaqueEntity;
 
-		// todo
-		// int tempComputeFrame = FXComputeFrame;
-		// FXComputeFrame = gpGlobals.FrameCount;
+		long tempComputeFrame = FXComputeFrame;
+		FXComputeFrame = gpGlobals.FrameCount;
 
 		int fxBlend = GetFxBlend();
 
-		// todo
-		// FXComputeFrame = tempComputeFrame;
+		FXComputeFrame = tempComputeFrame;
 
 		if (fxBlend == 0)
 			return RenderGroup.OpaqueEntity;
@@ -2027,7 +2085,31 @@ public partial class C_BaseEntity : IClientEntity
 		return gpGlobals.CurTime;
 	}
 
-	private void CreateShadow() {
+	public static bool AllowPrecache;
+	public static bool IsPrecacheAllowed() => AllowPrecache;
+	public static void SetAllowPrecache(bool allow) => AllowPrecache = allow;
+
+	public void SetBlocksLOS(bool blocksLOS) {
+		if (blocksLOS)
+			RemoveEFlags(EFL.DontBlockLOS);
+		else
+			AddEFlags(EFL.DontBlockLOS);
+	}
+
+	public virtual CollideType GetCollideType() => CollideType.ShouldNotCollide;
+
+	public void UpdatePartitionListEntry() {
+		PartitionListMask list = PartitionListMask.ClientNonStaticEdicts;
+		CollideType shouldCollide = GetCollideType();
+		if (shouldCollide == CollideType.ShouldCollide)
+			list |= PartitionListMask.ClientSolidEdicts;
+		else if (shouldCollide == CollideType.ShouldRespond)
+			list |= PartitionListMask.ClientResponsiveEdicts;
+
+		partition.RemoveAndInsert((int)(PartitionListMask.ClientSolidEdicts | PartitionListMask.ClientResponsiveEdicts | PartitionListMask.ClientNonStaticEdicts), (int)list, CollisionProp().GetPartitionHandle());
+	}
+
+	public void CreateShadow() {
 		ShadowType shadowType = ShadowCastType();
 		if (shadowType == ShadowType.None)
 			DestroyShadow();
@@ -2066,7 +2148,7 @@ public partial class C_BaseEntity : IClientEntity
 	public virtual void Precache() { }
 
 	public PredictionContext? PredictionContext;
-	bool Dormant;
+	public bool Dormant;
 	bool Predictable;
 	bool DormantPredictable;
 	long IncomingPacketEntityBecameDormant;
@@ -2379,8 +2461,10 @@ public partial class C_BaseEntity : IClientEntity
 
 	}
 
+	public bool DestroyedOnRecreateEntities;
 	public void SetDestroyedOnRecreateEntities() {
-
+		// ParticleProp().StopEmission(null, false);
+		DestroyedOnRecreateEntities = true;
 	}
 
 	public virtual ICollideable GetCollideable() => Collision;
@@ -2407,8 +2491,125 @@ public partial class C_BaseEntity : IClientEntity
 		return null;
 	}
 
+	long FXComputeFrame = -1;
+
+	public virtual byte GetClientSideFade() => 255;
+
 	public virtual void ComputeFxBlend() {
-		// todo
+		if (FXComputeFrame == gpGlobals.FrameCount)
+			return;
+
+		int blend = 0;
+		float offset = EntIndex() * 363.0f;
+
+		switch ((RenderFx)RenderFX) {
+			case RenderFx.PulseSlowWide:
+				blend = (int)(ColorRender.A + 64 * MathF.Sin((float)gpGlobals.CurTime * 2 + offset));
+				break;
+			case RenderFx.PulseFastWide:
+				blend = (int)(ColorRender.A + 64 * MathF.Sin((float)gpGlobals.CurTime * 8 + offset));
+				break;
+			case RenderFx.PulseFastWider:
+				blend = (int)(255 * MathF.Abs(MathF.Sin((float)gpGlobals.CurTime * 12 + offset)));
+				break;
+			case RenderFx.PulseSlow:
+				blend = (int)(ColorRender.A + 16 * MathF.Sin((float)gpGlobals.CurTime * 2 + offset));
+				break;
+			case RenderFx.PulseFast:
+				blend = (int)(ColorRender.A + 16 * MathF.Sin((float)gpGlobals.CurTime * 8 + offset));
+				break;
+			case RenderFx.FadeSlow:
+				if (ColorRender.A > 0)
+					SetRenderColorA((byte)(ColorRender.A - 1));
+				else
+					SetRenderColorA(0);
+				blend = ColorRender.A;
+				break;
+			case RenderFx.FadeFast:
+				if (ColorRender.A > 3)
+					SetRenderColorA((byte)(ColorRender.A - 4));
+				else
+					SetRenderColorA(0);
+				blend = ColorRender.A;
+				break;
+			case RenderFx.SolidSlow:
+				if (ColorRender.A < 255)
+					SetRenderColorA((byte)(ColorRender.A + 1));
+				else
+					SetRenderColorA(255);
+				blend = ColorRender.A;
+				break;
+			case RenderFx.SolidFast:
+				if (ColorRender.A < 252)
+					SetRenderColorA((byte)(ColorRender.A + 4));
+				else
+					SetRenderColorA(255);
+				blend = ColorRender.A;
+				break;
+			case RenderFx.StrobeSlow:
+				blend = (int)(20 * MathF.Sin((float)gpGlobals.CurTime * 4 + offset));
+				blend = blend < 0 ? 0 : ColorRender.A;
+				break;
+			case RenderFx.StrobeFast:
+				blend = (int)(20 * MathF.Sin((float)gpGlobals.CurTime * 16 + offset));
+				blend = blend < 0 ? 0 : ColorRender.A;
+				break;
+			case RenderFx.StrobeFaster:
+				blend = (int)(20 * MathF.Sin((float)gpGlobals.CurTime * 36 + offset));
+				blend = blend < 0 ? 0 : ColorRender.A;
+				break;
+			case RenderFx.FlickerSlow:
+				blend = (int)(20 * (MathF.Sin((float)gpGlobals.CurTime * 2) + MathF.Sin((float)gpGlobals.CurTime * 17 + offset)));
+				blend = blend < 0 ? 0 : ColorRender.A;
+				break;
+			case RenderFx.FlickerFast:
+				blend = (int)(20 * (MathF.Sin((float)gpGlobals.CurTime * 16) + MathF.Sin((float)gpGlobals.CurTime * 23 + offset)));
+				blend = blend < 0 ? 0 : ColorRender.A;
+				break;
+			case RenderFx.Hologram:
+			case RenderFx.Distort: {
+					Vector3 tmp = GetAbsOrigin() - ViewAccessors.CurrentViewOrigin();
+					float dist = MathLib.DotProduct(tmp, ViewAccessors.CurrentViewForward());
+					if ((RenderFx)RenderFX == RenderFx.Distort)
+						dist = 1;
+					if (dist <= 0)
+						blend = 0;
+					else {
+						SetRenderColorA(180);
+						if (dist <= 100)
+							blend = ColorRender.A;
+						else
+							blend = (int)((1.0 - (dist - 100) * (1.0 / 400.0)) * ColorRender.A);
+						blend += random.RandomInt(-32, 31);
+					}
+				}
+				break;
+			default:
+				if (RenderMode == (int)Source.RenderMode.Normal)
+					blend = 255;
+				else
+					blend = ColorRender.A;
+				break;
+		}
+
+		blend = Math.Clamp(blend, 0, 255);
+
+		byte fadeAlpha = GetClientSideFade();
+		if (fadeAlpha != 255) {
+			float flBlend = blend / 255.0f;
+			float flFade = fadeAlpha / 255.0f;
+			blend = (int)(flBlend * flFade * 255.0f + 0.5f);
+			blend = Math.Clamp(blend, 0, 255);
+		}
+
+		RenderFXBlend = (byte)blend;
+		FXComputeFrame = gpGlobals.FrameCount;
+
+		if (renderHandle != INVALID_CLIENT_RENDER_HANDLE)
+			clientLeafSystem.SetRenderGroup(renderHandle, GetRenderGroup());
+
+		if (ShadowHandle != CLIENTSHADOW_INVALID_HANDLE)
+			g_ClientShadowMgr.SetFalloffBias(ShadowHandle, (byte)(255 - RenderFXBlend));
 	}
 
 	public virtual object GetDataTableBasePtr() {

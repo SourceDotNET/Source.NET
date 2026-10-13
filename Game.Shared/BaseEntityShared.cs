@@ -106,16 +106,6 @@ public partial class
 {
 	public const int BASEENTITY_MSG_REMOVE_DECALS = 1;
 
-	// TODO FIXME REVIEW: SHOULD THIS ACTUALLY GO HERE?
-	public static Table DT_ScriptedEntity = new(nameof(DT_ScriptedEntity), [
-#if CLIENT_DLL
-		RecvPropString(FIELD.OF(nameof(ScriptName)))
-#elif GAME_DLL
-		SendPropString(FIELD.OF(nameof(ScriptName)))
-#endif
-	]);
-	[NetworkName("m_strScriptName")]
-	public InlineArrayMaxPath<char> ScriptName;
 
 	public bool IsAnimatedEveryTick() => AnimatedEveryTick;
 	public bool IsSimulatedEveryTick() => SimulatedEveryTick;

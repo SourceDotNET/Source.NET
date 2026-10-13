@@ -16,6 +16,10 @@ public partial class BaseCombatWeapon : BaseAnimating
 {
 	public static readonly ConVar weapon_showproficiency = new("weapon_showproficiency", "0");
 
+	public bool Dropped;
+	public virtual bool WasDropped() => Dropped;
+	public virtual void SetDropped() => Dropped = true;
+
 	public OutputEvent OnPlayerUse = new();
 	public OutputEvent OnPlayerPickup = new();
 	public OutputEvent OnNPCPickup = new();

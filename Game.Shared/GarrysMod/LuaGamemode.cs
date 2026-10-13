@@ -169,7 +169,7 @@ public class LuaGamemode : LuaObject, IDisposable
 
 		if (initialize) {
 			LuaSWEPManager.gSWEPManager!.LoadScripts();
-			// todo: LuaSENTManager.LoadScripts();
+			LuaSENTManager.gSENTManager!.LoadScripts();
 			// todo: gEffectManager.LoadScripts();
 			Call("CreateTeams");
 			Call("PreGamemodeLoaded");

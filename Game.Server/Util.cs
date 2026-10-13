@@ -89,6 +89,16 @@ public class CEntityFactoryDictionary : IEntityFactoryDictionary
 	public IServerNetworkable? Create(ReadOnlySpan<char> className) {
 		className = className.SliceNullTerminatedString();
 		IEntityFactory? factory = FindFactory(className);
+#if GMOD_DLL
+		if (Game.Client.GarrysMod.GarrysMod.g_LuaManager != null) {
+			Span<char> lowered = stackalloc char[512];
+			strcpy(lowered, className);
+			strlower(lowered);
+			IServerNetworkable? luaEnt = Game.Client.GarrysMod.GarrysMod.g_LuaManager.CreateEntity(((ReadOnlySpan<char>)lowered).SliceNullTerminatedString(), factory != null);
+			if (luaEnt != null)
+				return luaEnt;
+		}
+#endif
 		if (factory == null) {
 			Warning($"Attempted to create unknown entity type {className}!\n");
 			return null;
@@ -664,6 +674,18 @@ public static partial class Util
 
 		return 0;
 	}
+
+#if GMOD_DLL
+	public static void RemoveSafe(BaseEntity? entity) {
+		if (entity == null)
+			return;
+		if (Game.Client.GarrysMod.GarrysMod.IsSacredEntity(entity.Classname ?? "")) {
+			Warning($"Refusing to delete entity '{entity.Classname ?? ""}'!\n");
+			return;
+		}
+		Remove(entity.NetworkProp());
+	}
+#endif
 
 	public static void Remove(BaseEntity? entity) {
 		if (entity == null)

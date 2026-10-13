@@ -23,6 +23,13 @@ public static class PhysicsSystemHook
 	static PhysicsSystemHook() {
 		SetPhysicsGameSystem(g_PhysicsSystem);
 	}
+
+	public static bool PhysIsInCallback() {
+		if (physenv != null && physenv.IsInSimulation())
+			return true;
+		// return g_Collisions.IsInCallback(); TODO
+		return false;
+	}
 }
 
 public class PhysicsSystem : AutoGameSystemPerFrame
@@ -33,12 +40,12 @@ public class PhysicsSystem : AutoGameSystemPerFrame
 		PhysicsLevelInit();
 	}
 
-	static readonly ConVar cl_phys_timescale = new( "cl_phys_timescale", "1.0", FCvar.Cheat, "Sets the scale of time for client-side physics (ragdolls)" );
+	static readonly ConVar cl_phys_timescale = new("cl_phys_timescale", "1.0", FCvar.Cheat, "Sets the scale of time for client-side physics (ragdolls)");
 
 
 	internal void PhysicsSimulate() {
 		TimeUnit_t frametime = gpGlobals.FrameTime;
-		if(physenv != null){
+		if (physenv != null) {
 			physenv.DebugCheckContacts();
 			physenv.Simulate(frametime * cl_phys_timescale.GetDouble());
 

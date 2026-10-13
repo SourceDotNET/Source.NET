@@ -77,6 +77,28 @@ public static partial class LuaVGUI
 	}
 
 	[LuaMethod]
+	static int Panel__PaintManual(ILuaInterface lua) {
+		Panel? panel = Get_Panel(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+		panel.PaintManual(lua.GetType(2) != LuaType.Nil &&lua.GetBool(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Panel__PaintAt(ILuaInterface lua) {
+		Panel? panel = Get_Panel(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+		panel.PaintAt((int)lua.CheckNumber(2), (int)lua.CheckNumber(3));
+		return 0;
+	}
+
+	[LuaMethod]
 	static int Panel____newindex(ILuaInterface lua) {
 		Panel? panel = Get_Panel(1);
 		if (panel == null)
@@ -135,10 +157,10 @@ public static partial class LuaVGUI
 	static void Panel__SetVisible(Panel panel, [LuaGet] bool visible) => panel.SetVisible(visible);
 
 	[LuaMethod]
-	static void Panel__SetPos(Panel panel, int x, int y) => panel.SetPos(x, y);
+	static void Panel__SetPos(Panel panel, [LuaGet] int x, [LuaGet] int y) => panel.SetPos(x, y);
 
 	[LuaMethod]
-	static void Panel__SetSize(Panel panel, int wide, int tall) => panel.SetSize(wide, tall);
+	static void Panel__SetSize(Panel panel, [LuaGet] int wide, [LuaGet] int tall) => panel.SetSize(wide, tall);
 
 	[LuaMethod]
 	static void Panel__SetParent(ILuaInterface lua, Panel panel) {
@@ -233,7 +255,7 @@ public static partial class LuaVGUI
 	static void Panel__SetEnabled(Panel panel, [LuaGet] bool state) => panel.SetEnabled(state);
 
 	[LuaMethod]
-	static void Panel__SetMinimumSize(Panel panel, int wide, int tall) => panel.SetMinimumSize(wide, tall);
+	static void Panel__SetMinimumSize(Panel panel, [LuaGet] int wide, [LuaGet] int tall) => panel.SetMinimumSize(wide, tall);
 
 	[LuaMethod]
 	static bool Panel__IsMarkedForDeletion(Panel panel) => panel.IsMarkedForDeletion();
@@ -249,7 +271,7 @@ public static partial class LuaVGUI
 	static void Panel__InvalidateLayout(Panel panel, [LuaGet] bool layoutNow) => panel.InvalidateLayout(layoutNow, false);
 
 	[LuaMethod]
-	static void Panel__SetZPos(Panel panel, int z) => panel.SetZPos(z);
+	static void Panel__SetZPos(Panel panel, [LuaGet] int z) => panel.SetZPos(z);
 
 	[LuaMethod]
 	static int Panel__GetZPos(Panel panel) => panel.GetZPos();
@@ -1025,13 +1047,13 @@ public static partial class LuaVGUI
 	}
 
 	[LuaMethod]
-	static (int, int) Panel__LocalToScreen(Panel panel, int x, int y) {
+	static (int, int) Panel__LocalToScreen(Panel panel, [LuaGet] int x, [LuaGet] int y) {
 		panel.LocalToScreen(ref x, ref y);
 		return (x, y);
 	}
 
 	[LuaMethod]
-	static (int, int) Panel__ScreenToLocal(Panel panel, int x, int y) {
+	static (int, int) Panel__ScreenToLocal(Panel panel, [LuaGet] int x, [LuaGet] int y) {
 		panel.ScreenToLocal(ref x, ref y);
 		return (x, y);
 	}

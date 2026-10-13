@@ -485,6 +485,66 @@ public partial class
 	public virtual float GetWalkSpeed() => Local.WalkSpeed;
 	public virtual float GetUnDuckSpeed() => Local.UnDuckSpeed;
 
+	// TODO: these should use [NetworkVar]
+#if CLIENT_DLL
+	public virtual void SetSprintSpeed(float speed) => Local.SprintSpeed = speed;
+	public virtual void SetWalkSpeed(float speed) => Local.WalkSpeed = speed;
+	public virtual void SetSlowWalkSpeed(float speed) => Local.SlowWalkSpeed = speed;
+	public virtual void SetLadderSpeed(float speed) => Local.LadderSpeed = speed;
+	public virtual void SetCrouchedWalkSpeed(float speed) => Local.CrouchedWalkSpeed = speed;
+	public virtual void SetDuckSpeed(float speed) => Local.DuckSpeed = speed;
+	public virtual void SetUnDuckSpeed(float speed) => Local.UnDuckSpeed = speed;
+#else
+	public virtual void SetSprintSpeed(float speed) {
+		if (Local.SprintSpeed != speed) {
+			NetworkStateChanged();
+			Local.SprintSpeed = speed;
+		}
+	}
+
+	public virtual void SetWalkSpeed(float speed) {
+		if (Local.WalkSpeed != speed) {
+			NetworkStateChanged();
+			Local.WalkSpeed = speed;
+		}
+	}
+
+	public virtual void SetSlowWalkSpeed(float speed) {
+		if (Local.SlowWalkSpeed != speed) {
+			NetworkStateChanged();
+			Local.SlowWalkSpeed = speed;
+		}
+	}
+
+	public virtual void SetLadderSpeed(float speed) {
+		if (Local.LadderSpeed != speed) {
+			NetworkStateChanged();
+			Local.LadderSpeed = speed;
+		}
+	}
+
+	public virtual void SetCrouchedWalkSpeed(float speed) {
+		if (Local.CrouchedWalkSpeed != speed) {
+			NetworkStateChanged();
+			Local.CrouchedWalkSpeed = speed;
+		}
+	}
+
+	public virtual void SetDuckSpeed(float speed) {
+		if (Local.DuckSpeed != speed) {
+			NetworkStateChanged();
+			Local.DuckSpeed = speed;
+		}
+	}
+
+	public virtual void SetUnDuckSpeed(float speed) {
+		if (Local.UnDuckSpeed != speed) {
+			NetworkStateChanged();
+			Local.UnDuckSpeed = speed;
+		}
+	}
+#endif
+
 
 	int SkipStep;
 	public void UpdateStepSound(SurfaceData_ptr? surface, in Vector3 origin, in Vector3 velocity) {

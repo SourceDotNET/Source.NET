@@ -895,6 +895,16 @@ public partial class BaseEntity : IServerEntity
 	public virtual void UpdateOnRemove() {
 		Util.g_bReceivedChainedUpdateOnRemove = true;
 
+#if GMOD_DLL
+		for (int i = 0; i < DeleteOnRemoveList.Count; i++) {
+			BaseEntity? ent = DeleteOnRemoveList[i].Get();
+			if (ent == null)
+				continue;
+			Util.RemoveSafe(ent);
+			DeleteOnRemoveList[i] = new();
+		}
+#endif
+
 		// Virtual call to shut down any looping sounds.
 		StopLoopingSounds();
 
@@ -1677,25 +1687,25 @@ public partial class BaseEntity : IServerEntity
 	public byte WaterType;
 
 	[NetworkName("m_GMOD_bool")]
-	InlineArray32<bool> GMOD_bool;
+	public InlineArray32<bool> GMOD_bool;
 	[NetworkName("m_GMOD_float")]
-	InlineArray32<float> GMOD_float;
+	public InlineArray32<float> GMOD_float;
 	[NetworkName("m_GMOD_int")]
-	InlineArray32<int> GMOD_int;
+	public InlineArray32<int> GMOD_int;
 	[NetworkName("m_GMOD_Vector")]
-	InlineArray32<Vector3> GMOD_Vector;
+	public InlineArray32<Vector3> GMOD_Vector;
 	[NetworkName("m_GMOD_QAngle")]
-	InlineArray32<QAngle> GMOD_QAngle;
+	public InlineArray32<QAngle> GMOD_QAngle;
 	[NetworkName("m_GMOD_EHANDLE")]
-	InlineArray32<EHANDLE> GMOD_EHANDLE; // << ENSURE THESE ARE INITIALIZED!!!!
+	public InlineArrayNew32<EHANDLE> GMOD_EHANDLE = new();
 	[NetworkName("m_GMOD_String0")]
-	InlineArray512<char> GMOD_String0;
+	public InlineArray512<char> GMOD_String0;
 	[NetworkName("m_GMOD_String1")]
-	InlineArray512<char> GMOD_String1;
+	public InlineArray512<char> GMOD_String1;
 	[NetworkName("m_GMOD_String2")]
-	InlineArray512<char> GMOD_String2;
+	public InlineArray512<char> GMOD_String2;
 	[NetworkName("m_GMOD_String3")]
-	InlineArray512<char> GMOD_String3;
+	public InlineArray512<char> GMOD_String3;
 
 	public int DataObjectTypes;
 
@@ -1724,6 +1734,16 @@ public partial class BaseEntity : IServerEntity
 
 	public virtual int GetMaxHealth() => MaxHealth;
 	public void GetMaxHealth(int amt) => MaxHealth = amt;
+	public void SetMaxHealth(int amt) => MaxHealth = amt;
+	public virtual BaseCombatCharacter? MyCombatCharacterPointer() => null;
+
+	public readonly List<EHANDLE> DeleteOnRemoveList = [];
+
+	public virtual void DeleteOnRemove(BaseEntity? ent) {
+		EHANDLE handle = new();
+		handle.Set(ent);
+		DeleteOnRemoveList.Add(handle);
+	}
 
 	public int GetHealth() => Health;
 	public int SetHealth(int amt) => Health = amt;
@@ -2229,7 +2249,18 @@ public partial class BaseEntity : IServerEntity
 	public void SetName(string? name) {
 		Name = name;
 	}
-	public void SetOwnerEntity(BaseEntity? owner) => OwnerEntity.Set(owner);
+	public virtual void SetOwnerEntity(BaseEntity? owner) {
+		if (OwnerEntity.Get() == owner)
+			return;
+		if (OwnerEntity.Get() != owner) {
+			NetworkStateChanged();
+			OwnerEntity.Set(owner);
+		}
+		CollisionRulesChanged();
+		OnOwnerChanged();
+	}
+
+	public virtual void OnOwnerChanged() { }
 	public BaseEntity? GetOwnerEntity() => OwnerEntity.Get();
 
 	public void SetMoveType(MoveType val, MoveCollide moveCollide = Source.MoveCollide.Default) {

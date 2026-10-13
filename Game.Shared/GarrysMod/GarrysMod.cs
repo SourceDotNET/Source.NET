@@ -2,6 +2,9 @@
 global using static Game.Client.GarrysMod.GarrysModSingletons;
 
 using Game.Shared;
+#if GAME_DLL
+using Game.Server.GarrysMod;
+#endif
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -252,6 +255,60 @@ public class GarrysMod : IGarrysMod
 #endif
 	}
 
+	static readonly string[] SacredEntities = [
+		"worldspawn", "player", "gm_bot", "gmod_gamerules", "soundent", "ai_ally_speech_manager", "ai_network_build_helper",
+		"scene_manager", "ai_network", "player_manager", "instanced_scripted_scene", "npc_barnacle_tongue_tip"
+	];
+
+	public static bool IsSacredEntity(ReadOnlySpan<char> className) {
+		foreach (string sacred in SacredEntities)
+			if (stricmp(className, sacred) == 0)
+				return true;
+		return false;
+	}
+
+#if GAME_DLL
+	static readonly string[] OverridableWeapons = [
+		"weapon_crowbar", "weapon_stunstick", "weapon_357", "weapon_pistol", "weapon_smg1", "weapon_ar2", "weapon_crossbow",
+		"weapon_shotgun", "weapon_frag", "weapon_slam", "weapon_bugbait", "weapon_physcannon", "weapon_physgun", "weapon_alyxgun",
+		"weapon_annabelle", "weapon_rpg", "weapon_crowbar_hl1", "weapon_357_hl1", "weapon_glock_hl1", "weapon_egon",
+		"weapon_handgrenade", "weapon_hornetgun", "weapon_mp5_hl1", "weapon_crossbow_hl1", "weapon_rpg_hl1", "weapon_satchel",
+		"weapon_snark", "weapon_shotgun_hl1", "weapon_gauss", "weapon_tripmine"
+	];
+
+	static readonly string[] OverridableEntities = [
+		"point_servercommand", "point_teleport", "point_viewcontrol", "env_credits", "env_hudhint", "env_screenoverlay", "env_zoom",
+		"filter_activator_team", "filter_activator_context", "game_player_equip", "info_npc_spawn_destination", "logic_auto",
+		"player_loadsaved", "player_speedmod", "npc_template_maker", "npc_maker", "prop_physics_respawnable", "trigger_auto",
+		"trigger_changelevel", "trigger_hurt", "trigger_multiple", "trigger_once", "trigger_teleport", "trigger_transition",
+		"trigger_push", "ambient_generic", "func_pushable", "func_healthcharger", "func_recharge", "func_tankmortar",
+		"item_suitcharger", "item_healthcharger", "item_longjump", "item_suit", "item_healthkit", "item_battery", "weaponbox",
+		"speaker", "monster_satchel", "monster_tripmine", "info_player_teamspawn", "info_vehicle_groundspawn", "ammo_crossbow",
+		"ammo_egonclip", "ammo_gaussclip", "ammo_glockclip", "ammo_9mmclip", "ammo_mp5clip", "ammo_9mmar", "ammo_9mmbox",
+		"ammo_mp5grenades", "ammo_argrenades", "ammo_357", "ammo_rpgclip", "ammo_buckshot", "bounce_bomb", "combine_bouncemine",
+		"combine_mine", "prop_car_alarm", "prop_car_glass", "prop_health_cabinet", "asw_door", "dod_control_point",
+		"team_control_point", "prop_portal_stats_display", "npc_personality_core", "prop_tractor_beam", "prop_under_floor_button",
+		"prop_floor_ball_button", "prop_floor_cube_button", "prop_under_button", "prop_floor_button", "prop_button",
+		"prop_indicator_panel", "prop_testchamber_door", "prop_wall_projector", "npc_wheatley_boss", "prop_laser_relay",
+		"prop_dropper", "env_portal_laser", "prop_laser_catcher", "prop_weighted_cube", "prop_exploding_barrel", "prop_flare",
+		"item_crate"
+	];
+
+	public static bool IsAllowedToOverrideWeapon(ReadOnlySpan<char> className) {
+		foreach (string weapon in OverridableWeapons)
+			if (stricmp(weapon, className) == 0)
+				return true;
+		return false;
+	}
+
+	public static bool IsAllowedToOverrideEntity(ReadOnlySpan<char> className) {
+		foreach (string entity in OverridableEntities)
+			if (stricmp(entity, className) == 0)
+				return true;
+		return false;
+	}
+#endif
+
 	public class LuaManager
 	{
 		public bool RunScript(ReadOnlySpan<char> file, ReadOnlySpan<char> pathId, bool run, ReadOnlySpan<char> source) {
@@ -261,6 +318,28 @@ public class GarrysMod : IGarrysMod
 		}
 
 		public bool ScriptExists(ReadOnlySpan<char> file, ReadOnlySpan<char> pathId) => get.LuaShared()!.LoadFile(file, pathId, false, true) != null;
+
+#if CLIENT_DLL
+		public C_BaseEntity? CreateEntity(ReadOnlySpan<char> className) => LuaSENTManager.gSENTManager!.CreateEntity(className);
+#else
+		public IServerNetworkable? CreateEntity(ReadOnlySpan<char> className, bool hasFactory) {
+			if (hasFactory) {
+				if (IsAllowedToOverrideWeapon(className)) {
+					IServerNetworkable? weapon = LuaSWEPManager.gSWEPManager!.CreateEntity(className);
+					if (weapon != null)
+						return weapon;
+				}
+				if (!IsAllowedToOverrideEntity(className))
+					return null;
+			}
+			else {
+				IServerNetworkable? weapon = LuaSWEPManager.gSWEPManager!.CreateEntity(className);
+				if (weapon != null)
+					return weapon;
+			}
+			return LuaSENTManager.gSENTManager!.CreateEntity(className);
+		}
+#endif
 
 		public void Startup() {
 #if CLIENT_DLL

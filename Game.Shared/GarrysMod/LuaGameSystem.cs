@@ -44,7 +44,7 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 	}
 	public override void Update(double frametime) {
 		// RemoveQueuedRenderTargets();
-		// RemoveQueuedEntities();
+		LuaEntity.RemoveQueuedEntities();
 		// RunMapCleanupIfNeeded();
 		if (g_Lua == null || GarrysMod.g_LuaManager == null || gGM == null)
 			return;
@@ -72,7 +72,7 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 		}
 		garrysmod.Think();
 		// RemoveQueuedRecipientFilters();
-		// RemoveQueuedEntities();
+		LuaEntity.RemoveQueuedEntities();
 		// RunMapCleanupIfNeeded();
 		if (gpGlobals.TickCount != LastTick) {
 			LastTick = gpGlobals.TickCount;

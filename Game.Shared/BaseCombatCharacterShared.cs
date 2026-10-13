@@ -8,8 +8,10 @@ using System.Numerics;
 
 #if CLIENT_DLL
 namespace Game.Client;
+using Game.Client.GarrysMod;
 #else
 namespace Game.Server;
+using Game.Server.GarrysMod;
 #endif
 
 public partial class
@@ -20,16 +22,13 @@ public partial class
 #endif
 {
 	public int GetAmmoCount(int ammoIndex) {
-		if (ammoIndex == -1)
+		if ((uint)ammoIndex >= MAX_AMMO_SLOTS)
 			return 0;
 
-		// TODO, it is 4 am, I do not want to do this right now
-		// FIXME FIX ME FIX ME
-#if CLIENT_DLL
+		if (GetAmmoDef().MaxCarry(ammoIndex) == AmmoDef.INFINITE_AMMO)
+			return 999;
+
 		return Ammo[ammoIndex];
-#else
-		return 0;
-#endif
 	}
 
 	public virtual BaseCombatWeapon? Weapon_OwnsThisType(ReadOnlySpan<char> weapon, int subtype) {
@@ -117,6 +116,27 @@ public partial class
 		Ammo.Set(ammoIndex, Math.Max(Ammo[ammoIndex] - count, 0));
 	}
 	public void RemoveAmmo(int count, ReadOnlySpan<char> name) => RemoveAmmo(count, GetAmmoDef().Index(name));
+
+#if GMOD_DLL
+	public static void OnAmmoChanged(BaseCombatCharacter? ent, int ammoIndex, int oldCount, int newCount) {
+		if (oldCount != newCount && ent != null && ent.IsPlayer() && gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerAmmoChanged)) {
+			LuaEntity.Push_Entity(ent);
+			g_Lua!.PushNumber(ammoIndex);
+			g_Lua.PushNumber(oldCount);
+			g_Lua.PushNumber(newCount);
+			gGM.CallNoReturns(4);
+		}
+	}
+
+	public void RemoveAllAmmo() {
+		for (int i = 0; i < MAX_AMMO_SLOTS; i++) {
+			int old = Ammo[i];
+			if (Ammo[i] != 0)
+				Ammo.Set(i, 0);
+			OnAmmoChanged(this, i, old, 0);
+		}
+	}
+#endif
 
 	public virtual Vector3 Weapon_ShootPosition() => EyePosition();
 

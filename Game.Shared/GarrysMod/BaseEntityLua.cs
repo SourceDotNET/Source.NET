@@ -27,6 +27,9 @@ public partial class
 	public virtual bool IsRagdollProp() => false;
 	public virtual bool IsJeep() => false;
 	public virtual void PostLuaSpawn() { }
+	public virtual ReadOnlySpan<char> GetLuaScriptName() => null;
+	public virtual void InitializeScriptedEntity(ReadOnlySpan<char> name) { }
+	public virtual void Lua_OnEntityInitialized() { }
 	public virtual LuaClass Lua_GetLuaClass() => LuaEntity.LC_Entity;
 
 	public virtual void PushEntity() {

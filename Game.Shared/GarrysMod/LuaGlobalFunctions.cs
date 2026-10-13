@@ -1,6 +1,7 @@
 #if CLIENT_DLL || GAME_DLL
 using Source;
 using Source.Common.Commands;
+using Source.Common.Mathematics;
 using Source.Common.GarrysMod;
 using Source.Common.GarrysMod.Lua;
 #if CLIENT_DLL
@@ -98,6 +99,22 @@ public static partial class LuaGlobalFunctions
 			s = (int)sat / 255.0f;
 		}
 		v = maxInt / 255.0f;
+	}
+
+	[LuaGlobal]
+	static int LocalToWorld(ILuaInterface lua) {
+		Vector3 localPos = LuaVector.Get_Vector(1);
+		QAngle localAng = LuaAngle.Get_Angle(2);
+		Vector3 originPos = LuaVector.Get_Vector(3);
+		QAngle originAng = LuaAngle.Get_Angle(4);
+
+		MathLib.AngleMatrix(originAng, originPos, out Matrix3x4 matrix);
+		MathLib.VectorTransform(localPos, matrix, out Vector3 worldPos);
+		QAngle worldAng = MathLib.TransformAnglesToWorldSpace(localAng, matrix);
+
+		LuaVector.Push_Vector(worldPos);
+		LuaAngle.Push_Angle(worldAng);
+		return 2;
 	}
 
 	[LuaGlobal]

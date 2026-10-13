@@ -18,7 +18,19 @@ public class TEPlayerAnimEvent(ReadOnlySpan<char> name) : BaseTempEntity(name)
 	[NetworkName("m_hPlayer")]
 	public EHANDLE Player = new();
 	[NetworkName("m_iEvent")]
-	public readonly int Event;
+	public int Event;
 	[NetworkName("m_nData")]
-	public readonly int Data;
+	public int Data;
+
+	public static readonly TEPlayerAnimEvent g_TEPlayerAnimEvent = new("PlayerAnimEvent");
+
+	public static void TE_PlayerAnimEvent(BasePlayer player, PlayerAnimEvent evt, int data, bool predicted) {
+		PVSFilter filter = new(player.EyePosition());
+		if (predicted)
+			filter.UsePredictionRules();
+		g_TEPlayerAnimEvent.Player.Set(player);
+		g_TEPlayerAnimEvent.Event = (int)evt;
+		g_TEPlayerAnimEvent.Data = data;
+		g_TEPlayerAnimEvent.Create(ref filter, 0);
+	}
 }

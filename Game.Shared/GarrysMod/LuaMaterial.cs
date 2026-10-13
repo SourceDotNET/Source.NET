@@ -1,3 +1,4 @@
+#if CLIENT_DLL || GAME_DLL
 using Source;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.GarrysMod.Lua;
@@ -7,7 +8,11 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
+#if CLIENT_DLL
 namespace Game.Client.GarrysMod;
+#else
+namespace Game.Server.GarrysMod;
+#endif
 
 public static partial class LuaMaterial
 {
@@ -620,3 +625,4 @@ public static partial class LuaMaterial
 		return 1;
 	}
 }
+#endif

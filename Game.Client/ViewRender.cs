@@ -1611,8 +1611,7 @@ public class SkyboxView : Rendering3dView
 		render.PopView(GetFrustrum());
 
 #if GMOD_DLL
-		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PostDrawSkyBox) && gGM.CallFinish(0))
-			return;
+		gGM?.Call((int)LUA_POOLEDSTRING.PostDrawSkyBox);
 #endif
 		Rendering3DSkybox = false;
 	}

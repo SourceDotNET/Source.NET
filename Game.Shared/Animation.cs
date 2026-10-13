@@ -386,6 +386,12 @@ static Animation(){
 		return studiohdr.SelectWeightedSequence((int)activity, curSequence);
 	}
 
+	internal static int GetNumBodyGroups(StudioHdr? studioHdr) {
+		if (studioHdr == null)
+			return 0;
+		return studioHdr.NumBodyParts();
+	}
+
 	internal static void SetBodygroup(StudioHdr? studioHdr, ref int body, int group, int value) {
 		if (studioHdr == null)
 			return;

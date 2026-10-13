@@ -55,14 +55,14 @@ public static partial class LuaEnts
 		return IsProtectedClass(ent.GetClassname());
 	}
 
+	// todo: render depth counter
+	public static bool IsRendering() => false;
+
 #if CLIENT_DLL
 	// todo: CreateClientProp
 	// todo: CreateClientRope
 	// todo: CreateClientside
 #else
-	// todo: render depth counter
-	static bool IsRendering() => false;
-
 	[LuaFunction]
 	static int Create(ILuaInterface lua) {
 		if (IsRendering()) {

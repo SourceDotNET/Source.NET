@@ -12,6 +12,9 @@ public partial class C_BaseCombatWeapon : C_BaseAnimating
 {
 	public override bool IsBaseCombatWeapon() => true;
 	public override GarrysMod.LuaClass Lua_GetLuaClass() => GarrysMod.LuaEntity.LC_Weapon;
+	public bool Dropped;
+	public virtual bool WasDropped() => Dropped;
+	public virtual void SetDropped() => Dropped = true;
 	public virtual void DrawHUD() { }
 	public virtual void DrawHUDBackground() { }
 	public override bool IsWeapon() => true;

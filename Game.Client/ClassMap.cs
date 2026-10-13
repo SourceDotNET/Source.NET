@@ -32,10 +32,10 @@ public class ClassMap : IClassMap
 {
 	public static readonly ClassMap g_ClassMap = new();
 	public static ClassMap GetClassMap() => g_ClassMap;
-	static ClassMap(){
+	static ClassMap() {
 		// Here is where we start initializing things based on LinkEntityToClassAttribute's
-		var typePairs = Assembly.GetExecutingAssembly().GetTypesWithAttributeMulti< LinkEntityToClassAttribute>();
-		foreach(var type in typePairs){
+		var typePairs = Assembly.GetExecutingAssembly().GetTypesWithAttributeMulti<LinkEntityToClassAttribute>();
+		foreach (var type in typePairs) {
 			var attr = type.Value;
 
 			DynamicMethod m = new DynamicMethod("LinkEntity_Instantiate" + type.Key.Name + "_ToMap_" + attr.LocalName, typeof(C_BaseEntity), []);
@@ -70,6 +70,16 @@ public class ClassMap : IClassMap
 	}
 
 	public C_BaseEntity? CreateEntity(ReadOnlySpan<char> mapname) {
+#if GMOD_DLL
+		if (GarrysMod.GarrysMod.g_LuaManager != null) {
+			Span<char> lowered = stackalloc char[512];
+			strcpy(lowered, mapname);
+			strlower(lowered);
+			C_BaseEntity? luaEnt = GarrysMod.GarrysMod.g_LuaManager.CreateEntity(((ReadOnlySpan<char>)lowered).SliceNullTerminatedString());
+			if (luaEnt != null)
+				return luaEnt;
+		}
+#endif
 		foreach (var kvp in ClassDict) {
 			ClassEntry lookup = kvp.Value;
 			if (stricmp(lookup.GetMapName(), mapname) != 0)
