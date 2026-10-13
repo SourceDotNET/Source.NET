@@ -7,6 +7,7 @@ using Source.Common.ShaderAPI;
 using Source.Common.ShaderLib;
 using Source.MaterialSystem;
 
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -44,6 +45,8 @@ internal sealed class ShaderCompileJob
 	public uint Handle;
 	public string? Error;
 	public List<string>? SourceFiles;
+	public string? CachePath;
+	public bool FromCache;
 	public bool LinkFailed;
 	public bool Taken;
 	public bool HighPriority;
@@ -534,6 +537,53 @@ public class ShaderSystem : IShaderSystemInternal
 		return BuildShaderSource(source, defines, name, sourceFiles);
 	}
 
+	private string? GetCachePath(ShaderObject shader) {
+		if (ProgramCacheDir == null)
+			return null;
+
+		if (!ShaderSourceHashes.TryGetValue(shader.Name, out ulong sourceHash)) {
+			byte[]? source = LoadShaderSource(shader.Name, "", []);
+			sourceHash = source == null ? 0 : source.AsSpan().Hash();
+			ShaderSourceHashes[shader.Name] = sourceHash;
+		}
+
+		if (sourceHash == 0)
+			return null;
+
+		ulong key = $"{sourceHash:x16};{shader.Defines}".AsSpan().Hash(false);
+		return $"{ProgramCacheDir}/{shader.Name}_{key:x16}.bin";
+	}
+
+	private unsafe bool LoadCachedProgram(ShaderCompileJob job) {
+		using IFileHandle? handle = FileSystem.Open(job.CachePath, FileOpenOptions.Read | FileOpenOptions.Binary, "DEFAULT_WRITE_PATH");
+		if (handle == null || handle.Stream.Length <= sizeof(int))
+			return false;
+
+		byte[] data = new byte[handle.Stream.Length];
+		handle.Stream.ReadExactly(data);
+
+		job.Handle = glCreateProgram();
+		glProgramParameteri(job.Handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+		fixed (byte* pData = data)
+			glProgramBinary(job.Handle, BinaryPrimitives.ReadInt32LittleEndian(data), pData + sizeof(int), data.Length - sizeof(int));
+		job.FromCache = true;
+		return true;
+	}
+
+	private unsafe void SaveCachedProgram(ShaderCompileJob job) {
+		int length = 0;
+		glGetProgramiv(job.Handle, GL_PROGRAM_BINARY_LENGTH, &length);
+		if (length <= 0)
+			return;
+
+		byte[] data = new byte[sizeof(int) + length];
+		int format = 0;
+		fixed (byte* pData = data)
+			glGetProgramBinary(job.Handle, length, &length, &format, pData + sizeof(int));
+		BinaryPrimitives.WriteInt32LittleEndian(data, format);
+		FileSystem.WriteFile(job.CachePath, "DEFAULT_WRITE_PATH", data.AsSpan(0, sizeof(int) + length));
+	}
+
 	private unsafe void CompileProgram(ShaderCompileJob job) {
 		ShaderObject shader = job.Shader;
 		job.SourceFiles = [];
@@ -549,17 +599,37 @@ public class ShaderSystem : IShaderSystemInternal
 
 		job.Handle = glCreateProgram();
 		glProgramParameteri(job.Handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
+		if (job.CachePath != null)
+			glProgramParameteri(job.Handle, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
 		glAttachShader(job.Handle, job.ShaderHandle);
 		glLinkProgram(job.Handle);
 	}
 
 	private void SubmitCompileJob(ShaderCompileJob job) {
+		job.CachePath = GetCachePath(job.Shader);
+		if (job.CachePath != null && LoadCachedProgram(job))
+			return;
+
 		CompileProgram(job);
 	}
 
 	private unsafe void FinishCompileJob(ShaderCompileJob job) {
 		if (job.Handle == 0)
 			return;
+
+		if (job.FromCache) {
+			int status = 0;
+			glGetProgramiv(job.Handle, GL_LINK_STATUS, &status);
+			if (status == GL_TRUE)
+				return;
+
+			glDeleteProgram(job.Handle);
+			job.Handle = 0;
+			job.FromCache = false;
+			CompileProgram(job);
+			if (job.Handle == 0)
+				return;
+		}
 
 		if (!IsValidShader(job.ShaderHandle, out job.Error)) {
 			glDeleteProgram(job.Handle);
@@ -573,7 +643,11 @@ public class ShaderSystem : IShaderSystemInternal
 		if (!IsValidProgram(job.Handle, out job.Error)) {
 			job.LinkFailed = true;
 			job.Handle = 0;
+			return;
 		}
+
+		if (job.CachePath != null)
+			SaveCachedProgram(job);
 	}
 
 	private static void ApplyCompileJob(ShaderCompileJob job) {
@@ -595,7 +669,7 @@ public class ShaderSystem : IShaderSystemInternal
 				Warning($"  [source string {i}] = {job.SourceFiles[i]}\n");
 			Warning("\n");
 		}
-		else if (job.Handle != 0) {
+		else if (job.Handle != 0 && !job.FromCache) {
 			ReadOnlySpan<char> combos = shader.Defines.AsSpan().SliceNullTerminatedString();
 			if (combos.IsEmpty)
 				Msg($"Compiled shader: {shader.Name} ({shader.TypeName})\n");
@@ -608,6 +682,8 @@ public class ShaderSystem : IShaderSystemInternal
 
 	readonly List<ShaderObject> ShaderObjects = [];
 	readonly Dictionary<ulong, ShaderProgram> ShaderPrograms = [];
+	readonly Dictionary<string, ulong> ShaderSourceHashes = [];
+	string? ProgramCacheDir;
 	readonly Queue<ShaderCompileJob> PendingCompileJobs = [];
 	readonly Queue<ShaderCompileJob> HighPriorityCompileJobs = [];
 	readonly ConcurrentQueue<ShaderCompileBatch> FinishedCompileBatches = [];
@@ -628,8 +704,21 @@ public class ShaderSystem : IShaderSystemInternal
 		return false;
 	}
 
-	private void StartCompileWorker() {
+	private static unsafe string GetGLString(int name) => Encoding.ASCII.GetString(MemoryMarshal.CreateReadOnlySpanFromNullTerminated(glGetString(name)));
+
+	private unsafe void StartCompileWorker() {
 		CompileWorkerStarted = true;
+
+		int binaryFormats = 0;
+		glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &binaryFormats);
+		if (binaryFormats > 0) {
+			string driver = $"{GetGLString(GL_VENDOR)};{GetGLString(GL_RENDERER)};{GetGLString(GL_VERSION)}";
+			ProgramCacheDir = $"cache/shaders/{driver.AsSpan().Hash(false):x16}";
+			FileSystem.CreateDirHierarchy(ProgramCacheDir, "DEFAULT_WRITE_PATH");
+		}
+		else
+			Warning("Program binaries unsupported, shader cache disabled\n");
+
 		CompileContext = ShaderAPI.Device?.CreateSharedContext();
 		if (CompileContext == null) {
 			Warning("Shader compile worker unavailable, compiling shaders on the main thread\n");
