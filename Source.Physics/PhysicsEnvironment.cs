@@ -242,7 +242,6 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 
 		BoxPhysCollide? collide = collisionModel as BoxPhysCollide;
 		if (collide != null) {
-			ShapeDef shapeDef = PhysicsObject.MakeShapeDef(materialIndex, false);
 			foreach (BoxPhysConvex convex in collide.Convexes) {
 				if (convex.Hull.IsNull)
 					continue;
@@ -250,7 +249,7 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 			}
 
 			if (!collide.Mesh.IsNull)
-				Shape.CreateMesh(bodyId, shapeDef, collide.Mesh, Vector3.One);
+				Shape.CreateMesh(bodyId, PhysicsObject.MakeMeshShapeDef(collide, materialIndex, false), collide.Mesh, Vector3.One);
 		}
 
 		Vector3 massCenter = collide?.MassCenter ?? default;

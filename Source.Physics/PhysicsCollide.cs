@@ -112,6 +112,7 @@ internal sealed unsafe class BoxPhysCollide : PhysCollide
 {
 	public readonly List<BoxPhysConvex> Convexes = [];
 	public MeshData Mesh;
+	public int MeshMaterialIndex = -1;
 
 	public Vector3 MassCenter;
 	public Vector3 UnitInertia;
@@ -1141,7 +1142,7 @@ public unsafe class PhysicsCollide : IPhysicsCollision
 		if (mesh.IsNull)
 			return null;
 
-		return new BoxPhysCollide { Mesh = mesh };
+		return new BoxPhysCollide { Mesh = mesh, MeshMaterialIndex = list.SurfacePropsIndex };
 	}
 
 	public bool SupportsVirtualMesh() => true;

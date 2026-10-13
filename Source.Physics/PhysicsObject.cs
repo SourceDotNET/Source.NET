@@ -708,6 +708,9 @@ internal unsafe class PhysicsObject : IPhysicsObject
 	internal static ShapeDef MakeConvexShapeDef(BoxPhysConvex convex, int materialIndex, bool sensor)
 		=> MakeShapeDef(sensor ? materialIndex : ConvexMaterialIndex(convex, materialIndex), materialIndex, sensor);
 
+	internal static ShapeDef MakeMeshShapeDef(BoxPhysCollide collide, int materialIndex, bool sensor)
+		=> MakeShapeDef(sensor || collide.MeshMaterialIndex < 0 ? materialIndex : collide.MeshMaterialIndex, materialIndex, sensor);
+
 	static ShapeDef MakeShapeDef(int shapeMaterial, int materialIndex, bool sensor) {
 		ShapeDef shapeDef = MakeShapeDef(shapeMaterial, sensor);
 		if (shapeMaterial != materialIndex)
@@ -755,8 +758,11 @@ internal unsafe class PhysicsObject : IPhysicsObject
 				convexShapeDef.updateBodyMass = false;
 				Shape.CreateHull(BodyId, convexShapeDef, Static ? convex.Hull : convex.GetSimHull());
 			}
-			if (!Collide.Mesh.IsNull)
-				Shape.CreateMesh(BodyId, shapeDef, Collide.Mesh, Vector3.One);
+			if (!Collide.Mesh.IsNull) {
+				ShapeDef meshShapeDef = MakeMeshShapeDef(Collide, MaterialIndex, asSensor);
+				meshShapeDef.updateBodyMass = false;
+				Shape.CreateMesh(BodyId, meshShapeDef, Collide.Mesh, Vector3.One);
+			}
 		}
 		else if (SphereRadius > 0.0f) {
 			Sphere sphere = new() { center = default, radius = SourceToBox.Distance(SphereRadius) };
