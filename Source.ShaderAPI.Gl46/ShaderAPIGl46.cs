@@ -1805,17 +1805,29 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			return -1;
 
 		ShaderSystem shaders = (ShaderSystem)ShaderManager;
-		int loc = LocateStageUniform(shaders.GetShaderProgram(activePixelShader), name);
-		if (loc != -1)
-			return loc;
+		uint pixelProgram = shaders.GetShaderProgram(activePixelShader);
+		uint vertexProgram = shaders.GetShaderProgram(activeVertexShader);
+		StageUniform stage = new(pixelProgram, LocateStageUniform(pixelProgram, name), vertexProgram, LocateStageUniform(vertexProgram, name));
+		if (stage.PixelLocation == -1 && stage.VertexLocation == -1)
+			return -1;
 
-		loc = LocateStageUniform(shaders.GetShaderProgram(activeVertexShader), name);
-		return loc == -1 ? -1 : loc | VertexStageUniform;
+		if (!stageUniformHandles.TryGetValue(stage, out int handle)) {
+			handle = stageUniforms.Count;
+			stageUniforms.Add(stage);
+			stageUniformHandles[stage] = handle;
+		}
+
+		return handle;
 	}
 
-	const int VertexStageUniform = 0x40000000;
+	readonly record struct StageUniform(uint PixelProgram, int PixelLocation, uint VertexProgram, int VertexLocation);
+	readonly List<StageUniform> stageUniforms = [];
+	readonly Dictionary<StageUniform, int> stageUniformHandles = [];
 
 	private unsafe int LocateStageUniform(uint shader, ReadOnlySpan<char> name) {
+		if (shader == 0)
+			return -1;
+
 		// Then get shader ID -> shader uniform lookup table
 		if (!locs.TryGetValue(shader, out var lookup))
 			lookup = locs[shader] = [];
@@ -1835,23 +1847,20 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public nint GetCurrentProgram() => (nint)CombobulateShadersIfChanged();
-	uint GetCurrentProgramInternal() => CombobulateShadersIfChanged();
 
 	readonly Dictionary<uint, Dictionary<int, float[]>> uniformValues = [];
-	bool UniformChanged(ref int uniform, ReadOnlySpan<float> values, out uint program) {
-		program = 0;
-		if (uniform < 0 || GetCurrentProgramInternal() == 0)
+	bool GetStageUniform(int uniform, out StageUniform stage) {
+		if ((uint)uniform >= (uint)stageUniforms.Count) {
+			stage = default;
 			return false;
-
-		ShaderSystem shaders = (ShaderSystem)ShaderManager;
-		if ((uniform & VertexStageUniform) != 0) {
-			uniform &= ~VertexStageUniform;
-			program = shaders.GetShaderProgram(activeVertexShader);
 		}
-		else
-			program = shaders.GetShaderProgram(activePixelShader);
 
-		if (program == 0)
+		stage = stageUniforms[uniform];
+		return true;
+	}
+
+	bool UniformChanged(uint program, int uniform, ReadOnlySpan<float> values) {
+		if (program == 0 || uniform < 0)
 			return false;
 
 		if (!uniformValues.TryGetValue(program, out var cache))
@@ -1868,12 +1877,17 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public void SetShaderUniform(int uniform, int integer) {
-		if (!UniformChanged(ref uniform, [BitConverter.Int32BitsToSingle(integer)], out uint program))
+		if (!GetStageUniform(uniform, out StageUniform stage))
 			return;
+
+		ReadOnlySpan<float> values = [BitConverter.Int32BitsToSingle(integer)];
 #if GL_DEBUG
 		int i = glGetError();
 #endif
-		glProgramUniform1i(program, uniform, integer);
+		if (UniformChanged(stage.PixelProgram, stage.PixelLocation, values))
+			glProgramUniform1i(stage.PixelProgram, stage.PixelLocation, integer);
+		if (UniformChanged(stage.VertexProgram, stage.VertexLocation, values))
+			glProgramUniform1i(stage.VertexProgram, stage.VertexLocation, integer);
 #if GL_DEBUG
 		if ((i = glGetError()) != 0)
 			AssertMsg(false, $"GL error {i}");
@@ -1881,24 +1895,35 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public void SetShaderUniform(int uniform, uint integer) {
-		if (!UniformChanged(ref uniform, [BitConverter.UInt32BitsToSingle(integer)], out uint program))
+		if (!GetStageUniform(uniform, out StageUniform stage))
 			return;
 
-		glProgramUniform1ui(program, uniform, integer);
+		ReadOnlySpan<float> values = [BitConverter.UInt32BitsToSingle(integer)];
+		if (UniformChanged(stage.PixelProgram, stage.PixelLocation, values))
+			glProgramUniform1ui(stage.PixelProgram, stage.PixelLocation, integer);
+		if (UniformChanged(stage.VertexProgram, stage.VertexLocation, values))
+			glProgramUniform1ui(stage.VertexProgram, stage.VertexLocation, integer);
 	}
 
 	public void SetShaderUniform(int uniform, float fl) {
-		if (!UniformChanged(ref uniform, [fl], out uint program))
+		if (!GetStageUniform(uniform, out StageUniform stage))
 			return;
 
-		glProgramUniform1f(program, uniform, fl);
+		ReadOnlySpan<float> values = [fl];
+		if (UniformChanged(stage.PixelProgram, stage.PixelLocation, values))
+			glProgramUniform1f(stage.PixelProgram, stage.PixelLocation, fl);
+		if (UniformChanged(stage.VertexProgram, stage.VertexLocation, values))
+			glProgramUniform1f(stage.VertexProgram, stage.VertexLocation, fl);
 	}
 
 	public void SetShaderUniform(int uniform, ReadOnlySpan<float> flConsts) {
-		if (!UniformChanged(ref uniform, flConsts, out uint program))
+		if (!GetStageUniform(uniform, out StageUniform stage))
 			return;
 
-		glProgramUniform1fv(program, uniform, flConsts);
+		if (UniformChanged(stage.PixelProgram, stage.PixelLocation, flConsts))
+			glProgramUniform1fv(stage.PixelProgram, stage.PixelLocation, flConsts);
+		if (UniformChanged(stage.VertexProgram, stage.VertexLocation, flConsts))
+			glProgramUniform1fv(stage.VertexProgram, stage.VertexLocation, flConsts);
 	}
 
 	const int GL_TEXTURE_SRGB_DECODE_EXT = 0x8A48;
