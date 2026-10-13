@@ -642,6 +642,13 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 		}
 	}
 
+	internal void DumpCollide(int environmentIndex, ReadOnlySpan<char> filter) {
+		foreach (PhysicsObject obj in Objects) {
+			if (obj.GetName().Contains(filter, StringComparison.OrdinalIgnoreCase))
+				obj.DumpCollide(environmentIndex);
+		}
+	}
+
 	public bool IsInSimulation() => InSimulation;
 
 	public TimeUnit_t GetSimulationTimestep() => SimulationTimestep;

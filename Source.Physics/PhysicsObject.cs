@@ -683,6 +683,54 @@ internal unsafe class PhysicsObject : IPhysicsObject
 	public PhysCollide GetCollide() => Collide!;
 	public ReadOnlySpan<char> GetName() => Name;
 
+	static string HullInfo(HullData hull) {
+		if (hull.IsNull)
+			return "none";
+
+		ReadOnlySpan<Vector3> points = hull.Points;
+		Vector3 mins = new(float.MaxValue), maxs = new(float.MinValue);
+		foreach (Vector3 point in points) {
+			mins = Vector3.Min(mins, point);
+			maxs = Vector3.Max(maxs, point);
+		}
+		mins = BoxToSource.Distance(mins);
+		maxs = BoxToSource.Distance(maxs);
+		Vector3 size = maxs - mins;
+		return $"{hull.VertexCount} verts, {hull.FaceCount} faces, mins ({mins.X:F2} {mins.Y:F2} {mins.Z:F2}) maxs ({maxs.X:F2} {maxs.Y:F2} {maxs.Z:F2}) size ({size.X:F2} {size.Y:F2} {size.Z:F2})";
+	}
+
+	internal void DumpCollide(int environmentIndex) {
+		GetPosition(out Vector3 position, out QAngle angles);
+		Vector3 velocity = BoxToSource.Distance(BodyId.LinearVelocity);
+		Vector3 angularVelocity = BoxToSource.AngularImpulse(BodyId.AngularVelocity);
+		Msg($"[env {environmentIndex}] \"{Name}\" static {Static}, asleep {IsAsleep()}, material {physprops.GetPropName(MaterialIndex)} ({MaterialIndex})\n");
+		Msg($"  pos ({position.X:F2} {position.Y:F2} {position.Z:F2}) ang ({angles.X:F2} {angles.Y:F2} {angles.Z:F2})\n");
+		Msg($"  vel ({velocity.X:F2} {velocity.Y:F2} {velocity.Z:F2}) angvel ({angularVelocity.X:F2} {angularVelocity.Y:F2} {angularVelocity.Z:F2})\n");
+
+		if (!Static) {
+			MassData massData = BodyId.MassData;
+			Vector3 center = BoxToSource.Distance(massData.center);
+			Matrix3 inertia = massData.inertia;
+			Msg($"  mass {massData.mass:F3} (game {CachedMass:F3}), local mass center ({center.X:F3} {center.Y:F3} {center.Z:F3})\n");
+			Msg($"  inertia ({inertia.cx.X:G4} {inertia.cx.Y:G4} {inertia.cx.Z:G4}) ({inertia.cy.X:G4} {inertia.cy.Y:G4} {inertia.cy.Z:G4}) ({inertia.cz.X:G4} {inertia.cz.Y:G4} {inertia.cz.Z:G4})\n");
+		}
+
+		if (Collide == null) {
+			Msg(SphereRadius > 0.0f ? $"  sphere radius {SphereRadius:F2}\n" : "  no collide\n");
+			return;
+		}
+
+		Vector3 collideCenter = Collide.MassCenter;
+		Msg($"  collide: {Collide.Convexes.Count} convexes, mesh {(Collide.Mesh.IsNull ? "none" : $"{Collide.Mesh.Triangles.Length} tris")}, authored mass center ({collideCenter.X:F3} {collideCenter.Y:F3} {collideCenter.Z:F3})\n");
+		for (int i = 0; i < Collide.Convexes.Count; i++) {
+			BoxPhysConvex convex = Collide.Convexes[i];
+			Msg($"  convex {i}: gamedata {convex.GameData}, ivp triangles {convex.QueryMaterials?.Length ?? 0}\n");
+			Msg($"    hull     {HullInfo(convex.Hull)}\n");
+			if (!Static)
+				Msg($"    sim hull {HullInfo(convex.GetSimHull())}\n");
+		}
+	}
+
 	internal static int ConvexMaterialIndex(BoxPhysConvex convex, int materialIndex) {
 		byte[]? materials = convex.QueryMaterials;
 		Vector3[]? verts = convex.QueryVerts;
