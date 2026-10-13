@@ -706,7 +706,13 @@ public class ShaderSystem : IShaderSystemInternal
 				Warning($"  [source string {i}] = {job.SourceFiles[i]}\n");
 			Warning("\n");
 		}
-		else if (job.Handle != 0 && !job.FromCache) {
+		else if (job.Handle == 0) {
+			if (job.SourceFiles == null)
+				Warning($"WARNING: {shader.TypeName} shader source not found: {shader.Name}.\n");
+			else
+				Warning($"WARNING: {shader.TypeName} shader program could not be created for {shader.Name}.\n");
+		}
+		else if (!job.FromCache) {
 			ReadOnlySpan<char> combos = shader.Defines.AsSpan().SliceNullTerminatedString();
 			if (combos.IsEmpty)
 				Msg($"Compiled shader: {shader.Name} ({shader.TypeName})\n");
