@@ -56,8 +56,8 @@ public class ShadowStateGl46 : IShaderShadow
 	public SourceVertexSharedShadowState Vertex;
 	public SourcePixelSharedShadowState Pixel;
 
-	public VertexShaderHandle VertexShader;
-	public PixelShaderHandle PixelShader;
+	public VertexShaderHandle VertexShader = VertexShaderHandle.INVALID;
+	public PixelShaderHandle PixelShader = PixelShaderHandle.INVALID;
 
 	public BasePerMaterialContextData? ContextData;
 	public ShaderUsingFlags ModulationFlags;
