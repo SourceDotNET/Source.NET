@@ -1929,7 +1929,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			ForcedMagFilter = mode;
 	}
 
-	unsafe void ApplyForcedFilter(Sampler sampler, ShaderAPITextureHandle_t textureHandle) {
+	void ApplyForcedFilter(Sampler sampler, ShaderAPITextureHandle_t textureHandle) {
 		int unit = (int)sampler;
 		if (ForcedMinFilter == 0 && ForcedMagFilter == 0) {
 			if (ForcedFilterSamplerBound[unit]) {
@@ -1942,20 +1942,19 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		if (ForcedFilterSamplers[unit] == 0)
 			ForcedFilterSamplers[unit] = glCreateSamplers();
 		uint samplerObject = ForcedFilterSamplers[unit];
-		uint texture = GetGL46Texture(textureHandle);
+		InternalTextureInfo info = GetTexture(textureHandle);
+		ref TextureSamplerParams samplerParams = ref info.GetSamplerParams();
 
-		int value;
-		foreach (int pname in (ReadOnlySpan<int>)[GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TEXTURE_WRAP_R, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_MAG_FILTER]) {
-			glGetTextureParameteriv(texture, pname, &value);
-			glSamplerParameteri(samplerObject, pname, value);
-		}
-		if (SupportsSRGBDecode()) {
-			glGetTextureParameteriv(texture, GL_TEXTURE_SRGB_DECODE_EXT, &value);
-			glSamplerParameteri(samplerObject, GL_TEXTURE_SRGB_DECODE_EXT, value);
-		}
+		glSamplerParameteri(samplerObject, GL_TEXTURE_WRAP_S, samplerParams.WrapS);
+		glSamplerParameteri(samplerObject, GL_TEXTURE_WRAP_T, samplerParams.WrapT);
+		glSamplerParameteri(samplerObject, GL_TEXTURE_WRAP_R, samplerParams.WrapR);
+		glSamplerParameteri(samplerObject, GL_TEXTURE_MIN_FILTER, samplerParams.MinFilter);
+		glSamplerParameteri(samplerObject, GL_TEXTURE_MAG_FILTER, samplerParams.MagFilter);
+		if (SupportsSRGBDecode())
+			glSamplerParameteri(samplerObject, GL_TEXTURE_SRGB_DECODE_EXT, info.LastSRGBDecode);
 		glSamplerParameterf(samplerObject, GL_TEXTURE_MAX_ANISOTROPY, 1.0f);
 
-		bool mipped = GetTexture(textureHandle).Levels > 1;
+		bool mipped = info.Levels > 1;
 		switch (ForcedMinFilter) {
 			case 0:
 				break;
@@ -2209,6 +2208,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			else {
 				texture.NumCopies = (byte)copies;
 				texture.TextureCopies = new uint[copies];
+				texture.SamplerParams = new TextureSamplerParams[copies];
 				for (int k = 0; k < copies; k++) {
 					uint glTex = glCreateTexture(texture.DetermineGLObjectType());
 					glTextureStorage2D(glTex, mipCount, ImageLoader.GetGLImageInternalFormat(dstFormat, isSRGB), width, height);
@@ -2270,9 +2270,27 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		return handle;
 	}
 
+	public struct TextureSamplerParams
+	{
+		public int WrapS;
+		public int WrapT;
+		public int WrapR;
+		public int MinFilter;
+		public int MagFilter;
+
+		public static TextureSamplerParams Default => new() {
+			WrapS = GL_REPEAT,
+			WrapT = GL_REPEAT,
+			WrapR = GL_REPEAT,
+			MinFilter = GL_NEAREST_MIPMAP_LINEAR,
+			MagFilter = GL_LINEAR
+		};
+	}
+
 	public class InternalTextureInfo
 	{
 		internal uint[] TextureCopies = [0];
+		internal TextureSamplerParams[] SamplerParams = [TextureSamplerParams.Default];
 		internal readonly uint DepthStencilSurface = 0;
 		internal readonly InlineArray2<int> RenderTargetSurface;
 
@@ -2322,11 +2340,15 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 		public void SetTexture(uint tex) {
 			TextureCopies[0] = tex;
+			SamplerParams[0] = TextureSamplerParams.Default;
 		}
 
 		public void SetTexture(int copy, uint tex) {
 			TextureCopies[copy] = tex;
+			SamplerParams[copy] = TextureSamplerParams.Default;
 		}
+
+		public ref TextureSamplerParams GetSamplerParams() => ref SamplerParams[NumCopies == 1 ? 0 : CurrentCopy];
 
 		internal nuint GetMemUsage() {
 			return SizeBytes;
@@ -2827,58 +2849,73 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			return;
 		}
 
+		int wrap;
 		switch (wrapMode) {
 			case TexWrapMode.Clamp:
-				glTextureParameteri(GetModifyTexture(), coordinate, GL_CLAMP_TO_EDGE);
+				wrap = GL_CLAMP_TO_EDGE;
 				break;
 			case TexWrapMode.Repeat:
-				glTextureParameteri(GetModifyTexture(), coordinate, GL_REPEAT);
+				wrap = GL_REPEAT;
 				break;
 			case TexWrapMode.Border:
-				glTextureParameteri(GetModifyTexture(), coordinate, GL_CLAMP_TO_BORDER);
+				wrap = GL_CLAMP_TO_BORDER;
 				break;
 			default:
 				Warning("ShaderAPIGl46.TexWrap: unknown wrapMode\n");
-				break;
+				return;
+		}
+
+		glTextureParameteri(GetModifyTexture(), coordinate, wrap);
+		ref TextureSamplerParams samplerParams = ref GetTexture(ModifyTextureHandle).GetSamplerParams();
+		switch (coord) {
+			case TexCoordComponent.S: samplerParams.WrapS = wrap; break;
+			case TexCoordComponent.T: samplerParams.WrapT = wrap; break;
+			case TexCoordComponent.U: samplerParams.WrapR = wrap; break;
 		}
 	}
 	IMaterialSystemHardwareConfig HardwareConfig = Singleton<IMaterialSystemHardwareConfig>();
 	public void TexMinFilter(TexFilterMode mode) {
+		int filter;
 		switch (mode) {
 			case TexFilterMode.Nearest:
-				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				filter = GL_NEAREST;
 				break;
 			case TexFilterMode.Linear:
-				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				filter = GL_LINEAR;
 				break;
 			case TexFilterMode.NearestMipmapNearest:
-				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+				filter = GL_NEAREST_MIPMAP_NEAREST;
 				break;
 			case TexFilterMode.LinearMipmapNearest:
-				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+				filter = GL_LINEAR_MIPMAP_NEAREST;
 				break;
 			case TexFilterMode.NearestMipmapLinear:
-				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+				filter = GL_NEAREST_MIPMAP_LINEAR;
 				break;
 			case TexFilterMode.LinearMipmapLinear:
-				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+				filter = GL_LINEAR_MIPMAP_LINEAR;
 				break;
 			case TexFilterMode.Anisotropic:
 				glTextureParameterf(GetModifyTexture(), GL_TEXTURE_MAX_ANISOTROPY, AnisotropicLevel);
-				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+				filter = GL_LINEAR_MIPMAP_LINEAR;
 				break;
 			default:
-				break;
+				return;
 		}
+
+		glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MIN_FILTER, filter);
+		GetTexture(ModifyTextureHandle).GetSamplerParams().MinFilter = filter;
 	}
 
 	public void TexMagFilter(TexFilterMode mode) {
 		switch (mode) {
 			case TexFilterMode.Nearest:
 				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				GetTexture(ModifyTextureHandle).GetSamplerParams().MagFilter = GL_NEAREST;
 				break;
 			case TexFilterMode.Linear:
 				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				GetTexture(ModifyTextureHandle).GetSamplerParams().MagFilter = GL_LINEAR;
 				break;
 			case TexFilterMode.NearestMipmapNearest:
 				Warning("ShaderAPIGl46.TexMagFilter: TexFilterMode.NearestMipmapNearest is invalid\n");
@@ -2894,6 +2931,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 				break;
 			case TexFilterMode.Anisotropic:
 				glTextureParameteri(GetModifyTexture(), GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				GetTexture(ModifyTextureHandle).GetSamplerParams().MagFilter = GL_LINEAR;
 				glTextureParameterf(GetModifyTexture(), GL_TEXTURE_MAX_ANISOTROPY_EXT, AnisotropicLevel);
 				break;
 			default:
