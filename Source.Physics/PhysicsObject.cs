@@ -683,6 +683,38 @@ internal unsafe class PhysicsObject : IPhysicsObject
 	public PhysCollide GetCollide() => Collide!;
 	public ReadOnlySpan<char> GetName() => Name;
 
+	internal static int ConvexMaterialIndex(BoxPhysConvex convex, int materialIndex) {
+		byte[]? materials = convex.QueryMaterials;
+		Vector3[]? verts = convex.QueryVerts;
+		if (materials == null || verts == null)
+			return materialIndex;
+
+		Span<float> areas = stackalloc float[128];
+		int best = 0;
+		for (int i = 0; i < materials.Length; i++) {
+			int material = materials[i];
+			if (material == 0)
+				continue;
+
+			Vector3 a = verts[i * 3 + 0];
+			areas[material] += Vector3.Cross(verts[i * 3 + 1] - a, verts[i * 3 + 2] - a).Length();
+			if (best == 0 || areas[material] > areas[best])
+				best = material;
+		}
+
+		return best == 0 ? materialIndex : (int)((PhysicsSurfaceProps)physprops).RemapWorldMaterial(best);
+	}
+
+	internal static ShapeDef MakeConvexShapeDef(BoxPhysConvex convex, int materialIndex, bool sensor)
+		=> MakeShapeDef(sensor ? materialIndex : ConvexMaterialIndex(convex, materialIndex), materialIndex, sensor);
+
+	static ShapeDef MakeShapeDef(int shapeMaterial, int materialIndex, bool sensor) {
+		ShapeDef shapeDef = MakeShapeDef(shapeMaterial, sensor);
+		if (shapeMaterial != materialIndex)
+			shapeDef.baseMaterial.userMaterialId = (ulong)shapeMaterial + 1;
+		return shapeDef;
+	}
+
 	internal static ShapeDef MakeShapeDef(int materialIndex, bool sensor) {
 		ShapeDef shapeDef = ShapeDef.Default;
 		shapeDef.enableSensorEvents = true;
@@ -719,7 +751,9 @@ internal unsafe class PhysicsObject : IPhysicsObject
 			foreach (BoxPhysConvex convex in Collide.Convexes) {
 				if (convex.Hull.IsNull)
 					continue;
-				Shape.CreateHull(BodyId, shapeDef, Static ? convex.Hull : convex.GetSimHull());
+				ShapeDef convexShapeDef = MakeConvexShapeDef(convex, MaterialIndex, asSensor);
+				convexShapeDef.updateBodyMass = false;
+				Shape.CreateHull(BodyId, convexShapeDef, Static ? convex.Hull : convex.GetSimHull());
 			}
 			if (!Collide.Mesh.IsNull)
 				Shape.CreateMesh(BodyId, shapeDef, Collide.Mesh, Vector3.One);

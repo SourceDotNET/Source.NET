@@ -246,7 +246,7 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 			foreach (BoxPhysConvex convex in collide.Convexes) {
 				if (convex.Hull.IsNull)
 					continue;
-				Shape.CreateHull(bodyId, shapeDef, isStatic ? convex.Hull : convex.GetSimHull());
+				Shape.CreateHull(bodyId, PhysicsObject.MakeConvexShapeDef(convex, materialIndex, false), isStatic ? convex.Hull : convex.GetSimHull());
 			}
 
 			if (!collide.Mesh.IsNull)
