@@ -1112,9 +1112,39 @@ public unsafe class PhysicsCollide : IPhysicsCollision
 
 	public void ThreadContextDestroy(IPhysicsCollision threadContext) { }
 
-	public PhysCollide CreateVirtualMesh(in VirtualMeshParams meshParams) => throw new NotImplementedException();
+	public PhysCollide? CreateVirtualMesh(in VirtualMeshParams meshParams) {
+		if (meshParams.MeshEventHandler == null)
+			return null;
 
-	public bool SupportsVirtualMesh() => false;
+		VirtualMeshList list = default;
+		meshParams.MeshEventHandler.GetVirtualMesh(meshParams.UserData!, ref list);
+		if (list.TriangleCount <= 0 || list.VertexCount <= 0)
+			return null;
+
+		Vector3[] verts = new Vector3[list.VertexCount];
+		for (int i = 0; i < list.VertexCount; i++)
+			verts[i] = SourceToBox.Distance(list.Verts![i]);
+
+		int[] indices = new int[list.TriangleCount * 3];
+		for (int i = 0; i < list.TriangleCount; i++) {
+			indices[i * 3 + 0] = list.Indices[i * 3 + 0];
+			indices[i * 3 + 1] = list.Indices[i * 3 + 2];
+			indices[i * 3 + 2] = list.Indices[i * 3 + 1];
+		}
+
+		MeshDef def = default;
+		def.vertices = verts;
+		def.indices = indices;
+		def.useMedianSplit = true;
+		def.identifyEdges = true;
+		MeshData mesh = MeshData.Create(def, default);
+		if (mesh.IsNull)
+			return null;
+
+		return new BoxPhysCollide { Mesh = mesh };
+	}
+
+	public bool SupportsVirtualMesh() => true;
 
 	public bool GetBBoxCacheSize(out uint cachedSize, out nint cachedCount) {
 		cachedSize = 0;
