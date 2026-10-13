@@ -337,7 +337,7 @@ public abstract class ModelInfo(IFileSystem filesystem, IModelLoader modelloader
 	public byte ComputeViewScreenFade(in Vector3 absOrigin, float radius, float fadeScale) => 255;// TODO!!
 
 	public PhysCollide? GetCollideForVirtualTerrain(int index) {
-		throw new NotImplementedException();
+		return CM.PhysCollideForDisp(index);
 	}
 
 	public bool IsUsingFBTexture(Model? model, int nSkin, int nBody, object? pClientRenderable) {

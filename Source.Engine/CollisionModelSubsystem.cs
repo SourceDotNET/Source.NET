@@ -94,7 +94,7 @@ public class CollisionBSPData
 			physcollision.VCollideUnload(MapCollisionModels[i].VCollisionData);
 
 		// DispCollTrees_FreeLeafList(this);
-		// CM.DestroyDispPhysCollide();
+		CM.DestroyDispPhysCollide();
 		// DispCollTrees_Free(CM.g_DispCollTrees);
 		// CM.g_DispCollTrees = null;
 		// CM.g_DispBounds = null;
@@ -649,6 +649,8 @@ public class CollisionBSPData
 
 		// Link each displacement into the BSP leaves it touches.
 		CM_DispTreeLeafnum();
+
+		CM.CreateDispPhysCollide((int)MapLoadHelper.GetLumpSize(LumpIndex.PhysDisp));
 	}
 
 	// Port of CM_DispTreeLeafnum + CDispLeafBuilder: build the per-leaf displacement lists.
