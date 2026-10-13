@@ -565,7 +565,7 @@ public partial class C_BaseEntity : IClientEntity
 		RecvPropInt(FIELD.OF(nameof(CollisionGroup))),
 		RecvPropFloat(FIELD.OF(nameof(Elasticity))),
 		RecvPropFloat(FIELD.OF(nameof(ShadowCastDistance))),
-		RecvPropEHandle(FIELD.OF(nameof(OwnerEntity))),
+		RecvPropEHandle(FIELD.OF(nameof(OwnerEntity)), RecvProxy_OwnerEntity),
 		RecvPropEHandle(FIELD.OF(nameof(EffectEntity))),
 		RecvPropInt(FIELD.OF(nameof(NetworkMoveParent)), 0, RecvProxy_IntToMoveParent),
 		RecvPropInt(FIELD.OF(nameof(ParentAttachment))),
@@ -620,6 +620,13 @@ public partial class C_BaseEntity : IClientEntity
 		RecvPropInt(FIELD.OF(nameof(CreationID))),
 		RecvPropInt(FIELD.OF(nameof(MapCreatedID))),
 	]);
+
+	private static void RecvProxy_OwnerEntity(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+		RecvProxy_IntToEHandle(in data, instance, field);
+		((C_BaseEntity)instance).OnOwnerChanged();
+	}
+
+	public virtual void OnOwnerChanged() { }
 
 	private static void RecvProxy_LocalVelocityX(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
 		C_BaseEntity ent = (C_BaseEntity)instance;
@@ -2449,8 +2456,10 @@ public partial class C_BaseEntity : IClientEntity
 
 	}
 
+	public bool DestroyedOnRecreateEntities;
 	public void SetDestroyedOnRecreateEntities() {
-
+		// ParticleProp().StopEmission(null, false);
+		DestroyedOnRecreateEntities = true;
 	}
 
 	public virtual ICollideable GetCollideable() => Collision;

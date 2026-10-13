@@ -341,6 +341,7 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	public bool IsInAVehicle() => Vehicle.Get() != null;
 #if GMOD_DLL
 	public virtual bool RestrictPlayerPitch() => false;
+	public virtual bool CanAttack() => true;
 #endif
 	public virtual void SetAnimation(PlayerAnim playerAnim) { } // todo
 

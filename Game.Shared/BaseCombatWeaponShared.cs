@@ -34,6 +34,12 @@ namespace Game.Server;
 #endif
 
 using Source.Common.SoundEmitterSystem;
+using Source.Common.Commands;
+#if GMOD_DLL && CLIENT_DLL
+using Game.Client.GarrysMod;
+#elif GMOD_DLL
+using Game.Server.GarrysMod;
+#endif
 
 using System.Runtime.CompilerServices;
 
@@ -288,6 +294,26 @@ public partial class
 
 #if GMOD_DLL
 	public virtual ReadOnlySpan<char> GetHoldType() => "normal";
+	public virtual void SetHoldType(ReadOnlySpan<char> holdType) { }
+
+#if GMOD_DLL
+	public static readonly ConVar sv_defaultdeployspeed = new("sv_defaultdeployspeed", "4", FCvar.Replicated, "", 0.1, 10.0);
+
+	public TimeUnit_t LastShootTimeValue;
+	public virtual TimeUnit_t LastShootTime() => LastShootTimeValue;
+	public virtual void SetLastShootTime(TimeUnit_t time) => LastShootTimeValue = time;
+
+	public float GetDeploySpeed() {
+		LuaObject? table = GetLuaTable();
+		if (table == null)
+			return sv_defaultdeployspeed.GetFloat() > 0.1f ? sv_defaultdeployspeed.GetFloat() : 0.1f;
+		if (table.GetMemberFloat("m_WeaponDeploySpeed", sv_defaultdeployspeed.GetFloat()) > 0.1f)
+			return table.GetMemberFloat("m_WeaponDeploySpeed", sv_defaultdeployspeed.GetFloat());
+		return 0.1f;
+	}
+
+	public void SetDeploySpeed(float speed) => GetLuaTable()?.SetMember("m_WeaponDeploySpeed", speed);
+#endif
 #endif
 
 	public override void Activate() {

@@ -82,6 +82,7 @@ public partial class GMOD_Player : HL2MP_Player
 	}
 
 	public override bool RestrictPlayerPitch() => (GModPlayerFlags & 16) == 0;
+	public override bool CanAttack() => PressedWidget.Get() == null;
 
 	public override BaseEntity EntSelectSpawnPoint() {
 		BaseEntity? spot = null;

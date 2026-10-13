@@ -2249,7 +2249,18 @@ public partial class BaseEntity : IServerEntity
 	public void SetName(string? name) {
 		Name = name;
 	}
-	public void SetOwnerEntity(BaseEntity? owner) => OwnerEntity.Set(owner);
+	public virtual void SetOwnerEntity(BaseEntity? owner) {
+		if (OwnerEntity.Get() == owner)
+			return;
+		if (OwnerEntity.Get() != owner) {
+			NetworkStateChanged();
+			OwnerEntity.Set(owner);
+		}
+		CollisionRulesChanged();
+		OnOwnerChanged();
+	}
+
+	public virtual void OnOwnerChanged() { }
 	public BaseEntity? GetOwnerEntity() => OwnerEntity.Get();
 
 	public void SetMoveType(MoveType val, MoveCollide moveCollide = Source.MoveCollide.Default) {

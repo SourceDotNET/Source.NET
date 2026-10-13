@@ -95,6 +95,7 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 	public bool SprintEnabled;
 
 	public override bool RestrictPlayerPitch() => (GModPlayerFlags & 16) == 0;
+	public override bool CanAttack() => PressedWidget.Get() == null;
 
 	public override void UpdateClientSideAnimation() {
 		if (Driving.Get() != null) {

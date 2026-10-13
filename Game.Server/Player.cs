@@ -560,6 +560,7 @@ public partial class BasePlayer : BaseCombatCharacter
 	public override bool IsInAVehicle() => Vehicle.Get() != null;
 #if GMOD_DLL
 	public virtual bool RestrictPlayerPitch() => false;
+	public virtual bool CanAttack() => true;
 #endif
 	public float GetStepSize() => Local.StepSize;
 

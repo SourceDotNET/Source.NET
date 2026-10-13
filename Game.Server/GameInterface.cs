@@ -57,6 +57,12 @@ public static class GameInterface
 		g_pMsgBuffer = engine.UserMessageBegin(in filter, msg_type);
 	}
 
+	public static void EntityMessageBegin(BaseEntity entity, bool reliable) {
+		Assert(g_pMsgBuffer == null);
+		Assert(entity != null);
+		g_pMsgBuffer = engine.EntityMessageBegin(entity.EntIndex(), entity.NetworkProp().GetServerClass(), reliable);
+	}
+
 	public static void MessageEnd() {
 		Assert(g_pMsgBuffer != null);
 

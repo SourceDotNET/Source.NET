@@ -1,4 +1,5 @@
-﻿#if (CLIENT_DLL || GAME_DLL) && GMOD_DLL
+﻿using System.Numerics;
+#if (CLIENT_DLL || GAME_DLL) && GMOD_DLL
 using Game.Shared;
 
 using Source;
@@ -62,7 +63,7 @@ public partial class
 #endif
 
 	[NetworkName("m_strHoldType")]
-	public InlineArray64<char> HoldType;
+	public InlineArray80<char> HoldType;
 
 	public readonly ScriptedEntity ScriptedEntity = new();
 
@@ -83,7 +84,8 @@ public partial class
 	int SlotPos = -1;
 	long LastLuaDataUpdate;
 	bool LuaDataLocked;
-	InlineArray64<char> LastHoldType;
+	InlineArray80<char> LastHoldType;
+	BaseEntity? LastOwner;
 	int MaxClip1;
 	int DefaultClip1;
 	bool PrimaryAutomatic;
@@ -230,6 +232,173 @@ public partial class
 	}
 
 	public override void Precache() { }
+
+	public override ReadOnlySpan<char> GetHoldType() => ((ReadOnlySpan<char>)HoldType).SliceNullTerminatedString();
+
+	public override void SetHoldType(ReadOnlySpan<char> holdType) {
+		if (holdType.IsEmpty || holdType[0] == '\0')
+			return;
+#if GAME_DLL
+		NetworkStateChanged();
+#endif
+		strcpy(HoldType, holdType);
+	}
+
+#if CLIENT_DLL
+	public virtual void RunSWEPCmd(ReadOnlySpan<char> function, ReadOnlySpan<char> args) {
+		if (ScriptedEntity.StartFunction(function)) {
+			g_Lua!.PushString(args);
+			ScriptedEntity.Call(1, 0);
+		}
+	}
+#endif
+
+	public bool GetPrimaryAutomatic() {
+		UpdateLuaData(true);
+		return PrimaryAutomatic;
+	}
+
+	public bool GetSecondaryAutomatic() {
+		UpdateLuaData(true);
+		return SecondaryAutomatic;
+	}
+
+#if GAME_DLL
+	public override void Spawn() {
+		UpdateLuaData(true);
+		base.Spawn();
+		bool allowPrecache = IsPrecacheAllowed();
+		SetAllowPrecache(true);
+		ScriptedEntity.CallFunction("Initialize", false);
+		SetAllowPrecache(allowPrecache);
+	}
+
+	public override void OnRestore() {
+		base.OnRestore();
+		ScriptedEntity.InitializeDataTables();
+		ScriptedEntity.CallFunction("OnRestore", true);
+	}
+#endif
+
+	public override void UpdateOnRemove() {
+		if (EntIndex() != -1 && ScriptedEntity.StartFunction((int)LUA_POOLEDSTRING.OnRemove)) {
+#if GAME_DLL
+			g_Lua!.PushBool(false);
+#else
+			g_Lua!.PushBool(DestroyedOnRecreateEntities);
+#endif
+			ScriptedEntity.Call(1, 0);
+		}
+		base.UpdateOnRemove();
+	}
+
+	public override void OnOwnerChanged() {
+		if (GetOwnerEntity() == LastOwner)
+			return;
+		UpdateLuaData(true);
+		LastOwner = GetOwnerEntity();
+		if (ScriptedEntity.Started)
+			ScriptedEntity.CallFunction("OwnerChanged", false);
+	}
+
+	public override bool Deploy() {
+		UpdateLuaData(true);
+		base.Deploy();
+		if (ScriptedEntity.StartFunction((int)LUA_POOLEDSTRING.Deploy) && ScriptedEntity.Call(0, 1))
+			return g_Lua!.GetReturn(0).GetBool();
+		return true;
+	}
+
+	public override bool Holster(BaseCombatWeapon? switchingTo) {
+		if (ScriptedEntity.StartFunction((int)LUA_POOLEDSTRING.Holster)) {
+			LuaEntity.Push_Entity(switchingTo);
+			if (ScriptedEntity.Call(1, 1) && !g_Lua!.GetReturn(0).GetBool())
+				return false;
+		}
+		if (switchingTo != this)
+			base.Holster(switchingTo!);
+		UpdateLuaData(true);
+#if GAME_DLL
+		GameInterface.EntityMessageBegin(this, true);
+		WRITE_BYTE(1);
+		GameInterface.MessageEnd();
+#endif
+		return true;
+	}
+
+	public override void ItemPostFrame() {
+		if (GetOwner() == null)
+			return;
+		UpdateLuaData(true);
+		RandomSeed(GetPredictionRandomSeed());
+		ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.Tick, false);
+		ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.Think, false);
+		LuaDataLocked = true;
+		if (UsesClipsForAmmo1() || UsesClipsForAmmo2())
+			CheckReload();
+		LuaDataLocked = false;
+		BasePlayer? owner = ToBasePlayer(GetOwner());
+		if (owner == null || !owner.CanAttack())
+			return;
+		if ((owner.Buttons & InButtons.Attack2) != 0 && NextSecondaryAttack <= gpGlobals.CurTime)
+			SecondaryAttack();
+		if ((owner.Buttons & InButtons.Attack) != 0 && NextPrimaryAttack <= gpGlobals.CurTime)
+			PrimaryAttack();
+		if ((owner.Buttons & InButtons.Reload) != 0 && !InReload)
+			Reload();
+	}
+
+	public override bool Reload() {
+		ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.Reload, false);
+		return false;
+	}
+
+	public override void PrimaryAttack() {
+		if (GetOwner() == null)
+			return;
+		BaseCombatCharacter? owner = GetOwner();
+		if (owner == null || !owner.IsPlayer() || GetPrimaryAutomatic() || (((BasePlayer)owner).AfButtonPressed & InButtons.Attack) != 0)
+			ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.PrimaryAttack, false);
+	}
+
+	public override void SecondaryAttack() {
+		BaseCombatCharacter? owner = GetOwner();
+		if (owner != null && owner.IsPlayer() && !GetSecondaryAutomatic() && (((BasePlayer)owner).AfButtonPressed & InButtons.Attack2) == 0)
+			return;
+		ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.SecondaryAttack, false);
+	}
+
+	public override Activity ActivityOverride(Activity baseAct, ref bool required) {
+		if (ScriptedEntity.StartFunction((int)LUA_POOLEDSTRING.TranslateActivity)) {
+			g_Lua!.PushNumber((int)baseAct);
+			if (ScriptedEntity.Call(1, 1)) {
+				int act = g_Lua.GetReturn(0).GetInt();
+				return act == -1 ? baseAct : (Activity)act;
+			}
+		}
+		return baseAct;
+	}
+
+	public override void Equip(BaseCombatCharacter owner) {
+		base.Equip(owner);
+		UpdateLuaData(true);
+		if (ScriptedEntity.StartFunction((int)LUA_POOLEDSTRING.Equip)) {
+			LuaEntity.Push_Entity(owner);
+			ScriptedEntity.Call(1, 0);
+		}
+	}
+
+	public override void Drop(in Vector3 velocity) {
+		BaseCombatCharacter? owner = GetOwner();
+		base.Drop(velocity);
+		SetOwner(null);
+		SetOwnerEntity(null);
+		UpdateLuaData(true);
+		if (ScriptedEntity.StartFunction((int)LUA_POOLEDSTRING.OnDrop)) {
+			LuaEntity.Push_Entity(owner);
+			ScriptedEntity.Call(1, 0);
+		}
+	}
 
 #if GAME_DLL
 	public override ReadOnlySpan<char> GetName() => ScriptedEntity.ScriptNamePooled;

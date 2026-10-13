@@ -359,6 +359,11 @@ public partial class HL2MP_Player : HL2_Player
 		SetLocalAngles(oldAngles);
 	}
 
+	public void DoAnimationEvent(PlayerAnimEvent evt, int data, bool predicted) {
+		PlayerAnimState.DoAnimationEvent(evt, data);
+		TEPlayerAnimEvent.TE_PlayerAnimEvent(this, evt, data, predicted);
+	}
+
 	public override void PostThink() {
 		base.PostThink();
 
