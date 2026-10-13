@@ -21,6 +21,7 @@ public unsafe class IndexBufferGl46 : IDisposable
 
 	int ibo = -1;
 	int lastBufferSize = -1;
+	int LockedPosition;
 	public unsafe void RecomputeIBO() {
 		// Create the IBO if it doesn't exist
 		if (ibo == -1)
@@ -78,14 +79,16 @@ public unsafe class IndexBufferGl46 : IDisposable
 			glNamedBufferData((uint)ibo, BufferSize, null, GL_DYNAMIC_DRAW);
 		}
 		Locked = true;
-		return (short*)glMapNamedBufferRange((uint)ibo, position * 2, Math.Max(1, indexCount * 2), GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+		LockedPosition = position;
+		return (short*)SysmemBuffer + position;
 	}
 
 	public void Unlock(int indexCount) {
 		if (!Locked)
 			return;
 
-		glUnmapNamedBuffer((uint)ibo);
+		if (indexCount > 0)
+			glNamedBufferSubData((uint)ibo, LockedPosition * 2, indexCount * 2, (short*)SysmemBuffer + LockedPosition);
 		Position += indexCount;
 		Locked = false;
 	}
@@ -98,14 +101,15 @@ public unsafe class IndexBufferGl46 : IDisposable
 
 		startIndex = firstIndex;
 		Locked = true;
-		return (short*)glMapNamedBufferRange((uint)ibo, firstIndex * 2, Math.Max(1, indexCount * 2), GL_MAP_WRITE_BIT);
+		return (short*)SysmemBuffer + firstIndex;
 	}
 
 	public void ModifyUnlock(int firstIndex, int indexCount) {
 		if (!Locked)
 			return;
 
-		glUnmapNamedBuffer((uint)ibo);
+		if (indexCount > 0)
+			glNamedBufferSubData((uint)ibo, firstIndex * 2, indexCount * 2, (short*)SysmemBuffer + firstIndex);
 		Locked = false;
 	}
 
