@@ -1,3 +1,4 @@
+using Source.Common.Formats.BSP;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 
@@ -7,8 +8,132 @@ using System.Runtime.Intrinsics;
 
 namespace Source.Common;
 
+public struct BoxTraceInfo
+{
+	public float T1;
+	public float T2;
+	public int HitSide;
+	public bool StartSolid;
+}
+
 public static class CollisionUtils
 {
+	public static void Collision_ClearTrace(in Vector3 rayStart, in Vector3 rayDelta, ref GameTrace trace) {
+		trace.StartPos = rayStart;
+		trace.EndPos = rayStart;
+		trace.EndPos += rayDelta;
+		trace.StartSolid = false;
+		trace.AllSolid = false;
+		trace.Fraction = 1.0f;
+		trace.Contents = 0;
+	}
+
+	public static bool IntersectRayWithBox(in Vector3 rayStart, in Vector3 rayDelta, in Vector3 boxMins, in Vector3 boxMaxs, float tolerance, out BoxTraceInfo trace) {
+		int i;
+		float d1, d2;
+		float f;
+
+		trace.T1 = -1.0f;
+		trace.T2 = 1.0f;
+		trace.HitSide = -1;
+
+		trace.StartSolid = true;
+
+		for (i = 0; i < 6; ++i) {
+			if (i >= 3) {
+				d1 = rayStart[i - 3] - boxMaxs[i - 3];
+				d2 = d1 + rayDelta[i - 3];
+			}
+			else {
+				d1 = -rayStart[i] + boxMins[i];
+				d2 = d1 - rayDelta[i];
+			}
+
+			if (d1 > 0 && d2 > 0) {
+				trace.StartSolid = false;
+				return false;
+			}
+
+			if (d1 <= 0 && d2 <= 0)
+				continue;
+
+			if (d1 > 0)
+				trace.StartSolid = false;
+
+			if (d1 > d2) {
+				f = d1 - tolerance;
+				if (f < 0)
+					f = 0;
+				f /= (d1 - d2);
+				if (f > trace.T1) {
+					trace.T1 = f;
+					trace.HitSide = i;
+				}
+			}
+			else {
+				f = (d1 + tolerance) / (d1 - d2);
+				if (f < trace.T2)
+					trace.T2 = f;
+			}
+		}
+
+		return trace.StartSolid || (trace.T1 < trace.T2 && trace.T1 >= 0.0f);
+	}
+
+	public static bool IntersectRayWithBox(in Vector3 rayStart, in Vector3 rayDelta, in Vector3 boxMins, in Vector3 boxMaxs, float tolerance, ref GameTrace trace, ref float fractionLeftSolid) {
+		Collision_ClearTrace(rayStart, rayDelta, ref trace);
+
+		if (IntersectRayWithBox(rayStart, rayDelta, boxMins, boxMaxs, tolerance, out BoxTraceInfo boxTrace)) {
+			trace.StartSolid = boxTrace.StartSolid;
+			if (boxTrace.T1 < boxTrace.T2 && boxTrace.T1 >= 0.0f) {
+				trace.Fraction = boxTrace.T1;
+				MathLib.VectorMA(trace.StartPos, boxTrace.T1, rayDelta, out trace.EndPos);
+				trace.Contents = Contents.Solid;
+				trace.Plane.Normal = vec3_origin;
+				if (boxTrace.HitSide >= 3) {
+					boxTrace.HitSide -= 3;
+					trace.Plane.Dist = boxMaxs[boxTrace.HitSide];
+					trace.Plane.Normal[boxTrace.HitSide] = 1.0f;
+					trace.Plane.Type = (PlaneType)boxTrace.HitSide;
+				}
+				else {
+					trace.Plane.Dist = -boxMins[boxTrace.HitSide];
+					trace.Plane.Normal[boxTrace.HitSide] = -1.0f;
+					trace.Plane.Type = (PlaneType)boxTrace.HitSide;
+				}
+				return true;
+			}
+
+			if (trace.StartSolid) {
+				trace.AllSolid = (boxTrace.T2 <= 0.0f) || (boxTrace.T2 >= 1.0f);
+				trace.Fraction = 0;
+				if (!Unsafe.IsNullRef(ref fractionLeftSolid))
+					fractionLeftSolid = boxTrace.T2;
+				trace.EndPos = trace.StartPos;
+				trace.Contents = Contents.Solid;
+				trace.Plane.Dist = trace.StartPos[0];
+				trace.Plane.Normal = new(1.0f, 0.0f, 0.0f);
+				trace.Plane.Type = 0;
+				trace.StartPos = rayStart + (boxTrace.T2 * rayDelta);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	public static bool IntersectRayWithBox(in Ray ray, in Vector3 boxMins, in Vector3 boxMaxs, float tolerance, ref GameTrace trace, ref float fractionLeftSolid) {
+		if (!ray.IsRay) {
+			Vector3 expandedMins = boxMins - ray.Extents;
+			Vector3 expandedMaxs = boxMaxs + ray.Extents;
+			bool intersects = IntersectRayWithBox(ray.Start, ray.Delta, expandedMins, expandedMaxs, tolerance, ref trace, ref fractionLeftSolid);
+			trace.StartPos += ray.StartOffset;
+			trace.EndPos += ray.StartOffset;
+			return intersects;
+		}
+		return IntersectRayWithBox(ray.Start, ray.Delta, boxMins, boxMaxs, tolerance, ref trace, ref fractionLeftSolid);
+	}
+
 	public static bool IntersectInfiniteRayWithSphere(in Vector3 rayOrigin, in Vector3 rayDelta, in Vector3 sphereCenter, float radius, out float t1, out float t2) {
 		Vector3 sphereToRay = rayOrigin - sphereCenter;
 

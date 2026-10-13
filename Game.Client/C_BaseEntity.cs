@@ -1145,8 +1145,13 @@ public partial class C_BaseEntity : IClientEntity
 	}
 	void SetModelIndex(int index) {
 		ModelIndex = index;
+#if GMOD_DLL
+		if (index != -1)
+			SetModelPointer(modelinfo.GetModel(ModelIndex));
+#else
 		Model? model = modelinfo.GetModel(ModelIndex);
 		SetModelPointer(model);
+#endif
 	}
 	public void SetModelByIndex(int modelIndex) {
 		SetModelIndex(modelIndex);

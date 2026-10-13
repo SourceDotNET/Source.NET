@@ -51,6 +51,11 @@ namespace Game
 			entity.Release();
 		}
 
+		public static void Remove(C_BaseEntity? entity) {
+			if (entity != null && !entity.IsMarkedForDeletion())
+				ClientThinkList().AddToDeleteList(entity.GetClientHandle());
+		}
+
 	}
 	public static partial class Util_Globals
 	{

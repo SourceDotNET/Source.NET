@@ -57,8 +57,46 @@ public static partial class LuaEntity
 	public static readonly LuaEntityClass LC_Vehicle = new("Vehicle", LuaType.Entity, null, "Entity");
 	public static readonly LuaEntityClass LC_Weapon = new("Weapon", LuaType.Entity, null, "Entity");
 
-	// todo
-	static readonly List<Handle<BaseEntity>> RemoveList = [];
+	static readonly List<EHANDLE> RemoveList = [];
+	static bool ProcessingRemoveList;
+
+	public static void RemoveQueuedEntities() {
+		ProcessingRemoveList = true;
+		for (int i = 0; i < RemoveList.Count; i++) {
+			BaseEntity? ent = RemoveList[i].Get();
+			if (ent != null)
+				Util.Remove(ent);
+		}
+		RemoveList.Clear();
+		ProcessingRemoveList = false;
+	}
+
+	[LuaMethod]
+	static int Entity__Remove(ILuaInterface lua) {
+		if (LuaEnts.IsRendering()) {
+			lua.ErrorNoHalt("Entity:Remove cannot be called while rendering\n");
+			return 0;
+		}
+
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (LuaEnts.IsProtectedEntity(ent) || IsQueuedForRemoval(ent))
+			return 0;
+		if (ent.IsMarkedForDeletion())
+			return 0;
+#if CLIENT_DLL
+		if (ent.EntIndex() != -1) {
+			lua.ErrorNoHalt($"Trying to remove server entity {ent.GetClassname()}#{ent.EntIndex()} on client!\n");
+			return 0;
+		}
+#endif
+		if (ent.VPhysicsGetObject() == null || !PhysIsInCallback())
+		// TODO!
+			// if (ent.VPhysicsGetObject() == null || (!PhysIsInCallback() && !ent.GMOD_VPhysicsTest(ent.VPhysicsGetObject(), true)))
+			ent.AddSolidFlags(SolidFlags.NotSolid);
+		ent.AddEffects(EntityEffects.NoDraw);
+		RemoveList.Add(new(ent.GetRefEHandle()));
+		return 0;
+	}
 
 	static bool IsQueuedForRemoval(BaseEntity ent) {
 		foreach (Handle<BaseEntity> handle in RemoveList) {
@@ -562,7 +600,7 @@ public static partial class LuaEntity
 	[LuaMethod]
 	static int Entity__DrawModel(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
-		ent.DrawModel((StudioFlags)(int)lua.CheckNumberOpt(2, 0));
+		ent.DrawModel((StudioFlags)(int)lua.CheckNumberOpt(2, (int)StudioFlags.Render));
 		return 0;
 	}
 #endif
@@ -994,6 +1032,67 @@ public static partial class LuaEntity
 #endif
 		LuaVector.Push_Vector(velocity);
 		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SequenceDuration(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null)
+			return 0;
+
+		if (lua.GetType(2) == LuaType.Number) {
+			lua.PushNumber((float)animating.SequenceDuration((int)lua.GetNumber(2)));
+			return 1;
+		}
+
+		lua.PushNumber((float)animating.SequenceDuration(animating.GetModelPtr(), animating.GetSequence()));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetSequence(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || IsQueuedForRemoval(ent) || ent.IsMarkedForDeletion())
+			return 0;
+
+		int sequence;
+		if (lua.GetType(2) == LuaType.Number)
+			sequence = (int)lua.GetNumber(2);
+		else
+			sequence = animating.LookupSequence(lua.GetString(2));
+
+		animating.SetSequence(sequence);
+		lua.PushNumber((float)animating.SequenceDuration(animating.GetModelPtr(), sequence));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetCycle(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || IsQueuedForRemoval(ent) || ent.IsMarkedForDeletion())
+			return 0;
+
+		float cycle = (float)lua.GetNumber(2);
+#if GAME_DLL
+		if (!float.IsFinite(cycle))
+			cycle = 0.0f;
+#endif
+		animating.SetCycle(cycle);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetColor4Part(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Color color = ent.ColorRender;
+		lua.PushNumber(color.R);
+		lua.PushNumber(color.G);
+		lua.PushNumber(color.B);
+		lua.PushNumber(color.A);
+		return 4;
 	}
 
 	[LuaMethod]

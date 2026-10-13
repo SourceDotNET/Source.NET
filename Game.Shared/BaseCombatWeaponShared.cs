@@ -295,8 +295,6 @@ public partial class
 #if GMOD_DLL
 	public virtual ReadOnlySpan<char> GetHoldType() => "normal";
 	public virtual void SetHoldType(ReadOnlySpan<char> holdType) { }
-
-#if GMOD_DLL
 	public static readonly ConVar sv_defaultdeployspeed = new("sv_defaultdeployspeed", "4", FCvar.Replicated, "", 0.1, 10.0);
 
 	public TimeUnit_t LastShootTimeValue;
@@ -313,7 +311,6 @@ public partial class
 	}
 
 	public void SetDeploySpeed(float speed) => GetLuaTable()?.SetMember("m_WeaponDeploySpeed", speed);
-#endif
 #endif
 
 	public override void Activate() {

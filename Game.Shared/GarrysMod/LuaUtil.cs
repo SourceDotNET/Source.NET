@@ -16,6 +16,7 @@ using Steamworks;
 #endif
 
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
@@ -112,6 +113,34 @@ public static partial class LuaUtil
 		MathLib.VectorNormalize(ref dir);
 		LuaVector.Push_Vector(dir);
 		return 1;
+	}
+
+	[LuaFunction]
+	static int IntersectRayWithOBB(ILuaInterface lua) {
+		Vector3 rayStart = LuaVector.Get_Vector(1);
+		Vector3 rayDelta = LuaVector.Get_Vector(2);
+		Vector3 boxOrigin = LuaVector.Get_Vector(3);
+		QAngle boxAngles = LuaAngle.Get_Angle(4);
+		Vector3 boxMins = LuaVector.Get_Vector(5);
+		Vector3 boxMaxs = LuaVector.Get_Vector(6);
+
+		MathLib.AngleMatrix(boxAngles, out Matrix3x4 worldToBox);
+		MathLib.MatrixInvert(worldToBox, out worldToBox);
+
+		MathLib.VectorRotate(rayStart - boxOrigin, worldToBox, out Vector3 localStart);
+		MathLib.VectorRotate(rayStart + rayDelta - boxOrigin, worldToBox, out Vector3 localEnd);
+
+		Ray ray = default;
+		ray.Init(boxOrigin + localStart, boxOrigin + localEnd);
+
+		GameTrace trace = new();
+		if (!CollisionUtils.IntersectRayWithBox(in ray, boxOrigin + boxMins, boxOrigin + boxMaxs, 0.0f, ref trace, ref Unsafe.NullRef<float>()))
+			return 0;
+
+		LuaVector.Push_Vector(rayStart + rayDelta * trace.Fraction);
+		LuaVector.Push_Vector(trace.Plane.Normal);
+		lua.PushNumber(trace.Fraction);
+		return 3;
 	}
 
 	[LuaFunction]
