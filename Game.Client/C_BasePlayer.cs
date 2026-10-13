@@ -112,6 +112,22 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 		}
 		return false;
 	}
+	PlayerInfo NetworkIDInfo;
+	InlineArray33<char> NetworkIDString;
+	public ReadOnlySpan<char> GetNetworkIDString() {
+		if (engine.GetPlayerInfo(EntIndex(), out NetworkIDInfo)) {
+			if (NetworkIDInfo.FakePlayer)
+				return "BOT";
+			uint friendsID = NetworkIDInfo.FriendsID;
+			if (friendsID != 0)
+				sprintf(NetworkIDString, "STEAM_0:%u:%u").U(friendsID & 1).U(friendsID >> 1);
+			else
+				for (int i = 0; i < 33; i++)
+					NetworkIDString[i] = (char)NetworkIDInfo.GUID[i];
+			return ((ReadOnlySpan<char>)NetworkIDString).SliceNullTerminatedString();
+		}
+		return "NULL";
+	}
 	public bool IsHLTV() => IsLocalPlayer() && engine.IsHLTV();
 	public bool IsBot() => false; // TODO, gmod
 	public static bool ShouldDrawLocalPlayer() {

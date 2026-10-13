@@ -1898,6 +1898,12 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	internal int GetUserID() => engine.GetPlayerUserId(Edict());
 
+	public bool GetSteamID(out Steamworks.CSteamID id) {
+		Steamworks.CSteamID? steamID = engine.GetClientSteamID(Edict());
+		id = steamID ?? default;
+		return steamID != null;
+	}
+
 	internal ReadOnlySpan<char> GetNetworkIDString() {
 		ReadOnlySpan<char> str = engine.GetPlayerNetworkIDString(Edict());
 		int l = strcpy(NetworkIDString, str);

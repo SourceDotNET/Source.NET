@@ -93,6 +93,44 @@ public static partial class LuaPlayer
 	}
 
 	[LuaMethod]
+	static int Player__SteamID(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushString(player.GetNetworkIDString());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__SteamID64(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		if (!player.GetSteamID(out Steamworks.CSteamID steamID)) {
+			lua.PushString("0");
+			return 1;
+		}
+		lua.PushString(steamID.m_SteamID.ToString());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__AccountID(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		if (!player.GetSteamID(out Steamworks.CSteamID steamID)) {
+			lua.PushNumber(0);
+			return 1;
+		}
+		lua.PushNumber(steamID.GetAccountID().m_AccountID);
+		return 1;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Player__OwnerSteamID64(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushString(engine.GMOD_GetPlayerOwnerSteamID(player.Edict()).m_SteamID.ToString());
+		return 1;
+	}
+#endif
+
+	[LuaMethod]
 	static int Player__KeyDown(ILuaInterface lua) {
 		BasePlayer player = Get_Player(1, false)!;
 		lua.PushBool(((int)lua.CheckNumber(2) & (int)player.Buttons) != 0);
