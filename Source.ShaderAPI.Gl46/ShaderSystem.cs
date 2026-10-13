@@ -52,6 +52,14 @@ internal sealed class ShaderCompileJob
 	public bool HighPriority;
 }
 
+internal sealed class ShaderSource(byte[] text, int versionLength, List<string> sourceFiles)
+{
+	public readonly byte[] Text = text;
+	public readonly int VersionLength = versionLength;
+	public readonly List<string> SourceFiles = sourceFiles;
+	public readonly ulong Hash = text.AsSpan().Hash();
+}
+
 internal sealed record ShaderCompileBatch(ShaderCompileJob[] Jobs, nint Fence);
 
 public class ShaderSystem : IShaderSystemInternal
@@ -435,34 +443,44 @@ public class ShaderSystem : IShaderSystemInternal
 		return true;
 	}
 
-	private byte[]? BuildShaderSource(ReadOnlySpan<byte> source, ReadOnlySpan<char> defines, string mainName, List<string> sourceFiles) {
+	private ShaderSource? BuildShaderSource(ReadOnlySpan<byte> source, string mainName) {
 		string src = Encoding.ASCII.GetString(source);
 		int versionEnd = src.IndexOf('\n');
 		if (versionEnd < 0)
 			return null;
 
-		sourceFiles.Add(mainName);
+		List<string> sourceFiles = [mainName];
 
 		StringBuilder sb = new();
 		sb.Append(src.AsSpan(0, versionEnd + 1));
-
-		ReadOnlySpan<char> rest = defines;
-		while (!rest.IsEmpty) {
-			int sep = rest.IndexOf(';');
-			ReadOnlySpan<char> define = (sep < 0 ? rest : rest[..sep]).Trim();
-			rest = sep < 0 ? default : rest[(sep + 1)..];
-			if (define.IsEmpty)
-				continue;
-			sb.Append("#define ");
-			sb.Append(define);
-			sb.Append('\n');
-		}
-
 		sb.Append("#line 2 0\n");
 
 		ProcessSource(sb, src.AsSpan(versionEnd + 1), 0, 2, sourceFiles, 0);
 
-		return Encoding.ASCII.GetBytes(sb.ToString());
+		return new(Encoding.ASCII.GetBytes(sb.ToString()), versionEnd + 1, sourceFiles);
+	}
+
+	private static byte[] BuildDefines(ReadOnlySpan<char> defines) {
+		int length = 0;
+		foreach (Range range in MemoryExtensions.Split(defines, ';')) {
+			ReadOnlySpan<char> define = defines[range].Trim();
+			if (!define.IsEmpty)
+				length += "#define "u8.Length + define.Length + 1;
+		}
+
+		byte[] bytes = new byte[length];
+		Span<byte> dest = bytes;
+		foreach (Range range in MemoryExtensions.Split(defines, ';')) {
+			ReadOnlySpan<char> define = defines[range].Trim();
+			if (define.IsEmpty)
+				continue;
+			"#define "u8.CopyTo(dest);
+			dest = dest["#define "u8.Length..];
+			dest = dest[Encoding.ASCII.GetBytes(define, dest)..];
+			dest[0] = (byte)'\n';
+			dest = dest[1..];
+		}
+		return bytes;
 	}
 
 	private void ProcessSource(StringBuilder sb, ReadOnlySpan<char> source, int fileIndex, int startLine, List<string> sourceFiles, int depth) {
@@ -524,34 +542,35 @@ public class ShaderSystem : IShaderSystemInternal
 		return Encoding.ASCII.GetBytes(source);
 	}
 
-	private byte[]? LoadShaderSource(string name, string defines, List<string> sourceFiles) {
+	private ShaderSource? LoadShaderSource(string name) {
 		using IFileHandle? handle = FileSystem.Open($"shaders/{name}", FileOpenOptions.Read, "game");
 		if (handle == null) {
 			byte[]? vcs = LoadVcs(name);
-			if (vcs != null)
-				sourceFiles.Add(name);
-			return vcs;
+			return vcs == null ? null : new(vcs, 0, [name]);
 		}
 
 		byte[] source = new byte[handle.Stream.Length];
 		handle.Stream.ReadExactly(source);
-		return BuildShaderSource(source, defines, name, sourceFiles);
+		return BuildShaderSource(source, name);
+	}
+
+	private ShaderSource? GetShaderSource(string name) {
+		if (!ShaderSources.TryGetValue(name, out ShaderSource? source)) {
+			source = LoadShaderSource(name);
+			ShaderSources[name] = source;
+		}
+		return source;
 	}
 
 	private string? GetCachePath(ShaderObject shader) {
 		if (ProgramCacheDir == null)
 			return null;
 
-		if (!ShaderSourceHashes.TryGetValue(shader.Name, out ulong sourceHash)) {
-			byte[]? source = LoadShaderSource(shader.Name, "", []);
-			sourceHash = source == null ? 0 : source.AsSpan().Hash();
-			ShaderSourceHashes[shader.Name] = sourceHash;
-		}
-
-		if (sourceHash == 0)
+		ShaderSource? source = GetShaderSource(shader.Name);
+		if (source == null)
 			return null;
 
-		ulong key = $"{sourceHash:x16};{shader.Defines}".AsSpan().Hash(false);
+		ulong key = $"{source.Hash:x16};{shader.Defines}".AsSpan().Hash(false);
 		return $"{ProgramCacheDir}/{shader.Name}_{key:x16}.bin";
 	}
 
@@ -587,15 +606,32 @@ public class ShaderSystem : IShaderSystemInternal
 
 	private unsafe void CompileProgram(ShaderCompileJob job) {
 		ShaderObject shader = job.Shader;
-		job.SourceFiles = [];
-		byte[]? built = LoadShaderSource(shader.Name, shader.Defines, job.SourceFiles);
-		if (built == null)
+		ShaderSource? source = GetShaderSource(shader.Name);
+		if (source == null)
 			return;
 
+		job.SourceFiles = source.SourceFiles;
+		byte[] defines = source.VersionLength > 0 ? BuildDefines(shader.Defines) : [];
+
 		job.ShaderHandle = glCreateShader(shader.GLType);
-		int len = built.Length;
-		fixed (byte* pSrc = built)
-			glShaderSource(job.ShaderHandle, 1, &pSrc, &len);
+		fixed (byte* pText = source.Text)
+		fixed (byte* pDefines = defines) {
+			if (defines.Length == 0) {
+				int length = source.Text.Length;
+				glShaderSource(job.ShaderHandle, 1, &pText, &length);
+			}
+			else {
+				byte** strings = stackalloc byte*[3];
+				int* lengths = stackalloc int[3];
+				strings[0] = pText;
+				lengths[0] = source.VersionLength;
+				strings[1] = pDefines;
+				lengths[1] = defines.Length;
+				strings[2] = pText + source.VersionLength;
+				lengths[2] = source.Text.Length - source.VersionLength;
+				glShaderSource(job.ShaderHandle, 3, strings, lengths);
+			}
+		}
 		glCompileShader(job.ShaderHandle);
 
 		job.Handle = glCreateProgram();
@@ -683,7 +719,7 @@ public class ShaderSystem : IShaderSystemInternal
 
 	readonly List<ShaderObject> ShaderObjects = [];
 	readonly Dictionary<ulong, ShaderProgram> ShaderPrograms = [];
-	readonly Dictionary<string, ulong> ShaderSourceHashes = [];
+	readonly Dictionary<string, ShaderSource?> ShaderSources = [];
 	readonly HashSet<(ShaderType Type, string File, int StaticIndex)> StaticCombos = [];
 	readonly List<(ShaderType Type, string File, int StaticIndex)> NewStaticCombos = [];
 	string? ProgramCacheDir;
