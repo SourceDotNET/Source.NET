@@ -701,6 +701,289 @@ public class ModelRender : IModelRender
 #endif
 	}
 
+	struct RObject
+	{
+		public Matrix3x4 Matrix;
+		public IClientRenderable? Renderable;
+		public ColorMeshInfo[]? ColorMeshes;
+		public ITexture? EnvCubeMap;
+		public Vector3 LightingOrigin;
+		public short ModelIndex;
+		public short Lod;
+		public ModelInstanceHandle_t Instance;
+		public short Skin;
+		public short LightIndex;
+	}
+
+	struct RModel
+	{
+		public Model? Model;
+		public StudioHeader? StudioHdr;
+		public StudioHWData? StudioHWData;
+		public float MaxArea;
+		public short LodStart;
+		public byte LodCount;
+		public bool VertexLit;
+		public bool NeedsCubemap;
+		public bool StaticLighting;
+	}
+
+	int RObjectLess(RObject lhs, RObject rhs) {
+		Span<RModel> models = CollectionsMarshal.AsSpan(ModelList);
+		if (lhs.ModelIndex == rhs.ModelIndex) {
+			if (lhs.Skin != rhs.Skin)
+				return lhs.Skin.CompareTo(rhs.Skin);
+			return lhs.Lod.CompareTo(rhs.Lod);
+		}
+		if (models[lhs.ModelIndex].MaxArea == models[rhs.ModelIndex].MaxArea)
+			return lhs.ModelIndex.CompareTo(rhs.ModelIndex);
+		return models[rhs.ModelIndex].MaxArea.CompareTo(models[lhs.ModelIndex].MaxArea);
+	}
+
+	static int FindModel(List<RModel> list, Model? model) {
+		for (int j = list.Count; --j >= 0;) {
+			if (list[j].Model == model)
+				return j;
+		}
+		return -1;
+	}
+
+	readonly List<RObject> ObjectList = new(1024);
+	readonly List<RModel> ModelList = new(256);
+	readonly List<short> LightObjects = new(256);
+	readonly List<LightingState> LightStates = new(256);
+	Comparison<RObject>? ObjectLess;
+
+	static readonly ConVar r_staticprop_lod = new("r_staticprop_lod", "-1");
+	public int DrawStaticPropArrayFast(Span<StaticPropRenderInfo> props, int count, bool shadowDepth) {
+#if !SWDS
+		using MatRenderContextPtr renderContext = new(materials);
+		ObjectList.Clear();
+		ModelList.Clear();
+		LightObjects.Clear();
+		LightStates.Clear();
+		bool forceCubemap = r_showenvcubemap.GetBool();
+		int drawnCount = 0;
+		int forcedLodSetting = r_lod.GetInt();
+		if (r_staticprop_lod.GetInt() >= 0)
+			forcedLodSetting = r_staticprop_lod.GetInt();
+
+		for (int i = 0; i < count; i++) {
+			drawnCount++;
+			int modelIndex = FindModel(ModelList, props[i].Model);
+			if (modelIndex < 0) {
+				modelIndex = ModelList.Count;
+				ModelList.Add(new RModel {
+					Model = props[i].Model,
+					StudioHWData = MDLCache.GetHardwareData(props[i].Model!.Studio)
+				});
+			}
+			if (ModelList[modelIndex].StudioHWData != null) {
+				RObject obj = default;
+				obj.Matrix = props[i].ModelToWorld;
+				obj.Renderable = props[i].Renderable;
+				obj.ModelIndex = (short)modelIndex;
+				obj.Instance = props[i].Instance;
+				obj.Skin = props[i].Skin;
+				obj.Lod = 0;
+				obj.ColorMeshes = null;
+				obj.EnvCubeMap = null;
+				obj.LightIndex = -1;
+				obj.LightingOrigin = props[i].LightingOrigin;
+				ObjectList.Add(obj);
+			}
+		}
+
+		Span<RModel> modelList = CollectionsMarshal.AsSpan(ModelList);
+		Span<RObject> objectList = CollectionsMarshal.AsSpan(ObjectList);
+
+		int lodStart = 0;
+		for (int i = 0; i < modelList.Length; i++) {
+			Model model = modelList[i].Model!;
+			ModelFlag flags = model.Flags;
+			modelList[i].StudioHdr = MDLCache.GetStudioHdr(model.Studio);
+			modelList[i].MaxArea = 1.0f;
+			modelList[i].LodStart = (short)lodStart;
+			modelList[i].LodCount = (byte)(modelList[i].StudioHWData != null ? modelList[i].StudioHWData!.NumLODs : 0);
+			bool bumpMapped = (flags & ModelFlag.UsesBumpMapping) != 0;
+			modelList[i].StaticLighting = ((modelList[i].StudioHdr!.Flags & StudioHdrFlags.StaticProp) != 0) && !bumpMapped;
+			modelList[i].VertexLit = (flags & ModelFlag.VertexLit) != 0;
+			modelList[i].NeedsCubemap = (flags & ModelFlag.UsesEnvCubemap) != 0;
+
+			lodStart += modelList[i].LodCount;
+		}
+
+		if (forcedLodSetting < 0) {
+			for (int i = 0; i < objectList.Length; i++) {
+				MathLib.MatrixGetColumn(in objectList[i].Matrix, 3, out Vector3 org);
+				float screenSize = renderContext.ComputePixelWidthOfSphere(org, 0.5f);
+				ref RModel model = ref modelList[objectList[i].ModelIndex];
+				float metric = model.StudioHWData!.LODMetric(screenSize);
+				objectList[i].Lod = (short)model.StudioHWData.GetLODForMetric(metric);
+				if (objectList[i].Lod < model.StudioHWData.RootLOD)
+					objectList[i].Lod = (short)model.StudioHWData.RootLOD;
+				model.MaxArea = Math.Max(model.MaxArea, screenSize);
+			}
+		}
+		else {
+			for (int i = 0; i < objectList.Length; i++) {
+				ref RModel model = ref modelList[objectList[i].ModelIndex];
+				objectList[i].Lod = (short)Math.Clamp(forcedLodSetting, model.StudioHWData!.RootLOD, model.LodCount - 1);
+			}
+		}
+		ObjectList.Sort(ObjectLess ??= RObjectLess);
+
+		if (!shadowDepth) {
+			for (int i = 0; i < objectList.Length; i++) {
+				ref RObject obj = ref objectList[i];
+				ref RModel model = ref modelList[obj.ModelIndex];
+				bool staticLighting = model.StaticLighting && obj.Instance != MODEL_INSTANCE_INVALID;
+				bool vertexLit = model.VertexLit;
+				bool needsEnvCubemap = forceCubemap || model.NeedsCubemap;
+				// todo: decal light states, shadow objects
+
+				DataCacheHandle_t colorMeshHandle = 0;
+				if (staticLighting) {
+					colorMeshHandle = ModelInstances[obj.Instance].ColorMeshHandle;
+					ColorMeshData? colorMeshData = CacheGet(colorMeshHandle);
+					if (colorMeshData == null || colorMeshData.NeedsRetry) {
+						if (UpdateStaticPropColorData(obj.Renderable!.GetIClientUnknown(), obj.Instance))
+							colorMeshData = CacheGet(colorMeshHandle);
+						else if (colorMeshData == null || !colorMeshData.NeedsRetry) {
+							continue;
+						}
+					}
+
+					if (colorMeshData != null && (colorMeshData.ColorMeshValid || colorMeshData.ColorTextureValid)) {
+						obj.ColorMeshes = colorMeshData.MeshInfos;
+						if (colorMeshData.ColorTextureValid && !colorMeshData.ColorTextureCreated)
+							CreateLightmapsFromData(colorMeshData);
+					}
+					else {
+						staticLighting = false;
+					}
+				}
+
+				if (vertexLit || needsEnvCubemap) {
+					ref LightCacheHandle_t lightCache = ref Unsafe.NullRef<LightCacheHandle_t>();
+					ITexture? envCubemapTexture = null;
+					if (obj.Instance != MODEL_INSTANCE_INVALID) {
+						if ((ModelInstances[obj.Instance].Flags & ModelInstanceFlags.HasStaticLighting) != 0 && ModelInstances[obj.Instance].LightCacheHandle != 0)
+							lightCache = ref ModelInstances[obj.Instance].LightCacheHandle;
+					}
+
+					Assert(!Unsafe.IsNullRef(ref lightCache));
+					LightingState lightingState = default;
+					ref LightingState state = ref lightingState;
+					if (!Unsafe.IsNullRef(ref lightCache)) {
+						if (!staticLighting || Render.StaticLightCacheAffectedByDynamicLight(lightCache)) {
+							state = ref Render.LightcacheGetStatic(lightCache, out envCubemapTexture, LightCacheFlags.Static | LightCacheFlags.Dynamic | LightCacheFlags.LightStyle);
+							Assert(state.NumLights >= 0 && state.NumLights <= Render.MAXLOCALLIGHTS);
+						}
+						else {
+							state = ref Render.LightcacheGetStatic(lightCache, out envCubemapTexture, LightCacheFlags.Dynamic | LightCacheFlags.LightStyle);
+							Assert(state.NumLights >= 0 && state.NumLights <= Render.MAXLOCALLIGHTS);
+						}
+					}
+					else {
+						Vector3 lightingOrigin = obj.LightingOrigin;
+						LightCacheFlags lightCacheFlags = staticLighting ? (LightCacheFlags.Dynamic | LightCacheFlags.LightStyle)
+							: (LightCacheFlags.Static | LightCacheFlags.Dynamic | LightCacheFlags.LightStyle | LightCacheFlags.AllowFast);
+						LightcacheGetDynamic_Stats stats = default;
+						envCubemapTexture = Render.LightcacheGetDynamic(lightingOrigin, ref lightingState,
+							ref stats, lightCacheFlags, false);
+						Assert(lightingState.NumLights >= 0 && lightingState.NumLights <= Render.MAXLOCALLIGHTS);
+						state = ref lightingState;
+					}
+
+					if (needsEnvCubemap && envCubemapTexture != null)
+						obj.EnvCubeMap = envCubemapTexture;
+
+					if (vertexLit) {
+						if (state.NumLights != 0 || state.HasAmbientColors()) {
+							obj.LightIndex = (short)LightStates.Count;
+							LightStates.Add(state);
+							LightObjects.Add((short)i);
+						}
+					}
+				}
+			}
+		}
+		StudioRender.SetColorModulation(new Vector3(1.0f, 1.0f, 1.0f));
+		StudioRender.SetAlphaModulation(1.0f);
+		StudioRender.SetViewState(in Render.CurrentViewOrigin, in Render.CurrentViewRight, in Render.CurrentViewUp, in Render.CurrentViewForward);
+
+		renderContext.MatrixMode(MaterialMatrixMode.Model);
+		renderContext.PushMatrix();
+		renderContext.LoadIdentity();
+		renderContext.DisableAllLocalLights();
+		DrawModelInfo info = default;
+		for (int i = 0; i < 6; i++)
+			info.AmbientCube[i].Init();
+		StudioRender.SetAmbientLightColors(info.AmbientCube);
+		renderContext.SetAmbientLight(0.0f, 0.0f, 0.0f);
+		info.NumLocalLights = 0;
+		info.StaticLighting = false;
+
+		StudioRenderFlags drawFlags = StudioRenderFlags.DrawEntireModel | StudioRenderFlags.DrawStaticLighting;
+		if (shadowDepth)
+			drawFlags |= StudioRenderFlags.ShadowDepthTexture;
+		info.Body = 0;
+		info.HitboxSet = 0;
+		for (int i = 0; i < objectList.Length; i++) {
+			ref RObject obj = ref objectList[i];
+			if (obj.LightIndex >= 0)
+				continue;
+			ref RModel model = ref modelList[obj.ModelIndex];
+			if (obj.EnvCubeMap != null)
+				renderContext.BindLocalCubemap(obj.EnvCubeMap);
+
+			info.StudioHdr = model.StudioHdr!;
+			info.HardwareData = model.StudioHWData!;
+			info.Skin = obj.Skin;
+			info.ClientEntity = obj.Renderable;
+			info.Lod = obj.Lod;
+			info.ColorMeshes = obj.ColorMeshes;
+			StudioRender.DrawModelStaticProp(ref info, in obj.Matrix, drawFlags);
+		}
+
+		int localLightCount = 0;
+		InlineArray4<LightDesc> localLightDescs = default;
+		drawFlags = StudioRenderFlags.DrawEntireModel | StudioRenderFlags.DrawStaticLighting;
+		if (LightObjects.Count != 0) {
+			Span<LightingState> lightStates = CollectionsMarshal.AsSpan(LightStates);
+			for (int i = 0; i < LightObjects.Count; i++) {
+				ref RObject obj = ref objectList[LightObjects[i]];
+				ref RModel model = ref modelList[obj.ModelIndex];
+
+				if (obj.EnvCubeMap != null)
+					renderContext.BindLocalCubemap(obj.EnvCubeMap);
+
+				ref LightingState state = ref lightStates[obj.LightIndex];
+				StudioRender.SetAmbientLightColors(state.BoxColor);
+				renderContext.SetLightingOrigin(obj.LightingOrigin);
+				R_SetNonAmbientLightingState(state.NumLights, state.LocalLight, out localLightCount, localLightDescs, true);
+				info.StudioHdr = model.StudioHdr!;
+				info.HardwareData = model.StudioHWData!;
+				info.Skin = obj.Skin;
+				info.ClientEntity = obj.Renderable;
+				info.Lod = obj.Lod;
+				info.ColorMeshes = obj.ColorMeshes;
+				StudioRender.DrawModelStaticProp(ref info, in obj.Matrix, drawFlags);
+			}
+		}
+
+		// todo: shadow pass (DrawStaticPropShadows)
+		// todo: decal pass (DrawStaticPropDecals)
+
+		renderContext.MatrixMode(MaterialMatrixMode.Model);
+		renderContext.PopMatrix();
+		return drawnCount;
+#else
+		return 0;
+#endif
+	}
+
 	bool EngineLightingSuppressed = false;
 
 	public void SuppressEngineLighting(bool suppress) => EngineLightingSuppressed = suppress;

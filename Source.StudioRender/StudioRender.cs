@@ -130,6 +130,44 @@ public unsafe class StudioRender
 		}
 	}
 
+	Matrix3x4 StaticPropRootToWorld;
+
+	internal void DrawModelStaticProp(ref DrawModelInfo info, StudioRenderCtx RC, in Matrix3x4 rootToWorld, StudioRenderFlags flags) {
+		pRC = RC;
+
+		using MatRenderContextPtr pRenderContext = new(materialSystem);
+
+		StaticPropRootToWorld = rootToWorld;
+		PoseToWorld[0] = rootToWorld;
+		fixed (Matrix3x4* pRootToWorld = &StaticPropRootToWorld) {
+			pBoneToWorld = pRootToWorld;
+			nBoneToWorld = 1;
+
+			bool flexConfig = pRC.Config.Flex;
+			pRC.Config.Flex = false;
+			bool wireframe = pRC.Config.Wireframe;
+			if ((flags & StudioRenderFlags.DrawWireframe) != 0)
+				pRC.Config.Wireframe = true;
+
+			int lod = info.Lod;
+			StudioHdr = info.StudioHdr;
+			StudioMeshes = info.HardwareData.LODs![lod].MeshData;
+
+			R_StudioRenderModel(pRenderContext, info.Skin, info.Body, info.HitboxSet, info.ClientEntity,
+				info.HardwareData.LODs[lod].Materials,
+				info.HardwareData.LODs[lod].MaterialFlags, flags, Studio.BONE_USED_BY_ANYTHING, lod, info.ColorMeshes);
+
+			// TODO: decals, shadows, flashlight decals
+
+			pRC.Config.Flex = flexConfig;
+			pRC.Config.Wireframe = wireframe;
+
+			pRenderContext.SetNumBoneWeights(0);
+			pBoneToWorld = null;
+			pRC = null;
+		}
+	}
+
 	private void ComputePoseToWorld(Span<Matrix3x4> poseToWorld, StudioHeader studioHdr, int boneMask, in Vector3 viewOrigin, Matrix3x4* pBoneToWorld) {
 		if ((studioHdr.Flags & StudioHdrFlags.StaticProp) != 0) {
 			poseToWorld[0] = pBoneToWorld[0];
