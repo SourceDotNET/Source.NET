@@ -460,25 +460,26 @@ public class ShaderSystem : IShaderSystemInternal
 
 		sb.Append("#line 2 0\n");
 
-		ProcessSource(sb, src[(versionEnd + 1)..], 0, 2, sourceFiles, 0);
+		ProcessSource(sb, src.AsSpan(versionEnd + 1), 0, 2, sourceFiles, 0);
 
 		return Encoding.ASCII.GetBytes(sb.ToString());
 	}
 
-	private void ProcessSource(StringBuilder sb, string source, int fileIndex, int startLine, List<string> sourceFiles, int depth) {
+	private void ProcessSource(StringBuilder sb, ReadOnlySpan<char> source, int fileIndex, int startLine, List<string> sourceFiles, int depth) {
 		if (depth > 32) {
 			sb.Append(source);
 			return;
 		}
 
 		int lineNo = startLine;
-		foreach (string line in source.Split('\n')) {
-			ReadOnlySpan<char> trimmed = line.AsSpan().TrimStart();
+		foreach (Range range in MemoryExtensions.Split(source, '\n')) {
+			ReadOnlySpan<char> line = source[range];
+			ReadOnlySpan<char> trimmed = line.TrimStart();
 			if (trimmed.StartsWith("#include")) {
 				int q1 = line.IndexOf('"');
-				int q2 = q1 >= 0 ? line.IndexOf('"', q1 + 1) : -1;
-				if (q1 >= 0 && q2 > q1) {
-					string includeName = line[(q1 + 1)..q2];
+				int q2 = q1 >= 0 ? line[(q1 + 1)..].IndexOf('"') : -1;
+				if (q2 >= 0) {
+					string includeName = new(line.Slice(q1 + 1, q2));
 					using IFileHandle? includeHandle = FileSystem.Open($"shaders/{includeName}", FileOpenOptions.Read, "game");
 					if (includeHandle != null) {
 						byte[] bytes = new byte[includeHandle.Stream.Length];
@@ -923,12 +924,12 @@ public class ShaderSystem : IShaderSystemInternal
 			handle.Stream.ReadExactly(bytes);
 			string source = Encoding.ASCII.GetString(bytes);
 
-			foreach (string rawLine in source.Split('\n')) {
-				string line = rawLine.Trim();
+			foreach (Range lineRange in MemoryExtensions.Split(source, '\n')) {
+				ReadOnlySpan<char> line = source.AsSpan(lineRange).Trim();
 
 				if (!line.StartsWith("//"))
 					continue;
-				ReadOnlySpan<char> body = line.AsSpan(2).TrimStart();
+				ReadOnlySpan<char> body = line[2..].TrimStart();
 
 				List<ShaderCombo>? list = null;
 				if (body.StartsWith("STATIC:"))
@@ -941,20 +942,25 @@ public class ShaderSystem : IShaderSystemInternal
 				int q1 = line.IndexOf('"');
 				if (q1 < 0)
 					continue;
-				int q2 = line.IndexOf('"', q1 + 1);
+				ReadOnlySpan<char> rest = line[(q1 + 1)..];
+				int q2 = rest.IndexOf('"');
 				if (q2 < 0)
 					continue;
-				string comboName = line[(q1 + 1)..q2];
+				string comboName = new(rest[..q2]);
+				rest = rest[(q2 + 1)..];
 
 				int min = 0, max = 1;
-				int q3 = line.IndexOf('"', q2 + 1);
-				int q4 = q3 < 0 ? -1 : line.IndexOf('"', q3 + 1);
-				if (q4 >= 0) {
-					ReadOnlySpan<char> range = line[(q3 + 1)..q4];
-					int dots = range.IndexOf("..");
-					if (dots >= 0) {
-						min = int.Parse(range[..dots]);
-						max = int.Parse(range[(dots + 2)..]);
+				int q3 = rest.IndexOf('"');
+				if (q3 >= 0) {
+					rest = rest[(q3 + 1)..];
+					int q4 = rest.IndexOf('"');
+					if (q4 >= 0) {
+						ReadOnlySpan<char> range = rest[..q4];
+						int dots = range.IndexOf("..");
+						if (dots >= 0) {
+							min = int.Parse(range[..dots]);
+							max = int.Parse(range[(dots + 2)..]);
+						}
 					}
 				}
 
