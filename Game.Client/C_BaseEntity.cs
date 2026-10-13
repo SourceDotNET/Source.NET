@@ -597,9 +597,9 @@ public partial class C_BaseEntity : IClientEntity
 		RecvPropBool(FIELD.OF(nameof(OnFire))),
 		RecvPropFloat(FIELD.OF(nameof(CreationTime))),
 
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 0)),
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 1)),
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 2)),
+		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 0), 0, RecvProxy_LocalVelocityX),
+		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 1), 0, RecvProxy_LocalVelocityY),
+		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 2), 0, RecvProxy_LocalVelocityZ),
 
 		// NW2 table
 		RecvPropGModTable(FIELD.OF(nameof(GMOD_DataTable))),
@@ -620,6 +620,43 @@ public partial class C_BaseEntity : IClientEntity
 		RecvPropInt(FIELD.OF(nameof(CreationID))),
 		RecvPropInt(FIELD.OF(nameof(MapCreatedID))),
 	]);
+
+	private static void RecvProxy_LocalVelocityX(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+		C_BaseEntity ent = (C_BaseEntity)instance;
+		float newVelX = data.Value.Float;
+		Vector3 velocity = ent.GetLocalVelocity();
+		if (velocity.X != newVelX) {
+			velocity.X = newVelX;
+			ent.SetLocalVelocity(velocity);
+		}
+	}
+
+	private static void RecvProxy_LocalVelocityY(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+		C_BaseEntity ent = (C_BaseEntity)instance;
+		float newVelY = data.Value.Float;
+		Vector3 velocity = ent.GetLocalVelocity();
+		if (velocity.Y != newVelY) {
+			velocity.Y = newVelY;
+			ent.SetLocalVelocity(velocity);
+		}
+	}
+
+	private static void RecvProxy_LocalVelocityZ(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+		C_BaseEntity ent = (C_BaseEntity)instance;
+		float newVelZ = data.Value.Float;
+		Vector3 velocity = ent.GetLocalVelocity();
+		if (velocity.Z != newVelZ) {
+			velocity.Z = newVelZ;
+			ent.SetLocalVelocity(velocity);
+		}
+	}
+
+	public void SetLocalVelocity(in Vector3 velocity) {
+		if (Velocity != velocity) {
+			InvalidatePhysicsRecursive(InvalidatePhysicsBits.VelocityChanged);
+			Velocity = velocity;
+		}
+	}
 
 	private static void RecvProxy_MoveCollide(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
 		((C_BaseEntity)instance).SetMoveCollide((MoveCollide)data.Value.Int);

@@ -94,6 +94,8 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 	[NetworkName("m_bSprintEnabled")]
 	public bool SprintEnabled;
 
+	public override bool RestrictPlayerPitch() => (GModPlayerFlags & 16) == 0;
+
 	public override void UpdateClientSideAnimation() {
 		if (Driving.Get() != null) {
 			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerDriveAnimate)) {

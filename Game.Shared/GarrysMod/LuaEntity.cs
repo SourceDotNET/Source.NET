@@ -376,6 +376,67 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__GetSequence(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating != null && !ent.IsMarkedForDeletion()) {
+			lua.PushNumber(animating.GetSequence());
+			return 1;
+		}
+		lua.PushNumber(0);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetCycle(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating != null && !ent.IsMarkedForDeletion()) {
+			lua.PushNumber((float)animating.GetCycle());
+			return 1;
+		}
+		lua.PushNumber(0);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetPlaybackRate(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating != null && !ent.IsMarkedForDeletion()) {
+			lua.PushNumber(animating.GetPlaybackRate());
+			return 1;
+		}
+		lua.PushNumber(0);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetSequenceActivity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating != null && !ent.IsMarkedForDeletion()) {
+			lua.PushNumber((int)animating.GetSequenceActivity((int)lua.GetNumber(2)));
+			return 1;
+		}
+		lua.PushNumber(0);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetSequenceGroundSpeed(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating != null && !ent.IsMarkedForDeletion()) {
+			int sequence = (int)lua.GetNumber(2);
+			lua.PushNumber((float)animating.GetSequenceGroundSpeed(animating.GetModelPtr(), sequence));
+			return 1;
+		}
+		lua.PushNumber(0);
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Entity__GetNumBodyGroups(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		BaseAnimating? animating = ent.GetBaseAnimating();

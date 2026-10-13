@@ -81,6 +81,8 @@ public partial class GMOD_Player : HL2MP_Player
 		}
 	}
 
+	public override bool RestrictPlayerPitch() => (GModPlayerFlags & 16) == 0;
+
 	public override BaseEntity EntSelectSpawnPoint() {
 		BaseEntity? spot = null;
 		while ((spot = gEntList.FindEntityByClassname(spot, "info_player_start")) != null) {

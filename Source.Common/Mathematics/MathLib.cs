@@ -1119,7 +1119,11 @@ public static class MathLib
 	}
 
 	public static void QuaternionMult(in Quaternion p, in Quaternion q, out Quaternion qt) {
-		qt = Quaternion.Multiply(p, q);
+		QuaternionAlign(p, q, out Quaternion q2);
+		qt.X = p.X * q2.W + p.Y * q2.Z - p.Z * q2.Y + p.W * q2.X;
+		qt.Y = -p.X * q2.Z + p.Y * q2.W + p.Z * q2.X + p.W * q2.Y;
+		qt.Z = p.X * q2.Y - p.Y * q2.X + p.Z * q2.W + p.W * q2.Z;
+		qt.W = -p.X * q2.X - p.Y * q2.Y - p.Z * q2.Z + p.W * q2.W;
 	}
 	public static void QuaternionScale(in Quaternion p, float t, out Quaternion q) {
 		float r;
