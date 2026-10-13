@@ -28,7 +28,6 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 	static readonly ConVar vbox_contact_damping = new("vbox_contact_damping", "10", 0, "Contact damping ratio. Higher settles overlap with less bounce.", 0.0, 100.0);
 	static readonly ConVar vbox_contact_speed = new("vbox_contact_speed", "400", 0, "Overlap push-out speed cap in in/s.", 0.0, 1000.0);
 
-	const float CollisionEventInterval = 0.2f;
 	const float PenetrationDepth = 2.0f;
 	const int MaxWorkers = 64;
 
@@ -87,7 +86,7 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 		PerformanceParams.Defaults();
 
 		WorldDef def = WorldDef.Default;
-		def.hitEventThreshold = SourceToBox.Distance(70.0f);
+		def.hitEventThreshold = SourceToBox.Distance(2.0f);
 		def.maximumLinearSpeed = SourceToBox.Distance(3500.0f);
 		def.enableContinuous = true;
 		def.contactSpeed = SourceToBox.Distance(100.0f);
@@ -551,8 +550,8 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 			float delta1 = p1.LastCollisionPartnerId == p2.UniqueId ? (float)SimulationClock - p1.LastCollisionTime : 1000.0f;
 			float delta2 = p2.LastCollisionPartnerId == p1.UniqueId ? (float)SimulationClock - p2.LastCollisionTime : 1000.0f;
 			float deltaCollisionTime = MathF.Min(delta1, delta2);
-			if (deltaCollisionTime < CollisionEventInterval)
-				continue;
+			if (deltaCollisionTime > 999.0f)
+				deltaCollisionTime = 1.0f;
 
 			p1.LastCollisionTime = (float)SimulationClock;
 			p1.LastCollisionPartnerId = p2.UniqueId;
