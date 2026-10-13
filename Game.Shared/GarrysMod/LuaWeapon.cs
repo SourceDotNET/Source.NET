@@ -257,16 +257,16 @@ public static partial class LuaWeapon
 		lua.PushBool(weapon.IsCarriedByLocalPlayer());
 		return 1;
 	}
+#endif
 
 	[LuaMethod]
 	static int Weapon__SendWeaponAnim(ILuaInterface lua) {
 		BaseCombatWeapon weapon = LuaEntity.Get_Weapon(1, false)!;
-		if ((uint)(int)lua.CheckNumber(2) > int.MaxValue)
+		if ((int)lua.CheckNumber(2) < 0)
 			lua.ArgError(2, "invalid act");
 		weapon.SendWeaponAnim((Activity)(int)lua.CheckNumber(2));
 		return 0;
 	}
-#endif
 
 	[LuaMethod]
 	static int Weapon__GetDeploySpeed(ILuaInterface lua) {
