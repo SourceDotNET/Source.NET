@@ -567,8 +567,8 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 			VCollisionEvent ev = default;
 			ev.Objects[0] = p1;
 			ev.Objects[1] = p2;
-			ev.SurfaceProps[0] = p1.GetMaterialIndex();
-			ev.SurfaceProps[1] = p2.GetMaterialIndex();
+			ev.SurfaceProps[0] = p1.GetShapeMaterialIndex(hit.shapeIdA);
+			ev.SurfaceProps[1] = p2.GetShapeMaterialIndex(hit.shapeIdB);
 			ev.IsCollision = isCollision;
 			ev.IsShadowCollision = isShadowCollision;
 			ev.DeltaCollisionTime = deltaCollisionTime;

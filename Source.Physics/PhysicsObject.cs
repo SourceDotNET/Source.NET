@@ -718,6 +718,11 @@ internal unsafe class PhysicsObject : IPhysicsObject
 		return shapeDef;
 	}
 
+	internal int GetShapeMaterialIndex(Shape shape) {
+		ulong id = shape.SurfaceMaterial.userMaterialId;
+		return id != 0 ? (int)(id - 1) : MaterialIndex;
+	}
+
 	internal static ShapeDef MakeShapeDef(int materialIndex, bool sensor) {
 		ShapeDef shapeDef = ShapeDef.Default;
 		shapeDef.enableSensorEvents = true;

@@ -13,6 +13,8 @@ internal unsafe class PhysicsFrictionSnapshot : IPhysicsFrictionSnapshot
 	{
 		public PhysicsObject Self;
 		public PhysicsObject Other;
+		public int SelfMaterial;
+		public int OtherMaterial;
 		public Vector3 Normal;
 		public Vector3 Point;
 		public float NormalForce;
@@ -42,6 +44,8 @@ internal unsafe class PhysicsFrictionSnapshot : IPhysicsFrictionSnapshot
 			if (other == null)
 				continue;
 
+			int selfMaterial = self.GetShapeMaterialIndex(selfIsA ? contact.shapeIdA : contact.shapeIdB);
+			int otherMaterial = other.GetShapeMaterialIndex(selfIsA ? contact.shapeIdB : contact.shapeIdA);
 			Vector3 comA = BoxToSource.Unitless(bodyA.WorldCenter);
 
 			{
@@ -58,6 +62,8 @@ internal unsafe class PhysicsFrictionSnapshot : IPhysicsFrictionSnapshot
 						Entries.Add(new Entry {
 							Self = self,
 							Other = other,
+							SelfMaterial = selfMaterial,
+							OtherMaterial = otherMaterial,
 							Normal = normal,
 							Point = BoxToSource.Distance(SourceToBox.Unitless(comA + BoxToSource.Unitless(point.anchorA))),
 							NormalForce = BoxToSource.Distance(point.totalNormalImpulse * invStep),
@@ -77,7 +83,11 @@ internal unsafe class PhysicsFrictionSnapshot : IPhysicsFrictionSnapshot
 		return index == 1 ? Entries[Index].Other : Entries[Index].Self;
 	}
 
-	public int GetMaterial(int index) => GetObject(index) is PhysicsObject obj ? obj.GetMaterialIndex() : 0;
+	public int GetMaterial(int index) {
+		if (!IsValid())
+			return 0;
+		return index == 1 ? Entries[Index].OtherMaterial : Entries[Index].SelfMaterial;
+	}
 
 	public void GetContactPoint(out Vector3 vec) => vec = IsValid() ? Entries[Index].Point : default;
 	public void GetSurfaceNormal(out Vector3 vec) => vec = IsValid() ? Entries[Index].Normal : default;
@@ -94,8 +104,8 @@ internal unsafe class PhysicsFrictionSnapshot : IPhysicsFrictionSnapshot
 	public float GetFrictionCoefficient() {
 		if (!IsValid())
 			return 0.0f;
-		SurfaceData_ptr? selfSurface = physprops.GetSurfaceData(Entries[Index].Self.GetMaterialIndex());
-		SurfaceData_ptr? otherSurface = physprops.GetSurfaceData(Entries[Index].Other.GetMaterialIndex());
+		SurfaceData_ptr? selfSurface = physprops.GetSurfaceData(Entries[Index].SelfMaterial);
+		SurfaceData_ptr? otherSurface = physprops.GetSurfaceData(Entries[Index].OtherMaterial);
 		float self = selfSurface != null ? selfSurface.Physics.Friction : 0.0f;
 		float other = otherSurface != null ? otherSurface.Physics.Friction : self;
 		return self * other;
