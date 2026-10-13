@@ -269,9 +269,14 @@ public class PhysicsSurfaceProps : IPhysicsSurfaceProps
 		return buffer;
 	}
 
+	readonly nint[] WorldMaterialMap = new nint[128];
+
 	public void SetWorldMaterialIndexTable(Span<nint> mapArray) {
-		throw new NotImplementedException();
+		int size = Math.Min(mapArray.Length, WorldMaterialMap.Length);
+		mapArray[..size].CopyTo(WorldMaterialMap);
 	}
+
+	internal nint RemapWorldMaterial(int index) => WorldMaterialMap[index];
 
 	public nint SurfacePropCount() {
 		return Props.Count;
