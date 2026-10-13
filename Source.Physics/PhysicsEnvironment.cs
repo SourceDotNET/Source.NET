@@ -212,27 +212,23 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 		return bodyDef;
 	}
 
-	static void ApplyMassProperties(Body body, float mass, in Vector3 massCenter, Vector3 unitInertia, float inertiaFactor) {
+	static void ApplyMassProperties(Body body, float mass, in Vector3 massCenter, float inertiaFactor) {
 		if (inertiaFactor <= 0)
 			inertiaFactor = 1.0f;
 
 		if (inertiaFactor > 1e14f)
 			inertiaFactor = 1e14f;
 
-		const float minInertia = BoxUnits.InchesToMetres * BoxUnits.InchesToMetres;
-		Vector3 inertia = unitInertia * (mass * inertiaFactor);
-		inertia.X = inertia.X > 0.0f ? inertia.X : minInertia;
-		inertia.Y = inertia.Y > 0.0f ? inertia.Y : minInertia;
-		inertia.Z = inertia.Z > 0.0f ? inertia.Z : minInertia;
-
 		body.ApplyMassFromShapes();
 
-		MassData massData = default;
+		MassData massData = body.MassData;
+		float scale = (massData.mass > 0.0f ? mass / massData.mass : 1.0f) * inertiaFactor;
 		massData.mass = mass;
-		massData.center = SourceToBox.Distance(massCenter);
-		massData.inertia.cx.X = inertia.X;
-		massData.inertia.cy.Y = inertia.Y;
-		massData.inertia.cz.Z = inertia.Z;
+		massData.inertia.cx *= scale;
+		massData.inertia.cy *= scale;
+		massData.inertia.cz *= scale;
+		if (massCenter != Vector3.Zero)
+			massData.center = SourceToBox.Distance(massCenter);
 		body.MassData = massData;
 	}
 
@@ -260,7 +256,7 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 
 		if (!isStatic) {
 			float mass = Math.Clamp(objParams.Mass, PhysicsConstants.VPHYSICS_MIN_MASS, PhysicsConstants.VPHYSICS_MAX_MASS);
-			ApplyMassProperties(bodyId, mass, massCenter, collide?.UnitInertia ?? default, objParams.Inertia);
+			ApplyMassProperties(bodyId, mass, massCenter, objParams.Inertia);
 		}
 
 		PhysicsObject obj = new(bodyId, this, isStatic, materialIndex, collisionModel, objParams, hasParams);
@@ -284,9 +280,8 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 		Shape.CreateSphere(bodyId, shapeDef, sphere);
 
 		if (!isStatic) {
-			float r = sphere.radius;
 			float mass = Math.Clamp(objParams.Mass, PhysicsConstants.VPHYSICS_MIN_MASS, PhysicsConstants.VPHYSICS_MAX_MASS);
-			ApplyMassProperties(bodyId, mass, default, new Vector3(0.4f * r * r), objParams.Inertia);
+			ApplyMassProperties(bodyId, mass, default, objParams.Inertia);
 		}
 
 		PhysicsObject obj = new(bodyId, this, isStatic, materialIndex, null, objParams, true);
