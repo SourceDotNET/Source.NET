@@ -85,7 +85,7 @@ public enum EntityCapabilities : uint
 	UseInRadius = 0x00000200,
 	SaveNonNetworkable = 0x00000400,
 	Master = 0x10000000,
-	WCEditPosition = 0x40000000,
+	WorldcraftEditPosition = 0x40000000, // guessing this is referring to worldcraft/hammer with WC
 	DontSave = 0x80000000
 }
 
@@ -636,7 +636,7 @@ public partial class
 		Effects |= (int)effects;
 		if ((effects & EntityEffects.NoDraw) != 0) {
 #if !CLIENT_DLL
-			// DispatchUpdateTransmitState();
+			DispatchUpdateTransmitState();
 #else
 			UpdateVisibility();
 #endif
@@ -654,7 +654,7 @@ public partial class
 		if ((effects & EntityEffects.NoDraw) != 0) {
 #if !CLIENT_DLL
 			NetworkProp().MarkPVSInformationDirty();
-			// DispatchUpdateTransmitState();
+			DispatchUpdateTransmitState();
 #else
 			UpdateVisibility();
 #endif

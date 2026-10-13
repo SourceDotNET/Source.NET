@@ -15,13 +15,17 @@ using DEFINE = Source.DEFINE<PointViewControl>;
 [LinkEntityToClass("point_viewcontrol")]
 public class PointViewControl : BaseEntity
 {
-	const int SF_CAMERA_PLAYER_POSITION = 1;
-	const int SF_CAMERA_PLAYER_TARGET = 2;
-	const int SF_CAMERA_PLAYER_TAKECONTROL = 4;
-	const int SF_CAMERA_PLAYER_INFINITE_WAIT = 8;
-	const int SF_CAMERA_PLAYER_SNAP_TO = 16;
-	const int SF_CAMERA_PLAYER_NOT_SOLID = 32;
-	const int SF_CAMERA_PLAYER_INTERRUPT = 64;
+	[Flags]
+	public enum SF
+	{
+		PlayerPosition = 1,
+		PlayerTarget = 2,
+		TakeControl = 4,
+		InfiniteWait = 8,
+		SnapTo = 16,
+		NotSolid = 32,
+		Interrupt = 64,
+	}
 
 	EHANDLE Player = new();
 	EHANDLE TargetEnt = new();
@@ -167,17 +171,17 @@ public class PointViewControl : BaseEntity
 		OldTakeDamage = Player.Get()!.m_takedamage;
 		Player.Get()!.m_takedamage = (byte)Damage.No;
 
-		if (HasSpawnFlags(SF_CAMERA_PLAYER_NOT_SOLID))
+		if (HasSpawnFlags(SF.NotSolid))
 			Player.Get()!.AddSolidFlags(SolidFlags.NotSolid);
 
 		ReturnTime = gpGlobals.CurTime + Wait;
 		Speed = InitialSpeed;
 		TargetSpeed = InitialSpeed;
 
-		if (HasSpawnFlags(SF_CAMERA_PLAYER_SNAP_TO))
+		if (HasSpawnFlags(SF.SnapTo))
 			SnapToGoal = true;
 
-		if (HasSpawnFlags(SF_CAMERA_PLAYER_TARGET))
+		if (HasSpawnFlags(SF.PlayerTarget))
 			TargetEnt.Set(Player.Get());
 		else
 			TargetEnt.Set(GetNextTarget());
@@ -196,7 +200,7 @@ public class PointViewControl : BaseEntity
 			}
 		}
 
-		if (HasSpawnFlags(SF_CAMERA_PLAYER_TAKECONTROL))
+		if (HasSpawnFlags(SF.TakeControl))
 			((BasePlayer)Player.Get()!).EnableControl(false);
 
 		if (!string.IsNullOrEmpty(PathName))
@@ -212,7 +216,7 @@ public class PointViewControl : BaseEntity
 			StopTime += Path is BaseToggle toggle ? toggle.GetDelay() : 0;
 		}
 
-		if (HasSpawnFlags(SF_CAMERA_PLAYER_POSITION)) {
+		if (HasSpawnFlags(SF.PlayerPosition)) {
 			Util.SetOrigin(this, Player.Get()!.EyePosition());
 			SetLocalAngles(new QAngle(Player.Get()!.GetLocalAngles().X, Player.Get()!.GetLocalAngles().Y, 0));
 			SetAbsVelocity(Player.Get()!.GetAbsVelocity());
@@ -239,7 +243,7 @@ public class PointViewControl : BaseEntity
 		if (Player.Get() != null && Player.Get()!.IsAlive()) {
 			BasePlayer player = (BasePlayer)Player.Get()!;
 
-			if (HasSpawnFlags(SF_CAMERA_PLAYER_NOT_SOLID))
+			if (HasSpawnFlags(SF.NotSolid))
 				player.RemoveSolidFlags(SolidFlags.NotSolid);
 
 			player.SetViewEntity(player);
@@ -282,7 +286,7 @@ public class PointViewControl : BaseEntity
 			return;
 		}
 
-		if (!HasSpawnFlags(SF_CAMERA_PLAYER_INFINITE_WAIT) && (target == null || ReturnTime < gpGlobals.CurTime)) {
+		if (!HasSpawnFlags(SF.InfiniteWait) && (target == null || ReturnTime < gpGlobals.CurTime)) {
 			Disable();
 			return;
 		}
@@ -331,7 +335,7 @@ public class PointViewControl : BaseEntity
 			SetLocalAngularVelocity(vecAngVel);
 		}
 
-		if (!HasSpawnFlags(SF_CAMERA_PLAYER_TAKECONTROL)) {
+		if (!HasSpawnFlags(SF.TakeControl)) {
 			SetAbsVelocity(GetAbsVelocity() * 0.8f);
 			if (GetAbsVelocity().Length() < 10.0f)
 				SetAbsVelocity(vec3_origin);
@@ -343,7 +347,7 @@ public class PointViewControl : BaseEntity
 	}
 
 	void Move() {
-		if (HasSpawnFlags(SF_CAMERA_PLAYER_INTERRUPT)) {
+		if (HasSpawnFlags(SF.Interrupt)) {
 			if (Player.Get() != null) {
 				BasePlayer? player = ToBasePlayer(Player.Get());
 

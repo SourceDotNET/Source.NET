@@ -10,8 +10,12 @@ using DEFINE = Source.DEFINE<LogicRelay>;
 [LinkEntityToClass("logic_relay")]
 public class LogicRelay : LogicalEntity
 {
-	const int SF_REMOVE_ON_FIRE = 0x001;
-	const int SF_ALLOW_FAST_RETRIGGER = 0x002;
+	[Flags]
+	public enum SF
+	{
+		RemoveOnFire = 0x001,
+		AllowFastRetrigger = 0x002,
+	}
 
 	public OutputEvent OnTrigger = new();
 	public OutputEvent OnSpawn = new();
@@ -45,7 +49,7 @@ public class LogicRelay : LogicalEntity
 	public override void Think() {
 		OnSpawn.FireOutput(this, this);
 
-		if ((SpawnFlags & SF_REMOVE_ON_FIRE) != 0)
+		if (HasSpawnFlags(SF.RemoveOnFire))
 			Util.Remove(this);
 	}
 
@@ -66,9 +70,9 @@ public class LogicRelay : LogicalEntity
 		if (!Disabled && !WaitForRefire) {
 			OnTrigger.FireOutput(inputdata.Activator, this);
 
-			if ((SpawnFlags & SF_REMOVE_ON_FIRE) != 0)
+			if (HasSpawnFlags(SF.RemoveOnFire))
 				Util.Remove(this);
-			else if ((SpawnFlags & SF_ALLOW_FAST_RETRIGGER) == 0) {
+			else if (!HasSpawnFlags(SF.AllowFastRetrigger)) {
 				WaitForRefire = true;
 				g_EventQueue.AddEvent(this, "EnableRefire", OnTrigger.GetMaxDelay() + 0.001f, this, this);
 			}

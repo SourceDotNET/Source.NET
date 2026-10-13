@@ -311,7 +311,7 @@ public class AchievementMgr : AutoGameSystemPerFrame, IGameEventListener2, IAchi
 	static ReadOnlySpan<char> COM_GetModDirectory() {
 		if (modDir[0] == '\0') {
 			ICommandLine commandLine = Singleton<ICommandLine>();
-			string gamedir = commandLine.ParmValue("-game", commandLine.ParmValue("-defaultgamedir", "hl2"));
+			string gamedir = commandLine.ParmValue("-game", commandLine.ParmValue("-defaultgamedir", "sdn"));
 			strcpy(modDir, gamedir);
 			if (!strchr(modDir, '/').IsEmpty || !strchr(modDir, '\\').IsEmpty) {
 				StrTools.StripLastDir(modDir);

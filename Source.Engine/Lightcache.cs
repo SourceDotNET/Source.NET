@@ -1271,7 +1271,7 @@ public partial class Render
 
 		bool recalcStaticLighting = false;
 		bool recalcLightStyles = pcache.HasLightStyle() && pcache.LastFrameUpdatedLightStyles != r_framecount && !IsCachedLightStylesValid(pcache);
-		bool recalcDLights = pcache.HasLightStyle() && pcache.LastFrameUpdatedDynamicLighting != r_framecount;
+		bool recalcDLights = pcache.HasDlights() && pcache.LastFrameUpdatedDynamicLighting != r_framecount;
 
 		if (flags != (LightCacheFlags)pcache.Flags) {
 			recalcStaticLighting = true;

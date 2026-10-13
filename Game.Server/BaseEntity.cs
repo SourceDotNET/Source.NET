@@ -991,7 +991,7 @@ public partial class BaseEntity : IServerEntity
 		if (Physics.g_bTestMoveTypeStepSimulation && GetMoveType() == Source.MoveType.Step && HasDataObjectType(DataObjectType.StepSimulation)) {
 			ref StepSimulationData step = ref GetDataObject<StepSimulationData>(DataObjectType.StepSimulation);
 			ComputeStepSimulationNetwork(ref step);
-			
+
 			ok = step.AnglesActive;
 			return ref step.NetworkAngles;
 		}
@@ -1186,6 +1186,24 @@ public partial class BaseEntity : IServerEntity
 		}
 	}
 
+	public bool AddStepDiscontinuity(TimeUnit_t time, in Vector3 origin, in QAngle angles) {
+		if ((GetMoveType() != Source.MoveType.Step) || !HasDataObjectType(DataObjectType.StepSimulation))
+			return false;
+
+		ref StepSimulationData step = ref GetDataObject<StepSimulationData>(DataObjectType.StepSimulation);
+
+		if (Unsafe.IsNullRef(ref step)) {
+			Assert(false);
+			return false;
+		}
+
+		step.Discontinuity.TickCount = TIME_TO_TICKS(time);
+		step.Discontinuity.Origin = origin;
+		MathLib.AngleQuaternion(angles, out step.Discontinuity.Rotation);
+
+		return true;
+	}
+
 	public void TransformStepData_ParentToWorld(BaseEntity? parent) {
 		// Fix up our step simulation points to be in the proper local space
 		ref StepSimulationData step = ref GetDataObject<StepSimulationData>(DataObjectType.StepSimulation);
@@ -1350,26 +1368,56 @@ public partial class BaseEntity : IServerEntity
 		switch (GetMoveType()) {
 			case Source.MoveType.VPhysics: {
 					if (GetMoveParent() != null) {
+#if !GMOD_DLL
 						DevWarning($"Updating physics on object in hierarchy {GetClassname()}!\n");
+#endif
 						return;
 					}
 
 					physics.GetPosition(out Vector3 origin, out QAngle angles);
 
-					if (!IsEntityQAngleReasonable(angles))
+					if (!IsEntityQAngleReasonable(angles)) {
+						if (CheckEmitReasonablePhysicsSpew())
+							Warning($"Ignoring bogus angles ({angles.X:F6},{angles.Y:F6},{angles.Z:F6}) from vphysics! (entity {GetDebugName()})\n");
 						angles = vec3_angle;
+					}
+					Vector3 prevOrigin = GetAbsOrigin();
 
 					if (IsEntityPositionReasonable(origin))
 						SetAbsOrigin(origin);
+					else {
+						if (CheckEmitReasonablePhysicsSpew())
+							Warning($"Ignoring unreasonable position ({origin.X:F6},{origin.Y:F6},{origin.Z:F6}) from vphysics! (entity {GetDebugName()})\n");
+					}
 
 					angles.X = MathLib.AngleNormalize(angles.X);
 					angles.Y = MathLib.AngleNormalize(angles.Y);
 					angles.Z = MathLib.AngleNormalize(angles.Z);
 					SetAbsAngles(angles);
+
+					PhysicsTouchTriggers(prevOrigin);
+					PhysicsRelinkChildren(gpGlobals.FrameTime);
 					break;
 				}
 			default:
 				break;
+		}
+	}
+
+	public void PhysicsRelinkChildren(TimeUnit_t dt) {
+		BaseEntity? child;
+
+		for (child = FirstMoveChild(); child != null; child = child.NextMovePeer()) {
+			if (child.IsSolid() || child.IsSolidFlagSet(SolidFlags.Trigger))
+				child.PhysicsTouchTriggers();
+
+			if (child.GetMoveType() != Source.MoveType.VPhysics)
+				child.UpdatePhysicsShadowToCurrentPosition(dt);
+			else if (child.GetOwnerEntity() != this)
+				Assert(false);
+
+			if (child.FirstMoveChild() != null)
+				child.PhysicsRelinkChildren(dt);
 		}
 	}
 
@@ -2086,6 +2134,10 @@ public partial class BaseEntity : IServerEntity
 		return 1;
 	}
 
+	public virtual void DeathNotice(BaseEntity victim) { }
+
+	public IPhysicsObject? VPhysicsInitStatic() => throw new NotImplementedException();
+
 	public virtual void Event_KilledOther(BaseEntity killed, in TakeDamageInfo info) {
 
 	}
@@ -2261,6 +2313,15 @@ public partial class BaseEntity : IServerEntity
 	}
 
 	public bool BlocksLOS() => !IsEFlagSet(EFL.DontBlockLOS);
+
+	public void SetAIWalkable(bool blocksLOS) {
+		if (blocksLOS)
+			RemoveEFlags(EFL.DontWalkOn);
+		else
+			AddEFlags(EFL.DontWalkOn);
+	}
+
+	public bool IsAIWalkable() => !IsEFlagSet(EFL.DontWalkOn);
 
 	public Vector3 AbsVelocity;
 	public QAngle AngVelocity;
@@ -2484,7 +2545,7 @@ public partial class BaseEntity : IServerEntity
 	public void InputKill(InputData inputdata) {
 		BaseEntity? owner = GetOwnerEntity();
 		if (owner != null) {
-			// owner.DeathNotice(this);
+			owner.DeathNotice(this);
 			SetOwnerEntity(null);
 		}
 
@@ -2500,7 +2561,7 @@ public partial class BaseEntity : IServerEntity
 
 		BaseEntity? owner = GetOwnerEntity();
 		if (owner != null) {
-			// owner.DeathNotice(this);
+			owner.DeathNotice(this);
 			SetOwnerEntity(null);
 		}
 
@@ -2657,6 +2718,8 @@ public partial class BaseEntity : IServerEntity
 	static readonly Dictionary<UtlSymId_t, ModelSoundsCache> g_ModelSoundsCache = [];
 
 	public bool HasSpawnFlags(int flags) => (SpawnFlags & flags) != 0;
+
+	public bool HasSpawnFlags<T>(T flags) where T : unmanaged, Enum => HasSpawnFlags(Unsafe.As<T, int>(ref flags));
 
 	public int GetModelIndex() => ModelIndex;
 
@@ -2951,12 +3014,18 @@ public partial class BaseEntity : IServerEntity
 		}
 	}
 
+	public bool IsOnFire() => (GetFlags() & EntityFlags.OnFire) != 0;
+
 	public virtual void Use(BaseEntity? activator, BaseEntity? caller, UseType useType, float value) {
 		if (FnUse != null)
 			FnUse(activator, caller, useType, value);
 		else
 			Parent.Get()?.Use(activator, caller, useType, value);
 	}
+
+	public bool IsFollowingEntity() => IsEffectActive(EntityEffects.BoneMerge) && (GetMoveType() == Source.MoveType.None) && GetMoveParent() != null;
+
+	public virtual bool OnControls(BaseEntity controls) => false;
 
 	public int ShouldToggle(UseType useType, int currentState) {
 		if (useType != UseType.Toggle && useType != UseType.Set) {
@@ -3050,7 +3119,13 @@ public partial class BaseEntity : IServerEntity
 	public virtual void PostClientActive() { }
 
 	public void AddSpawnFlags(int flags) => SpawnFlags |= flags;
+
+	public void AddSpawnFlags<T>(T flags) where T : unmanaged, Enum => AddSpawnFlags(Unsafe.As<T, int>(ref flags));
+
 	public void RemoveSpawnFlags(int flags) => SpawnFlags &= ~flags;
+
+	public void RemoveSpawnFlags<T>(T flags) where T : unmanaged, Enum => RemoveSpawnFlags(Unsafe.As<T, int>(ref flags));
+
 	public void SetFriction(float friction) => Friction = friction;
 
 	public TimeUnit_t GetNextThink(ReadOnlySpan<char> context = default) {
@@ -3185,8 +3260,15 @@ public partial class BaseEntity : IServerEntity
 
 	public virtual bool CanBeHitByMeleeAttack(BaseEntity? attacker) => true;
 
-	public virtual bool FVisible(BaseEntity entity, Mask traceMask = Mask.BlockLOS) {
+	public bool FVisible(BaseEntity entity, Mask traceMask = Mask.BlockLOS) => FVisible(entity, traceMask, out _);
+
+	public virtual bool FVisible(BaseEntity entity, Mask traceMask, out BaseEntity? blocker) {
+		blocker = null;
+
 		if ((entity.GetFlags() & EntityFlags.NoTarget) != 0)
+			return false;
+
+		if (IsNPC() && entity.IsPlayer() && AI_BaseNPCGlobals.g_IgnorePlayers.GetBool())
 			return false;
 
 		Vector3 vecLookerOrigin = EyePosition();
@@ -3216,6 +3298,39 @@ public partial class BaseEntity : IServerEntity
 					return true;
 			}
 
+			blocker = tr.Ent;
+
+			return false;
+		}
+
+		return true;
+	}
+
+	public virtual bool FVisible(in Vector3 vecTarget, Mask traceMask = Mask.BlockLOS) => FVisible(vecTarget, traceMask, out _);
+
+	public virtual bool FVisible(in Vector3 vecTarget, Mask traceMask, out BaseEntity? blocker) {
+		blocker = null;
+
+		Trace tr;
+		Vector3 vecLookerOrigin = EyePosition();
+
+		if (AI_BaseNPCGlobals.ai_LOS_mode.GetBool())
+			Util.TraceLine(vecLookerOrigin, vecTarget, traceMask, this, Source.CollisionGroup.None, out tr);
+		else {
+			if (traceMask == Mask.BlockLOS)
+				traceMask = Mask.BlockLOSAndNPCs;
+
+			if (IsPlayer()) {
+				traceMask |= (Mask)Contents.IgnoreNoDrawOpaque;
+				traceMask &= ~(Mask)Contents.BlockLOS;
+			}
+
+			TraceFilterLOS traceFilter = new(this, Source.CollisionGroup.None);
+			Util.TraceLine(vecLookerOrigin, vecTarget, traceMask, ref traceFilter, out tr);
+		}
+
+		if (tr.Fraction != 1.0) {
+			blocker = tr.Ent;
 			return false;
 		}
 
@@ -3234,6 +3349,14 @@ public partial class BaseEntity : IServerEntity
 	}
 
 	public TimeUnit_t NavIgnoreUntilTime;
+
+	public void SetNavIgnore(float duration = float.MaxValue) {
+		TimeUnit_t navIgnoreUntilTime = (duration == float.MaxValue) ? float.MaxValue : gpGlobals.CurTime + duration;
+		if (navIgnoreUntilTime > NavIgnoreUntilTime)
+			NavIgnoreUntilTime = navIgnoreUntilTime;
+	}
+
+	public void ClearNavIgnore() => NavIgnoreUntilTime = 0;
 
 	public bool IsNavIgnored() => gpGlobals.CurTime <= NavIgnoreUntilTime;
 

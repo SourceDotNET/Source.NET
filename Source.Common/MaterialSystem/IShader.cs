@@ -242,6 +242,7 @@ public interface IShaderDynamicAPI
 
 	void GetDX9LightState(out LightState state);
 	int GetPixelFogCombo(); //0 is either range fog, or no fog simulated with rigged range fog values. 1 is height fog
+	int GetPixelFogCombo1(bool supportsRadial);
 
 	void BindStandardVertexTexture(VertexTextureSampler sampler, StandardTextureId id);
 

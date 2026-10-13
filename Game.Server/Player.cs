@@ -13,6 +13,7 @@ using Source.Common.Mathematics;
 using Source.Common.Physics;
 using Source.Engine;
 
+using System.Buffers;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -247,12 +248,19 @@ public enum PlayerPhysFlag
 [NetworkName("CBasePlayer")]
 public partial class BasePlayer : BaseCombatCharacter
 {
-	public const int SF_NORESPAWN = 1 << 30;
+	[Flags]
+	public enum SF
+	{
+		NoRespawn = 1 << 30,
+	}
+	public const float DOT_30DEGREE = 0.866025403784f;
+	public const float DOT_45DEGREE = 0.707106781187f;
 	public static readonly SendTable DT_PlayerState = new(nameof(DT_PlayerState), [
 		SendPropInt(FIELD<PlayerState>.OF(nameof(PlayerState.DeadFlag)), 1, PropFlags.Unsigned)
 	]);
 
 	public override bool IsPlayer() => true;
+	public override Class_T Classify() => Class_T.Player;
 	public virtual bool IsBot() => (GetFlags() & EntityFlags.FakeClient) != 0;
 	public virtual bool IsFakeClient() => (GetFlags() & EntityFlags.FakeClient) != 0;
 	public virtual bool IsBotOfType(int botType) => (GetBotType() != 0) && (GetBotType() == botType);
@@ -346,7 +354,8 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	public int ObserverLastMode;
 	public bool ForcedObserverMode;
-	PlayerPhysFlag PhysicsFlags;
+	protected PlayerPhysFlag PhysicsFlags;
+	public int Train;
 
 	public void SetPhysicsFlag(PlayerPhysFlag flag, bool set) {
 		if (set)
@@ -1612,12 +1621,17 @@ public partial class BasePlayer : BaseCombatCharacter
 				else
 					SetCollisionBounds(VEC_HULL_MIN, VEC_HULL_MAX);
 
-				// if (UseEntity.Get() != null) {
-				// 	if (UseEntity.OnControls(this) && (!GetActiveWeapon() || GetActiveWeapon()->IsEffectActive(EF_NODRAW) || (GetActiveWeapon()->GetActivity() == ACT_VM_HOLSTER)))
-				// 		UseEntity.Use(this, this, USE_SET, 2);
-				// 	else
-				// 		ClearUseEntity();
-				// }
+				// Handle controlling an entity
+				if (UseEntity.Get() != null) {
+					// if they've moved too far from the gun, or deployed another weapon, unuse the gun
+					if (UseEntity.Get()!.OnControls(this) && (GetActiveWeapon() == null || GetActiveWeapon()!.IsEffectActive(EntityEffects.NoDraw) || (GetActiveWeapon()!.GetActivity() == Activity.ACT_VM_HOLSTER))) {
+						UseEntity.Get()!.Use(this, this, UseType.Set, 2);    // try fire the gun
+					}
+					else {
+						// they've moved off the controls
+						ClearUseEntity();
+					}
+				}
 
 				ItemPostFrame();
 
@@ -1779,7 +1793,7 @@ public partial class BasePlayer : BaseCombatCharacter
 		if (g_fGameOver /*|| PlayerLocked*/)
 			return;
 
-		// ItemPreFrame();
+		ItemPreFrame();
 		WaterMove();
 
 		// if (g_pGameRules && g_pGameRules.FAllowFlashlight())
@@ -1888,6 +1902,139 @@ public partial class BasePlayer : BaseCombatCharacter
 		Event_Killed(info);
 		Event_Dying(info);
 		SuicideCustomKillFlags = 0;
+	}
+
+	public static int TrainSpeed(int speed, int max) {
+		float fSpeed, fMax;
+		int ret = 0;
+
+		fMax = (float)max;
+		fSpeed = speed;
+
+		fSpeed = fSpeed / fMax;
+
+		if (speed < 0)
+			ret = FuncTrackTrain.TRAIN_BACK;
+		else if (speed == 0)
+			ret = FuncTrackTrain.TRAIN_NEUTRAL;
+		else if (fSpeed < 0.33)
+			ret = FuncTrackTrain.TRAIN_SLOW;
+		else if (fSpeed < 0.66)
+			ret = FuncTrackTrain.TRAIN_MEDIUM;
+		else
+			ret = FuncTrackTrain.TRAIN_FAST;
+
+		return ret;
+	}
+
+	public virtual void ObserverUse(bool isPressed) { }
+
+	public virtual void PlayUseDenySound() { }
+
+	public virtual void PickupObject(BaseEntity obj, bool limitMassAndSize = true) { }
+
+	public void SetUseEntity(BaseEntity? useEntity) => UseEntity.Set(useEntity);
+	public BaseEntity? GetUseEntity() => UseEntity.Get();
+
+	public static bool CanPickupObject(BaseEntity? obj, float massLimit, float sizeLimit) {
+		// UNDONE: Make this virtual and move to HL2 player
+		//Must be valid
+		if (obj == null)
+			return false;
+
+		//Must move with physics
+		if (obj.GetMoveType() != Source.MoveType.VPhysics)
+			return false;
+
+		IPhysicsObject[] list = ArrayPool<IPhysicsObject>.Shared.Rent(VPHYSICS_MAX_OBJECT_LIST_COUNT);
+		try {
+			int count = obj.VPhysicsGetObjectList(list);
+
+			//Must have a physics object
+			if (count == 0)
+				return false;
+
+			float objectMass = 0;
+			bool checkEnable = false;
+			for (int i = 0; i < count; i++) {
+				objectMass += list[i].GetMass();
+				if (!list[i].IsMoveable())
+					checkEnable = true;
+				if ((list[i].GetGameFlags() & Source.Common.Physics.PhysicsFlags.NoPlayerPickup) != 0)
+					return false;
+				if (list[i].IsHinged())
+					return false;
+			}
+
+			//Must be under our threshold weight
+			if (massLimit > 0 && objectMass > massLimit)
+				return false;
+
+			if (checkEnable) {
+				// Allowing picking up of bouncebombs.
+				// CBounceBomb *pBomb = dynamic_cast<CBounceBomb*>(pObject);
+				// if( pBomb )
+				// 	return true;
+
+				// Allow pickup of phys props that are motion enabled on player pickup
+				PhysicsProp? prop = obj as PhysicsProp;
+				PhysBox? box = obj as PhysBox;
+				if (prop == null && box == null)
+					return false;
+
+				if (prop != null && !(prop.HasSpawnFlags(BreakableProp.SF.EnableOnPhyscannon)))
+					return false;
+
+				if (box != null && !(box.HasSpawnFlags(PhysBox.SF.EnableOnPhyscannon)))
+					return false;
+			}
+
+			if (sizeLimit > 0) {
+				ref readonly Vector3 size = ref obj.CollisionProp().OBBSize();
+				if (size.X > sizeLimit || size.Y > sizeLimit || size.Z > sizeLimit)
+					return false;
+			}
+
+			return true;
+		}
+		finally {
+			ArrayPool<IPhysicsObject>.Shared.Return(list, true);
+		}
+	}
+
+	/// <summary>
+	/// Return true if this object can be +used by the player
+	/// </summary>
+	public virtual bool IsUseableEntity(BaseEntity? entity, EntityCapabilities requiredCaps) {
+		if (entity != null) {
+			EntityCapabilities caps = entity.ObjectCaps();
+			if ((caps & (EntityCapabilities.ImpulseUse | EntityCapabilities.ContinuousUse | EntityCapabilities.OnOffUse | EntityCapabilities.DirectionalUse)) != 0) {
+				if ((caps & requiredCaps) == requiredCaps)
+					return true;
+			}
+		}
+
+		return false;
+	}
+
+	/// <summary>
+	/// Perhaps a poorly-named function. This function traces against the supplied
+	/// NPC's hitboxes (instead of hull). If the trace hits a different NPC, the
+	/// new NPC is selected. Otherwise, the supplied NPC is determined to be the
+	/// one the citizen wants. This function allows the selection of a citizen over
+	/// another citizen's shoulder, which is impossible without tracing against
+	/// hitboxes instead of the hull (sjb)
+	/// </summary>
+	public BaseEntity? DoubleCheckUseNPC(BaseEntity? npc, in Vector3 src, in Vector3 dir) {
+		Util.TraceLine(src, src + dir * 1024, Mask.Shot, this, Source.CollisionGroup.None, out Trace tr);
+
+		if (tr.Ent != null && tr.Ent.MyNPCPointer() != null && tr.Ent != npc) {
+			// Player is selecting a different NPC through some negative space
+			// in the first NPC's hitboxes (between legs, over shoulder, etc).
+			return tr.Ent;
+		}
+
+		return npc;
 	}
 
 	public bool ClearUseEntity() {

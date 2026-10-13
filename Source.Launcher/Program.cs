@@ -129,7 +129,7 @@ public class Bootloader : IDisposable
 		Panel.InitializeControls();
 	}
 
-	const string defaultHalfLife2GameDirectory = "hl2";
+	const string defaultHalfLife2GameDirectory = "sdn";
 
 	private string DetermineInitialMod() {
 		return !isEditMode ? commandLine.ParmValue("-game", defaultHalfLife2GameDirectory) : throw new NotImplementedException("No editmode support");

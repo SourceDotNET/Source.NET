@@ -283,6 +283,18 @@ public static class ImageLoader
 		ImageFormat.I8 => GL_RED,
 		ImageFormat.IA88 => GL_RG,
 	};
+	const int GL_UNSIGNED_BYTE = 0x1401;
+	const int GL_UNSIGNED_SHORT = 0x1403;
+	const int GL_FLOAT = 0x1406;
+	const int GL_HALF_FLOAT = 0x140B;
+	public static int GetGLImageUploadType(ImageFormat format) => format switch {
+		ImageFormat.RGBA16161616 => GL_UNSIGNED_SHORT,
+		ImageFormat.RGBA16161616F => GL_HALF_FLOAT,
+		ImageFormat.R32F => GL_FLOAT,
+		ImageFormat.RGB323232F => GL_FLOAT,
+		ImageFormat.RGBA32323232F => GL_FLOAT,
+		_ => GL_UNSIGNED_BYTE,
+	};
 	public static int GetGLImageInternalFormat(ImageFormat format, bool srgb) => srgb ? GetGLImageInternalFormatSRGB(format) : GetGLImageInternalFormat(format);
 
 	private static int GetGLImageInternalFormatSRGB(ImageFormat format) => format switch {
@@ -368,10 +380,47 @@ public static class ImageLoader
 						return true;
 				}
 				break;
+			case ImageFormat.RGBA16161616:
+				switch (dstFormat) {
+					case ImageFormat.RGBA16161616F:
+						ConvertImageFormat_RGBA16161616_To_RGBA16161616F(MemoryMarshal.Cast<byte, ushort>(srcData), MemoryMarshal.Cast<byte, Half>(dstData), width, height);
+						return true;
+				}
+				break;
+			case ImageFormat.RGBA16161616F:
+				switch (dstFormat) {
+					case ImageFormat.RGBA16161616:
+						ConvertImageFormat_RGBA16161616F_To_RGBA16161616(MemoryMarshal.Cast<byte, Half>(srcData), MemoryMarshal.Cast<byte, ushort>(dstData), width, height);
+						return true;
+				}
+				break;
 		}
 
 		AssertMsg(false, $"No good way to convert {srcFormat} to {dstFormat}, expect issues\n");
 		return false;
+	}
+
+	static void ConvertImageFormat_RGBA16161616_To_RGBA16161616F(ReadOnlySpan<ushort> srcImage, Span<Half> dstImage, int width, int height) {
+		int srcSize = width * height * 4;
+		for (int i = 0; i < srcSize; i += 4) {
+			dstImage[i + 0] = (Half)(srcImage[i + 0] * (1.0f / (float)(1 << 16)));
+			dstImage[i + 1] = (Half)(srcImage[i + 1] * (1.0f / (float)(1 << 16)));
+			dstImage[i + 2] = (Half)(srcImage[i + 2] * (1.0f / (float)(1 << 16)));
+			dstImage[i + 3] = (Half)(srcImage[i + 3] * (1.0f / (float)(1 << 16)));
+		}
+	}
+
+	static void ConvertImageFormat_RGBA16161616F_To_RGBA16161616(ReadOnlySpan<Half> srcImage, Span<ushort> dstImage, int width, int height) {
+		int srcSize = width * height * 4;
+		for (int i = 0; i < srcSize; i += 4) {
+			for (int j = 0; j < 4; j++) {
+				float val = (float)srcImage[i + j];
+				val *= (float)(1 << 12);
+				val = Math.Max(val, 0);
+				val = Math.Min(val, 65535.0f);
+				dstImage[i + j] = (ushort)val;
+			}
+		}
 	}
 
 	private static void ConvertFromDXT5<T>(Span<byte> srcData, Span<T> span, int width, int height) {

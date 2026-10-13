@@ -342,10 +342,10 @@ public class EnvSoundscapeTriggerable : EnvSoundscape
 
 		// Just in case.. we shouldn't already be in the player's list because it should have
 		// called DelegateEndTouch, but this seems to happen when they're noclipping.
-		player.TriggerSoundscapeList.Remove(new EHANDLE().Set(this));
+		player.TriggerSoundscapeList.Remove(GetRefEHandle());
 
 		// Add us to the player's list of soundscapes and
-		player.TriggerSoundscapeList.Insert(0, new EHANDLE().Set(this));
+		player.TriggerSoundscapeList.Insert(0, GetRefEHandle());
 		WriteAudioParamsTo(ref player.GetAudioParams());
 	}
 
@@ -354,7 +354,7 @@ public class EnvSoundscapeTriggerable : EnvSoundscape
 			return;
 
 		// Remove us from the ent's list of soundscapes.
-		player.TriggerSoundscapeList.Remove(new EHANDLE().Set(this));
+		player.TriggerSoundscapeList.Remove(GetRefEHandle());
 		while (player.TriggerSoundscapeList.Count > 0) {
 			if (player.TriggerSoundscapeList[0].Get() is EnvSoundscapeTriggerable ss) {
 				// Make this one current.

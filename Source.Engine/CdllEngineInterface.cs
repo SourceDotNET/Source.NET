@@ -247,7 +247,9 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 	public bool CheckDoneKeyTrapping(out ButtonCode code) => Key.CheckDoneTrapping(out code);
 
 	public void Con_NPrintf(int pos, ReadOnlySpan<char> text) {
-		// todo
+#if !SWDS
+		Con.NPrintF(pos, text);
+#endif
 	}
 
 	public bool IsBoxInViewCluster(in Vector3 mins, in Vector3 maxs) {
@@ -533,7 +535,7 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 	}
 
 	public bool MapHasHDRLighting() {
-		throw new NotImplementedException();
+		return modelloader.LastLoadedMapHasHDRLighting();
 	}
 
 	public int GetAppID() {

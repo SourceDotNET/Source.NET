@@ -289,6 +289,17 @@ public static partial class Util
 #endif
 	}
 
+	public static void TraceEntity(BaseEntity entity, in Vector3 absStart, in Vector3 absEnd, Mask mask, IHandleEntity? ignore, CollisionGroup collisionGroup, out Trace ptr) {
+		ICollideable collision = entity.GetCollideable()!;
+
+		Assert(collision.GetCollisionAngles() == vec3_angle);
+
+		TraceFilterEntityIgnoreOther traceFilter = new(entity, ignore, collisionGroup);
+
+		ptr = default;
+		enginetrace.SweepCollideable(collision, absStart, absEnd, collision.GetCollisionAngles(), mask, ref traceFilter, ref ptr);
+	}
+
 	public static void TraceEntity<IF>(BaseEntity entity, in Vector3 absStart, in Vector3 absEnd, Mask mask, scoped ref IF filter, out Trace ptr) where IF : struct, ITraceFilter {
 		ICollideable collision = entity.GetCollideable()!;
 
@@ -403,6 +414,19 @@ public static partial class Util
 		// todo: visualize
 	}
 
+	public static void TraceModel(in Vector3 vecStart, in Vector3 vecEnd, in Vector3 hullMin, in Vector3 hullMax, BaseEntity? entModel, CollisionGroup collisionGroup, out Trace ptr) {
+		if (entModel != null && entModel.ShouldCollide(collisionGroup, unchecked((Contents)Mask.All))) {
+			Ray ray = default;
+			ray.Init(vecStart, vecEnd, hullMin, hullMax);
+			ptr = default;
+			enginetrace.ClipRayToEntity(ray, Mask.All, entModel, ref ptr);
+		}
+		else {
+			ptr = default;
+			ptr.Fraction = 1.0f;
+		}
+	}
+
 	public static void TraceHull(in Vector3 vecAbsStart, in Vector3 vecAbsEnd, in Vector3 hullMin, in Vector3 hullMax, Mask mask, IHandleEntity? ignore, CollisionGroup collisionGroup, out Trace ptr) {
 		Ray ray = default;
 		ray.Init(vecAbsStart, vecAbsEnd, hullMin, hullMax);
@@ -498,6 +522,19 @@ public struct TraceFilterEntity(BaseEntity entity, CollisionGroup collisionGroup
 	}
 }
 
+public struct TraceFilterEntityIgnoreOther(BaseEntity entity, IHandleEntity? ignore, CollisionGroup collisionGroup) : ITraceFilter
+{
+	public TraceFilterEntity TraceFilterEntity = new(entity, collisionGroup);
+	public IHandleEntity? IgnoreOther = ignore;
+
+	public bool ShouldHitEntity(IHandleEntity handleEntity, Contents contentsMask) {
+		if (handleEntity == IgnoreOther)
+			return false;
+
+		return TraceFilterEntity.ShouldHitEntity(handleEntity, contentsMask);
+	}
+}
+
 public struct TraceFilterSkipTwoEntities(IHandleEntity? passentity, IHandleEntity? passentity2, CollisionGroup collisionGroup) : ITraceFilter
 {
 	public TraceFilterSimple Simple = new(passentity, collisionGroup);
@@ -526,6 +563,24 @@ public struct TraceFilterLOS(IHandleEntity? handleEntity, CollisionGroup collisi
 	}
 }
 #endif
+
+public struct TraceFilterOnlyNPCsAndPlayer(IHandleEntity? passentity, CollisionGroup collisionGroup) : ITraceFilter
+{
+	TraceFilterSimple Inner = new(passentity, collisionGroup);
+
+	public readonly TraceType GetTraceType() => TraceType.EntitiesOnly;
+
+	public bool ShouldHitEntity(IHandleEntity handleEntity, Contents contentsMask) {
+		if (Inner.ShouldHitEntity(handleEntity, contentsMask)) {
+			BaseEntity? entity = EntityFromEntityHandle(handleEntity);
+			if (entity == null)
+				return false;
+
+			return entity.IsNPC() || entity.IsPlayer();
+		}
+		return false;
+	}
+}
 
 public struct TraceFilterNoNPCsOrPlayer(IHandleEntity? passentity, CollisionGroup collisionGroup) : ITraceFilter
 {

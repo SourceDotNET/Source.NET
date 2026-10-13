@@ -1,5 +1,7 @@
 ﻿global using static Game.Server.ItemConstants;
 
+using Game.Shared;
+
 using Source.Common.Mathematics;
 using Source.Common.Physics;
 
@@ -26,11 +28,16 @@ public static class ItemConstants
 	public const int SIZE_AMMO_357_LARGE = 20;
 	public const int SIZE_AMMO_CROSSBOW = 6;
 	public const int SIZE_AMMO_AR2_ALTFIRE = 1;
-	public const int SF_ITEM_START_CONSTRAINED = 0x00000001;
 }
 
 public class Item : BaseAnimating, IPlayerPickupVPhysics
 {
+	[Flags]
+	public enum SF
+	{
+		StartConstrained = 0x00000001,
+	}
+
 	readonly DefaultPlayerPickupVPhysics pickup = new();
 
 	public bool ForcePhysgunOpen(BasePlayer player) => ((IPlayerPickupVPhysics)pickup).ForcePhysgunOpen(player);
@@ -43,6 +50,15 @@ public class Item : BaseAnimating, IPlayerPickupVPhysics
 	public Vector3 PhysGunLaunchVelocity(in Vector3 forward, float flMass) => ((IPlayerPickupVPhysics)pickup).PhysGunLaunchVelocity(forward, flMass);
 	public QAngle PreferredCarryAngles() => ((IPlayerPickupVPhysics)pickup).PreferredCarryAngles();
 	public bool ShouldPuntUseLaunchForces(PhysGunForce reason) => ((IPlayerPickupVPhysics)pickup).ShouldPuntUseLaunchForces(reason);
+
+	public override EntityCapabilities ObjectCaps() => base.ObjectCaps() | EntityCapabilities.ImpulseUse | EntityCapabilities.WorldcraftEditPosition;
+
+	public override void Use(BaseEntity? activator, BaseEntity? caller, UseType useType, float value) {
+		BasePlayer? player = ToBasePlayer(activator);
+
+		if (player != null)
+			player.PickupObject(this);
+	}
 
 	// todoOutputEvent OnPlayerTouch;
 	// todoOutputEvent OnCacheInteraction;

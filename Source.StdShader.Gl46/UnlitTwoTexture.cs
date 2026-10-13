@@ -174,6 +174,8 @@ public class UnlitTwoTexture : BaseVSShader
 				StaticShaderIndex pshIndex = new(ShaderShadow, ShaderType.Pixel, "unlittwotexture");
 				ShaderShadow.SetPixelShader("unlittwotexture", pshIndex.GetIndex());
 
+				DefaultFog();
+
 				ShaderShadow.EnableAlphaWrites(fullyOpaque);
 			}
 			else if (ShaderAPI != null) {
@@ -182,6 +184,8 @@ public class UnlitTwoTexture : BaseVSShader
 				SetVertexShaderTextureTransform(VertexShaderConst.ShaderSpecificConst0, (int)ShaderMaterialVars.BaseTextureTransform);
 				SetVertexShaderTextureTransform(VertexShaderConst.ShaderSpecificConst2, TEXTURE2TRANSFORM);
 				SetModulationPixelShaderDynamicState_LinearColorSpace(1);
+
+				ShaderAPI.SetPixelShaderFogParams((int)PixelShaderConst.FogParams);
 
 				Span<float> eyePos_SpecExponent = [0, 0, 0, 0];
 				ShaderAPI.GetWorldSpaceCameraPosition(eyePos_SpecExponent);

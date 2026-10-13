@@ -1221,6 +1221,9 @@ public interface IMatRenderContext : IRefCounted
 
 	void FogMaxDensity(float maxDensity);
 
+	void FogRadial(bool radial);
+	bool GetFogRadial();
+
 	IMaterial? GetCurrentMaterial();
 	int GetCurrentNumBones();
 	object? GetCurrentProxy();
@@ -1525,6 +1528,14 @@ public readonly struct MatRenderContextPtr : IDisposable, IMatRenderContext
 
 	public void FogMode(MaterialFogMode fogMode) {
 		Context.FogMode(fogMode);
+	}
+
+	public void FogRadial(bool radial) {
+		Context.FogRadial(radial);
+	}
+
+	public bool GetFogRadial() {
+		return Context.GetFogRadial();
 	}
 
 	public void FogStart(float start) {

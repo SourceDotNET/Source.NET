@@ -11,6 +11,7 @@ using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Formats.BSP;
 using Source.Common.Mathematics;
+using Source.Common.Physics;
 using Source.Engine.Server;
 
 using System;
@@ -237,10 +238,40 @@ public static partial class Util
 		trace.FractionLeftSolid = 0;
 	}
 
-	public static int DropToFloor(BaseEntity entity, Mask mask) {
+	public static bool PointAtEntity(BaseEntity? dest, BaseEntity? target) {
+		if (dest == null || target == null)
+			return false;
+
+		Vector3 dir = target.GetAbsOrigin() - dest.GetAbsOrigin();
+
+		MathLib.VectorNormalize(ref dir);
+
+		MathLib.VectorAngles(dir, out QAngle angles);
+		dest.SetLocalAngles(angles);
+		dest.SetAbsAngles(angles);
+
+#if GMOD_DLL
+		IPhysicsObject? physicsObject = dest.VPhysicsGetObject();
+		if (physicsObject != null) {
+			physicsObject.GetPosition(out Vector3 worldPos, out _);
+			physicsObject.SetPosition(worldPos, angles, true);
+		}
+#endif
+
+		return true;
+	}
+
+	public static void PointAtNamedEntity(BaseEntity dest, string? target) {
+		if (!PointAtEntity(dest, gEntList.FindEntityByName(null, target)))
+			DevMsg(1, $"{dest.GetClassname()} ({dest.GetDebugName()}) was unable to point at an entity named: {target}\n");
+	}
+
+	public static int DropToFloor(BaseEntity entity, Mask mask) => DropToFloor(entity, mask, null);
+
+	public static int DropToFloor(BaseEntity entity, Mask mask, BaseEntity? ignore) {
 		entity.SetGroundEntity(null);
 
-		TraceEntity(entity, entity.GetAbsOrigin(), entity.GetAbsOrigin() - new Vector3(0, 0, 256), mask, out Trace trace);
+		TraceEntity(entity, entity.GetAbsOrigin(), entity.GetAbsOrigin() - new Vector3(0, 0, 256), mask, ignore, entity.GetCollisionGroup(), out Trace trace);
 
 		if (trace.AllSolid)
 			return -1;
@@ -315,6 +346,21 @@ public static partial class Util
 		ent.SetCollisionBounds(mins, maxs);
 	}
 
+	public static float DistApprox(in Vector3 vec1, in Vector3 vec2) {
+		float dx = vec1.X - vec2.X;
+		float dy = vec1.Y - vec2.Y;
+		float dz = vec1.Z - vec2.Z;
+
+		return MathF.Abs(dx) + MathF.Abs(dy) + MathF.Abs(dz);
+	}
+
+	public static float DistApprox2D(in Vector3 vec1, in Vector3 vec2) {
+		float dx = vec1.X - vec2.X;
+		float dy = vec1.Y - vec2.Y;
+
+		return MathF.Abs(dx) + MathF.Abs(dy);
+	}
+
 	public static BasePlayer? GetLocalPlayer() {
 		if (gpGlobals.MaxClients > 1) {
 			if (developer.GetBool()) {
@@ -335,6 +381,16 @@ public static partial class Util
 
 	public static void SetSize(BaseEntity ent, in Vector3 min, in Vector3 max) {
 		SetMinMaxSize(ent, min, max);
+	}
+
+	public static int EntitiesInBox(Span<BaseEntity> list, in Vector3 mins, in Vector3 maxs, EntityFlags flagMask) {
+		FlaggedEntitiesEnum boxEnum = new(list, flagMask);
+		return EntitiesInBox(mins, maxs, ref boxEnum);
+	}
+
+	public static int EntitiesInBox(in Vector3 mins, in Vector3 maxs, scoped ref FlaggedEntitiesEnum enumerator) {
+		partition.EnumerateElementsInBox((SpatialPartitionListMask_t)PartitionListMask.EngineNonStaticEdicts, mins, maxs, false, ref enumerator);
+		return enumerator.GetCount();
 	}
 
 	public static int EntitiesInSphere(Span<BaseEntity> list, in Vector3 center, float radius, EntityFlags flagMask) {

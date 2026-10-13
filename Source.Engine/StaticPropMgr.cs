@@ -242,8 +242,10 @@ public class StaticPropMgrImpl : IStaticPropMgrEngine, IStaticPropMgrClient, ISt
 		throw new NotImplementedException();
 	}
 
-	public void CreateVPhysicsRepresentations(IPhysicsEnvironment physenv, IVPhysicsKeyHandler defaults, object gameData) {
-		throw new NotImplementedException();
+	public void CreateVPhysicsRepresentations(IPhysicsEnvironment physenv, IVPhysicsKeyHandler defaults, object? gameData) {
+		int count = StaticProps.Count;
+		for (int i = count; --i >= 0;)
+			StaticProps[i].CreateVPhysics(physenv, defaults, gameData);
 	}
 
 	public void GetAllStaticProps(List<ICollideable> output) {
@@ -259,7 +261,11 @@ public class StaticPropMgrImpl : IStaticPropMgrEngine, IStaticPropMgrClient, ISt
 	}
 
 	public bool PropHasBakedLightingDisabled(IHandleEntity? handleEntity) {
-		throw new NotImplementedException();
+		int index = HandleEntityToIndex(handleEntity);
+
+		StaticProp prop = StaticProps[index];
+
+		return (prop.Flags() & (int)StaticPropFlags.NoPerVertexLighting) != 0;
 	}
 
 	public ref readonly Vector3 ViewOrigin() => ref LastViewOrigin;
@@ -571,6 +577,20 @@ public class StaticPropMgrImpl : IStaticPropMgrEngine, IStaticPropMgrClient, ISt
 
 public class StaticProp : IClientUnknown, IClientRenderable, ICollideable
 {
+	static readonly ObjectParams g_PhysDefaultObjectParams = new() {
+		MassCenterOverrideFn = null,
+		Mass = 1.0f,
+		Inertia = 1.0f,
+		Damping = 0.1f,
+		RotDamping = 0.1f,
+		RotInertiaLimit = 0.05f,
+		Name = "DEFAULT",
+		GameData = null,
+		Volume = 0f,
+		DragCoefficient = 1.0f,
+		EnableCollisions = true
+	};
+
 	Vector3 Origin;
 	QAngle Angles;
 	Model? Model;
@@ -868,7 +888,52 @@ public class StaticProp : IClientUnknown, IClientRenderable, ICollideable
 	public ClientRenderHandle_t GetRenderHandle() => renderHandle;
 	public void SetAlpha(byte alpha) => Alpha = alpha;
 
-	public void CreateVPhysics(IPhysicsEnvironment physenv, IVPhysicsKeyHandler defaults, object gameData) => throw new NotImplementedException();
+	public void CreateVPhysics(IPhysicsEnvironment physenv, IVPhysicsKeyHandler defaults, object? gameData) {
+		if (Solid == (byte)SolidType.None)
+			return;
+
+		VCollide? vcollide = null;
+		Solid solid = default;
+		PhysCollide? physCollide;
+
+		if (Model != null && Solid == (byte)SolidType.VPhysics)
+			vcollide = CM.VCollideForModel(-1, Model);
+
+		if (vcollide != null) {
+			physCollide = vcollide.Solids![0];
+
+			IVPhysicsKeyParser parse = physcollision.VPhysicsKeyParserCreate(vcollide.KeyValues!);
+			while (!parse.Finished()) {
+				ReadOnlySpan<char> block = parse.GetCurrentBlockName();
+				if (strcmpi(block, "solid") == 0) {
+					parse.ParseSolid(ref solid, defaults);
+					break;
+				}
+				else
+					parse.SkipBlock();
+			}
+			physcollision.VPhysicsKeyParserDestroy(parse);
+		}
+		else {
+			if (Solid != (byte)SolidType.BBox) {
+				ReadOnlySpan<char> model = Model != null ? modelLoader.GetName(Model) : "unknown model";
+				Warning($"Map Error:  Static prop with bogus solid type {Solid}! ({model})\n");
+				Solid = (byte)SolidType.None;
+				return;
+			}
+
+			physCollide = physcollision.BBoxToCollide(Model!.Mins, Model.Maxs);
+			solid.Params = g_PhysDefaultObjectParams;
+		}
+
+		Assert(physCollide != null);
+		solid.Params.EnableCollisions = true;
+		solid.Params.GameData = gameData;
+		solid.Params.Name = "prop_static";
+
+		int surfaceData = (int)physprop.GetSurfaceIndex(((ReadOnlySpan<char>)solid.SurfaceProp).SliceNullTerminatedString());
+		physenv.CreatePolyObjectStatic(physCollide!, surfaceData, Origin, Angles, ref solid.Params);
+	}
 
 	public float Radius() => radius;
 	public int Flags() => flags;

@@ -183,6 +183,8 @@ public class Teeth : BaseVSShader
 			shaderShadow.EnableSRGBRead(Sampler.Sampler0, true);
 			shaderShadow.EnableSRGBWrite(true);
 
+			FogToFogColor();
+
 			shaderShadow.EnableAlphaWrites(fullyOpaque);
 		}
 		else if (shaderAPI != null) {
@@ -200,6 +202,8 @@ public class Teeth : BaseVSShader
 			shaderAPI.SetVertexShaderConstant(VertexShaderConst.ShaderSpecificConst0, lighting);
 
 			shaderAPI.GetDX9LightState(out LightState lightState);
+
+			shaderAPI.SetPixelShaderFogParams((int)PixelShaderConst.FogParams);
 
 			Span<float> eyePos_SpecExponent = [0, 0, 0, 0];
 			shaderAPI.GetWorldSpaceCameraPosition(eyePos_SpecExponent);
@@ -223,7 +227,7 @@ public class Teeth : BaseVSShader
 						shaderAPI.SetPixelShaderConstant((int)PixelShaderConst.EyePosSpecExponent, specExponent);
 
 						DynamicShaderIndex pshIndex = new(shaderAPI, ShaderType.Pixel);
-						pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo());
+						pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 						pshIndex.Set("NUM_LIGHTS", lightState.NumLights);
 						pshIndex.Set("AMBIENT_LIGHT", lightState.AmbientLight ? 1 : 0);
 						pshIndex.Set("WRITE_DEPTH_TO_DESTALPHA", fullyOpaque && shaderAPI.ShouldWriteDepthToDestAlpha());
@@ -250,7 +254,7 @@ public class Teeth : BaseVSShader
 					shaderAPI.SetPixelShaderConstant((int)PixelShaderConst.EyePosSpecExponent, specExponent);
 
 					DynamicShaderIndex pshIndex = new(shaderAPI, ShaderType.Pixel);
-					pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo());
+					pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 					pshIndex.Set("NUM_LIGHTS", lightState.NumLights);
 					pshIndex.Set("AMBIENT_LIGHT", lightState.AmbientLight ? 1 : 0);
 					pshIndex.Set("WRITE_DEPTH_TO_DESTALPHA", fullyOpaque && shaderAPI.ShouldWriteDepthToDestAlpha());
@@ -274,7 +278,7 @@ public class Teeth : BaseVSShader
 
 					if (HardwareConfig.SupportsPixelShaders_2_b()) {
 						DynamicShaderIndex pshIndex = new(shaderAPI, ShaderType.Pixel);
-						pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo());
+						pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 						pshIndex.Set("WRITE_DEPTH_TO_DESTALPHA", fullyOpaque && shaderAPI.ShouldWriteDepthToDestAlpha());
 						shaderAPI.SetPixelShaderIndex(pshIndex.GetIndex());
 					}
@@ -295,7 +299,7 @@ public class Teeth : BaseVSShader
 					shaderAPI.SetVertexShaderIndex(vshIndex.GetIndex());
 
 					DynamicShaderIndex pshIndex = new(shaderAPI, ShaderType.Pixel);
-					pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo());
+					pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 					pshIndex.Set("WRITE_DEPTH_TO_DESTALPHA", fullyOpaque && shaderAPI.ShouldWriteDepthToDestAlpha());
 					shaderAPI.SetPixelShaderIndex(pshIndex.GetIndex());
 				}

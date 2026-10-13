@@ -1108,6 +1108,19 @@ public class Material : IMaterialInternal
 		}
 	}
 
+	public void ReloadTextures() {
+		Precache();
+		int paramCount = ShaderParamCount();
+		IMaterialVar[]? vars = GetShaderParams();
+		for (int i = 0; i < paramCount; i++) {
+			if (vars![i] != null && vars[i].IsTexture()) {
+				ITexture? texture = vars[i].GetTextureValue();
+				if (!ITexture.IsError(texture))
+					texture.Download();
+			}
+		}
+	}
+
 	public void RefreshPreservingMaterialVars() {
 		if (materials.ShaderDevice.IsUsingGraphics()) {
 			Uncache(true);
@@ -1193,6 +1206,8 @@ public class Material : IMaterialInternal
 	public int ShaderParamCount() => VarCount;
 
 	int RefCount;
+
+	public int GetReferenceCount() => RefCount;
 
 	public void IncrementReferenceCount() => ++RefCount;
 

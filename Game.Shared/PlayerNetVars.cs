@@ -61,7 +61,7 @@ public struct FogPlayerParams()
 	[NetworkName("m_hCtrl")]
 	public Handle<BaseEntity> Ctrl = new();
 	#endif
-	public float TransitionTime;
+	public TimeUnit_t TransitionTime = -1;
 
 	public Color OldColor;
 	public float OldStart;

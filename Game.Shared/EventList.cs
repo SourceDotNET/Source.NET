@@ -15,7 +15,7 @@ public enum AnimEventType
 	NewEventSystem = 1 << 10
 }
 
-public enum Animevent
+public enum AnimEventId
 {
 	AE_INVALID = -1,
 	AE_EMPTY,
@@ -169,20 +169,20 @@ public static class EventList
 		return true;
 	}
 
-	public static Animevent RegisterPrivateEvent(ReadOnlySpan<char> eventName) {
+	public static AnimEventId RegisterPrivateEvent(ReadOnlySpan<char> eventName) {
 		int list = ListFromString(eventName);
 		if (list != -1) {
 			if (g_EventList[list].IsPrivate)
-				return (Animevent)g_EventList[list].EventIndex;
+				return (AnimEventId)g_EventList[list].EventIndex;
 			else {
 				Warning("***\nShared<->Private Event collision!\n***\n");
 				Assert(false);
-				return Animevent.AE_INVALID;
+				return AnimEventId.AE_INVALID;
 			}
 		}
 
 		EventListEntry entry = AddEventEntry(eventName, g_HighestEvent + 1, true, AnimEventType.Server);
-		return (Animevent)entry.EventIndex;
+		return (AnimEventId)entry.EventIndex;
 	}
 
 	public static int IndexForName(ReadOnlySpan<char> eventName) {
@@ -202,68 +202,68 @@ public static class EventList
 		return null;
 	}
 
-	static void REGISTER_SHARED_ANIMEVENT(Animevent n, AnimEventType b) => RegisterSharedEvent(Enum.GetName(n), (int)n, b);
+	static void REGISTER_SHARED_ANIMEVENT(AnimEventId n, AnimEventType b) => RegisterSharedEvent(Enum.GetName(n), (int)n, b);
 
 	public static void RegisterSharedEvents() {
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_EMPTY, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_EMPTY, AnimEventType.Server);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_LEFTFOOT, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_RIGHTFOOT, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_BODYDROP_LIGHT, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_BODYDROP_HEAVY, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_SWISHSOUND, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_180TURN, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_ITEM_PICKUP, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_WEAPON_DROP, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_WEAPON_SET_SEQUENCE_NAME, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_WEAPON_SET_SEQUENCE_NUMBER, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_WEAPON_SET_ACTIVITY, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_HOLSTER, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_DRAW, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_WEAPON_FIRE, AnimEventType.Server | AnimEventType.Weapon);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_LEFTFOOT, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_RIGHTFOOT, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_BODYDROP_LIGHT, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_BODYDROP_HEAVY, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_SWISHSOUND, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_180TURN, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_ITEM_PICKUP, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_WEAPON_DROP, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_WEAPON_SET_SEQUENCE_NAME, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_WEAPON_SET_SEQUENCE_NUMBER, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_WEAPON_SET_ACTIVITY, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_HOLSTER, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_DRAW, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_WEAPON_FIRE, AnimEventType.Server | AnimEventType.Weapon);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_CL_PLAYSOUND, AnimEventType.Client);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_SV_PLAYSOUND, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_CL_STOPSOUND, AnimEventType.Client);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_CL_PLAYSOUND, AnimEventType.Client);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_SV_PLAYSOUND, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_CL_STOPSOUND, AnimEventType.Client);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_START_SCRIPTED_EFFECT, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_STOP_SCRIPTED_EFFECT, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_START_SCRIPTED_EFFECT, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_STOP_SCRIPTED_EFFECT, AnimEventType.Server);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_CLIENT_EFFECT_ATTACH, AnimEventType.Client);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_CLIENT_EFFECT_ATTACH, AnimEventType.Client);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_MUZZLEFLASH, AnimEventType.Client);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_MUZZLEFLASH, AnimEventType.Client);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_MUZZLEFLASH, AnimEventType.Client);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_MUZZLEFLASH, AnimEventType.Client);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_THUMPER_THUMP, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_AMMOCRATE_PICKUP_AMMO, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_THUMPER_THUMP, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_AMMOCRATE_PICKUP_AMMO, AnimEventType.Server);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_RAGDOLL, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_RAGDOLL, AnimEventType.Server);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_ADDGESTURE, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_RESTARTGESTURE, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_ADDGESTURE, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_RESTARTGESTURE, AnimEventType.Server);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_ATTACK_BROADCAST, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_ATTACK_BROADCAST, AnimEventType.Server);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_HURT_INTERACTION_PARTNER, AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_NPC_SET_INTERACTION_CANTDIE, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_HURT_INTERACTION_PARTNER, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_NPC_SET_INTERACTION_CANTDIE, AnimEventType.Server);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_SV_DUSTTRAIL, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_SV_DUSTTRAIL, AnimEventType.Server);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_CL_CREATE_PARTICLE_EFFECT, AnimEventType.Client);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_CL_CREATE_PARTICLE_EFFECT, AnimEventType.Client);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_RAGDOLL, AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_RAGDOLL, AnimEventType.Server);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_CL_ENABLE_BODYGROUP, AnimEventType.Client);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_CL_DISABLE_BODYGROUP, AnimEventType.Client);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_CL_BODYGROUP_SET_VALUE, AnimEventType.Client);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_CL_BODYGROUP_SET_VALUE_CMODEL_WPN, AnimEventType.Client);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_CL_ENABLE_BODYGROUP, AnimEventType.Client);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_CL_DISABLE_BODYGROUP, AnimEventType.Client);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_CL_BODYGROUP_SET_VALUE, AnimEventType.Client);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_CL_BODYGROUP_SET_VALUE_CMODEL_WPN, AnimEventType.Client);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_WPN_PRIMARYATTACK, AnimEventType.Client | AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_WPN_INCREMENTAMMO, AnimEventType.Client | AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_WPN_PRIMARYATTACK, AnimEventType.Client | AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_WPN_INCREMENTAMMO, AnimEventType.Client | AnimEventType.Server);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_WPN_HIDE, AnimEventType.Client | AnimEventType.Server);
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_WPN_UNHIDE, AnimEventType.Client | AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_WPN_HIDE, AnimEventType.Client | AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_WPN_UNHIDE, AnimEventType.Client | AnimEventType.Server);
 
-		REGISTER_SHARED_ANIMEVENT(Animevent.AE_WPN_PLAYWPNSOUND, AnimEventType.Client | AnimEventType.Server);
+		REGISTER_SHARED_ANIMEVENT(AnimEventId.AE_WPN_PLAYWPNSOUND, AnimEventType.Client | AnimEventType.Server);
 	}
 }

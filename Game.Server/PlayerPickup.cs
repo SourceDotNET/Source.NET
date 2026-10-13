@@ -1,5 +1,7 @@
 ﻿using Game.Server;
 
+using Source.Common;
+
 using Source.Common.Mathematics;
 using Source.Common.Physics;
 
@@ -34,7 +36,9 @@ public enum PhysGunForce
 
 public static class Pickup
 {
-	public static void PlayerPickupObject(BasePlayer player, BaseEntity? obj) => throw new NotImplementedException();
+	public static void PlayerPickupObject(BasePlayer player, BaseEntity obj) => HL2.PlayerPickupController.PlayerPickupObject(player, obj);
+
+	// player pickup utility routine
 	public static void ForcePlayerToDropThisObject(BaseEntity? target) {
 		if (target == null)
 			return;
@@ -54,17 +58,89 @@ public static class Pickup
 		}
 	}
 
-	public static void OnPhysGunDrop(BaseEntity? obj, BasePlayer player, PhysGunDrop reason) => throw new NotImplementedException();
-	public static void OnPhysGunPickup(BaseEntity? obj, BasePlayer player, PhysGunPickup reason = PhysGunPickup.PickedUpByCannon) => throw new NotImplementedException();
-	public static bool OnAttemptPhysGunPickup(BaseEntity? obj, BasePlayer player, PhysGunPickup reason = PhysGunPickup.PickedUpByCannon) => throw new NotImplementedException();
-	public static bool GetPreferredCarryAngles(BaseEntity? obj, BasePlayer player, ref Matrix3x4 localToWorld, out QAngle outputAnglesWorldSpace) => throw new NotImplementedException();
-	public static bool ForcePhysGunOpen(BaseEntity? obj, BasePlayer player) => throw new NotImplementedException();
-	public static bool ShouldPuntUseLaunchForces(BaseEntity? obj, PhysGunForce reason) => throw new NotImplementedException();
-	public static Vector3 PhysGunLaunchAngularImpulse(BaseEntity? obj, PhysGunForce reason) => throw new NotImplementedException();
-	public static Vector3 DefaultPhysGunLaunchVelocity(in Vector3 forward, float mass) => throw new NotImplementedException();
-	public static Vector3 PhysGunLaunchVelocity(BaseEntity? obj, in Vector3 forward, PhysGunForce reason) => throw new NotImplementedException();
+	public static void OnPhysGunDrop(BaseEntity? droppedObject, BasePlayer player, PhysGunDrop reason) {
+		if (droppedObject is IPlayerPickupVPhysics pickup)
+			pickup.OnPhysGunDrop(player, reason);
+	}
 
-	public static BaseEntity? OnFailedPhysGunPickup(BaseEntity? pickedUpObject, Vector3 physgunPos) => throw new NotImplementedException();
+	public static void OnPhysGunPickup(BaseEntity? pickedUpObject, BasePlayer player, PhysGunPickup reason = PhysGunPickup.PickedUpByCannon) {
+		if (pickedUpObject is IPlayerPickupVPhysics pickup)
+			pickup.OnPhysGunPickup(player, reason);
+
+		// send phys gun pickup item event, but only in single player
+		if (!g_pGameRules.IsMultiplayer()) {
+			IGameEvent? ev = gameeventmanager.CreateEvent("physgun_pickup");
+			if (ev != null) {
+				ev.SetInt("entindex", pickedUpObject!.EntIndex());
+				gameeventmanager.FireEvent(ev);
+			}
+		}
+	}
+
+	public static bool OnAttemptPhysGunPickup(BaseEntity? pickedUpObject, BasePlayer player, PhysGunPickup reason = PhysGunPickup.PickedUpByCannon) {
+		if (pickedUpObject is IPlayerPickupVPhysics pickup)
+			return pickup.OnAttemptPhysGunPickup(player, reason);
+		return true;
+	}
+
+	public static BaseEntity? OnFailedPhysGunPickup(BaseEntity? pickedUpObject, Vector3 physgunPos) {
+		if (pickedUpObject is IPlayerPickupVPhysics pickup)
+			return pickup.OnFailedPhysGunPickup(physgunPos);
+
+		return null;
+	}
+
+	public static bool GetPreferredCarryAngles(BaseEntity? obj, BasePlayer player, in Matrix3x4 localToWorld, ref QAngle outputAnglesWorldSpace) {
+		if (obj is IPlayerPickupVPhysics pickup) {
+			if (pickup.HasPreferredCarryAnglesForPlayer(player)) {
+				outputAnglesWorldSpace = MathLib.TransformAnglesToWorldSpace(pickup.PreferredCarryAngles(), localToWorld);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static bool ForcePhysGunOpen(BaseEntity? obj, BasePlayer player) {
+		if (obj is IPlayerPickupVPhysics pickup)
+			return pickup.ForcePhysgunOpen(player);
+		return false;
+	}
+
+	public static Vector3 PhysGunLaunchAngularImpulse(BaseEntity? obj, PhysGunForce reason) {
+		if (obj is IPlayerPickupVPhysics pickup && pickup.ShouldPuntUseLaunchForces(reason))
+			return pickup.PhysGunLaunchAngularImpulse();
+		return RandomAngularImpulse(-600, 600);
+	}
+
+	public static Vector3 DefaultPhysGunLaunchVelocity(in Vector3 forward, float mass) => throw new NotImplementedException();
+
+	public static Vector3 PhysGunLaunchVelocity(BaseEntity? obj, in Vector3 forward, PhysGunForce reason) {
+		// The object must be valid
+		if (obj == null) {
+			Assert(false);
+			return vec3_origin;
+		}
+
+		// Shouldn't ever get here with a non-vphysics object.
+		IPhysicsObject? physicsObject = obj.VPhysicsGetObject();
+		if (physicsObject == null) {
+			Assert(false);
+			return vec3_origin;
+		}
+
+		// Call the pickup entity's callback
+		if (obj is IPlayerPickupVPhysics pickup && pickup.ShouldPuntUseLaunchForces(reason))
+			return pickup.PhysGunLaunchVelocity(forward, physicsObject.GetMass());
+
+		// Do our default behavior
+		return DefaultPhysGunLaunchVelocity(forward, physicsObject.GetMass());
+	}
+
+	public static bool ShouldPuntUseLaunchForces(BaseEntity? obj, PhysGunForce reason) {
+		if (obj is IPlayerPickupVPhysics pickup)
+			return pickup.ShouldPuntUseLaunchForces(reason);
+		return false;
+	}
 }
 
 public interface IPlayerPickupVPhysics

@@ -28,8 +28,8 @@ public struct Fluid
 
 public interface IVPhysicsKeyHandler
 {
-	void ParseKeyValue<T>(T data, ReadOnlySpan<char> pKey, ReadOnlySpan<char> pValue);
-	void SetDefaults<T>(T data);
+	void ParseKeyValue<T>(ref T data, ReadOnlySpan<char> pKey, ReadOnlySpan<char> pValue);
+	void SetDefaults<T>(ref T data);
 }
 
 public interface IVPhysicsKeyParser

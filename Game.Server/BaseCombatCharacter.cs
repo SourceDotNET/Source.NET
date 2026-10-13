@@ -98,6 +98,101 @@ public partial class BaseCombatCharacter : BaseFlex
 	public virtual Vector3 EyeDirection3D() => HeadDirection3D(); // No eye motion so just return head dir
 
 
+	public HitGroup LastHitGroupValue;
+	public HitGroup LastHitGroup() => LastHitGroupValue;
+
+	public virtual Activity GetDeathActivity() {
+		Activity deathActivity;
+		bool triedDirection;
+		float dot;
+		Vector3 src;
+
+		if (IsPlayer()) {
+			switch (random.RandomInt(0, 7)) {
+				case 0: return Activity.ACT_DIESIMPLE;
+				case 1: return Activity.ACT_DIEBACKWARD;
+				case 2: return Activity.ACT_DIEFORWARD;
+				case 3: return Activity.ACT_DIEVIOLENT;
+				case 4: return Activity.ACT_DIE_HEADSHOT;
+				case 5: return Activity.ACT_DIE_CHESTSHOT;
+				case 6: return Activity.ACT_DIE_GUTSHOT;
+				case 7: return Activity.ACT_DIE_BACKSHOT;
+			}
+		}
+
+		src = WorldSpaceCenter();
+
+		triedDirection = false;
+		deathActivity = Activity.ACT_DIESIMPLE;
+
+		MathLib.AngleVectors(GetLocalAngles(), out Vector3 forward);
+		dot = -Vector3.Dot(forward, g_vecAttackDir);
+
+		switch (LastHitGroupValue) {
+			case HitGroup.Head:
+				deathActivity = Activity.ACT_DIE_HEADSHOT;
+				break;
+
+			case HitGroup.Stomach:
+				deathActivity = Activity.ACT_DIE_GUTSHOT;
+				break;
+
+			case HitGroup.Generic:
+				triedDirection = true;
+
+				if (dot > 0.3)
+					deathActivity = Activity.ACT_DIEFORWARD;
+				else if (dot <= -0.3)
+					deathActivity = Activity.ACT_DIEBACKWARD;
+				break;
+
+			default:
+				triedDirection = true;
+
+				if (dot > 0.3)
+					deathActivity = Activity.ACT_DIEFORWARD;
+				else if (dot <= -0.3)
+					deathActivity = Activity.ACT_DIEBACKWARD;
+				break;
+		}
+
+		if (SelectWeightedSequence(deathActivity) == StudioHdr.ACTIVITY_NOT_AVAILABLE) {
+			if (triedDirection)
+				deathActivity = Activity.ACT_DIESIMPLE;
+			else {
+				if (dot > 0.3)
+					deathActivity = Activity.ACT_DIEFORWARD;
+				else if (dot <= -0.3)
+					deathActivity = Activity.ACT_DIEBACKWARD;
+			}
+		}
+
+		if (SelectWeightedSequence(deathActivity) == StudioHdr.ACTIVITY_NOT_AVAILABLE) {
+			deathActivity = Activity.ACT_DIESIMPLE;
+
+			if (SelectWeightedSequence(deathActivity) == StudioHdr.ACTIVITY_NOT_AVAILABLE)
+				Msg($"ERROR! {GetModelName()} missing ACT_DIESIMPLE\n");
+		}
+
+		if (deathActivity == Activity.ACT_DIEFORWARD) {
+			Util.TraceHull(src, src + forward * 64, new Vector3(-16, -16, -18),
+				new Vector3(16, 16, 18), Mask.Solid, this, Source.CollisionGroup.None, out Trace tr);
+
+			if (tr.Fraction != 1.0)
+				deathActivity = Activity.ACT_DIESIMPLE;
+		}
+
+		if (deathActivity == Activity.ACT_DIEBACKWARD) {
+			Util.TraceHull(src, src - forward * 64, new Vector3(-16, -16, -18),
+				new Vector3(16, 16, 18), Mask.Solid, this, Source.CollisionGroup.None, out Trace tr);
+
+			if (tr.Fraction != 1.0)
+				deathActivity = Activity.ACT_DIESIMPLE;
+		}
+
+		return deathActivity;
+	}
+
 	public virtual bool FInViewCone(BaseEntity entity) => FInViewCone(entity.WorldSpaceCenter());
 
 	public virtual bool FInViewCone(in Vector3 spot) {
@@ -397,7 +492,7 @@ public partial class BaseCombatCharacter : BaseFlex
 
 			float curDist = (weapon.GetLocalOrigin() - GetLocalOrigin()).Length();
 
-			if (weapon.HasSpawnFlags(BaseCombatWeapon.SF_WEAPON_NO_PLAYER_PICKUP))
+			if (weapon.HasSpawnFlags(BaseCombatWeapon.SF.NoPlayerPickup))
 				curDist *= 0.5f;
 
 			if (bestWeapon != null) {
@@ -430,6 +525,22 @@ public partial class BaseCombatCharacter : BaseFlex
 		bestWeapon?.Lock(2.0, this);
 
 		return bestWeapon;
+	}
+
+	public override void UpdateOnRemove() {
+		int i;
+		for (i = 0; i < MAX_WEAPONS; i++) {
+			if (MyWeapons[i].Get() != null)
+				Util.Remove(MyWeapons[i].Get());
+		}
+
+		BaseEntity? owner = GetOwnerEntity();
+		if (owner != null) {
+			owner.DeathNotice(this);
+			SetOwnerEntity(null);
+		}
+
+		base.UpdateOnRemove();
 	}
 
 	public BaseCombatWeapon? Weapon_Create(ReadOnlySpan<char> weaponName) {
@@ -473,7 +584,7 @@ public partial class BaseCombatCharacter : BaseFlex
 		}
 
 		if (IsPlayer() == false) {
-			if (HasSpawnFlags(AI_BaseNPCGlobals.SF_NPC_LONG_RANGE)) {
+			if (HasSpawnFlags(AI_BaseNPC.SF.LongRange)) {
 				ActiveWeapon.Get()!.MaxRange1 = 999999999;
 				ActiveWeapon.Get()!.MaxRange2 = 999999999;
 			}
@@ -584,6 +695,10 @@ public partial class BaseCombatCharacter : BaseFlex
 
 	public void SetCurrentWeaponProficiency(WeaponProficiency proficiency) => CurrentWeaponProficiency = proficiency;
 	public virtual WeaponProficiency CalcWeaponProficiency(BaseCombatWeapon? weapon) => WeaponProficiency.Average;
+
+	public bool DispatchInteraction(AI_Interaction interactionType, object? data, BaseCombatCharacter? sourceEnt) => (interactionType > AI_Interaction.None) ? HandleInteraction(interactionType, data, sourceEnt) : false;
+
+	public virtual bool HandleInteraction(AI_Interaction interactionType, object? data, BaseCombatCharacter? sourceEnt) => false;
 
 	public override void SetLightingOriginRelative(BaseEntity? lightingOrigin) {
 		base.SetLightingOriginRelative(lightingOrigin);

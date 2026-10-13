@@ -24,6 +24,10 @@ public enum StereoEye
 
 public struct ViewSetup
 {
+	public ViewSetup() {
+		DoBloomAndToneMapping = true;
+	}
+
 	public int X;
 	public int UnscaledX;
 	public int Y;

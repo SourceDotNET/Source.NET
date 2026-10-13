@@ -75,6 +75,8 @@ public partial class BaseVSShader
 			shaderShadow.EnableSRGBRead(Sampler.Sampler0, true);
 			shaderShadow.EnableSRGBRead(Sampler.Sampler1, true);
 			shaderShadow.EnableSRGBWrite(true);
+
+			shader.FogToFogColor();
 		}
 		else if (shaderAPI != null) {
 			shader.BindTexture(Sampler.Sampler0, info.BaseTexture, info.Frame);
@@ -124,6 +126,8 @@ public partial class BaseVSShader
 			Span<float> psConst = [parms[info.Dilation].GetFloatValue(), glintDamping, 0.0f, 0.0f];
 			shaderAPI.SetPixelShaderConstant(0, psConst);
 
+			shaderAPI.SetPixelShaderFogParams((int)PixelShaderConst.FogParams);
+
 			Span<float> eyePos_SpecExponent = [0, 0, 0, 0];
 			shaderAPI.GetWorldSpaceCameraPosition(eyePos_SpecExponent);
 			eyePos_SpecExponent[3] = 0.0f;
@@ -132,7 +136,7 @@ public partial class BaseVSShader
 			if (!HardwareConfig.HasFastVertexTextures()) {
 				if (HardwareConfig.SupportsPixelShaders_2_b()) {
 					DynamicShaderIndex pshIndex = new(shaderAPI, ShaderType.Pixel);
-					pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo());
+					pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 					pshIndex.Set("WRITE_DEPTH_TO_DESTALPHA", shaderAPI.ShouldWriteDepthToDestAlpha());
 					shaderAPI.SetPixelShaderIndex(pshIndex.GetIndex());
 				}
@@ -144,7 +148,7 @@ public partial class BaseVSShader
 			}
 			else {
 				DynamicShaderIndex pshIndex = new(shaderAPI, ShaderType.Pixel);
-				pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo());
+				pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 				pshIndex.Set("WRITE_DEPTH_TO_DESTALPHA", shaderAPI.ShouldWriteDepthToDestAlpha());
 				shaderAPI.SetPixelShaderIndex(pshIndex.GetIndex());
 			}

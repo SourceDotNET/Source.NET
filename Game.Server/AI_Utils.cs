@@ -72,6 +72,110 @@ public class AI_MoveMonitor
 	float MarkTolerance;
 }
 
+public class AI_ShotRegulator
+{
+	public AI_ShotRegulator() {
+		MinBurstShots = 1;
+		MaxBurstShots = 1;
+		MinRestInterval = 0.0f;
+		MaxRestInterval = 0.0f;
+		MinBurstInterval = 0.0f;
+		MaxBurstInterval = 0.0f;
+		NextShotTimeValue = -1;
+		BurstShotsRemaining = 1;
+		InRestInterval = false;
+		Disabled = false;
+	}
+
+	public void SetParameters(int minShotsPerBurst, int maxShotsPerBurst, float minRestTime, float maxRestTime = 0.0f) {
+		SetBurstShotCountRange(minShotsPerBurst, maxShotsPerBurst);
+		SetRestInterval(minRestTime, maxRestTime);
+		Reset(false);
+	}
+
+	public void SetBurstShotCountRange(int minShotsPerBurst, int maxShotsPerBurst) {
+		MinBurstShots = (ushort)minShotsPerBurst;
+		MaxBurstShots = (ushort)maxShotsPerBurst;
+	}
+
+	public void SetRestInterval(float minRestInterval, float maxRestInterval) {
+		MinRestInterval = minRestInterval;
+		MaxRestInterval = maxRestInterval;
+	}
+
+	public void SetBurstInterval(float minBurstInterval, float maxBurstInterval) {
+		MinBurstInterval = minBurstInterval;
+		MaxBurstInterval = maxBurstInterval;
+	}
+
+	public void GetBurstShotCountRange(out int minShotsPerBurst, out int maxShotsPerBurst) {
+		minShotsPerBurst = MinBurstShots;
+		maxShotsPerBurst = MaxBurstShots;
+	}
+
+	public void GetRestInterval(out float minRestInterval, out float maxRestInterval) {
+		minRestInterval = MinRestInterval;
+		maxRestInterval = MaxRestInterval;
+	}
+
+	public void GetBurstInterval(out float minBurstInterval, out float maxBurstInterval) {
+		minBurstInterval = MinBurstInterval;
+		maxBurstInterval = MaxBurstInterval;
+	}
+
+	public void Reset(bool startShooting = true) {
+		Disabled = false;
+		BurstShotsRemaining = (ushort)random.RandomInt(MinBurstShots, MaxBurstShots);
+		if (startShooting) {
+			NextShotTimeValue = gpGlobals.CurTime;
+			InRestInterval = false;
+		}
+		else {
+			NextShotTimeValue = gpGlobals.CurTime + random.RandomFloat(MinRestInterval, MaxRestInterval);
+			InRestInterval = true;
+		}
+	}
+
+	public bool ShouldShoot() => !Disabled && NextShotTimeValue <= gpGlobals.CurTime;
+
+	public bool IsInRestInterval() => InRestInterval && !ShouldShoot();
+
+	public TimeUnit_t NextShotTime() => NextShotTimeValue;
+
+	public void FireNoEarlierThan(TimeUnit_t time) {
+		if (time > NextShotTimeValue)
+			NextShotTimeValue = time;
+	}
+
+	public int GetBurstShotsRemaining() => BurstShotsRemaining;
+
+	public void SetBurstShotsRemaining(int shots) => BurstShotsRemaining = (ushort)shots;
+
+	public void OnFiredWeapon() {
+		--BurstShotsRemaining;
+		if (BurstShotsRemaining <= 0)
+			Reset(false);
+		else {
+			InRestInterval = false;
+			NextShotTimeValue += random.RandomFloat(MinBurstInterval, MaxBurstInterval);
+			if (NextShotTimeValue < gpGlobals.CurTime)
+				NextShotTimeValue = gpGlobals.CurTime;
+		}
+	}
+
+	public void EnableShooting() => Disabled = false;
+
+	public void DisableShooting() => Disabled = true;
+
+	TimeUnit_t NextShotTimeValue;
+	bool InRestInterval;
+	ushort BurstShotsRemaining;
+	ushort MinBurstShots, MaxBurstShots;
+	float MinRestInterval, MaxRestInterval;
+	float MinBurstInterval, MaxBurstInterval;
+	bool Disabled;
+}
+
 public struct TraceFilterNav : ITraceFilter
 {
 	public TraceFilterNav(AI_BaseNPC prober, bool ignoreTransientEntities, IHandleEntity? passedict, CollisionGroup collisionGroup, bool allowPlayerAvoid = true) {

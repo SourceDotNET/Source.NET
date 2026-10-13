@@ -748,6 +748,8 @@ public partial class C_BaseEntity : IClientEntity
 	public InlineArray32<ushort> OverrideSubMaterials;
 	[NetworkName("m_iHealth")]
 	public int Health;
+	public int GetHealth() => Health;
+	public int SetHealth(int amt) => Health = amt;
 	[NetworkName("m_iMaxHealth")]
 	public int MaxHealth;
 	[NetworkName("m_spawnflags")]

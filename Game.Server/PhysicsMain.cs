@@ -126,7 +126,7 @@ public partial class BaseEntity
 		PhysicsCheckVelocity();
 	}
 
-	private void PhysicsStepRecheckGround() {
+	public void PhysicsStepRecheckGround() {
 		Mask mask = PhysicsSolidMaskForEntity();
 		Vector3 mins, maxs, point = default;
 		int x, y;

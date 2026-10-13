@@ -475,6 +475,12 @@ public unsafe struct VertexBuilder
 		*(int*)pSpecular = col;
 	}
 
+	internal void Specular4ub(byte r, byte g, byte b, byte a) {
+		byte* pSpecular = &Desc.Specular[CurrentVertex * Desc.SpecularSize];
+		int col = r | (g << 8) | (b << 16) | (a << 24);
+		*(int*)pSpecular = col;
+	}
+
 	internal void Specular3ubv(ReadOnlySpan<byte> c) {
 		byte* pSpecular = &Desc.Specular[CurrentVertex * Desc.SpecularSize];
 		int col = c[0] | (c[1] << 8) | (c[2] << 16) | unchecked((int)0xFF000000);
@@ -972,7 +978,7 @@ public unsafe struct MeshBuilder : IDisposable
 	// Faster version of specular
 	public void Specular3ub(byte r, byte g, byte b) => VertexBuilder.Specular3ub(r, g, b);
 	public void Specular3ubv(ReadOnlySpan<byte> c) => VertexBuilder.Specular3ubv(c);
-	public void Specular4ub(byte r, byte g, byte b, byte a) => throw new NotImplementedException();
+	public void Specular4ub(byte r, byte g, byte b, byte a) => VertexBuilder.Specular4ub(r, g, b, a);
 	public void Specular4ubv(ReadOnlySpan<byte> c) => throw new NotImplementedException();
 
 	// texture coordinate setting

@@ -16,6 +16,8 @@ namespace Game.Shared;
 
 public static class Animation
 {
+	public const float NOMOTION = 99999;
+
 static Animation(){
 		StudioHdr.SetActivityForSequence += SetActivityForSequence;
 }

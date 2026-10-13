@@ -679,6 +679,21 @@ public class CollisionProperty : ICollideable
 	//-----------------------------------------------------------------------------
 	// Transforms a point in world space to OBB space
 	//-----------------------------------------------------------------------------
+	public Vector3 NormalizedToCollisionSpace(in Vector3 input) {
+		return new(MathLib.Lerp(input.X, Mins.X, Maxs.X),
+			MathLib.Lerp(input.Y, Mins.Y, Maxs.Y),
+			MathLib.Lerp(input.Z, Mins.Z, Maxs.Z));
+	}
+
+	public Vector3 NormalizedToWorldSpace(in Vector3 input) => CollisionToWorldSpace(NormalizedToCollisionSpace(input));
+
+	public bool IsPointInBounds(in Vector3 worldPt) {
+		Vector3 localSpace = WorldToCollisionSpace(worldPt);
+		return (localSpace.X >= Mins.X && localSpace.X <= Maxs.X) &&
+			(localSpace.Y >= Mins.Y && localSpace.Y <= Maxs.Y) &&
+			(localSpace.Z >= Mins.Z && localSpace.Z <= Maxs.Z);
+	}
+
 	public Vector3 WorldToCollisionSpace(in Vector3 input) {
 		Vector3 result;
 		if (!IsBoundsDefinedInEntitySpace() || (GetCollisionAngles() == vec3_angle))

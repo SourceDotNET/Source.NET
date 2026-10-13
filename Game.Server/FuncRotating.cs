@@ -18,19 +18,23 @@ using DEFINE = Source.DEFINE<FuncRotating>;
 [NetworkName("CFuncRotating")]
 public class FuncRotating : BaseEntity
 {
-	public const int SF_BRUSH_ROTATE_Y_AXIS = 0;
-	public const int SF_BRUSH_ROTATE_START_ON = 1;
-	public const int SF_BRUSH_ROTATE_BACKWARDS = 2;
-	public const int SF_BRUSH_ROTATE_Z_AXIS = 4;
-	public const int SF_BRUSH_ROTATE_X_AXIS = 8;
-	public const int SF_BRUSH_ROTATE_CLIENTSIDE = 16;
-	public const int SF_BRUSH_ROTATE_SMALLRADIUS = 128;
-	public const int SF_BRUSH_ROTATE_MEDIUMRADIUS = 256;
-	public const int SF_BRUSH_ROTATE_LARGERADIUS = 512;
+	[Flags]
+	public enum SF
+	{
+		YAxis = 0,
+		StartOn = 1,
+		Backwards = 2,
+		ZAxis = 4,
+		XAxis = 8,
+		ClientSide = 16,
+		SmallRadius = 128,
+		MediumRadius = 256,
+		LargeRadius = 512,
 
-	public const int SF_BRUSH_ACCDCC = 16;
-	public const int SF_BRUSH_HURT = 32;
-	public const int SF_ROTATING_NOT_SOLID = 64;
+		AccDcc = 16,
+		Hurt = 32,
+		NotSolid = 64,
+	}
 
 	const int FANPITCHMIN = 30;
 	const int FANPITCHMAX = 100;
@@ -132,11 +136,11 @@ public class FuncRotating : BaseEntity
 		if (Volume == 0.0)
 			Volume = 1.0f;
 
-		if (HasSpawnFlags(SF_BRUSH_ROTATE_SMALLRADIUS))
+		if (HasSpawnFlags(SF.SmallRadius))
 			Attenuation = ATTN_IDLE;
-		else if (HasSpawnFlags(SF_BRUSH_ROTATE_MEDIUMRADIUS))
+		else if (HasSpawnFlags(SF.MediumRadius))
 			Attenuation = ATTN_STATIC;
-		else if (HasSpawnFlags(SF_BRUSH_ROTATE_LARGERADIUS))
+		else if (HasSpawnFlags(SF.LargeRadius))
 			Attenuation = ATTN_NORM;
 		else
 			Attenuation = ATTN_NORM;
@@ -144,19 +148,19 @@ public class FuncRotating : BaseEntity
 		if (FanFriction == 0)
 			FanFriction = 1;
 
-		if (HasSpawnFlags(SF_BRUSH_ROTATE_Z_AXIS))
+		if (HasSpawnFlags(SF.ZAxis))
 			MoveAng = new(0, 0, 1);
-		else if (HasSpawnFlags(SF_BRUSH_ROTATE_X_AXIS))
+		else if (HasSpawnFlags(SF.XAxis))
 			MoveAng = new(1, 0, 0);
 		else
 			MoveAng = new(0, 1, 0);
 
-		if (HasSpawnFlags(SF_BRUSH_ROTATE_BACKWARDS))
+		if (HasSpawnFlags(SF.Backwards))
 			MoveAng = MoveAng * -1;
 
 		SetSolid(SolidType.VPhysics);
 
-		if (HasSpawnFlags(SF_ROTATING_NOT_SOLID)) {
+		if (HasSpawnFlags(SF.NotSolid)) {
 			AddSolidFlags(SolidFlags.NotSolid);
 			SetMoveType(Source.MoveType.Push);
 		}
@@ -173,12 +177,12 @@ public class FuncRotating : BaseEntity
 		if (MaxSpeed == 0)
 			MaxSpeed = 100;
 
-		if (HasSpawnFlags(SF_BRUSH_ROTATE_START_ON)) {
+		if (HasSpawnFlags(SF.StartOn)) {
 			SetThink(SUB_CallUseToggle);
 			SetNextThink(gpGlobals.CurTime + .2);
 		}
 
-		if (HasSpawnFlags(SF_BRUSH_HURT))
+		if (HasSpawnFlags(SF.Hurt))
 			SetTouch(HurtTouch);
 
 		Speed = 0;
@@ -408,7 +412,7 @@ public class FuncRotating : BaseEntity
 
 		TargetSpeed = speed;
 
-		if (!HasSpawnFlags(SF_BRUSH_ACCDCC)) {
+		if (!HasSpawnFlags(SF.AccDcc)) {
 			UpdateSpeed(TargetSpeed);
 			SetMoveDone(RotateMove);
 		}

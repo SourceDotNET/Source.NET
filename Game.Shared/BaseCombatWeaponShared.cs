@@ -255,7 +255,7 @@ public partial class
 	public virtual bool CanBePickedUpByNPCs() => true;
 
 	TimeUnit_t UnlockTime;
-	readonly EHANDLE Locker = new();
+	EHANDLE Locker = new();
 
 	public void Lock(TimeUnit_t lockTime, BaseEntity? locker) {
 		UnlockTime = gpGlobals.CurTime + lockTime;
@@ -821,6 +821,9 @@ public partial class
 	public virtual TimeUnit_t GetMinRestTime() => 0.3;
 	public virtual TimeUnit_t GetMaxRestTime() => 0.6;
 	public virtual int GetRandomBurst() => random.RandomInt(GetMinBurst(), GetMaxBurst());
+#if !CLIENT_DLL
+	public virtual void OnRangeAttack1() { }
+#endif
 
 	public virtual void SecondaryAttack() { }
 	public bool DefaultReload(int clipSize1, int clipSize2, Activity activity) {
@@ -1266,9 +1269,13 @@ public partial class
 
 
 
-	public const int SF_WEAPON_START_CONSTRAINED = 1 << 0;
-	public const int SF_WEAPON_NO_PLAYER_PICKUP = 1 << 1;
-	public const int SF_WEAPON_NO_PHYSCANNON_PUNT = 1 << 2;
+	[Flags]
+	public enum SF
+	{
+		StartConstrained = 1 << 0,
+		NoPlayerPickup = 1 << 1,
+		NoPhyscannonPunt = 1 << 2,
+	}
 
 	public virtual void OnPickedUp(BaseCombatCharacter newOwner) {
 #if !CLIENT_DLL
@@ -1309,7 +1316,7 @@ public partial class
 		if (Util.ItemCanBeTouchedByPlayer(this, player))
 			OnCacheInteraction.FireOutput(other, this);
 
-		if (HasSpawnFlags(SF_WEAPON_NO_PLAYER_PICKUP))
+		if (HasSpawnFlags(SF.NoPlayerPickup))
 			return;
 
 		if (player.BumpWeapon(this))
@@ -1322,7 +1329,7 @@ public partial class
 		SetTouch(DefaultTouch);
 
 		if (gpGlobals.MaxClients > 1) {
-			if (HasSpawnFlags(BasePlayer.SF_NORESPAWN)) {
+			if (HasSpawnFlags(BasePlayer.SF.NoRespawn)) {
 				SetThink(SUB_Remove);
 				SetNextThink(gpGlobals.CurTime + 30.0f);
 			}

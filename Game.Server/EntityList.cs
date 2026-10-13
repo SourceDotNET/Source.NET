@@ -414,6 +414,44 @@ public class GlobalEntityList : BaseEntityList
 		return null;
 	}
 
+	public BaseEntity? FindEntityByNameWithin(BaseEntity? startEntity, ReadOnlySpan<char> name, in Vector3 src, float radius, BaseEntity? searchingEntity = null, BaseEntity? activator = null, BaseEntity? caller = null) {
+		BaseEntity? entity = startEntity;
+		float maxDist2 = radius * radius;
+		if (maxDist2 == 0)
+			return gEntList.FindEntityByName(entity, name, searchingEntity, activator, caller);
+
+		while ((entity = gEntList.FindEntityByName(entity, name, searchingEntity, activator, caller)) != null) {
+			if (entity.Edict() == null)
+				continue;
+
+			float dist2 = (entity.GetAbsOrigin() - src).LengthSquared();
+
+			if (maxDist2 > dist2)
+				return entity;
+		}
+
+		return null;
+	}
+
+	public BaseEntity? FindEntityByClassnameWithin(BaseEntity? startEntity, ReadOnlySpan<char> name, in Vector3 src, float radius) {
+		BaseEntity? entity = startEntity;
+		float maxDist2 = radius * radius;
+		if (maxDist2 == 0)
+			return gEntList.FindEntityByClassname(entity, name);
+
+		while ((entity = gEntList.FindEntityByClassname(entity, name)) != null) {
+			if (entity.Edict() == null)
+				continue;
+
+			float dist2 = (entity.GetAbsOrigin() - src).LengthSquared();
+
+			if (maxDist2 > dist2)
+				return entity;
+		}
+
+		return null;
+	}
+
 	public BaseEntity? FindEntityGeneric(BaseEntity? startEntity, ReadOnlySpan<char> name, BaseEntity? searchingEntity = null, BaseEntity? activator = null, BaseEntity? caller = null) {
 		BaseEntity? entity = FindEntityByName(startEntity, name, searchingEntity, activator, caller);
 		entity ??= FindEntityByClassname(startEntity, name);
@@ -724,7 +762,7 @@ public class EntityListSystem : AutoGameSystemPerFrame
 			engine.AllowImmediateEdictReuse();
 
 			// Reset node counter used during load
-			// NodeEnt.m_nNodeCount = 0; todo
+			NodeEnt.NodeCount = 0;
 
 			RespawnEntitiesFilter filter = new();
 			MapEntity_ParseAllEntities(engine.GetMapEntitiesString(), filter, true);

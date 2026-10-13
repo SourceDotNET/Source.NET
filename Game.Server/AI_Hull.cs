@@ -1,6 +1,9 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace Game.Server;
+
+[InlineArray((int)AI_HullType.NumHulls)] public struct InlineArrayNumHulls<T> { public T item; }
 
 // analog of Hull_t
 public enum AI_HullType

@@ -281,7 +281,7 @@ public abstract class ModelInfo(IFileSystem filesystem, IModelLoader modelloader
 	}
 
 	public bool IsModelVertexLit(Model? model) {
-		throw new NotImplementedException();
+		return model != null && (model.Flags & ModelFlag.VertexLit) != 0;
 	}
 
 	public ReadOnlySpan<char> GetModelKeyValueText(Model? model) {

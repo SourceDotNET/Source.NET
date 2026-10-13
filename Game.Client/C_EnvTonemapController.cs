@@ -34,4 +34,29 @@ public class C_EnvTonemapController : C_BaseEntity
 	public float CustomBloomScale;
 	[NetworkName("m_flCustomBloomScaleMinimum")]
 	public float CustomBloomScaleMinimum;
+
+	static EHANDLE g_hTonemapControllerInUse = new();
+
+	public override void UpdateOnRemove() {
+		if (g_hTonemapControllerInUse.Get() == this) {
+			g_bUseCustomAutoExposureMin = false;
+			g_bUseCustomAutoExposureMax = false;
+			g_bUseCustomBloomScale = false;
+		}
+		base.UpdateOnRemove();
+	}
+
+	public override void OnDataChanged(DataUpdateType updateType) {
+		base.OnDataChanged(updateType);
+
+		g_bUseCustomAutoExposureMin = UseCustomAutoExposureMin;
+		g_bUseCustomAutoExposureMax = UseCustomAutoExposureMax;
+		g_bUseCustomBloomScale = UseCustomBloomScale;
+		g_flCustomAutoExposureMin = CustomAutoExposureMin;
+		g_flCustomAutoExposureMax = CustomAutoExposureMax;
+		g_flCustomBloomScale = CustomBloomScale;
+		g_flCustomBloomScaleMinimum = CustomBloomScaleMinimum;
+
+		g_hTonemapControllerInUse.Set(this);
+	}
 }

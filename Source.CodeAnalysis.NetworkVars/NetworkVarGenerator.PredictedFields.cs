@@ -102,7 +102,7 @@ namespace Source.CodeAnalysis.NetworkVars
 			if (declaring == null)
 				return "X";
 
-			ResolvedPath? path = Resolve(compilation, declaring, name);
+			ResolvedPath? path = Resolve(compilation, declaring, name, new AccessFailure());
 			if (path == null)
 				return "X";
 

@@ -338,10 +338,10 @@ public partial class BaseVSShader
 				shaderShadow.SetPixelShader("skin", pshIndex.GetIndex());
 			}
 
-			// if (hasFlashlight)
-			// 	shader.FogToBlack();
-			// else
-			// 	shader.DefaultFog();
+			if (hasFlashlight)
+				shader.FogToBlack();
+			else
+				shader.DefaultFog();
 
 			shaderShadow.EnableAlphaWrites(fullyOpaque);
 		}
@@ -461,7 +461,7 @@ public partial class BaseVSShader
 				pshIndex.Set("NUM_LIGHTS", lightState.NumLights);
 				pshIndex.Set("WRITEWATERFOGTODESTALPHA", writeWaterFogToAlpha);
 				pshIndex.Set("WRITE_DEPTH_TO_DESTALPHA", writeDepthToAlpha);
-				pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo());
+				pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 				pshIndex.Set("FLASHLIGHTSHADOWS", flashlightShadows);
 				shaderAPI.SetPixelShaderIndex(pshIndex.GetIndex());
 			}
@@ -480,7 +480,7 @@ public partial class BaseVSShader
 				pshIndex.Set("NUM_LIGHTS", lightState.NumLights);
 				pshIndex.Set("WRITEWATERFOGTODESTALPHA", writeWaterFogToAlpha);
 				pshIndex.Set("WRITE_DEPTH_TO_DESTALPHA", writeDepthToAlpha);
-				pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo());
+				pshIndex.Set("PIXELFOGTYPE", shaderAPI.GetPixelFogCombo1(true));
 				pshIndex.Set("FLASHLIGHTSHADOWS", flashlightShadows);
 				shaderAPI.SetPixelShaderIndex(pshIndex.GetIndex());
 
@@ -620,7 +620,7 @@ public partial class BaseVSShader
 			shaderAPI.SetPixelShaderConstant((int)PixelShaderConst.FresnelSpecParams, fresnelRanges_SpecBoost);
 			shaderAPI.SetPixelShaderConstant((int)PixelShaderConst.FlashlightPositionRimBoost, vRimBoost);
 			shaderAPI.SetPixelShaderConstant((int)PixelShaderConst.SpecRimParams, specularTint);
-			// ShaderAPI.SetPixelShaderFogParams(PSREG_FOG_PARAMS);
+			shaderAPI.SetPixelShaderFogParams((int)PixelShaderConst.FogParams);
 
 			if (hasFlashlight) {
 				Span<float> atten = [0, 0, 0, 0], pos = [0, 0, 0, 0], tweaks = [0, 0, 0, 0];

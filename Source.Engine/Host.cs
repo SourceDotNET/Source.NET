@@ -2,6 +2,7 @@
 
 using Source.Common;
 using Source.Common.Audio;
+using Source.Common.Bitbuffers;
 using Source.Common.Client;
 using Source.Common.Commands;
 using Source.Common.Engine;
@@ -1089,8 +1090,13 @@ public partial class Host
 		if (count <= 0)
 			return;
 
-		if (count > 255) {
-			Sys.Error($"Engine only supported 255 ConVars marked {flags}\n");
+#if GMOD_DLL
+		const int MAX_CONVARS = 4096;
+#else
+		const int MAX_CONVARS = 255;
+#endif
+		if (count > MAX_CONVARS) {
+			Sys.Error($"Engine only supported {MAX_CONVARS} ConVars marked {flags}\n");
 		}
 
 		foreach (var var in Cvar.GetCommands()) {
@@ -1101,7 +1107,8 @@ public partial class Host
 			if (!convar.IsFlagSet(flags))
 				continue;
 
-			if (nonDefault && convar.GetDefault() != convar.GetString())
+			// It's == to the default value, don't count
+			if (nonDefault && stricmp(convar.GetDefault(), convar.GetString()) == 0)
 				continue;
 
 			cvar_s acvar = new();
@@ -1110,6 +1117,80 @@ public partial class Host
 			convars.ConVars.Add(acvar);
 		}
 	}
+
+#if GMOD_DLL
+	public void GMOD_BuildConVarUpdateMessage(INetChannel chan, FCvar flags, bool nonDefault) {
+		int count = CountVariablesWithFlags(flags, nonDefault);
+		if (count <= 0)
+			return;
+
+		NET_SetConVar convars = new();
+		count = 0;
+
+		foreach (var var in Cvar.GetCommands()) {
+			if (count > 32) {
+				chan.SendNetMsg(convars);
+				convars.ConVars.Clear();
+				count = 0;
+			}
+
+			if (var.IsCommand())
+				continue;
+
+			ConVar convar = (ConVar)var;
+			if (!convar.IsFlagSet(flags))
+				continue;
+
+			if (nonDefault && stricmp(convar.GetDefault(), convar.GetString()) == 0)
+				continue;
+
+			cvar_s acvar = new();
+			acvar.Name = convar.GetName();
+			acvar.Value = CleanupConVarStringValue(convar.GetString());
+			convars.ConVars.Add(acvar);
+			count++;
+		}
+
+		if (count != 0)
+			chan.SendNetMsg(convars);
+	}
+
+	public void GMOD_BuildConVarUpdateMessageBF(bf_write buf, FCvar flags, bool nonDefault) {
+		int count = CountVariablesWithFlags(flags, nonDefault);
+		if (count <= 0)
+			return;
+
+		NET_SetConVar convars = new();
+		count = 0;
+
+		foreach (var var in Cvar.GetCommands()) {
+			if (count > 128) {
+				convars.WriteToBuffer(buf);
+				convars.ConVars.Clear();
+				count = 0;
+			}
+
+			if (var.IsCommand())
+				continue;
+
+			ConVar convar = (ConVar)var;
+			if (!convar.IsFlagSet(flags))
+				continue;
+
+			if (nonDefault && stricmp(convar.GetDefault(), convar.GetString()) == 0)
+				continue;
+
+			cvar_s acvar = new();
+			acvar.Name = convar.GetName();
+			acvar.Value = CleanupConVarStringValue(convar.GetString());
+			convars.ConVars.Add(acvar);
+			count++;
+		}
+
+		if (count != 0)
+			convars.WriteToBuffer(buf);
+	}
+#endif
 
 	[ConCommand(helpText: "Exits the engine")]
 	void quit(in TokenizedCommand args) {
@@ -1193,7 +1274,8 @@ public partial class Host
 			if (!convar.IsFlagSet(flags))
 				continue;
 
-			if (nonDefault && convar.GetDefault() != convar.GetString())
+			// It's == to the default value, don't count
+			if (nonDefault && stricmp(convar.GetDefault(), convar.GetString()) == 0)
 				continue;
 
 			count++;

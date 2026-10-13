@@ -320,6 +320,13 @@ public abstract class BaseShader : IShader
 			return ShaderAPI!.InFlashlightMode();
 	}
 
+	internal bool UsingEditor(IMaterialVar[] shaderParams) {
+		if (IsSnapshotting())
+			return IsFlag2Set(shaderParams, MaterialVarFlags2.UseEditor);
+		else
+			return ShaderAPI!.InEditorMode();
+	}
+
 	protected void EnableAlphaBlending(ShaderBlendFactor srcFactor, ShaderBlendFactor dstFactor) {
 		ShaderShadow!.EnableBlending(true);
 		ShaderShadow!.BlendFunc(srcFactor, dstFactor);
@@ -328,6 +335,58 @@ public abstract class BaseShader : IShader
 
 	protected void DisableAlphaBlending() {
 		ShaderShadow!.EnableBlending(false);
+	}
+
+	public void FogToOOOverbright() {
+		Assert(IsSnapshotting());
+		if ((CurrentMaterialVarFlags() & (int)MaterialVarFlags.NoFog) == 0)
+			ShaderShadow!.FogMode(ShaderFogMode.Overbright);
+		else
+			ShaderShadow!.FogMode(ShaderFogMode.Disabled);
+	}
+
+	public void FogToWhite() {
+		Assert(IsSnapshotting());
+		if ((CurrentMaterialVarFlags() & (int)MaterialVarFlags.NoFog) == 0)
+			ShaderShadow!.FogMode(ShaderFogMode.White);
+		else
+			ShaderShadow!.FogMode(ShaderFogMode.Disabled);
+	}
+
+	public void FogToBlack() {
+		Assert(IsSnapshotting());
+		if ((CurrentMaterialVarFlags() & (int)MaterialVarFlags.NoFog) == 0)
+			ShaderShadow!.FogMode(ShaderFogMode.Black);
+		else
+			ShaderShadow!.FogMode(ShaderFogMode.Disabled);
+	}
+
+	public void FogToGrey() {
+		Assert(IsSnapshotting());
+		if ((CurrentMaterialVarFlags() & (int)MaterialVarFlags.NoFog) == 0)
+			ShaderShadow!.FogMode(ShaderFogMode.Grey);
+		else
+			ShaderShadow!.FogMode(ShaderFogMode.Disabled);
+	}
+
+	public void FogToFogColor() {
+		Assert(IsSnapshotting());
+		if ((CurrentMaterialVarFlags() & (int)MaterialVarFlags.NoFog) == 0)
+			ShaderShadow!.FogMode(ShaderFogMode.FogColor);
+		else
+			ShaderShadow!.FogMode(ShaderFogMode.Disabled);
+	}
+
+	public void DisableFog() {
+		Assert(IsSnapshotting());
+		ShaderShadow!.FogMode(ShaderFogMode.Disabled);
+	}
+
+	public void DefaultFog() {
+		if ((CurrentMaterialVarFlags() & (int)MaterialVarFlags.Additive) != 0)
+			FogToBlack();
+		else
+			FogToFogColor();
 	}
 
 	internal void SetBlendingShadowState(BlendType blendType) {
