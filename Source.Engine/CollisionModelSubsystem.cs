@@ -564,6 +564,7 @@ public class CollisionBSPData
 		BSPDDispInfo[] dispInfos = new MapLoadHelper(LumpIndex.DispInfo).LoadLumpData<BSPDDispInfo>();
 		DispVert[] dispVerts = new MapLoadHelper(LumpIndex.DispVerts).LoadLumpData<DispVert>();
 		DispTri[] dispTris = new MapLoadHelper(LumpIndex.DispTris).LoadLumpData<DispTri>();
+		BSPTexInfo[] texinfos = new MapLoadHelper(LumpIndex.TexInfo).LoadLumpData<BSPTexInfo>();
 
 		if (faces.Length == 0)
 			return;
@@ -643,8 +644,24 @@ public class CollisionBSPData
 			tree.GetBounds(out Vector3 treeMins, out Vector3 treeMaxs);
 			g_DispBounds[i].Init(treeMins, treeMaxs, tree.Counter, tree.GetContents());
 
-			// NOTE: surface props are left at their defaults; physprops material lookup
-			// is not yet wired in the collision subsystem (see LoadTextures TODO).
+			ref BSPTexInfo tex = ref texinfos[face.TexInfo];
+			if (tex.TexData >= 0) {
+				IMaterial material = materials!.FindMaterial(MapSurfaces[tex.TexData].Name, MaterialDefines.TEXTURE_GROUP_WORLD, true);
+				if (!material.IsErrorMaterial()) {
+					IMaterialVar var = material.FindVar("$surfaceprop", out bool varFound, false);
+					if (varFound) {
+						ReadOnlySpan<char> props = var.GetStringValue();
+						tree.SetSurfaceProps(0, (short)physprop.GetSurfaceIndex(props));
+						tree.SetSurfaceProps(1, (short)physprop.GetSurfaceIndex(props));
+					}
+
+					var = material.FindVar("$surfaceprop2", out varFound, false);
+					if (varFound) {
+						ReadOnlySpan<char> props = var.GetStringValue();
+						tree.SetSurfaceProps(1, (short)physprop.GetSurfaceIndex(props));
+					}
+				}
+			}
 		}
 
 		// Link each displacement into the BSP leaves it touches.
