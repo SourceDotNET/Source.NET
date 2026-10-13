@@ -143,7 +143,7 @@ public static class Clip2D
 
 		if (!state.Scissor || state.FullScreenScissor) {
 			clippedVerts = clipVertices0[..verts.Length];
-			return clipVertices0.Length;
+			return verts.Length;
 		}
 
 		clipPolygon.ClipCount = verts.Length;
