@@ -441,6 +441,25 @@ public static class PhysicsSharedGlobals
 		return obj;
 	}
 
+	public static void PhysCreateVirtualTerrain(BaseEntity world, in ObjectParams defaultParams) {
+		if (physenv == null)
+			return;
+
+		for (int i = 0; i < BSPFileCommon.MAX_MAP_DISPINFO; i++) {
+			PhysCollide? collide = modelinfo.GetCollideForVirtualTerrain(i);
+			if (collide != null) {
+				Solid solid = default;
+				solid.Params = defaultParams;
+				solid.Params.EnableCollisions = true;
+				solid.Params.GameData = world;
+				solid.Params.Name = $"vdisp_{i:D4}";
+				int surfaceData = (int)physprops.GetSurfaceIndex("default");
+				IPhysicsObject? obj = physenv.CreatePolyObjectStatic(collide, surfaceData, vec3_origin, vec3_angle, ref solid.Params);
+				obj!.SetCallbackFlags(obj.GetCallbackFlags() | CallbackFlags.NeverDeleted);
+			}
+		}
+	}
+
 	public static IPhysicsObject? PhysCreateWorld_Shared(BaseEntity world, VCollide? worldCollide, in ObjectParams defaultParams) {
 		Solid solid = default;
 		Fluid fluid = default;
@@ -457,6 +476,8 @@ public static class PhysicsSharedGlobals
 		IPhysicsObject? worldPhysics = physenv.CreatePolyObjectStatic(worldCollide.Solids[0]!, surfaceData, vec3_origin, vec3_angle, ref oparams);
 
 		IVPhysicsKeyParser parse = physcollision.VPhysicsKeyParserCreate(worldCollide.KeyValues!);
+
+		bool createVirtualTerrain = false;
 		while (!parse.Finished()) {
 			ReadOnlySpan<char> block = parse.GetCurrentBlockName();
 
@@ -472,8 +493,13 @@ public static class PhysicsSharedGlobals
 				if (solid.Index == 0)
 					continue;
 
-				if (solid.Index >= worldCollide.SolidCount || worldCollide.Solids[solid.Index] == null)
+				if (solid.Index >= worldCollide.SolidCount)
 					continue;
+
+				if (worldCollide.Solids[solid.Index] == null) {
+					createVirtualTerrain = true;
+					continue;
+				}
 
 				IPhysicsObject? obj = physenv.CreatePolyObjectStatic(worldCollide.Solids[solid.Index]!, surfaceData, vec3_origin, vec3_angle, ref solid.Params);
 				if (obj == null)
@@ -487,10 +513,17 @@ public static class PhysicsSharedGlobals
 			else if (strcmpi(block, "fluid") == 0) {
 				parse.ParseFluid(ref fluid, null);
 			}
+			else if (strcmpi(block, "virtualterrain") == 0) {
+				createVirtualTerrain = true;
+				parse.SkipBlock();
+			}
 			else
 				parse.SkipBlock();
 		}
 		physcollision.VPhysicsKeyParserDestroy(parse);
+
+		if (createVirtualTerrain && physcollision.SupportsVirtualMesh())
+			PhysCreateVirtualTerrain(world, defaultParams);
 
 		return worldPhysics;
 	}
