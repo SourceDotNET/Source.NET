@@ -242,10 +242,12 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 
 		BoxPhysCollide? collide = collisionModel as BoxPhysCollide;
 		if (collide != null) {
+			Span<SurfaceMaterial> faceMaterials = stackalloc SurfaceMaterial[Box3D.Constants.MaxHullFaces];
 			foreach (BoxPhysConvex convex in collide.Convexes) {
 				if (convex.Hull.IsNull)
 					continue;
-				Shape.CreateHull(bodyId, PhysicsObject.MakeConvexShapeDef(convex, materialIndex, false), isStatic ? convex.Hull : convex.GetSimHull());
+				HullData hull = isStatic ? convex.Hull : convex.GetSimHull();
+				Shape.CreateHull(bodyId, PhysicsObject.MakeConvexShapeDef(convex, hull, materialIndex, false, faceMaterials), hull);
 			}
 
 			if (!collide.Mesh.IsNull)
@@ -567,8 +569,8 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 			VCollisionEvent ev = default;
 			ev.Objects[0] = p1;
 			ev.Objects[1] = p2;
-			ev.SurfaceProps[0] = p1.GetShapeMaterialIndex(hit.shapeIdA);
-			ev.SurfaceProps[1] = p2.GetShapeMaterialIndex(hit.shapeIdB);
+			ev.SurfaceProps[0] = hit.userMaterialIdA != 0 ? (int)(hit.userMaterialIdA - 1) : p1.GetMaterialIndex();
+			ev.SurfaceProps[1] = hit.userMaterialIdB != 0 ? (int)(hit.userMaterialIdB - 1) : p2.GetMaterialIndex();
 			ev.IsCollision = isCollision;
 			ev.IsShadowCollision = isShadowCollision;
 			ev.DeltaCollisionTime = deltaCollisionTime;

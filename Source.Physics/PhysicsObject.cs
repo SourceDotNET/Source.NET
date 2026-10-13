@@ -705,8 +705,70 @@ internal unsafe class PhysicsObject : IPhysicsObject
 		return best == 0 ? materialIndex : (int)((PhysicsSurfaceProps)physprops).RemapWorldMaterial(best);
 	}
 
-	internal static ShapeDef MakeConvexShapeDef(BoxPhysConvex convex, int materialIndex, bool sensor)
-		=> MakeShapeDef(sensor ? materialIndex : ConvexMaterialIndex(convex, materialIndex), materialIndex, sensor);
+	static int FillFaceMaterials(BoxPhysConvex convex, HullData hull, int materialIndex, Span<SurfaceMaterial> faceMaterials) {
+		byte[]? materials = convex.QueryMaterials;
+		Vector3[]? verts = convex.QueryVerts;
+		if (materials == null || verts == null || hull.IsNull || !materials.AsSpan().ContainsAnyExcept((byte)0))
+			return 0;
+
+		Vector3 center = default;
+		foreach (Vector3 vert in verts)
+			center += vert;
+		center /= verts.Length;
+
+		ReadOnlySpan<Box3D.Plane> planes = hull.Planes;
+		int faceCount = Math.Min(planes.Length, faceMaterials.Length);
+		for (int f = 0; f < faceCount; f++) {
+			float bestDot = float.MinValue;
+			int best = 0;
+			for (int t = 0; t < materials.Length; t++) {
+				Vector3 a = verts[t * 3 + 0], b = verts[t * 3 + 1], c = verts[t * 3 + 2];
+				Vector3 normal = Vector3.Cross(b - a, c - a);
+				float length = normal.Length();
+				if (length <= 0.0f)
+					continue;
+
+				normal /= length;
+				if (Vector3.Dot(normal, (a + b + c) / 3.0f - center) < 0.0f)
+					normal = -normal;
+
+				float dot = Vector3.Dot(normal, planes[f].normal);
+				if (dot > bestDot) {
+					bestDot = dot;
+					best = materials[t];
+				}
+			}
+
+			int faceMaterial = best == 0 ? materialIndex : (int)((PhysicsSurfaceProps)physprops).RemapWorldMaterial(best);
+			faceMaterials[f] = MakeSurfaceMaterial(faceMaterial, materialIndex);
+		}
+		return faceCount;
+	}
+
+	internal static ShapeDef MakeConvexShapeDef(BoxPhysConvex convex, HullData hull, int materialIndex, bool sensor, Span<SurfaceMaterial> faceMaterials) {
+		ShapeDef shapeDef = MakeShapeDef(sensor ? materialIndex : ConvexMaterialIndex(convex, materialIndex), materialIndex, sensor);
+		if (!sensor) {
+			int faceCount = FillFaceMaterials(convex, hull, materialIndex, faceMaterials);
+			if (faceCount > 0)
+				shapeDef.materials = faceMaterials[..faceCount];
+		}
+		return shapeDef;
+	}
+
+	static SurfaceMaterial MakeSurfaceMaterial(int shapeMaterial, int materialIndex) {
+		SurfaceMaterial material = ShapeDef.Default.baseMaterial;
+		SurfaceData_ptr? surface = physprops.GetSurfaceData(shapeMaterial);
+		if (surface != null)
+			ApplySurfaceMaterial(ref material, surface);
+		if (shapeMaterial != materialIndex)
+			material.userMaterialId = (ulong)shapeMaterial + 1;
+		return material;
+	}
+
+	static void ApplySurfaceMaterial(ref SurfaceMaterial material, SurfaceData_ptr surface) {
+		material.friction = MathF.Max(surface.Physics.Friction, 0.0f);
+		material.restitution = MathF.Max(surface.Physics.Elasticity, 0.0f);
+	}
 
 	internal static ShapeDef MakeMeshShapeDef(BoxPhysCollide collide, int materialIndex, bool sensor)
 		=> MakeShapeDef(sensor || collide.MeshMaterialIndex < 0 ? materialIndex : collide.MeshMaterialIndex, materialIndex, sensor);
@@ -738,8 +800,7 @@ internal unsafe class PhysicsObject : IPhysicsObject
 
 		SurfaceData_ptr? surface = physprops.GetSurfaceData(materialIndex);
 		if (surface != null) {
-			shapeDef.baseMaterial.friction = MathF.Max(surface.Physics.Friction, 0.0f);
-			shapeDef.baseMaterial.restitution = MathF.Max(surface.Physics.Elasticity, 0.0f);
+			ApplySurfaceMaterial(ref shapeDef.baseMaterial, surface);
 			if (surface.Physics.Density > 0.0f)
 				shapeDef.density = surface.Physics.Density;
 		}
@@ -756,12 +817,14 @@ internal unsafe class PhysicsObject : IPhysicsObject
 		shapeDef.updateBodyMass = false;
 
 		if (Collide != null) {
+			Span<SurfaceMaterial> faceMaterials = stackalloc SurfaceMaterial[Box3D.Constants.MaxHullFaces];
 			foreach (BoxPhysConvex convex in Collide.Convexes) {
 				if (convex.Hull.IsNull)
 					continue;
-				ShapeDef convexShapeDef = MakeConvexShapeDef(convex, MaterialIndex, asSensor);
+				HullData hull = Static ? convex.Hull : convex.GetSimHull();
+				ShapeDef convexShapeDef = MakeConvexShapeDef(convex, hull, MaterialIndex, asSensor, faceMaterials);
 				convexShapeDef.updateBodyMass = false;
-				Shape.CreateHull(BodyId, convexShapeDef, Static ? convex.Hull : convex.GetSimHull());
+				Shape.CreateHull(BodyId, convexShapeDef, hull);
 			}
 			if (!Collide.Mesh.IsNull) {
 				ShapeDef meshShapeDef = MakeMeshShapeDef(Collide, MaterialIndex, asSensor);
