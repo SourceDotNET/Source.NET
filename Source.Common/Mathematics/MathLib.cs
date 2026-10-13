@@ -1119,6 +1119,13 @@ public static class MathLib
 	}
 
 	public static void QuaternionMult(in Quaternion p, in Quaternion q, out Quaternion qt) {
+		Unsafe.SkipInit(out qt);
+		if (Unsafe.AreSame(in p, in qt)) {
+			Quaternion p2 = p;
+			QuaternionMult(p2, q, out qt);
+			return;
+		}
+
 		QuaternionAlign(p, q, out Quaternion q2);
 		qt.X = p.X * q2.W + p.Y * q2.Z - p.Z * q2.Y + p.W * q2.X;
 		qt.Y = -p.X * q2.Z + p.Y * q2.W + p.Z * q2.X + p.W * q2.Y;

@@ -137,6 +137,7 @@ public partial class
 			PrimaryAutomatic = primary.GetMemberBool("Automatic", true);
 			ammo = primary.GetMemberStr("Ammo", null);
 		}
+		primary.UnReference();
 		if (ammo != null) {
 			int ammoType = GetAmmoDef().Index(ammo);
 			if (PrimaryAmmoType != ammoType) {
@@ -167,6 +168,7 @@ public partial class
 			SecondaryAutomatic = secondary.GetMemberBool("Automatic", true);
 			ammo = secondary.GetMemberStr("Ammo", null);
 		}
+		secondary.UnReference();
 		if (ammo != null) {
 			int ammoType = GetAmmoDef().Index(ammo);
 			if (SecondaryAmmoType != ammoType) {
