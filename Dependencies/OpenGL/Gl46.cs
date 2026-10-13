@@ -14444,6 +14444,8 @@ public unsafe static class Gl46
 
 #endif
 
+    public const GLenum GL_COMPLETION_STATUS_KHR = 0x91B1;
+
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void PFNGLMAXSHADERCOMPILERTHREADSKHRPROC(GLuint count);
     private static PFNGLMAXSHADERCOMPILERTHREADSKHRPROC _glMaxShaderCompilerThreadsKHR;

@@ -6,5 +6,4 @@ public interface IGraphicsContext {
 	void MakeCurrent();
 	void SetSwapInterval(float swapInterval);
 	void SwapBuffers();
-	IGraphicsContext? CreateSharedContext();
 }

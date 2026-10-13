@@ -86,29 +86,6 @@ public unsafe class SDL3_OpenGL46_Context(nint window, nint ctx) : IGraphicsCont
 	public void SwapBuffers() {
 		SDL3.SDL_GL_SwapWindow((SDL_Window*)window);
 	}
-
-	public IGraphicsContext? CreateSharedContext() {
-		SDL_Window* sharedWindow = SDL3.SDL_CreateWindow("", 1, 1, SDL_WindowFlags.SDL_WINDOW_OPENGL | SDL_WindowFlags.SDL_WINDOW_HIDDEN);
-		if (sharedWindow == null) {
-			Warning($"Could not create shared GL context window: {SDL3.SDL_GetError()}\n");
-			return null;
-		}
-
-		MakeCurrent();
-		SDL3.SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
-		nint shared = (nint)SDL3.SDL_GL_CreateContext(sharedWindow);
-		SDL3.SDL_GL_SetAttribute(SDL_GLAttr.SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
-
-		if (shared == 0) {
-			Warning($"Could not create shared GL context: {SDL3.SDL_GetError()}\n");
-			MakeCurrent();
-			SDL3.SDL_DestroyWindow(sharedWindow);
-			return null;
-		}
-
-		MakeCurrent();
-		return new SDL3_OpenGL46_Context((nint)sharedWindow, shared);
-	}
 }
 
 public unsafe class SDL3_LauncherManager : ILauncherManager, IGraphicsProvider

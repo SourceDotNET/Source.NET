@@ -1,14 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 
 using Source.Common.Filesystem;
-using Source.Common.Launcher;
 using Source.Common.MaterialSystem;
 using Source.Common.ShaderAPI;
 using Source.Common.ShaderLib;
 using Source.MaterialSystem;
 
 using System.Buffers.Binary;
-using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
@@ -59,8 +57,6 @@ internal sealed class ShaderSource(byte[] text, int versionLength, List<string> 
 	public readonly List<string> SourceFiles = sourceFiles;
 	public readonly ulong Hash = text.AsSpan().Hash();
 }
-
-internal sealed record ShaderCompileBatch(ShaderCompileJob[] Jobs, nint Fence);
 
 public class ShaderSystem : IShaderSystemInternal
 {
@@ -721,7 +717,9 @@ public class ShaderSystem : IShaderSystemInternal
 		}
 	}
 
-	const int MaxCompileJobsPerBatch = 32;
+	const int MaxParallelSubmitsPerFrame = 32;
+	const int MaxBlockingSubmitsPerFrame = 4;
+	const int MaxSubmitsPerWait = 64;
 
 	readonly List<ShaderObject> ShaderObjects = [];
 	readonly Dictionary<ulong, ShaderProgram> ShaderPrograms = [];
@@ -731,11 +729,8 @@ public class ShaderSystem : IShaderSystemInternal
 	string? ProgramCacheDir;
 	readonly Queue<ShaderCompileJob> PendingCompileJobs = [];
 	readonly Queue<ShaderCompileJob> HighPriorityCompileJobs = [];
-	readonly ConcurrentQueue<ShaderCompileBatch> FinishedCompileBatches = [];
-	readonly List<ShaderCompileBatch> FencedCompileBatches = [];
-	IGraphicsContext? CompileContext;
-	Thread? CompileThread;
-	bool CompileWorkerStarted;
+	readonly List<ShaderCompileJob> InFlightCompileJobs = [];
+	bool CompileInitialized;
 	int OutstandingCompileJobs;
 	bool ParallelShaderCompile;
 
@@ -751,8 +746,8 @@ public class ShaderSystem : IShaderSystemInternal
 
 	private static unsafe string GetGLString(int name) => Encoding.ASCII.GetString(MemoryMarshal.CreateReadOnlySpanFromNullTerminated(glGetString(name)));
 
-	private unsafe void StartCompileWorker() {
-		CompileWorkerStarted = true;
+	private unsafe void InitShaderCompile() {
+		CompileInitialized = true;
 
 		int binaryFormats = 0;
 		glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &binaryFormats);
@@ -764,73 +759,31 @@ public class ShaderSystem : IShaderSystemInternal
 		else
 			Warning("Program binaries unsupported, shader cache disabled\n");
 
-		CompileContext = ShaderAPI.Device?.CreateSharedContext();
-		if (CompileContext == null) {
-			Warning("Shader compile worker unavailable, compiling shaders on the main thread\n");
-			return;
-		}
-
 		ParallelShaderCompile = glMaxShaderCompilerThreadsKHRLoaded && (HasGLExtension("GL_KHR_parallel_shader_compile"u8) || HasGLExtension("GL_ARB_parallel_shader_compile"u8));
-		CompileThread = new Thread(CompileWorker) { Name = "ShaderCompile", IsBackground = true };
-		CompileThread.Start();
-	}
-
-	private unsafe void CompileWorker() {
-		CompileContext!.MakeCurrent();
 		if (ParallelShaderCompile)
 			glMaxShaderCompilerThreadsKHR(2);
-
-		List<ShaderCompileJob> jobs = [];
-		while (true) {
-			lock (PendingCompileJobs) {
-				while (HighPriorityCompileJobs.Count == 0 && PendingCompileJobs.Count == 0)
-					Monitor.Wait(PendingCompileJobs);
-				TakeCompileJobs(HighPriorityCompileJobs, jobs);
-				TakeCompileJobs(PendingCompileJobs, jobs);
-			}
-
-			if (jobs.Count == 0)
-				continue;
-
-			foreach (ShaderCompileJob job in jobs)
-				SubmitCompileJob(job);
-			foreach (ShaderCompileJob job in jobs)
-				FinishCompileJob(job);
-
-			ShaderCompileBatch batch = new([.. jobs], (nint)glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
-			glFlush();
-			FinishedCompileBatches.Enqueue(batch);
-			jobs.Clear();
-		}
+		else
+			Warning("Parallel shader compile unsupported, shaders compile blocking\n");
 	}
 
-	private static void TakeCompileJobs(Queue<ShaderCompileJob> queue, List<ShaderCompileJob> jobs) {
-		while (queue.Count > 0 && jobs.Count < MaxCompileJobsPerBatch) {
-			ShaderCompileJob job = queue.Dequeue();
+	private ShaderCompileJob? TakeCompileJob() {
+		while (HighPriorityCompileJobs.Count > 0 || PendingCompileJobs.Count > 0) {
+			ShaderCompileJob job = HighPriorityCompileJobs.Count > 0 ? HighPriorityCompileJobs.Dequeue() : PendingCompileJobs.Dequeue();
 			if (job.Taken)
 				continue;
 			job.Taken = true;
-			jobs.Add(job);
+			return job;
 		}
+		return null;
 	}
 
 	private void QueueCompileJob(ShaderCompileJob job, bool highPriority) {
-		if (!CompileWorkerStarted)
-			StartCompileWorker();
-
-		if (CompileContext == null) {
-			SubmitCompileJob(job);
-			FinishCompileJob(job);
-			ApplyCompileJob(job);
-			return;
-		}
+		if (!CompileInitialized)
+			InitShaderCompile();
 
 		++OutstandingCompileJobs;
-		lock (PendingCompileJobs) {
-			job.HighPriority = highPriority;
-			(highPriority ? HighPriorityCompileJobs : PendingCompileJobs).Enqueue(job);
-			Monitor.Pulse(PendingCompileJobs);
-		}
+		job.HighPriority = highPriority;
+		(highPriority ? HighPriorityCompileJobs : PendingCompileJobs).Enqueue(job);
 	}
 
 	internal void PrioritizeShader(nint handle) {
@@ -839,44 +792,53 @@ public class ShaderSystem : IShaderSystemInternal
 
 		ShaderObject shader = ShaderObjects[(int)handle];
 		ShaderCompileJob? job = shader.Job;
-		if (shader.State != ShaderCompileState.Pending || job == null || job.HighPriority)
+		if (shader.State != ShaderCompileState.Pending || job == null || job.HighPriority || job.Taken)
 			return;
 
-		lock (PendingCompileJobs) {
-			if (job.Taken)
-				return;
-			job.HighPriority = true;
-			HighPriorityCompileJobs.Enqueue(job);
-			Monitor.Pulse(PendingCompileJobs);
-		}
+		job.HighPriority = true;
+		HighPriorityCompileJobs.Enqueue(job);
 	}
 
-	public void BeginFrame() => ProcessFinishedCompileJobs();
+	public void BeginFrame() => ProcessCompileJobs(ParallelShaderCompile ? MaxParallelSubmitsPerFrame : MaxBlockingSubmitsPerFrame);
 
 	public void WaitForPendingCompiles(Action<int, int>? progress) {
 		int total = OutstandingCompileJobs;
 		while (OutstandingCompileJobs > 0) {
-			ProcessFinishedCompileJobs();
+			ProcessCompileJobs(MaxSubmitsPerWait);
 			progress?.Invoke(total - OutstandingCompileJobs, total);
 			if (OutstandingCompileJobs > 0)
 				Thread.Sleep(1);
 		}
 	}
 
-	private unsafe void ProcessFinishedCompileJobs() {
-		while (FinishedCompileBatches.TryDequeue(out ShaderCompileBatch? batch))
-			FencedCompileBatches.Add(batch);
+	private void CompleteCompileJob(ShaderCompileJob job) {
+		FinishCompileJob(job);
+		ApplyCompileJob(job);
+		--OutstandingCompileJobs;
+	}
 
-		for (int i = 0; i < FencedCompileBatches.Count; i++) {
-			ShaderCompileBatch batch = FencedCompileBatches[i];
-			if (glClientWaitSync((void*)batch.Fence, 0, 0) == GL_TIMEOUT_EXPIRED)
+	private unsafe void ProcessCompileJobs(int maxSubmits) {
+		for (int i = 0; i < maxSubmits; i++) {
+			ShaderCompileJob? job = TakeCompileJob();
+			if (job == null)
+				break;
+
+			SubmitCompileJob(job);
+			if (ParallelShaderCompile && job.Handle != 0)
+				InFlightCompileJobs.Add(job);
+			else
+				CompleteCompileJob(job);
+		}
+
+		for (int i = 0; i < InFlightCompileJobs.Count; i++) {
+			ShaderCompileJob job = InFlightCompileJobs[i];
+			int complete = GL_TRUE;
+			glGetProgramiv(job.Handle, GL_COMPLETION_STATUS_KHR, &complete);
+			if (complete != GL_TRUE)
 				continue;
 
-			glDeleteSync((void*)batch.Fence);
-			foreach (ShaderCompileJob job in batch.Jobs)
-				ApplyCompileJob(job);
-			OutstandingCompileJobs -= batch.Jobs.Length;
-			FencedCompileBatches.RemoveAt(i--);
+			CompleteCompileJob(job);
+			InFlightCompileJobs.RemoveAt(i--);
 		}
 	}
 
