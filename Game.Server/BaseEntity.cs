@@ -873,8 +873,6 @@ public partial class BaseEntity : IServerEntity
 
 	public virtual DamageType GetDamageType() => DamageType.Generic;
 
-	public virtual Mask PhysicsSolidMaskForEntity() => Mask.Solid;
-
 	public BaseEntity? Link;
 
 	public virtual bool CanBeSeenBy(AI_BaseNPC npc) => true;
