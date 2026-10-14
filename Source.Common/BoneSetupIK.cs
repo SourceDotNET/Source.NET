@@ -1,6 +1,8 @@
 using Source.Common.Mathematics;
 
+using System.Buffers;
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace Source.Common;
 
@@ -353,6 +355,11 @@ public ref partial struct BoneSetup
 	public static bool Studio_IKSequenceError(StudioHdr studioHdr, MStudioSeqDesc seqdesc, int sequence, TimeUnit_t cycle, int rule, ReadOnlySpan<float> poseParameter, Span<MStudioAnimDesc> panim, Span<float> weight, ref IKContextIKRule ikRule) {
 		int i;
 
+		if (panim[0] == null) {
+			Warning("Crash prevented: Studio_IKSequenceError: panim has a nullptr element\n");
+			return false;
+		}
+
 		ikRule = default;
 		ikRule.Start = ikRule.Peak = ikRule.Tail = ikRule.End = 0;
 
@@ -640,5 +647,764 @@ public class IKTarget
 		Latched.Pos -= deltaPos;
 		Offset.Pos -= deltaPos;
 		Ideal.Pos -= deltaPos;
+	}
+}
+
+public struct IKChainResult
+{
+	public int Target;
+	public Vector3 Pos;
+	public Quaternion Q;
+	public float Weight;
+}
+
+public ref partial struct BoneSetup
+{
+	public static void SolveBone(StudioHdr studioHdr, int bone, Span<Matrix3x4> boneToWorld, Span<Vector3> pos, Span<Quaternion> q) {
+		int parent = studioHdr.BoneParent(bone);
+
+		MathLib.MatrixInvert(boneToWorld[parent], out Matrix3x4 worldToBone);
+
+		MathLib.ConcatTransforms(worldToBone, boneToWorld[bone], out Matrix3x4 local);
+
+		MathLib.MatrixAngles(local, out q[bone], out pos[bone]);
+	}
+}
+
+public class IKContext
+{
+	static readonly BoneSetupMemoryPool<Matrix3x4> MatrixPool = new();
+
+	public readonly List<IKTarget> Target = new(12);
+
+	StudioHdr? studioHdr;
+
+	readonly List<List<IKContextIKRule>> ikChainRule = [];
+	readonly List<IKContextIKRule> ikLock = [];
+	Matrix3x4 rootxform;
+
+	int frameCounter;
+	TimeUnit_t time;
+	int boneMask;
+
+	public IKContext() {
+		frameCounter = -1;
+		studioHdr = null;
+		time = -1.0;
+	}
+
+	void ResetTargets() {
+		Target.Clear();
+		for (int i = 0; i < 12; i++)
+			Target.Add(new IKTarget());
+		ClearTargets();
+	}
+
+	public void Init(StudioHdr studioHdr, in QAngle angles, in Vector3 pos, TimeUnit_t time, int frameCounter, int boneMask) {
+		this.studioHdr = studioHdr;
+		ikChainRule.Clear();
+		if (studioHdr.GetNumIKChains() != 0) {
+			for (int i = 0; i < studioHdr.GetNumIKChains(); i++)
+				ikChainRule.Add([]);
+
+			if (Target.Count == 0)
+				ResetTargets();
+		}
+		else
+			Target.Clear();
+
+		MathLib.AngleMatrix(angles, pos, out rootxform);
+		this.frameCounter = frameCounter;
+		this.time = time;
+		this.boneMask = boneMask;
+	}
+
+	public void AddDependencies(MStudioSeqDesc seqdesc, int sequence, TimeUnit_t cycle, ReadOnlySpan<float> poseParameters, float weight = 1.0f) {
+		int i;
+
+		if (studioHdr!.GetNumIKChains() == 0)
+			return;
+
+		if (seqdesc.NumIKRules == 0)
+			return;
+
+		IKContextIKRule ikrule = default;
+
+		Assert(weight >= 0.0f && weight <= 1.0f);
+		weight = Math.Clamp(weight, 0.0f, 1.0f);
+
+		if ((seqdesc.Flags & StudioAnimSeqFlags.Realtime) != 0) {
+			float cps = BoneSetup.Studio_CPS(studioHdr, seqdesc, sequence, poseParameters);
+			cycle = time * cps;
+			cycle = cycle - (int)cycle;
+		}
+		else if (cycle < 0 || cycle >= 1) {
+			if ((seqdesc.Flags & StudioAnimSeqFlags.Looping) != 0) {
+				cycle = cycle - (int)cycle;
+				if (cycle < 0)
+					cycle += 1;
+			}
+			else
+				cycle = Math.Max(0.0, Math.Min(cycle, 0.9999));
+		}
+
+		MStudioAnimDesc[] panim = ArrayPool<MStudioAnimDesc>.Shared.Rent(4);
+		Span<float> animWeight = stackalloc float[4];
+
+		BoneSetup.Studio_SeqAnims(studioHdr, seqdesc, sequence, poseParameters, panim, animWeight);
+
+		for (i = 0; i < seqdesc.NumIKRules; i++) {
+			if (!BoneSetup.Studio_IKSequenceError(studioHdr, seqdesc, sequence, cycle, i, poseParameters, panim, animWeight, ref ikrule))
+				continue;
+
+			if (ikrule.Chain < 0 || ikrule.Chain >= studioHdr.GetNumIKChains() || studioHdr.IKChain(ikrule.Chain).NumLinks <= 2)
+				continue;
+
+			int bone = studioHdr.IKChain(ikrule.Chain).Link(2).Bone;
+			if (bone >= studioHdr.NumBones() || ikrule.Bone >= studioHdr.NumBones()) {
+				Warning($"Out of bounds bone in CIKContext::AddDependencies {bone} / {ikrule.Bone} of {studioHdr.NumBones()}\n");
+				continue;
+			}
+
+			if ((studioHdr.BoneFlags(bone) & boneMask) == 0)
+				continue;
+
+			if (ikrule.Bone >= 0 && (studioHdr.BoneFlags(ikrule.Bone) & boneMask) == 0)
+				continue;
+
+			if (Target.Count == 0)
+				ResetTargets();
+
+			ikrule.RuleWeight = weight;
+
+			if (ikrule.RuleWeight * ikrule.Weight > 0.999) {
+				if (ikrule.Type != Studio.IK_UNLATCH) {
+					ikChainRule[ikrule.Chain].Clear();
+					if (ikrule.Type == Studio.IK_RELEASE)
+						continue;
+				}
+			}
+
+			ikChainRule[ikrule.Chain].Add(ikrule);
+		}
+
+		ArrayPool<MStudioAnimDesc>.Shared.Return(panim, true);
+	}
+
+	public void AddAutoplayLocks(Span<Vector3> pos, Span<Quaternion> q) {
+		if (studioHdr!.GetNumIKAutoplayLocks() == 0)
+			return;
+
+		if (studioHdr.GetNumIKChains() == 0 && studioHdr.GetNumIKAutoplayLocks() != 0)
+			return;
+
+		Matrix3x4[] boneToWorld = MatrixPool.Alloc();
+		BoneBitList boneComputed = new();
+
+		int ikOffset = ikLock.Count;
+		for (int i = 0; i < studioHdr.GetNumIKAutoplayLocks(); i++)
+			ikLock.Add(default);
+
+		for (int i = 0; i < studioHdr.GetNumIKAutoplayLocks(); i++) {
+			MStudioIKLock lck = studioHdr.IKAutoplayLock(i);
+
+			if (!IsValidChain(lck.Chain)) {
+				Warning($"Model has IK errors.. {lck.Chain}/{studioHdr.GetNumIKChains()}\n");
+				MatrixPool.Free(boneToWorld);
+				return;
+			}
+
+			MStudioIKChain chain = studioHdr.IKChain(lck.Chain);
+			int bone = chain.Link(2).Bone;
+
+			if ((studioHdr.BoneFlags(bone) & boneMask) == 0)
+				continue;
+
+			BuildBoneChain(pos, q, bone, boneToWorld, ref boneComputed);
+
+			ref IKContextIKRule ikrule = ref CollectionsMarshal.AsSpan(ikLock)[i + ikOffset];
+
+			ikrule.Chain = lck.Chain;
+			ikrule.Slot = i;
+			ikrule.Type = Studio.IK_WORLD;
+
+			MathLib.MatrixAngles(boneToWorld[bone], out ikrule.Q, out ikrule.Pos);
+
+			if (chain.Link(0).KneeDir.LengthSquared() > 0.0) {
+				MathLib.VectorRotate(chain.Link(0).KneeDir, boneToWorld[chain.Link(0).Bone], out ikrule.KneeDir);
+				MathLib.MatrixPosition(boneToWorld[chain.Link(1).Bone], out ikrule.KneePos);
+			}
+			else
+				ikrule.KneeDir = default;
+		}
+		MatrixPool.Free(boneToWorld);
+	}
+
+	public void AddSequenceLocks(MStudioSeqDesc seqdesc, Span<Vector3> pos, Span<Quaternion> q) {
+		if (studioHdr!.GetNumIKChains() == 0)
+			return;
+
+		if (seqdesc.NumIKLocks == 0)
+			return;
+
+		Matrix3x4[] boneToWorld = MatrixPool.Alloc();
+		BoneBitList boneComputed = new();
+
+		int ikOffset = ikLock.Count;
+		for (int i = 0; i < seqdesc.NumIKLocks; i++)
+			ikLock.Add(default);
+
+		for (int i = 0; i < seqdesc.NumIKLocks; i++) {
+			MStudioIKLock lck = seqdesc.IKLock(i);
+			if (!IsValidChain(lck.Chain))
+				continue;
+
+			MStudioIKChain chain = studioHdr.IKChain(lck.Chain);
+			int bone = chain.Link(2).Bone;
+
+			if ((studioHdr.BoneFlags(bone) & boneMask) == 0)
+				continue;
+
+			BuildBoneChain(pos, q, bone, boneToWorld, ref boneComputed);
+
+			ref IKContextIKRule ikrule = ref CollectionsMarshal.AsSpan(ikLock)[i + ikOffset];
+			ikrule.Chain = i;
+			ikrule.Slot = i;
+			ikrule.Type = Studio.IK_WORLD;
+
+			MathLib.MatrixAngles(boneToWorld[bone], out ikrule.Q, out ikrule.Pos);
+
+			if (chain.Link(0).KneeDir.LengthSquared() > 0.0)
+				MathLib.VectorRotate(chain.Link(0).KneeDir, boneToWorld[chain.Link(0).Bone], out ikrule.KneeDir);
+			else
+				ikrule.KneeDir = default;
+		}
+		MatrixPool.Free(boneToWorld);
+	}
+
+	bool IsValidChain(int chain) {
+		if (chain < 0 || chain >= studioHdr!.GetNumIKChains())
+			return false;
+
+		MStudioIKChain ikChain = studioHdr.IKChain(chain);
+		if (ikChain.NumLinks < 3)
+			return false;
+
+		for (int i = 0; i < 3; i++) {
+			int bone = ikChain.Link(i).Bone;
+			if (bone < 0 || bone >= studioHdr.NumBones())
+				return false;
+		}
+
+		return true;
+	}
+
+	void BuildBoneChain(ReadOnlySpan<Vector3> pos, ReadOnlySpan<Quaternion> q, int bone, Span<Matrix3x4> boneToWorld, ref BoneBitList boneComputed) {
+		Assert((studioHdr!.BoneFlags(bone) & boneMask) != 0);
+		BoneSetup.BuildBoneChain(studioHdr, rootxform, pos, q, bone, boneToWorld, ref boneComputed);
+	}
+
+	public void ClearTargets() {
+		for (int i = 0; i < Target.Count; i++)
+			Target[i].Latched.FrameCounter = -9999;
+	}
+
+	public void UpdateTargets(Span<Vector3> pos, Span<Quaternion> q, Span<Matrix3x4> boneToWorld, ref BoneBitList boneComputed) {
+		int i, j;
+
+		for (i = 0; i < Target.Count; i++) {
+			Target[i].Est.Weight = 0.0f;
+			Target[i].Est.Latched = 1.0f;
+			Target[i].Est.Release = 1.0f;
+			Target[i].Est.Height = 0.0f;
+			Target[i].Est.Floor = 0.0f;
+			Target[i].Est.Radius = 0.0f;
+			Target[i].Offset.Pos = default;
+			Target[i].Offset.Q = default;
+		}
+
+		AutoIKRelease();
+
+		for (j = 0; j < ikChainRule.Count; j++) {
+			for (i = 0; i < ikChainRule[j].Count; i++) {
+				ref IKContextIKRule rule = ref CollectionsMarshal.AsSpan(ikChainRule[j])[i];
+
+				if (rule.Slot < 0 || rule.Slot >= Target.Count)
+					continue;
+
+				switch (rule.Type) {
+					case Studio.IK_ATTACHMENT:
+					case Studio.IK_GROUND: {
+							IKTarget target = Target[rule.Slot];
+							target.Chain = rule.Chain;
+							target.Type = rule.Type;
+
+							if (rule.Type == Studio.IK_ATTACHMENT)
+								target.Offset.AttachmentName = rule.Label;
+							else
+								target.Offset.AttachmentName = null;
+
+							if (rule.RuleWeight == 1.0f || target.Est.Weight == 0.0f) {
+								target.Offset.Q = rule.Q;
+								target.Offset.Pos = rule.Pos;
+								target.Est.Height = rule.Height;
+								target.Est.Floor = rule.Floor;
+								target.Est.Radius = rule.Radius;
+								target.Est.Latched = rule.Latched * rule.RuleWeight;
+								target.Est.Release = rule.Release;
+								target.Est.Weight = rule.Weight * rule.RuleWeight;
+							}
+							else {
+								MathLib.QuaternionSlerp(target.Offset.Q, rule.Q, rule.RuleWeight, out Quaternion offsetQ);
+								target.Offset.Q = offsetQ;
+								target.Offset.Pos = target.Offset.Pos + (rule.Pos - target.Offset.Pos) * rule.RuleWeight;
+								target.Est.Height = MathLib.Lerp(rule.RuleWeight, target.Est.Height, rule.Height);
+								target.Est.Floor = MathLib.Lerp(rule.RuleWeight, target.Est.Floor, rule.Floor);
+								target.Est.Radius = MathLib.Lerp(rule.RuleWeight, target.Est.Radius, rule.Radius);
+								target.Est.Latched = Math.Min(target.Est.Latched, rule.Latched);
+								target.Est.Release = MathLib.Lerp(rule.RuleWeight, target.Est.Release, rule.Release);
+								target.Est.Weight = MathLib.Lerp(rule.RuleWeight, target.Est.Weight, rule.Weight);
+							}
+
+							if (rule.Type == Studio.IK_GROUND) {
+								target.Latched.DeltaPos.Z = 0;
+								target.Est.Pos.Z = target.Est.Floor + rootxform[2][3];
+							}
+						}
+						break;
+					case Studio.IK_UNLATCH: {
+							IKTarget target = Target[rule.Slot];
+							if (rule.Latched > 0.0)
+								target.Est.Latched = 0.0f;
+							else
+								target.Est.Latched = Math.Min(target.Est.Latched, 1.0f - rule.Weight);
+						}
+						break;
+					case Studio.IK_RELEASE: {
+							IKTarget target = Target[rule.Slot];
+							if (rule.Latched > 0.0)
+								target.Est.Latched = 0.0f;
+							else
+								target.Est.Latched = Math.Min(target.Est.Latched, 1.0f - rule.Weight);
+
+							target.Est.Weight = target.Est.Weight * (1 - rule.Weight * rule.RuleWeight);
+						}
+						break;
+				}
+			}
+		}
+
+		for (i = 0; i < Target.Count; i++) {
+			IKTarget target = Target[i];
+			if (target.Est.Weight > 0.0) {
+				MStudioIKChain chain = studioHdr!.IKChain(target.Chain);
+				int bone = chain.Link(2).Bone;
+
+				BuildBoneChain(pos, q, bone, boneToWorld, ref boneComputed);
+
+				MathLib.QuaternionMatrix(target.Offset.Q, target.Offset.Pos, out Matrix3x4 local);
+				MathLib.MatrixInvert(local, out Matrix3x4 localInv);
+				MathLib.ConcatTransforms(boneToWorld[bone], localInv, out Matrix3x4 worldFootpad);
+
+				if (target.Est.Latched == 1.0)
+					target.Latched.NeedsLatch = true;
+				else
+					target.Latched.NeedsLatch = false;
+
+				if (frameCounter < 0 || target.Latched.FrameCounter < frameCounter - 1 || target.Latched.FrameCounter > frameCounter) {
+					target.Latched.HasLatch = false;
+					target.Latched.Influence = 0.0f;
+				}
+				target.Latched.FrameCounter = frameCounter;
+
+				MathLib.MatrixAngles(worldFootpad, out target.Ideal.Q, out target.Ideal.Pos);
+				target.Est.Q = target.Ideal.Q;
+				target.Est.Pos = target.Ideal.Pos;
+
+				float latched = target.Est.Latched;
+
+				if (target.Latched.HasLatch) {
+					if (target.Est.Latched == 1.0) {
+						target.Latched.DeltaPos = target.Latched.Pos - target.Est.Pos;
+						MathLib.QuaternionSM(-1, target.Est.Q, target.Latched.Q, ref target.Latched.DeltaQ);
+						target.Est.Q = target.Latched.Q;
+						target.Est.Pos = target.Latched.Pos;
+					}
+					else if (target.Est.Latched > 0.0) {
+						if (latched > 0 && latched < target.Latched.Influence) {
+							float dt = target.Latched.Influence - latched;
+							if (target.Latched.Influence > 0.0)
+								dt = dt / target.Latched.Influence;
+
+							target.Latched.DeltaPos = target.Latched.DeltaPos * (1 - dt);
+							MathLib.QuaternionScale(target.Latched.DeltaQ, 1 - dt, out Quaternion deltaQ);
+							target.Latched.DeltaQ = deltaQ;
+						}
+
+						target.Est.Pos = target.Est.Pos + target.Latched.DeltaPos;
+						MathLib.QuaternionMA(target.Est.Q, 1, target.Latched.DeltaQ, ref target.Est.Q);
+						target.Latched.Q = target.Est.Q;
+						target.Latched.Pos = target.Est.Pos;
+					}
+					else {
+						target.Latched.HasLatch = false;
+						target.Latched.Q = target.Est.Q;
+						target.Latched.Pos = target.Est.Pos;
+						target.Latched.DeltaPos = default;
+						target.Latched.DeltaQ = default;
+					}
+					target.Latched.Influence = latched;
+				}
+
+				MathLib.MatrixPosition(boneToWorld[chain.Link(0).Bone], out Vector3 p1);
+				MathLib.MatrixPosition(boneToWorld[chain.Link(1).Bone], out Vector3 p2);
+				MathLib.MatrixPosition(boneToWorld[chain.Link(2).Bone], out Vector3 p3);
+
+				float d1 = (p2 - p1).Length();
+				float d2 = (p3 - p2).Length();
+
+				if (target.Latched.HasLatch) {
+					float d4 = (p3 + target.Latched.DeltaPos - p1).Length();
+
+					if ((d4 < MathF.Abs(d1 - d2) || d4 * 0.95 > d1 + d2) && target.Est.Latched > 0.2)
+						target.Error.Time = time;
+
+					if (target.Est.Latched > 0.2) {
+						float d = MathF.Abs(target.Latched.DeltaQ.W) * 2.0f - 1.0f;
+
+						if (d < 0.707)
+							target.Error.Time = time;
+					}
+				}
+
+				Vector3 dir = target.Est.Pos - p1;
+				target.Trace.HipToFoot = MathLib.VectorNormalize(ref dir);
+				target.Trace.HipToKnee = d1;
+				target.Trace.KneeToFoot = d2;
+				target.Trace.Hip = p1;
+				target.Trace.Knee = p2;
+				target.Trace.Closest = p1 + dir * (float)(MathF.Abs(d1 - d2) * 1.01);
+				target.Trace.Farthest = p1 + dir * (d1 + d2) * 0.99f;
+				target.Trace.Lowest = p1 + new Vector3(0, 0, -1) * (d1 + d2) * 0.99f;
+			}
+		}
+	}
+
+	public void AutoIKRelease() {
+		int i;
+
+		for (i = 0; i < Target.Count; i++) {
+			IKTarget target = Target[i];
+
+			TimeUnit_t dt = time - target.Error.Time;
+			if (target.Error.InError || dt < 0.5) {
+				if (!target.Error.InError) {
+					target.Error.Ramp = 0.0f;
+					target.Error.ErrorTime = target.Error.Time;
+					target.Error.InError = true;
+				}
+
+				TimeUnit_t ft = time - target.Error.ErrorTime;
+				if (dt < 0.25)
+					target.Error.Ramp = (float)Math.Min(target.Error.Ramp + ft * 4.0, 1.0);
+				else
+					target.Error.Ramp = (float)Math.Max(target.Error.Ramp - ft * 4.0, 0.0);
+
+				if (target.Error.Ramp > 0.0) {
+					IKContextIKRule ikrule = default;
+
+					ikrule.Chain = target.Chain;
+					ikrule.Bone = 0;
+					ikrule.Type = Studio.IK_RELEASE;
+					ikrule.Slot = i;
+					ikrule.Weight = MathLib.SimpleSpline(target.Error.Ramp);
+					ikrule.RuleWeight = 1.0f;
+					ikrule.Latched = dt < 0.25 ? 0.0f : ikrule.Weight;
+
+					if (IsValidChain(target.Chain)) {
+						MStudioIKChain chain = studioHdr.IKChain(target.Chain);
+						int bone = chain.Link(2).Bone;
+						if (bone >= 0 && bone < studioHdr.NumBones()) {
+							if ((studioHdr.BoneFlags(bone) & boneMask) == 0) {
+								target.Error.InError = false;
+								continue;
+							}
+
+							ikChainRule[ikrule.Chain].Add(ikrule);
+						}
+						else
+							DevWarning(1, $"AutoIKRelease ({studioHdr.GetRenderHdr().GetName()}) got an out of range bone {bone} ({studioHdr.NumBones()})\n");
+					}
+					else
+						DevWarning(1, $"AutoIKRelease ({studioHdr!.GetRenderHdr().GetName()}) got an out of range chain {target.Chain} ({studioHdr.GetNumIKChains()})\n");
+				}
+				else
+					target.Error.InError = false;
+
+				target.Error.ErrorTime = time;
+			}
+		}
+	}
+
+	public void SolveDependencies(Span<Vector3> pos, Span<Quaternion> q, Span<Matrix3x4> boneToWorld, ref BoneBitList boneComputed) {
+		Matrix3x4 worldTarget;
+		int i, j;
+
+		Span<IKChainResult> chainResult = stackalloc IKChainResult[32];
+		chainResult.Clear();
+
+		for (i = 0; i < studioHdr!.GetNumIKChains(); i++) {
+			if (i >= 32)
+				continue;
+
+			ref IKChainResult chainRes = ref chainResult[i];
+
+			chainRes.Target = -1;
+			chainRes.Weight = 0.0f;
+
+			if (!IsValidChain(i))
+				continue;
+
+			MStudioIKChain chain = studioHdr.IKChain(i);
+			int bone = chain.Link(2).Bone;
+
+			if ((studioHdr.BoneFlags(bone) & boneMask) == 0)
+				continue;
+
+			BuildBoneChain(pos, q, bone, boneToWorld, ref boneComputed);
+
+			MathLib.MatrixAngles(boneToWorld[bone], out chainRes.Q, out chainRes.Pos);
+		}
+
+		for (j = 0; j < ikChainRule.Count; j++) {
+			for (i = 0; i < ikChainRule[j].Count; i++) {
+				ref IKContextIKRule rule = ref CollectionsMarshal.AsSpan(ikChainRule[j])[i];
+				if ((uint)rule.Chain >= 32)
+					continue;
+
+				ref IKChainResult chainRes = ref chainResult[rule.Chain];
+				chainRes.Target = -1;
+
+				switch (rule.Type) {
+					case Studio.IK_SELF: {
+							MathLib.QuaternionMatrix(rule.Q, rule.Pos, out Matrix3x4 local);
+							if (rule.Bone != -1) {
+								BuildBoneChain(pos, q, rule.Bone, boneToWorld, ref boneComputed);
+								MathLib.ConcatTransforms(boneToWorld[rule.Bone], local, out worldTarget);
+							}
+							else
+								MathLib.ConcatTransforms(rootxform, local, out worldTarget);
+
+							float weight = rule.Weight * rule.RuleWeight;
+							chainRes.Weight = chainRes.Weight * (1 - weight) + weight;
+
+							MathLib.MatrixAngles(worldTarget, out Quaternion q2, out Vector3 p2);
+
+							chainRes.Pos = chainRes.Pos * (float)(1.0 - weight) + p2 * weight;
+							MathLib.QuaternionSlerp(chainRes.Q, q2, weight, out Quaternion blendedQ);
+							chainRes.Q = blendedQ;
+						}
+						break;
+					case Studio.IK_WORLD:
+						Assert(false);
+						break;
+
+					case Studio.IK_ATTACHMENT:
+						break;
+
+					case Studio.IK_GROUND:
+						break;
+
+					case Studio.IK_RELEASE: {
+							float weight = rule.Weight * rule.RuleWeight;
+							MStudioIKChain chain = studioHdr.IKChain(rule.Chain);
+							int bone = chain.Link(2).Bone;
+
+							BuildBoneChain(pos, q, bone, boneToWorld, ref boneComputed);
+							MathLib.MatrixAngles(boneToWorld[bone], out Quaternion q2, out Vector3 p2);
+
+							chainRes.Pos = chainRes.Pos * (float)(1.0 - weight) + p2 * weight;
+							MathLib.QuaternionSlerp(chainRes.Q, q2, weight, out Quaternion blendedQ);
+							chainRes.Q = blendedQ;
+						}
+						break;
+					case Studio.IK_UNLATCH:
+						break;
+				}
+			}
+		}
+
+		for (i = 0; i < Target.Count; i++) {
+			IKTarget target = Target[i];
+
+			if ((uint)target.Chain >= 32)
+				continue;
+
+			if (Target[i].Est.Weight > 0.0) {
+				ref IKChainResult chainRes = ref chainResult[target.Chain];
+
+				MathLib.QuaternionAngles(target.Offset.Q, out RadianEuler offsetAngles);
+				MathLib.AngleMatrix(offsetAngles, target.Offset.Pos, out Matrix3x4 local);
+
+				MathLib.QuaternionAngles(target.Est.Q, out RadianEuler estAngles);
+				MathLib.AngleMatrix(estAngles, target.Est.Pos, out Matrix3x4 worldFootpad);
+
+				MathLib.ConcatTransforms(worldFootpad, local, out worldTarget);
+
+				MathLib.MatrixAngles(worldTarget, out Quaternion q2, out Vector3 p2);
+
+				chainRes.Weight = target.Est.Weight;
+				chainRes.Pos = chainRes.Pos * (float)(1.0 - chainRes.Weight) + p2 * chainRes.Weight;
+				MathLib.QuaternionSlerp(chainRes.Q, q2, chainRes.Weight, out Quaternion blendedQ);
+				chainRes.Q = blendedQ;
+			}
+
+			if (target.Latched.NeedsLatch) {
+				target.Latched.HasLatch = true;
+				target.Latched.Q = target.Est.Q;
+				target.Latched.Pos = target.Est.Pos;
+			}
+		}
+
+		for (i = 0; i < studioHdr.GetNumIKChains(); i++) {
+			if (i >= 32)
+				continue;
+
+			ref IKChainResult chainRes = ref chainResult[i];
+			MStudioIKChain chain = studioHdr.IKChain(i);
+
+			if (chainRes.Weight > 0.0) {
+				if (BoneSetup.Studio_SolveIK(chain, chainRes.Pos, boneToWorld)) {
+					MathLib.MatrixGetColumn(boneToWorld[chain.Link(2).Bone], 3, out Vector3 p3);
+					MathLib.QuaternionMatrix(chainRes.Q, p3, out boneToWorld[chain.Link(2).Bone]);
+
+					BoneSetup.SolveBone(studioHdr, chain.Link(2).Bone, boneToWorld, pos, q);
+					BoneSetup.SolveBone(studioHdr, chain.Link(1).Bone, boneToWorld, pos, q);
+					BoneSetup.SolveBone(studioHdr, chain.Link(0).Bone, boneToWorld, pos, q);
+				}
+				else {
+					if (chainRes.Target != -1) {
+						IKTarget target = Target[chainRes.Target];
+						target.Latched.DeltaPos = target.Latched.DeltaPos * 0.8f;
+						MathLib.QuaternionScale(target.Latched.DeltaQ, 0.8f, out Quaternion deltaQ);
+						target.Latched.DeltaQ = deltaQ;
+					}
+				}
+			}
+		}
+	}
+
+	public void SolveAutoplayLocks(Span<Vector3> pos, Span<Quaternion> q) {
+		Matrix3x4[] boneToWorld = MatrixPool.Alloc();
+		BoneBitList boneComputed = new();
+		int i;
+
+		for (i = 0; i < ikLock.Count; i++) {
+			MStudioIKLock lck = studioHdr!.IKAutoplayLock(i);
+			SolveLock(lck.Chain, lck.PosWeight, lck.LocalQWeight, i, pos, q, boneToWorld, ref boneComputed);
+		}
+		MatrixPool.Free(boneToWorld);
+	}
+
+	public void SolveSequenceLocks(MStudioSeqDesc seqdesc, Span<Vector3> pos, Span<Quaternion> q) {
+		Matrix3x4[] boneToWorld = MatrixPool.Alloc();
+		BoneBitList boneComputed = new();
+		int i;
+
+		for (i = 0; i < ikLock.Count; i++) {
+			MStudioIKLock lck = seqdesc.IKLock(i);
+			SolveLock(lck.Chain, lck.PosWeight, lck.LocalQWeight, i, pos, q, boneToWorld, ref boneComputed);
+		}
+		MatrixPool.Free(boneToWorld);
+	}
+
+	public void AddAllLocks(Span<Vector3> pos, Span<Quaternion> q) {
+		if (studioHdr!.GetNumIKChains() == 0)
+			return;
+
+		Matrix3x4[] boneToWorld = MatrixPool.Alloc();
+		BoneBitList boneComputed = new();
+
+		int ikOffset = ikLock.Count;
+		for (int i = 0; i < studioHdr.GetNumIKChains(); i++)
+			ikLock.Add(default);
+
+		for (int i = 0; i < studioHdr.GetNumIKChains(); i++) {
+			if (!IsValidChain(i))
+				continue;
+
+			MStudioIKChain chain = studioHdr.IKChain(i);
+			int bone = chain.Link(2).Bone;
+
+			if ((studioHdr.BoneFlags(bone) & boneMask) == 0)
+				continue;
+
+			BuildBoneChain(pos, q, bone, boneToWorld, ref boneComputed);
+
+			ref IKContextIKRule ikrule = ref CollectionsMarshal.AsSpan(ikLock)[i + ikOffset];
+
+			ikrule.Chain = i;
+			ikrule.Slot = i;
+			ikrule.Type = Studio.IK_WORLD;
+
+			MathLib.MatrixAngles(boneToWorld[bone], out ikrule.Q, out ikrule.Pos);
+
+			if (chain.Link(0).KneeDir.LengthSquared() > 0.0) {
+				MathLib.VectorRotate(chain.Link(0).KneeDir, boneToWorld[chain.Link(0).Bone], out ikrule.KneeDir);
+				MathLib.MatrixPosition(boneToWorld[chain.Link(1).Bone], out ikrule.KneePos);
+			}
+			else
+				ikrule.KneeDir = default;
+		}
+		MatrixPool.Free(boneToWorld);
+	}
+
+	public void SolveAllLocks(Span<Vector3> pos, Span<Quaternion> q) {
+		Matrix3x4[] boneToWorld = MatrixPool.Alloc();
+		BoneBitList boneComputed = new();
+		int i;
+
+		for (i = 0; i < ikLock.Count; i++)
+			SolveLock(i, 1.0f, 0.0f, i, pos, q, boneToWorld, ref boneComputed);
+
+		MatrixPool.Free(boneToWorld);
+	}
+
+	public void SolveLock(int lockChain, float lockPosWeight, float lockLocalQWeight, int i, Span<Vector3> pos, Span<Quaternion> q, Span<Matrix3x4> boneToWorld, ref BoneBitList boneComputed) {
+		if (!IsValidChain(lockChain))
+			return;
+
+		MStudioIKChain chain = studioHdr!.IKChain(lockChain);
+		int bone = chain.Link(2).Bone;
+
+		if ((studioHdr.BoneFlags(bone) & boneMask) == 0)
+			return;
+
+		BuildBoneChain(pos, q, bone, boneToWorld, ref boneComputed);
+
+		Vector3 p1, p3;
+		Quaternion q2;
+
+		MathLib.MatrixPosition(boneToWorld[bone], out p1);
+
+		ref IKContextIKRule ikLockRule = ref CollectionsMarshal.AsSpan(ikLock)[i];
+
+		p3 = p1 * (float)(1.0 - lockPosWeight) + ikLockRule.Pos * lockPosWeight;
+
+		if (ikLockRule.KneeDir.LengthSquared() > 0)
+			BoneSetup.Studio_SolveIK(chain.Link(0).Bone, chain.Link(1).Bone, chain.Link(2).Bone, p3, ikLockRule.KneePos, ikLockRule.KneeDir, boneToWorld);
+		else
+			BoneSetup.Studio_SolveIK(chain, p3, boneToWorld);
+
+		MathLib.MatrixPosition(boneToWorld[bone], out p3);
+		MathLib.QuaternionMatrix(ikLockRule.Q, p3, out boneToWorld[bone]);
+
+		q2 = q[bone];
+		BoneSetup.SolveBone(studioHdr, chain.Link(2).Bone, boneToWorld, pos, q);
+		MathLib.QuaternionSlerp(q[bone], q2, lockLocalQWeight, out Quaternion slerped);
+		q[bone] = slerped;
+
+		BoneSetup.SolveBone(studioHdr, chain.Link(1).Bone, boneToWorld, pos, q);
+		BoneSetup.SolveBone(studioHdr, chain.Link(0).Bone, boneToWorld, pos, q);
 	}
 }

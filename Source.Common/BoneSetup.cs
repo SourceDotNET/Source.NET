@@ -375,7 +375,7 @@ public ref partial struct BoneSetup
 		return bResult;
 	}
 
-	private static void Studio_SeqAnims(StudioHdr studioHdr, MStudioSeqDesc seqdesc, int sequence, ReadOnlySpan<float> poseParameter, Span<MStudioAnimDesc> panim, Span<float> weight) {
+	internal static void Studio_SeqAnims(StudioHdr studioHdr, MStudioSeqDesc seqdesc, int sequence, ReadOnlySpan<float> poseParameter, Span<MStudioAnimDesc> panim, Span<float> weight) {
 		if (studioHdr == null || sequence >= studioHdr.GetNumSeq()) {
 			weight[0] = weight[1] = weight[2] = weight[3] = 0.0f;
 			return;
@@ -402,7 +402,7 @@ public ref partial struct BoneSetup
 		Assert(weight[0] >= 0.0f && weight[1] >= 0.0f && weight[2] >= 0.0f && weight[3] >= 0.0f);
 	}
 
-	private static float Studio_CPS(StudioHdr studioHdr, MStudioSeqDesc seqdesc, int sequence, ReadOnlySpan<float> poseParameter) {
+	internal static float Studio_CPS(StudioHdr studioHdr, MStudioSeqDesc seqdesc, int sequence, ReadOnlySpan<float> poseParameter) {
 		MStudioAnimDesc[] panim = ArrayPool<MStudioAnimDesc>.Shared.Rent(4);
 		Span<float> weight = stackalloc float[4];
 
@@ -1344,7 +1344,7 @@ public ref partial struct BoneSetup
 		MatrixPool.Free(targetBoneToWorld);
 	}
 
-	private static void BuildBoneChain(StudioHdr studioHdr, in Matrix3x4 rootxform, ReadOnlySpan<Vector3> pos, ReadOnlySpan<Quaternion> q, int bone, Matrix3x4[] boneToWorld, ref BoneBitList boneComputed) {
+	internal static void BuildBoneChain(StudioHdr studioHdr, in Matrix3x4 rootxform, ReadOnlySpan<Vector3> pos, ReadOnlySpan<Quaternion> q, int bone, Span<Matrix3x4> boneToWorld, ref BoneBitList boneComputed) {
 		if (boneComputed.IsBoneMarked(bone))
 			return;
 
