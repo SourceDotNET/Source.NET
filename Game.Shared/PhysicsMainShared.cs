@@ -828,7 +828,7 @@ namespace Game.Shared
 			//PhysicsPushList
 			null!,
 			//VPhysicsUpdateAI
-			null!,
+			new EntityDataInstantiator<VPhysicsUpdateAI>(),
 			//VPhysicsWatcher
 			new EntityDataInstantiator<WatcherList>(),
 		];

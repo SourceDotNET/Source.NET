@@ -7,6 +7,7 @@ using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Formats.BSP;
 using Source.Common.Mathematics;
+using Source.Common.Physics;
 using Source.Engine;
 
 using Steamworks;
@@ -407,7 +408,15 @@ public partial class BaseEntity
 
 		bool updateFromVPhysics = Physics.npc_vphysics.GetBool();
 		if (HasDataObjectType(DataObjectType.VPhysicsUpdateAI)) {
-			// todo
+			VPhysicsUpdateAI update = GetDataObject<VPhysicsUpdateAI>(DataObjectType.VPhysicsUpdateAI);
+			if (update.StopUpdateTime > gpGlobals.CurTime)
+				updateFromVPhysics = true;
+			else {
+				IPhysicsShadowController controller = VPhysicsGetObject()!.GetShadowController();
+				controller.GetMaxSpeed(out _, out float maxAngular);
+				controller.MaxSpeed(update.SavedShadowControllerMaxSpeed, maxAngular);
+				DestroyDataObject(DataObjectType.VPhysicsUpdateAI);
+			}
 		}
 
 		if (updateFromVPhysics && VPhysicsGetObject() != null && GetParent() == null) {
