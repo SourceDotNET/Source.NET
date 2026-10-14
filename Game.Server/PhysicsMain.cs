@@ -398,8 +398,8 @@ public partial class BaseEntity
 			PhysicsStepRunTimestep(gpGlobals.FrameTime);
 			// PhysicsCheckWaterTransition();
 			SetLastThink(-1, gpGlobals.CurTime);
-			// UpdatePhysicsShadowToCurrentPosition(gpGlobals.FrameTime);
-			// PhysicsRelinkChildren(gpGlobals.FrameTime);
+			UpdatePhysicsShadowToCurrentPosition(gpGlobals.FrameTime);
+			PhysicsRelinkChildren(gpGlobals.FrameTime);
 			return;
 		}
 
@@ -430,7 +430,7 @@ public partial class BaseEntity
 		if (thinkTime < gpGlobals.CurTime)
 			thinkTime = gpGlobals.CurTime;
 
-		float dt = (float)(thinkTime - 0);//GetLastThink(); todo
+		TimeUnit_t dt = thinkTime - GetLastThink(null);
 
 		StepSimulationThink(dt);
 
@@ -438,10 +438,10 @@ public partial class BaseEntity
 
 		if (VPhysicsGetObject() != null) {
 			if (!MathLib.VectorCompare(oldOrigin, GetAbsOrigin()))
-				VPhysicsGetObject()!.UpdateShadow(GetAbsOrigin(), vec3_angle, (GetFlags() & EntityFlags.Fly) != 0, dt);
+				VPhysicsGetObject()!.UpdateShadow(GetAbsOrigin(), vec3_angle, (GetFlags() & EntityFlags.Fly) != 0, (float)dt);
 		}
 
-		// PhysicsRelinkChildren(dt);
+		PhysicsRelinkChildren(dt);
 	}
 
 	BaseEntity? PhysicsPushMove(TimeUnit_t movetime) {
