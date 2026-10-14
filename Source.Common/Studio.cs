@@ -99,6 +99,13 @@ public static class Studio
 
 	public const int STUDIO_VERSION = 48;
 
+	public const int IK_SELF = 1;
+	public const int IK_WORLD = 2;
+	public const int IK_GROUND = 3;
+	public const int IK_RELEASE = 4;
+	public const int IK_ATTACHMENT = 5;
+	public const int IK_UNLATCH = 6;
+
 	public const int MAXSTUDIOTRIANGLES = 65536;
 	public const int MAXSTUDIOVERTS = 65536;
 	public const int MAXSTUDIOFLEXVERTS = 10000;
@@ -736,6 +743,49 @@ public class MStudioEyeball
 /// <summary>
 /// analog of mstudiomodel_t
 /// </summary>
+public class MStudioIKLink
+{
+	public const int SIZEOF = 28;
+	public static MStudioIKLink FACTORY(object caller, Memory<byte> data) => new(data);
+
+	public int Bone;
+	public Vector3 KneeDir;
+
+	public MStudioIKLink(Memory<byte> data) {
+		SpanBinaryReader br = new(data.Span);
+		br.Read(out Bone);
+		br.Read(out KneeDir);
+	}
+}
+
+public class MStudioIKChain
+{
+	public const int SIZEOF = 16;
+	public static MStudioIKChain FACTORY(object caller, Memory<byte> data) => new(data);
+
+	public Memory<byte> Data;
+
+	public int NameIndex;
+	string? nameCache;
+	public string Name() => Studio.ProduceASCIIString(ref nameCache, Data.Span[NameIndex..]);
+
+	public int LinkType;
+	public int NumLinks;
+	public int LinkIndex;
+	MStudioIKLink[]? linkCache;
+	public MStudioIKLink Link(int i)
+		=> Studio.ProduceArrayIdx(this, ref linkCache, NumLinks, LinkIndex, i, MStudioIKLink.SIZEOF, Data, MStudioIKLink.FACTORY);
+
+	public MStudioIKChain(Memory<byte> data) {
+		Data = data;
+		SpanBinaryReader br = new(data.Span);
+		br.Read(out NameIndex);
+		br.Read(out LinkType);
+		br.Read(out NumLinks);
+		br.Read(out LinkIndex);
+	}
+}
+
 public class MStudioModel
 {
 	public const int SIZEOF = 148;
@@ -1128,6 +1178,132 @@ public class MStudioAnim
 	}
 }
 
+public struct MStudioIKError
+{
+	public const int SIZEOF = 28;
+
+	public Vector3 Pos;
+	public Quaternion Q;
+}
+
+public class MStudioCompressedIKError
+{
+	public const int SIZEOF = 36;
+
+	public Memory<byte> Data;
+	public InlineArray6<float> Scale;
+	public InlineArray6<short> Offset;
+
+	public MStudioCompressedIKError(Memory<byte> data) {
+		Data = data;
+		SpanBinaryReader br = new(data.Span);
+		br.ReadInto<float>(Scale);
+		br.ReadInto<short>(Offset);
+	}
+
+	public Span<MStudioAnimValue> Animvalue(int i) {
+		if (Offset[i] > 0)
+			return Data.Span[Offset[i]..].Cast<byte, MStudioAnimValue>();
+		return null;
+	}
+}
+
+public class MStudioIKRule
+{
+	public const int SIZEOF = 152;
+	public static MStudioIKRule FACTORY(object caller, Memory<byte> data) => new(data);
+
+	public Memory<byte> Data;
+
+	public int Index;
+
+	public int Type;
+	public int Chain;
+
+	public int Bone;
+
+	public int Slot;
+	public float Height;
+	public float Radius;
+	public float Floor;
+	public Vector3 Pos;
+	public Quaternion Q;
+
+	public int CompressedIKErrorIndex;
+	MStudioCompressedIKError? compressedErrorCache;
+	public MStudioCompressedIKError CompressedError() => compressedErrorCache ??= new(Data[CompressedIKErrorIndex..]);
+
+	public int StartFrame;
+	public int IKErrorIndex;
+	public ReadOnlySpan<MStudioIKError> Error(int i) {
+		if (IKErrorIndex != 0)
+			return Data.Span[(IKErrorIndex + (i - StartFrame) * MStudioIKError.SIZEOF)..].Cast<byte, MStudioIKError>();
+		return null;
+	}
+
+	public float Start;
+	public float Peak;
+	public float Tail;
+	public float End;
+
+	public float Contact;
+	public float Drop;
+	public float Top;
+
+	public int AttachmentNameIndex;
+	string? attachmentCache;
+	public string Attachment() => Studio.ProduceASCIIString(ref attachmentCache, Data.Span[AttachmentNameIndex..]);
+
+	public MStudioIKRule(Memory<byte> data) {
+		Data = data;
+		SpanBinaryReader br = new(data.Span);
+
+		br.Read(out Index);
+		br.Read(out Type);
+		br.Read(out Chain);
+		br.Read(out Bone);
+		br.Read(out Slot);
+		br.Read(out Height);
+		br.Read(out Radius);
+		br.Read(out Floor);
+		br.Read(out Pos);
+		br.Read(out Q);
+		br.Read(out CompressedIKErrorIndex);
+		br.Advance<int>(1);
+		br.Read(out StartFrame);
+		br.Read(out IKErrorIndex);
+		br.Read(out Start);
+		br.Read(out Peak);
+		br.Read(out Tail);
+		br.Read(out End);
+		br.Advance<float>(1);
+		br.Read(out Contact);
+		br.Read(out Drop);
+		br.Read(out Top);
+		br.Advance<int>(3);
+		br.Read(out AttachmentNameIndex);
+	}
+}
+
+public class MStudioIKLock
+{
+	public const int SIZEOF = 32;
+	public static MStudioIKLock FACTORY(object caller, Memory<byte> data) => new(data);
+
+	public int Chain;
+	public float PosWeight;
+	public float LocalQWeight;
+	public int Flags;
+
+	public MStudioIKLock(Memory<byte> data) {
+		SpanBinaryReader br = new(data.Span);
+		br.Read(out Chain);
+		br.Read(out PosWeight);
+		br.Read(out LocalQWeight);
+		br.Read(out Flags);
+	}
+}
+
 public class MStudioLocalHierarchy
 {
 	public const int SIZEOF = 48; // Static offset from MSVC stats (mstudiobone_t size 48, alignment 4)
@@ -1324,6 +1500,27 @@ public class MStudioAnimDesc
 	public int NumIKRules;
 	public int IKRuleIndex;
 	public int AnimBlockIKRuleIndex;
+	MStudioIKRule?[]? ikRuleCache;
+	public MStudioIKRule? IKRule(int i) {
+		ikRuleCache ??= new MStudioIKRule?[NumIKRules];
+		if (ikRuleCache[i] != null)
+			return ikRuleCache[i];
+
+		if (IKRuleIndex != 0)
+			return ikRuleCache[i] = MStudioIKRule.FACTORY(this, Data[(IKRuleIndex + i * MStudioIKRule.SIZEOF)..]);
+		else if (AnimBlockIKRuleIndex != 0) {
+			if (nAnimBlock == 0)
+				return ikRuleCache[i] = MStudioIKRule.FACTORY(this, Data[(AnimBlockIKRuleIndex + i * MStudioIKRule.SIZEOF)..]);
+			else {
+				Memory<byte> animBlocks = Studiohdr().GetAnimBlock(nAnimBlock);
+
+				if (!animBlocks.IsEmpty)
+					return ikRuleCache[i] = MStudioIKRule.FACTORY(this, animBlocks[(AnimBlockIKRuleIndex + i * MStudioIKRule.SIZEOF)..]);
+			}
+		}
+
+		return null;
+	}
 
 	public int NumLocalHierarchy;
 	public int LocalHierarchyIndex;
@@ -1750,6 +1947,9 @@ public class MStudioSeqDesc
 
 	public int NumIKLocks;
 	public int IKLockIndex;
+	MStudioIKLock[]? ikLockCache;
+	public MStudioIKLock IKLock(int i)
+		=> Studio.ProduceArrayIdx(this, ref ikLockCache, NumIKLocks, IKLockIndex, i, MStudioIKLock.SIZEOF, Data, MStudioIKLock.FACTORY);
 
 	public int KeyValueIndex;
 	public int KeyValueSize;
@@ -2018,6 +2218,22 @@ public class StudioHdr
 	public int NumFlexRules() => studioHdr!.NumFlexRules;
 	public MStudioFlexRule FlexRule(int i) => studioHdr!.FlexRule(i);
 	public int GetNumIKChains() => studioHdr!.NumIKChains;
+	public MStudioIKChain IKChain(int i) => studioHdr!.IKChain(i);
+
+	public int GetNumIKAutoplayLocks() {
+		if (vModel == null)
+			return studioHdr!.NumLocalIKAutoplayLocks;
+
+		return vModel.IKLock.Count;
+	}
+
+	public MStudioIKLock IKAutoplayLock(int i) {
+		if (vModel == null)
+			return this.studioHdr!.LocalIKAutoplayLock(i);
+
+		StudioHeader studioHdr = GroupStudioHdr(vModel.IKLock[i].Group)!;
+		return studioHdr.LocalIKAutoplayLock(vModel.IKLock[i].Index);
+	}
 	public float MaxEyeDeflection() => studioHdr!.MaxEyeDeflection();
 
 	public void RunFlexRules(ReadOnlySpan<float> src, Span<float> dest) {
@@ -2871,6 +3087,9 @@ public class StudioHeader
 
 	public int NumIKChains;
 	public int IKChainIndex;
+	MStudioIKChain[]? ikChainCache;
+	public MStudioIKChain IKChain(int i)
+		=> Studio.ProduceArrayIdx(this, ref ikChainCache, NumIKChains, IKChainIndex, i, MStudioIKChain.SIZEOF, Data, MStudioIKChain.FACTORY);
 
 	public int NumMouths;
 	public int MouthIndex;
@@ -2892,6 +3111,9 @@ public class StudioHeader
 
 	public int NumLocalIKAutoplayLocks;
 	public int LocalIKAutoplayLockIndex;
+	MStudioIKLock[]? localIKAutoplayLockCache;
+	public MStudioIKLock LocalIKAutoplayLock(int i)
+		=> Studio.ProduceArrayIdx(this, ref localIKAutoplayLockCache, NumLocalIKAutoplayLocks, LocalIKAutoplayLockIndex, i, MStudioIKLock.SIZEOF, Data, MStudioIKLock.FACTORY);
 
 	public float Mass;
 	public int Contents;
