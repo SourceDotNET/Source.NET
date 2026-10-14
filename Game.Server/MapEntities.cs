@@ -161,7 +161,6 @@ public static class MapEntities
 			}
 		}
 
-#if false // TODO: point_template not implemented yet
 		// Now loop through all our point_template entities and tell them to make templates of everything they're pointing to
 		int templates = pointTemplates.Count;
 		for (int i = 0; i < templates; i++) {
@@ -201,7 +200,6 @@ public static class MapEntities
 
 			pointTemplate.FinishBuildingTemplates();
 		}
-#endif
 
 		SpawnHierarchicalList(numEntities, spawnList, activateEntities);
 	}
