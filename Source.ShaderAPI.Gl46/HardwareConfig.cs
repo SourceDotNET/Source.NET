@@ -322,7 +322,7 @@ public class HardwareConfig : IMaterialSystemHardwareConfig
 	}
 
 	public bool SupportsVertexShaders_2_0() {
-		throw new NotImplementedException();
+		return true;
 	}
 
 	public nint TextureMemorySize() {
