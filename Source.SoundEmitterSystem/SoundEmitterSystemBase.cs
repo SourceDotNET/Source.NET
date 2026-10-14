@@ -38,6 +38,10 @@ public struct SoundEntry : IEquatable<SoundEntry>
 	public bool Removed;
 	public bool IsOverride;
 
+	public SoundEntry() {
+		SoundParams = new();
+	}
+
 	public ReadOnlySpan<char> Name {
 		readonly get => name;
 		set {
@@ -615,19 +619,19 @@ public class SoundEmitterSystemBase : ISoundEmitterSystemBase
 	public bool InitSoundInternalParameters(ReadOnlySpan<char> soundname, KeyValues kv, ref SoundParametersInternal parms) {
 		KeyValues? key = kv.GetFirstSubKey();
 		while (key != null) {
-			if (0 == strcmp(key.Name, "channel")) {
+			if (0 == stricmp(key.Name, "channel")) {
 				parms.ChannelFromString(key.GetString());
 			}
-			else if (0 == strcmp(key.Name, "volume")) {
+			else if (0 == stricmp(key.Name, "volume")) {
 				parms.VolumeFromString(key.GetString());
 			}
-			else if (0 == strcmp(key.Name, "pitch")) {
+			else if (0 == stricmp(key.Name, "pitch")) {
 				parms.PitchFromString(key.GetString());
 			}
-			else if (0 == strcmp(key.Name, "wave")) {
+			else if (0 == stricmp(key.Name, "wave")) {
 				ExpandSoundNameMacros(ref parms, key.GetString());
 			}
-			else if (0 == strcmp(key.Name, "rndwave")) {
+			else if (0 == stricmp(key.Name, "rndwave")) {
 				KeyValues? waves = key.GetFirstSubKey();
 				while (waves != null) {
 					ExpandSoundNameMacros(ref parms, waves.GetString());
@@ -635,11 +639,11 @@ public class SoundEmitterSystemBase : ISoundEmitterSystemBase
 					waves = waves.GetNextKey();
 				}
 			}
-			else if (0 == strcmp(key.Name, "attenuation") || 0 == strcmp(key.Name, "CompatibilityAttenuation")) {
-				if (key.GetString().StartsWith("SNDLVL_"))
+			else if (0 == stricmp(key.Name, "attenuation") || 0 == stricmp(key.Name, "CompatibilityAttenuation")) {
+				if (key.GetString().StartsWith("SNDLVL_", StringComparison.OrdinalIgnoreCase))
 					DevMsg($"SoundEmitterSystemBase.InitSoundInternalParameters:  sound {soundname} has \"attenuation\" with {key.GetString()} value!\n");
 
-				if (key.GetString().StartsWith("ATTN_"))
+				if (key.GetString().StartsWith("ATTN_", StringComparison.OrdinalIgnoreCase))
 					parms.SetSoundLevel((float)ATTN_TO_SNDLVL(TranslateAttenuation(key.GetString())));
 				else {
 					Interval interval = Interval.Read(key.GetString());
@@ -653,7 +657,7 @@ public class SoundEmitterSystemBase : ISoundEmitterSystemBase
 
 				// Goldsrc compatibility mode.. feed the sndlevel value through the sound engine interface in such a way
 				// that it can reconstruct the original sndlevel value and flag the sound as using Goldsrc attenuation.
-				bool bCompatibilityAttenuation = 0 == strcmp(key.Name, "CompatibilityAttenuation");
+				bool bCompatibilityAttenuation = 0 == stricmp(key.Name, "CompatibilityAttenuation");
 				if (bCompatibilityAttenuation) {
 					if (parms.GetSoundLevel().Range != 0)
 						Warning($"CompatibilityAttenuation for sound {soundname} must have same start and end values.\n");
@@ -661,16 +665,16 @@ public class SoundEmitterSystemBase : ISoundEmitterSystemBase
 					parms.SetSoundLevel((float)SNDLEVEL_TO_COMPATIBILITY_MODE(parms.GetSoundLevel().Start));
 				}
 			}
-			else if (0 == strcmp(key.Name, "soundlevel")) {
-				if (key.GetString().StartsWith("ATTN_"))
+			else if (0 == stricmp(key.Name, "soundlevel")) {
+				if (key.GetString().StartsWith("ATTN_", StringComparison.OrdinalIgnoreCase))
 					DevMsg($"SoundEmitterSystemBase.GetParametersForSound:  sound {soundname} has \"soundlevel\" with {key.GetString()} value!\n");
 
 				parms.SoundLevelFromString(key.GetString());
 			}
-			else if (0 == strcmp(key.Name, "play_to_owner_only")) {
+			else if (0 == stricmp(key.Name, "play_to_owner_only")) {
 				parms.SetOnlyPlayToOwner(key.GetInt() != 0);
 			}
-			else if (0 == strcmp(key.Name, "delay_msec")) {
+			else if (0 == stricmp(key.Name, "delay_msec")) {
 				// Don't allow negative delay
 				parms.SetDelayMsec(Math.Max(0, key.GetInt()));
 			}
