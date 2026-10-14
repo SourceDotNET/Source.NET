@@ -1,6 +1,7 @@
 using Game.Shared;
 
 using Source.Common.Commands;
+using Source.Common.Formats.BSP;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.Mathematics;
 
@@ -238,6 +239,89 @@ public class AI_BlendedMotor : AI_Motor
 		}
 
 		return InteriorSequence;
+	}
+
+	protected override AIMotorMoveResult MoveGroundExecute(in AILocalMoveGoal move, out AIMoveTrace traceResult) {
+		if (move.CurExpectedDist < 0.001) {
+			AIMotorMoveResult baseResult = base.MoveGroundExecute(move, out traceResult);
+			SetMoveScriptAnim(0.0f);
+			return baseResult;
+		}
+
+		BuildMoveScript(move);
+
+		float totalDist = GetMoveScriptDist(out float newSpeed);
+
+		Assert(move.MaxDist < 0.01 || totalDist > 0.0);
+
+		float newYaw = GetMoveScriptYaw();
+
+		AILocalMoveGoal move2 = move;
+		move2.Facing = Util.YawToVector(newYaw);
+
+		MoveFacing(move2);
+
+		GetOuter()!.GroundSpeed = GetSequenceGroundSpeed(GetOuter()!.GetSequence());
+
+		SetMoveScriptAnim(newSpeed);
+
+		AIMotorMoveResult result = MoveGroundExecuteWalk(move, newSpeed, totalDist, out traceResult);
+
+		return result;
+	}
+
+	protected override AIMotorMoveResult MoveFlyExecute(in AILocalMoveGoal move, out AIMoveTrace traceResult) {
+		if (move.CurExpectedDist < 0.001)
+			return base.MoveFlyExecute(move, out traceResult);
+
+		BuildMoveScript(move);
+
+		float totalDist = GetMoveScriptDist(out float newSpeed);
+
+		Assert(move.MaxDist < 0.01 || totalDist > 0.0);
+
+		float newYaw = GetMoveScriptYaw();
+
+		AILocalMoveGoal move2 = move;
+		move2.Facing = Util.YawToVector(newYaw);
+
+		MoveFacing(move2);
+
+		GetOuter()!.GroundSpeed = GetSequenceGroundSpeed(GetOuter()!.GetSequence());
+
+		SetMoveScriptAnim(newSpeed);
+
+		bool reachingLocalGoal = totalDist > move.MaxDist;
+
+		if (reachingLocalGoal) {
+			if ((move.Flags & AILocalMoveGoalFlags.ConsumeInterval) == 0)
+				SetMoveInterval(GetMoveInterval() * (1 - move.MaxDist / totalDist));
+			else
+				SetMoveInterval(0);
+			totalDist = move.MaxDist;
+		}
+		else
+			SetMoveInterval(0);
+
+		SetMoveVel(move.Dir * newSpeed);
+
+		Vector3 vecStart, vecEnd;
+		vecStart = GetOuter()!.GetLocalOrigin();
+		vecEnd = vecStart + totalDist * move.Dir;
+
+		GetMoveProbe()!.MoveLimit(Navigation.Fly, vecStart, vecEnd, Mask.NPCSolid, null, out AIMoveTrace moveTrace);
+		traceResult = moveTrace;
+
+		if (MathF.Abs(moveTrace.DistObstructed - totalDist) <= 1e-1) {
+			if (move.MoveTarget != null && (moveTrace.Obstruction == move.MoveTarget))
+				return AIMotorMoveResult.PartialHitTarget;
+
+			return AIMotorMoveResult.Failed;
+		}
+
+		Util.SetOrigin(GetOuter()!, moveTrace.EndPosition, true);
+
+		return IsMoveBlocked(moveTrace.Status) ? AIMotorMoveResult.PartialHitWorld : AIMotorMoveResult.Success;
 	}
 
 	void BuildMoveScript(in AILocalMoveGoal move) {
