@@ -5,6 +5,7 @@ using Source.Common;
 using Source.Common.Commands;
 using Source.Common.DataCache;
 using Source.Common.Engine;
+using Source.Common.Formats.BSP;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.Mathematics;
 
@@ -330,10 +331,6 @@ public partial class BaseAnimating : BaseEntity
 
 	public static readonly ConVar npc_height_adjust = new("npc_height_adjust", "1", FCvar.Archive, "Enable test mode for ik height adjustment");
 
-	public void UpdateStepOrigin() {
-		// todo
-	}
-
 	public Activity GetSequenceActivity(int sequence) {
 		if (sequence == -1) {
 			return Activity.ACT_INVALID;
@@ -569,6 +566,155 @@ public partial class BaseAnimating : BaseEntity
 
 	public bool IsRagdoll() => RenderFX == (byte)RenderFx.Ragdoll;
 
+	public override void Teleport(Vector3? newPosition, QAngle? newAngles, Vector3? newVelocity) {
+		base.Teleport(newPosition, newAngles, newVelocity);
+		Ik?.ClearTargets();
+		InitStepHeightAdjust();
+	}
+
+	TimeUnit_t IKGroundContactTime;
+	float IKGroundMinHeight;
+	float IKGroundMaxHeight;
+
+	float EstIkFloor;
+	float EstIkOffset;
+
+	public void InitStepHeightAdjust() {
+		IKGroundContactTime = 0;
+		IKGroundMinHeight = 0;
+		IKGroundMaxHeight = 0;
+
+		EstIkFloor = GetAbsOrigin().Z;
+		EstIkOffset = 0;
+	}
+
+	public void UpdateStepOrigin() {
+		if (!npc_height_adjust.GetBool()) {
+			EstIkOffset = 0;
+			EstIkFloor = GetLocalOrigin().Z;
+			return;
+		}
+
+		if (IKGroundContactTime > 0.2 && IKGroundContactTime > gpGlobals.CurTime - 0.2) {
+			if ((GetFlags() & (EntityFlags.Fly | EntityFlags.Swim)) == 0 && GetMoveParent() == null && GetGroundEntity() != null && !GetGroundEntity()!.IsMoving()) {
+				Vector3 toAbs = GetAbsOrigin() - GetLocalOrigin();
+				if (toAbs.Z == 0.0) {
+					AI_BaseNPC? npc = MyNPCPointer();
+					float height = 18.0f;
+					if (npc != null)
+						height = npc.StepHeight();
+
+					EstIkFloor = (float)(EstIkFloor * 0.2 + IKGroundMinHeight * 0.8);
+
+					float bias = Math.Clamp((IKGroundMaxHeight - IKGroundMinHeight) - height, 0.0f, height);
+					EstIkOffset = Math.Clamp(EstIkFloor - GetAbsOrigin().Z, -height + bias, 0.0f);
+					return;
+				}
+			}
+		}
+
+		EstIkOffset *= 0.5f;
+		EstIkFloor = GetLocalOrigin().Z;
+	}
+
+	public override Vector3 GetStepOrigin() {
+		Vector3 tmp = GetLocalOrigin();
+		tmp.Z += EstIkOffset;
+		return tmp;
+	}
+
+	struct TraceFilterSkipNPCs(IHandleEntity? passentity, CollisionGroup collisionGroup) : ITraceFilter
+	{
+		TraceFilterSimple Simple = new(passentity, collisionGroup);
+
+		public bool ShouldHitEntity(IHandleEntity serverEntity, Contents contentsMask) {
+			if (Simple.ShouldHitEntity(serverEntity, contentsMask)) {
+				BaseEntity? entity = EntityFromEntityHandle(serverEntity);
+				if (entity == null)
+					return true;
+
+				if (entity.IsNPC())
+					return false;
+
+				return true;
+			}
+			return false;
+		}
+	}
+
+	public virtual void CalculateIKLocks(TimeUnit_t currentTime) {
+		if (Ik != null) {
+			Ray ray = default;
+			TraceFilterSkipNPCs traceFilter = new(this, GetCollisionGroup());
+			GetVectors(out _, out _, out Vector3 up);
+
+			float minHeight = float.MaxValue;
+			float maxHeight = -float.MaxValue;
+
+			for (int i = 0; i < Ik.Target.Count; i++) {
+				Trace trace;
+				IKTarget target = Ik.Target[i];
+
+				if (!target.IsActive())
+					continue;
+
+				switch (target.Type) {
+					case Studio.IK_GROUND: {
+							Vector3 estGround;
+							estGround = target.Est.Pos - GetAbsOrigin();
+							estGround = estGround - (estGround * up) * up;
+							estGround = GetAbsOrigin() + estGround + target.Est.Floor * up;
+
+							MathLib.VectorMA(estGround, target.Est.Height, up, out Vector3 p1);
+							MathLib.VectorMA(estGround, -target.Est.Height, up, out Vector3 p2);
+
+							float r = Math.Max(target.Est.Radius, 1);
+
+							ray.Init(p1, p2, new Vector3(-r, -r, 0), new Vector3(r, r, 1));
+							enginetrace.TraceRay(ray, Mask.Solid, ref traceFilter, out trace);
+
+							if (trace.StartSolid) {
+								ray.Init(target.Trace.Hip, target.Est.Pos, new Vector3(-r, -r, 0), new Vector3(r, r, 1));
+
+								enginetrace.TraceRay(ray, Mask.Solid, ref traceFilter, out trace);
+
+								p1 = trace.EndPos;
+								MathLib.VectorMA(p1, -target.Est.Height, up, out p2);
+								ray.Init(p1, p2, new Vector3(-r, -r, 0), new Vector3(r, r, 1));
+
+								enginetrace.TraceRay(ray, Mask.Solid, ref traceFilter, out trace);
+
+								if (trace.StartSolid)
+									break;
+							}
+
+							if (trace.DidHitWorld()) {
+								target.SetPosWithNormalOffset(trace.EndPos, trace.Plane.Normal);
+								target.SetNormal(trace.Plane.Normal);
+							}
+							else {
+								target.SetPos(trace.EndPos);
+								target.SetAngles(GetAbsAngles());
+							}
+
+							if (target.Est.Release < 0.1) {
+								float height = Vector3.Dot(target.Est.Pos, up);
+								maxHeight = Math.Max(height, maxHeight);
+								minHeight = Math.Min(height, minHeight);
+							}
+						}
+						break;
+				}
+			}
+
+			if (minHeight != float.MaxValue && maxHeight != -float.MaxValue) {
+				IKGroundContactTime = gpGlobals.CurTime;
+				IKGroundMinHeight = minHeight;
+				IKGroundMaxHeight = maxHeight;
+			}
+		}
+	}
+
 	public virtual bool CanBecomeRagdoll() {
 		int ragdollSequence = SelectWeightedSequence(Activity.ACT_DIERAGDOLL);
 
@@ -590,10 +736,14 @@ public partial class BaseAnimating : BaseEntity
 		BoneSetup boneSetup = new(studioHdr, boneMask, PoseParameter);
 		boneSetup.InitPose(pos, q);
 
-		boneSetup.AccumulatePose(pos, q, GetSequence(), GetCycle(), 1.0f, gpGlobals.CurTime, null);
+		boneSetup.AccumulatePose(pos, q, GetSequence(), GetCycle(), 1.0f, gpGlobals.CurTime, Ik);
 
-		if (!IsRagdoll())
-			boneSetup.CalcAutoplaySequences(pos, q, gpGlobals.CurTime, null);
+		if (Ik == null) {
+			if (!IsRagdoll())
+				boneSetup.CalcAutoplaySequences(pos, q, gpGlobals.CurTime, null);
+		}
+		else
+			boneSetup.CalcAutoplaySequences(pos, q, gpGlobals.CurTime, CreateAutoplayIK(studioHdr, gpGlobals.CurTime, boneMask));
 	}
 
 	public virtual void SetupBones(Span<Matrix3x4> boneToWorld, int boneMask) {
@@ -613,9 +763,20 @@ public partial class BaseAnimating : BaseEntity
 		Span<Vector3> pos = stackalloc Vector3[Studio.MAXSTUDIOBONES];
 		Span<Quaternion> q = stackalloc Quaternion[Studio.MAXSTUDIOBONES];
 
-		Vector3 adjOrigin = GetAbsOrigin();
+		Vector3 adjOrigin = GetAbsOrigin() + new Vector3(0, 0, EstIkOffset);
 
-		GetSkeleton(studioHdr, pos, q, boneMask);
+		if (Ik != null) {
+			BoneBitList boneComputed = new();
+			Ik.Init(studioHdr, GetAbsAngles(), adjOrigin, gpGlobals.CurTime, NextIKFrameCounter(), boneMask);
+			GetSkeleton(studioHdr, pos, q, boneMask);
+
+			Ik.UpdateTargets(pos, q, boneToWorld, ref boneComputed);
+			CalculateIKLocks(gpGlobals.CurTime);
+			Ik.SolveDependencies(pos, q, boneToWorld, ref boneComputed);
+			ApplyFootClearance(studioHdr, pos, q, boneToWorld);
+		}
+		else
+			GetSkeleton(studioHdr, pos, q, boneMask);
 
 		BoneSetup.Studio_BuildMatrices(studioHdr, GetAbsAngles(), adjOrigin, pos, q, -1, GetModelScale(), boneToWorld, boneMask);
 

@@ -156,7 +156,7 @@ public readonly struct BoneCache
 	public const int BoneCache_SIZE = 24;
 }
 
-public ref struct BoneSetup
+public ref partial struct BoneSetup
 {
 	public static readonly ConVar anim_3wayblend = new("anim_3wayblend", "1", FCvar.Replicated, "Toggle the 3-way animation blending code.");
 
@@ -198,7 +198,7 @@ public ref struct BoneSetup
 		}
 	}
 
-	public unsafe void AccumulatePose(Span<Vector3> pos, Span<Quaternion> q, int sequence, TimeUnit_t cycle, float weight, TimeUnit_t time, object? ikContext) {
+	public unsafe void AccumulatePose(Span<Vector3> pos, Span<Quaternion> q, int sequence, TimeUnit_t cycle, float weight, TimeUnit_t time, IKContext? ikContext) {
 		Span<Vector3> pos2 = stackalloc Vector3[Studio.MAXSTUDIOBONES];
 		Span<Quaternion> q2 = stackalloc Quaternion[Studio.MAXSTUDIOBONES];
 
@@ -211,7 +211,12 @@ public ref struct BoneSetup
 
 		MStudioSeqDesc seqdesc = studioHdr.Seqdesc(sequence);
 
-		// TODO: IK stuff. We're ignoring it for now.
+		IKContext? seqIK = null;
+		if (seqdesc.NumIKLocks != 0) {
+			seqIK = new();
+			seqIK.Init(studioHdr, vec3_angle, vec3_origin, 0.0, 0, boneMask);
+			seqIK.AddSequenceLocks(seqdesc, pos, q);
+		}
 
 		if ((seqdesc.Flags & StudioAnimSeqFlags.Local) != 0)
 			InitPose(studioHdr, pos2, q2, boneMask);
@@ -221,9 +226,12 @@ public ref struct BoneSetup
 			SlerpBones(studioHdr, q, pos, seqdesc, sequence, q2, pos2, weight, boneMask);
 		}
 
-		// TODO: IK
+		ikContext?.AddDependencies(seqdesc, sequence, cycle, poseParameter, weight);
+
 		AddSequenceLayers(pos, q, seqdesc, sequence, cycle, weight, time, ikContext);
-		// TODO: IK
+
+		if (seqdesc.NumIKLocks != 0)
+			seqIK!.SolveSequenceLocks(seqdesc, pos, q);
 	}
 
 	private static bool PoseIsAllZeros(StudioHdr studioHdr, int sequence, MStudioSeqDesc seqdesc, int i0, int i1) {
@@ -375,7 +383,7 @@ public ref struct BoneSetup
 		return bResult;
 	}
 
-	private static void Studio_SeqAnims(StudioHdr studioHdr, MStudioSeqDesc seqdesc, int sequence, ReadOnlySpan<float> poseParameter, Span<MStudioAnimDesc> panim, Span<float> weight) {
+	internal static void Studio_SeqAnims(StudioHdr studioHdr, MStudioSeqDesc seqdesc, int sequence, ReadOnlySpan<float> poseParameter, Span<MStudioAnimDesc> panim, Span<float> weight) {
 		if (studioHdr == null || sequence >= studioHdr.GetNumSeq()) {
 			weight[0] = weight[1] = weight[2] = weight[3] = 0.0f;
 			return;
@@ -402,7 +410,7 @@ public ref struct BoneSetup
 		Assert(weight[0] >= 0.0f && weight[1] >= 0.0f && weight[2] >= 0.0f && weight[3] >= 0.0f);
 	}
 
-	private static float Studio_CPS(StudioHdr studioHdr, MStudioSeqDesc seqdesc, int sequence, ReadOnlySpan<float> poseParameter) {
+	internal static float Studio_CPS(StudioHdr studioHdr, MStudioSeqDesc seqdesc, int sequence, ReadOnlySpan<float> poseParameter) {
 		MStudioAnimDesc[] panim = ArrayPool<MStudioAnimDesc>.Shared.Rent(4);
 		Span<float> weight = stackalloc float[4];
 
@@ -1143,7 +1151,7 @@ public ref struct BoneSetup
 		}
 	}
 
-	private void AddLocalLayers(Span<Vector3> pos, Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, double weight, double time, object? ikContext) {
+	private void AddLocalLayers(Span<Vector3> pos, Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, double weight, double time, IKContext? ikContext) {
 		if ((seqdesc.Flags & StudioAnimSeqFlags.Local) == 0)
 			return;
 
@@ -1344,7 +1352,7 @@ public ref struct BoneSetup
 		MatrixPool.Free(targetBoneToWorld);
 	}
 
-	private static void BuildBoneChain(StudioHdr studioHdr, in Matrix3x4 rootxform, ReadOnlySpan<Vector3> pos, ReadOnlySpan<Quaternion> q, int bone, Matrix3x4[] boneToWorld, ref BoneBitList boneComputed) {
+	internal static void BuildBoneChain(StudioHdr studioHdr, in Matrix3x4 rootxform, ReadOnlySpan<Vector3> pos, ReadOnlySpan<Quaternion> q, int bone, Span<Matrix3x4> boneToWorld, ref BoneBitList boneComputed) {
 		if (boneComputed.IsBoneMarked(bone))
 			return;
 
@@ -1360,7 +1368,7 @@ public ref struct BoneSetup
 		boneComputed.MarkBone(bone);
 	}
 
-	private void AddSequenceLayers(Span<Vector3> pos, Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, float weight, double time, object? ikContext) {
+	private void AddSequenceLayers(Span<Vector3> pos, Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, float weight, double time, IKContext? ikContext) {
 		for (int i = 0; i < seqdesc.NumAutoLayers; i++) {
 			MStudioAutoLayer pLayer = seqdesc.Autolayer(i);
 
@@ -1531,7 +1539,12 @@ public ref struct BoneSetup
 		return studioHdr.Mass();
 	}
 
-	public void CalcAutoplaySequences(Span<Vector3> pos, Span<Quaternion> q, TimeUnit_t realTime, object? ikContext) {
+	public void CalcAutoplaySequences(Span<Vector3> pos, Span<Quaternion> q, TimeUnit_t realTime, IKContext? ikContext) {
+		if (studioHdr.GetNumIKChains() == 0 && studioHdr.GetNumIKAutoplayLocks() != 0)
+			return;
+
+		ikContext?.AddAutoplayLocks(pos, q);
+
 		int count = studioHdr.GetAutoplayList(out Span<short> pList);
 		for (int i = 0; i < count; i++) {
 			int sequenceIndex = pList[i];
@@ -1545,6 +1558,8 @@ public ref struct BoneSetup
 				AccumulatePose(pos, q, sequenceIndex, cycle, 1.0f, realTime, ikContext);
 			}
 		}
+
+		ikContext?.SolveAutoplayLocks(pos, q);
 	}
 
 	public static void Studio_BuildMatrices(StudioHdr studioHdr, in QAngle angles, in Vector3 origin, ReadOnlySpan<Vector3> pos, ReadOnlySpan<Quaternion> q, int iBone, float flScale, Span<Matrix3x4> bonetoworld, int boneMask) {

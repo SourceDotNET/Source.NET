@@ -1132,6 +1132,22 @@ public static class MathLib
 		qt.Z = p.X * q2.Y - p.Y * q2.X + p.Z * q2.W + p.W * q2.Z;
 		qt.W = -p.X * q2.X - p.Y * q2.Y - p.Z * q2.Z + p.W * q2.W;
 	}
+	public static float QuaternionNormalize(ref Quaternion q) {
+		float radius, iradius;
+
+		radius = q.X * q.X + q.Y * q.Y + q.Z * q.Z + q.W * q.W;
+
+		if (radius != 0) {
+			radius = MathF.Sqrt(radius);
+			iradius = 1.0f / radius;
+			q.W *= iradius;
+			q.Z *= iradius;
+			q.Y *= iradius;
+			q.X *= iradius;
+		}
+		return radius;
+	}
+
 	public static void QuaternionScale(in Quaternion p, float t, out Quaternion q) {
 		float r;
 		float sinom = MathF.Sqrt(DotProduct(in p, in p));

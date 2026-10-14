@@ -184,7 +184,7 @@ public partial class C_BaseAnimatingOverlay : C_BaseAnimating
 					if (fWeight > 1)
 						fWeight = 1;
 
-					boneSetup.AccumulatePose(pos, q, AnimOverlay[i].Sequence, fCycle, fWeight, currentTime, null);
+					boneSetup.AccumulatePose(pos, q, AnimOverlay[i].Sequence, fCycle, fWeight, currentTime, Ik);
 				}
 			}
 		}

@@ -387,6 +387,8 @@ namespace Game.Server
 				link.TouchStamp = TouchLink.TOUCHSTAMP_EVENT_DRIVEN;
 		}
 
+		public virtual Mask PhysicsSolidMaskForEntity() => Mask.Solid;
+
 		//-----------------------------------------------------------------------------
 		// Purpose:
 		// Input  : *other -

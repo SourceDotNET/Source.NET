@@ -1,4 +1,5 @@
 using Source.Common;
+using Source.Common.Formats.BSP;
 using Source;
 
 using Game.Shared;
@@ -37,4 +38,13 @@ public class C_AI_BaseNPC : C_BaseCombatCharacter
 	[NetworkName("m_bImportanRagdoll")]
 	public bool ImportantRagdoll;
 	public float TimePingEffect;
+
+	public override bool IsNPC() => true;
+
+	public override Mask PhysicsSolidMaskForEntity() {
+		if (!IsRagdoll())
+			return Mask.NPCSolid;
+
+		return Mask.Solid;
+	}
 }
