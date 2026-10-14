@@ -1,6 +1,10 @@
 using Game.Shared;
 
+using Source.Common.Commands;
+using Source.Common.Mathematics;
+
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace Game.Server;
 
@@ -95,6 +99,316 @@ public class AI_BlendedMotor : AI_Motor
 		}
 
 		return newYaw;
+	}
+
+	public static readonly ConVar ai_path_insert_pause_at_obstruction = new("ai_path_insert_pause_at_obstruction", "1");
+	public static readonly ConVar ai_path_adjust_speed_on_immediate_turns = new("ai_path_adjust_speed_on_immediate_turns", "1");
+	public static readonly ConVar ai_path_insert_pause_at_est_end = new("ai_path_insert_pause_at_est_end", "1");
+
+	const float MIN_VELOCITY = 0.0f;
+	const float MIN_STEER_DOT = 0.0f;
+
+	ref AI_MovementScript Move(int i) => ref CollectionsMarshal.AsSpan(ScriptMove)[i];
+
+	void BuildVelocityScript(in AILocalMoveGoal move) {
+		int i;
+		float a;
+
+		float idealVelocity = GetIdealSpeed();
+		if (idealVelocity == 0)
+			idealVelocity = 50;
+
+		float idealAccel = GetIdealAccel();
+		if (idealAccel == 0)
+			idealAccel = 100;
+
+		AI_MovementScript script = default;
+
+		script.Location = GetOuter()!.GetAbsOrigin();
+		script.MaxVelocity = GetCurSpeed();
+		ScriptMove.Add(script);
+
+		if (BaseAnimating.npc_height_adjust.GetBool() && move.HasTraced && move.DirectTrace.TotalDist != move.ThinkTrace.TotalDist) {
+			float dist = (move.DirectTrace.EndPosition - ScriptMove[0].Location).Length2D();
+			float height = move.DirectTrace.EndPosition.Z - ScriptMove[0].Location.Z;
+			float delta;
+
+			if (dist > 0)
+				delta = height / dist;
+			else
+				delta = 0;
+
+			PredictiveSpeedAdjust = 1.1f - MathF.Abs(delta);
+			PredictiveSpeedAdjust = Math.Clamp(PredictiveSpeedAdjust, (height > 0.0f) ? 0.5f : 0.8f, 1.0f);
+		}
+		if (BaseAnimating.npc_height_adjust.GetBool()) {
+			float dist = (move.ThinkTrace.EndPosition - PrevOrigin2).Length2D();
+			float height = move.ThinkTrace.EndPosition.Z - PrevOrigin2.Z;
+			float delta;
+
+			if (dist > 0)
+				delta = height / dist;
+			else
+				delta = 0;
+
+			float newSpeedAdjust = 1.1f - MathF.Abs(delta);
+			newSpeedAdjust = Math.Clamp(newSpeedAdjust, (height > 0.0f) ? 0.5f : 0.8f, 1.0f);
+
+			if (newSpeedAdjust < ReactiveSpeedAdjust)
+				ReactiveSpeedAdjust = ReactiveSpeedAdjust * 0.2f + newSpeedAdjust * 0.8f;
+			else
+				ReactiveSpeedAdjust = ReactiveSpeedAdjust * 0.5f + newSpeedAdjust * 0.5f;
+
+			PrevOrigin2 = PrevOrigin1;
+			PrevOrigin1 = GetOuter()!.GetAbsOrigin();
+		}
+
+		idealVelocity = idealVelocity * Math.Min(ReactiveSpeedAdjust, PredictiveSpeedAdjust);
+
+		bool addedExpected = false;
+
+		AI_Waypoint? curWaypoint = GetNavigator()!.GetPath().GetCurWaypoint();
+
+		Assert(curWaypoint != null);
+
+		while (curWaypoint != null && (curWaypoint.NavType() == Navigation.Ground || curWaypoint.NavType() == Navigation.Fly)) {
+			script = default;
+			AI_Waypoint? next = curWaypoint.GetNext();
+
+			if (ai_path_adjust_speed_on_immediate_turns.GetBool() && !addedExpected) {
+				script.Location = GetOuter()!.GetAbsOrigin() + move.Dir * move.CurExpectedDist;
+				addedExpected = true;
+				next = curWaypoint;
+			}
+			else {
+				script.Location = curWaypoint.VecLocation;
+				script.Waypoint = curWaypoint;
+			}
+
+			if (next != null) {
+				switch (next.NavType()) {
+					case Navigation.Ground:
+					case Navigation.Fly: {
+							Vector3 d1 = next.VecLocation - script.Location;
+							Vector3 d2 = script.Location - ScriptMove[^1].Location;
+
+							if (d1.Length2D() < 1.0) {
+								curWaypoint = next;
+								continue;
+							}
+
+							d1.Z = 0;
+							MathLib.VectorNormalize(ref d1);
+							d2.Z = 0;
+							MathLib.VectorNormalize(ref d2);
+
+							float dot = Vector3.Dot(d1, d2) + 0.2f;
+							if (dot > 0) {
+								dot = Math.Clamp(dot, 0.0f, 1.0f);
+								script.MaxVelocity = idealVelocity * dot;
+							}
+							else
+								script.MaxVelocity = 0;
+						}
+						break;
+					case Navigation.Jump: {
+							float minJumpHeight = 0;
+							float maxHorzVel = Math.Max(GetCurSpeed(), 100);
+							float gravity = GetCurrentGravity() * GetOuter()!.GetGravity();
+							Vector3 rawJumpVel = GetMoveProbe()!.CalcJumpLaunchVelocity(script.Location, next.VecLocation, gravity, ref minJumpHeight, maxHorzVel, out _);
+
+							script.MaxVelocity = rawJumpVel.Length2D();
+						}
+						break;
+					case Navigation.Climb:
+						script.MaxVelocity = 0;
+						break;
+				}
+			}
+			else
+				script.MaxVelocity = GetNavigator()!.GetArrivalSpeed();
+
+			ScriptMove.Add(script);
+			curWaypoint = next;
+		}
+
+		float totalDist = 0;
+		for (i = 0; i < ScriptMove.Count - 1; i++)
+			totalDist += Move(i).Dist = (ScriptMove[i + 1].Location - ScriptMove[i].Location).Length2D();
+
+		if (!DeceleratingToGoal && ScriptMove.Count != 0 && totalDist > 0) {
+			float neededAccel = DeltaV(ScriptMove[0].MaxVelocity, ScriptMove[^1].MaxVelocity, totalDist);
+			DeceleratingToGoal = neededAccel < -idealAccel;
+		}
+
+		if (ai_path_insert_pause_at_obstruction.GetBool() && move.DirectTrace.Obstruction != null) {
+			float distToObstruction = (move.DirectTrace.EndPosition - ScriptMove[0].Location).Length2D();
+
+			distToObstruction = distToObstruction + 16;
+
+			InsertSlowdown(distToObstruction, idealAccel, false);
+		}
+
+		if (ai_path_insert_pause_at_est_end.GetBool() && GetNavigator()!.GetArrivalDistance() > 0.0)
+			InsertSlowdown(totalDist - GetNavigator()!.GetArrivalDistance(), idealAccel, true);
+
+		if (ai_path_adjust_speed_on_immediate_turns.GetBool() && ScriptMove.Count > 1) {
+			Vector3 d1 = ScriptMove[1].Location - ScriptMove[0].Location;
+			d1.Z = 0;
+			MathLib.VectorNormalize(ref d1);
+
+			Vector3 d2 = GetCurVel();
+			d2.Z = 0;
+			MathLib.VectorNormalize(ref d2);
+
+			float dot = Vector3.Dot(d1, d2) + MIN_STEER_DOT;
+			dot = Math.Clamp(dot, 0.0f, 1.0f);
+			Move(0).MaxVelocity = ScriptMove[0].MaxVelocity * dot;
+		}
+
+		for (i = 0; i < ScriptMove.Count - 1; i++) {
+			float dv = ScriptMove[i + 1].MaxVelocity - ScriptMove[i].MaxVelocity;
+
+			if (dv > 0.0) {
+				TimeUnit_t t1 = dv / idealAccel;
+				float d1 = (float)(ScriptMove[i].MaxVelocity * t1 + 0.5 * idealAccel * t1 * t1);
+
+				if (d1 > ScriptMove[i].Dist) {
+					if (MathLib.SolveQuadratic(0.5f * idealAccel, ScriptMove[i].MaxVelocity, -ScriptMove[i].Dist, out float r1, out _))
+						Move(i + 1).MaxVelocity = ScriptMove[i].MaxVelocity + idealAccel * r1;
+				}
+			}
+		}
+
+		for (i = ScriptMove.Count - 1; i > 0; i--) {
+			float dv = ScriptMove[i].MaxVelocity - ScriptMove[i - 1].MaxVelocity;
+
+			if (dv < 0.0) {
+				TimeUnit_t t1 = -dv / idealAccel;
+				float d1 = (float)(ScriptMove[i].MaxVelocity * t1 + 0.5 * idealAccel * t1 * t1);
+
+				if (d1 > ScriptMove[i - 1].Dist) {
+					if (MathLib.SolveQuadratic(0.5f * idealAccel, ScriptMove[i].MaxVelocity, -ScriptMove[i - 1].Dist, out float r1, out _))
+						Move(i - 1).MaxVelocity = ScriptMove[i].MaxVelocity + idealAccel * r1;
+				}
+			}
+		}
+
+		for (i = 0; i < ScriptMove.Count - 1;) {
+			TimeUnit_t t1 = (idealVelocity - ScriptMove[i].MaxVelocity) / idealAccel;
+			float d1 = (float)(ScriptMove[i].MaxVelocity * t1 + 0.5 * idealAccel * t1 * t1);
+
+			TimeUnit_t t2 = (idealVelocity - ScriptMove[i + 1].MaxVelocity) / idealAccel;
+			float d2 = (float)(ScriptMove[i + 1].MaxVelocity * t2 + 0.5 * idealAccel * t2 * t2);
+
+			Move(i).Dist = (ScriptMove[i + 1].Location - ScriptMove[i].Location).Length2D();
+
+			if (d1 + d2 < ScriptMove[i].Dist) {
+				Vector3 start = ScriptMove[i].Location;
+				Vector3 end = ScriptMove[i + 1].Location;
+				float dist = ScriptMove[i].Dist;
+
+				if (d1 > 1.0 && t1 > 0.1) {
+					a = d1 / dist;
+
+					script = default;
+					script.Location = end * a + start * (1 - a);
+					script.MaxVelocity = idealVelocity;
+					ScriptMove.Insert(i + 1, script);
+					i++;
+				}
+
+				if (dist - d2 > 1.0 && t2 > 0.1) {
+					a = (dist - d2) / dist;
+
+					script = default;
+					script.Location = end * a + start * (1 - a);
+					script.MaxVelocity = idealVelocity;
+					ScriptMove.Insert(i + 1, script);
+					i++;
+				}
+
+				i++;
+			}
+			else {
+				float neededAccel = MathF.Abs(DeltaV(ScriptMove[i].MaxVelocity, ScriptMove[i + 1].MaxVelocity, ScriptMove[i].Dist));
+				if (neededAccel < idealAccel) {
+					float v1 = ScriptMove[i].MaxVelocity;
+					float v2 = ScriptMove[i + 1].MaxVelocity;
+					float dist = ScriptMove[i].Dist;
+
+					float tmp = (float)(idealAccel * dist + 0.5 * v1 * v1 + 0.5 * v2 * v2);
+					Assert(tmp >= 0);
+					t1 = (-v1 + Math.Sqrt(tmp)) / idealAccel;
+					t2 = (v1 + idealAccel * t1 - v2) / idealAccel;
+
+					if (t1 > 0.0 && t2 > 0.0) {
+						d1 = (float)(v1 * t1 + 0.5 * idealAccel * t1 * t1);
+
+						a = d1 / ScriptMove[i].Dist;
+						script = default;
+						script.Location = ScriptMove[i + 1].Location * a + ScriptMove[i].Location * (1 - a);
+						script.MaxVelocity = (float)(ScriptMove[i].MaxVelocity + idealAccel * t1);
+
+						if (script.MaxVelocity < idealVelocity) {
+							ScriptMove.Insert(i + 1, script);
+							i += 1;
+						}
+					}
+				}
+				i += 1;
+			}
+		}
+
+		for (i = 0; i < ScriptMove.Count; i++)
+			Move(i).MaxVelocity = Math.Max(ScriptMove[i].MaxVelocity, MIN_VELOCITY);
+
+		Move(0).ElapsedTime = 0;
+		for (i = 0; i < ScriptMove.Count - 1;) {
+			Move(i).Dist = (ScriptMove[i + 1].Location - ScriptMove[i].Location).Length2D();
+
+			if (ScriptMove[i].MaxVelocity == 0 && ScriptMove[i + 1].MaxVelocity == 0) {
+				Assert(false);
+				Move(i + 1).MaxVelocity = 1.0f;
+			}
+
+			TimeUnit_t t = ScriptMove[i].Dist / (0.5 * (ScriptMove[i].MaxVelocity + ScriptMove[i + 1].MaxVelocity));
+			Move(i).Time = t;
+
+			Move(i + 1).ElapsedTime = ScriptMove[i].ElapsedTime + ScriptMove[i].Time;
+
+			i++;
+		}
+	}
+
+	void InsertSlowdown(float distToObstruction, float idealAccel, bool alwaysSlowdown) {
+		int i;
+		AI_MovementScript script = default;
+
+		if (distToObstruction <= 0.0)
+			return;
+
+		for (i = 0; i < ScriptMove.Count - 1; i++) {
+			if (ScriptMove[i].Dist > 0 && distToObstruction - ScriptMove[i].Dist < 0) {
+				float a = distToObstruction / ScriptMove[i].Dist;
+				Assert(a >= 0 && a <= 1);
+				script.Location = (1 - a) * ScriptMove[i].Location + a * ScriptMove[i + 1].Location;
+
+				if (!alwaysSlowdown && MathLib.SolveQuadratic(-0.5f * idealAccel, ScriptMove[0].MaxVelocity, -distToObstruction, out float r1, out _))
+					script.MaxVelocity = Math.Max(10, ScriptMove[0].MaxVelocity - idealAccel * r1);
+				else
+					script.MaxVelocity = 10.0f;
+
+				script.MaxVelocity = 1.0f;
+				script.Waypoint = null;
+				script.Dist = ScriptMove[i].Dist - distToObstruction;
+				Move(i).Dist = distToObstruction;
+				ScriptMove.Insert(i + 1, script);
+				break;
+			}
+			else
+				distToObstruction -= ScriptMove[i].Dist;
+		}
 	}
 
 	public override void ResetMoveCalculations() {
