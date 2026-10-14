@@ -480,3 +480,165 @@ public ref partial struct BoneSetup
 		return true;
 	}
 }
+
+public class IKTarget
+{
+	public struct OffsetData
+	{
+		public string? AttachmentName;
+		public Vector3 Pos;
+		public Quaternion Q;
+	}
+
+	public struct IdealData
+	{
+		public Vector3 Pos;
+		public Quaternion Q;
+	}
+
+	public struct EstimateData
+	{
+		public float Latched;
+		public float Release;
+		public float Height;
+		public float Floor;
+		public float Radius;
+		public TimeUnit_t Time;
+		public float Weight;
+		public Vector3 Pos;
+		public Quaternion Q;
+		public bool OnWorld;
+	}
+
+	public struct TraceData
+	{
+		public float HipToFoot;
+		public float HipToKnee;
+		public float KneeToFoot;
+		public Vector3 Hip;
+		public Vector3 Closest;
+		public Vector3 Knee;
+		public Vector3 Farthest;
+		public Vector3 Lowest;
+	}
+
+	public struct LatchedData
+	{
+		public bool NeedsLatch;
+		public bool HasLatch;
+		public float Influence;
+		public int FrameCounter;
+		public int Owner;
+		public Vector3 AbsOrigin;
+		public QAngle AbsAngles;
+		public Vector3 Pos;
+		public Quaternion Q;
+		public Vector3 DeltaPos;
+		public Quaternion DeltaQ;
+		public Vector3 DebouncePos;
+		public Quaternion DebounceQ;
+	}
+
+	public struct ErrorData
+	{
+		public TimeUnit_t Time;
+		public TimeUnit_t ErrorTime;
+		public float Ramp;
+		public bool InError;
+	}
+
+	public int Chain;
+	public int Type;
+
+	public OffsetData Offset;
+	internal IdealData Ideal;
+	public EstimateData Est;
+	public TraceData Trace;
+	internal LatchedData Latched;
+	public ErrorData Error;
+
+	public void SetOwner(int entindex, in Vector3 pos, in QAngle angles) {
+		Latched.Owner = entindex;
+		Latched.AbsOrigin = pos;
+		Latched.AbsAngles = angles;
+	}
+
+	public void ClearOwner() {
+		Latched.Owner = -1;
+	}
+
+	public int GetOwner() => Latched.Owner;
+
+	public void UpdateOwner(int entindex, in Vector3 pos, in QAngle angles) {
+		if (pos == Latched.AbsOrigin && angles == Latched.AbsAngles)
+			return;
+
+		MathLib.AngleMatrix(angles, pos, out Matrix3x4 inMat);
+		MathLib.AngleIMatrix(Latched.AbsAngles, Latched.AbsOrigin, out Matrix3x4 outMat);
+
+		MathLib.QuaternionMatrix(Latched.Q, Latched.Pos, out Matrix3x4 tmp1);
+		MathLib.ConcatTransforms(outMat, tmp1, out Matrix3x4 tmp2);
+		MathLib.ConcatTransforms(inMat, tmp2, out tmp1);
+		MathLib.MatrixAngles(tmp1, out Latched.Q, out Latched.Pos);
+	}
+
+	public void SetPos(in Vector3 pos) {
+		Est.Pos = pos;
+	}
+
+	public void SetAngles(in QAngle angles) {
+		MathLib.AngleQuaternion(angles, out Est.Q);
+	}
+
+	public void SetQuaternion(in Quaternion q) {
+		Est.Q = q;
+	}
+
+	public void SetNormal(in Vector3 normal) {
+		Vector3 forward, right;
+		MathLib.QuaternionMatrix(Est.Q, out Matrix3x4 m1);
+
+		MathLib.MatrixGetColumn(m1, 1, out right);
+		MathLib.CrossProduct(right, normal, out forward);
+		MathLib.CrossProduct(normal, forward, out right);
+		MathLib.MatrixSetColumn(forward, 0, ref m1);
+		MathLib.MatrixSetColumn(right, 1, ref m1);
+		MathLib.MatrixSetColumn(normal, 2, ref m1);
+		MathLib.MatrixAngles(m1, out Est.Q, out _);
+	}
+
+	public void SetPosWithNormalOffset(in Vector3 pos, in Vector3 normal) {
+		Est.Pos = pos;
+		if (normal.Z > 0.9999)
+			return;
+		else if (normal.Z > 0.707) {
+			float tan = MathF.Sqrt(1 - normal.Z * normal.Z) / normal.Z;
+			Est.Pos.Z = Est.Pos.Z - Est.Radius * tan;
+		}
+		else
+			Est.Pos.Z = Est.Pos.Z - Est.Radius;
+	}
+
+	public void SetOnWorld(bool onWorld = true) {
+		Est.OnWorld = onWorld;
+	}
+
+	public bool IsActive() => Est.Weight > 0.0f;
+
+	public void IKFailed() {
+		Latched.DeltaPos = default;
+		Latched.DeltaQ = default;
+		Latched.Pos = Ideal.Pos;
+		Latched.Q = Ideal.Q;
+		Est.Latched = 0.0f;
+		Est.Weight = 0.0f;
+		Est.OnWorld = false;
+	}
+
+	public void MoveReferenceFrame(in Vector3 deltaPos, in QAngle deltaAngles) {
+		Est.Pos -= deltaPos;
+		Latched.Pos -= deltaPos;
+		Offset.Pos -= deltaPos;
+		Ideal.Pos -= deltaPos;
+	}
+}
