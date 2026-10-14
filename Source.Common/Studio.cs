@@ -2107,6 +2107,14 @@ public class StudioHdr
 
 	public int GetNumSeq() => vModel == null ? studioHdr!.NumLocalSeq : vModel.Seq.Count;
 
+	public int RemapSeqBone(int sequence, int localBone) {
+		if (vModel != null) {
+			VirtualGroup seqGroup = vModel.SeqGroup(sequence)!;
+			return seqGroup.MasterBone[localBone];
+		}
+		return localBone;
+	}
+
 	public StudioHeader? GroupStudioHdr(int i) {
 		if (FrameUnlockCounter != FrameUnlockCounterPtr.Get()) {
 			lock (FrameUnlockCounterMutex) {

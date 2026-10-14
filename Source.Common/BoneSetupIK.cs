@@ -164,3 +164,319 @@ public ref partial struct BoneSetup
 			return false;
 	}
 }
+
+public struct IKContextIKRule
+{
+	public int Index;
+
+	public int Type;
+	public int Chain;
+
+	public int Bone;
+
+	public int Slot;
+	public float Height;
+	public float Radius;
+	public float Floor;
+	public Vector3 Pos;
+	public Quaternion Q;
+
+	public float Start;
+	public float Peak;
+	public float Tail;
+	public float End;
+
+	public float Top;
+	public float Drop;
+
+	public float Commit;
+	public float Release;
+
+	public float Weight;
+	public float RuleWeight;
+	public float Latched;
+	public string? Label;
+
+	public Vector3 KneeDir;
+	public Vector3 KneePos;
+}
+
+public ref partial struct BoneSetup
+{
+	public static void QuaternionAccumulate(in Quaternion p, float s, in Quaternion q, out Quaternion qt) {
+		MathLib.QuaternionAlign(p, q, out Quaternion q2);
+
+		Quaternion result;
+		result.X = p.X + s * q2.X;
+		result.Y = p.Y + s * q2.Y;
+		result.Z = p.Z + s * q2.Z;
+		result.W = p.W + s * q2.W;
+		qt = result;
+	}
+
+	static void CalcDecompressedAnimation(MStudioCompressedIKError compressed, int frame, TimeUnit_t fraq, out Vector3 pos, out Quaternion q) {
+		if (fraq > 0.0001f) {
+			Vector3 p1, p2;
+			ExtractAnimValue(frame, compressed.Animvalue(0), compressed.Scale[0], out p1.X, out p2.X);
+			ExtractAnimValue(frame, compressed.Animvalue(1), compressed.Scale[1], out p1.Y, out p2.Y);
+			ExtractAnimValue(frame, compressed.Animvalue(2), compressed.Scale[2], out p1.Z, out p2.Z);
+			pos = p1 * (float)(1 - fraq) + p2 * (float)fraq;
+
+			Quaternion q1, q2;
+			RadianEuler angle1, angle2;
+			ExtractAnimValue(frame, compressed.Animvalue(3), compressed.Scale[3], out angle1.X, out angle2.X);
+			ExtractAnimValue(frame, compressed.Animvalue(4), compressed.Scale[4], out angle1.Y, out angle2.Y);
+			ExtractAnimValue(frame, compressed.Animvalue(5), compressed.Scale[5], out angle1.Z, out angle2.Z);
+
+			if (angle1.X != angle2.X || angle1.Y != angle2.Y || angle1.Z != angle2.Z) {
+				MathLib.AngleQuaternion(angle1, out q1);
+				MathLib.AngleQuaternion(angle2, out q2);
+				MathLib.QuaternionBlend(q1, q2, (float)fraq, out q);
+			}
+			else
+				MathLib.AngleQuaternion(angle1, out q);
+		}
+		else {
+			ExtractAnimValue(frame, compressed.Animvalue(0), compressed.Scale[0], out pos.X);
+			ExtractAnimValue(frame, compressed.Animvalue(1), compressed.Scale[1], out pos.Y);
+			ExtractAnimValue(frame, compressed.Animvalue(2), compressed.Scale[2], out pos.Z);
+
+			RadianEuler angle;
+			ExtractAnimValue(frame, compressed.Animvalue(3), compressed.Scale[3], out angle.X);
+			ExtractAnimValue(frame, compressed.Animvalue(4), compressed.Scale[4], out angle.Y);
+			ExtractAnimValue(frame, compressed.Animvalue(5), compressed.Scale[5], out angle.Z);
+
+			MathLib.AngleQuaternion(angle, out q);
+		}
+	}
+
+	public static float Studio_IKRuleWeight(MStudioIKRule ikRule, MStudioAnimDesc anim, TimeUnit_t cycle, out int frame, out TimeUnit_t fraq) {
+		if (ikRule.End > 1.0f && cycle < ikRule.Start)
+			cycle = cycle + 1.0f;
+
+		TimeUnit_t value = 0.0;
+		fraq = (anim.NumFrames - 1) * (cycle - ikRule.Start) + ikRule.StartFrame;
+		frame = (int)fraq;
+		fraq = fraq - frame;
+
+		if (cycle < ikRule.Start) {
+			frame = ikRule.StartFrame;
+			fraq = 0.0;
+			return 0.0f;
+		}
+		else if (cycle < ikRule.Peak)
+			value = (cycle - ikRule.Start) / (ikRule.Peak - ikRule.Start);
+		else if (cycle < ikRule.Tail)
+			return 1.0f;
+		else if (cycle < ikRule.End)
+			value = 1.0 - ((cycle - ikRule.Tail) / (ikRule.End - ikRule.Tail));
+		else {
+			fraq = (anim.NumFrames - 1) * (ikRule.End - ikRule.Start) + ikRule.StartFrame;
+			frame = (int)fraq;
+			fraq = fraq - frame;
+		}
+		return (float)MathLib.SimpleSpline(value);
+	}
+
+	public static float Studio_IKRuleWeight(ref IKContextIKRule ikRule, TimeUnit_t cycle) {
+		if (ikRule.End > 1.0f && cycle < ikRule.Start)
+			cycle = cycle + 1.0f;
+
+		TimeUnit_t value = 0.0;
+		if (cycle < ikRule.Start)
+			return 0.0f;
+		else if (cycle < ikRule.Peak)
+			value = (cycle - ikRule.Start) / (ikRule.Peak - ikRule.Start);
+		else if (cycle < ikRule.Tail)
+			return 1.0f;
+		else if (cycle < ikRule.End)
+			value = 1.0 - ((cycle - ikRule.Tail) / (ikRule.End - ikRule.Tail));
+
+		return (float)(3.0 * value * value - 2.0 * value * value * value);
+	}
+
+	public static bool Studio_IKShouldLatch(ref IKContextIKRule ikRule, TimeUnit_t cycle) {
+		if (ikRule.End > 1.0f && cycle < ikRule.Start)
+			cycle = cycle + 1.0f;
+
+		if (cycle < ikRule.Peak)
+			return false;
+		else if (cycle < ikRule.End)
+			return true;
+
+		return false;
+	}
+
+	public static float Studio_IKTail(ref IKContextIKRule ikRule, TimeUnit_t cycle) {
+		if (ikRule.End > 1.0f && cycle < ikRule.Start)
+			cycle = cycle + 1.0f;
+
+		if (cycle <= ikRule.Tail)
+			return 0.0f;
+		else if (cycle < ikRule.End)
+			return (float)((cycle - ikRule.Tail) / (ikRule.End - ikRule.Tail));
+
+		return 0.0f;
+	}
+
+	public static bool Studio_IKAnimationError(StudioHdr studioHdr, MStudioIKRule rule, MStudioAnimDesc anim, TimeUnit_t cycle, out Vector3 pos, out Quaternion q, out float weight) {
+		weight = Studio_IKRuleWeight(rule, anim, cycle, out int frame, out TimeUnit_t fraq);
+		Assert(fraq >= 0.0 && fraq < 1.0);
+		Assert(weight >= 0.0f && weight <= 1.0f);
+
+		weight = Math.Clamp(weight, 0.0f, 1.0f);
+
+		pos = default;
+		q = default;
+
+		if (rule.Type != Studio.IK_GROUND && weight < 0.0001)
+			return false;
+
+		ReadOnlySpan<MStudioIKError> error = rule.Error(frame);
+		if (!error.IsEmpty) {
+			if (fraq < 0.001) {
+				q = error[0].Q;
+				pos = error[0].Pos;
+			}
+			else {
+				MathLib.QuaternionBlend(error[0].Q, error[1].Q, (float)fraq, out q);
+				pos = error[0].Pos * (float)(1.0 - fraq) + error[1].Pos * (float)fraq;
+			}
+			return true;
+		}
+
+		MStudioCompressedIKError compressed = rule.CompressedError();
+		CalcDecompressedAnimation(compressed, frame - rule.StartFrame, fraq, out pos, out q);
+		return true;
+	}
+
+	public static bool Studio_IKSequenceError(StudioHdr studioHdr, MStudioSeqDesc seqdesc, int sequence, TimeUnit_t cycle, int rule, ReadOnlySpan<float> poseParameter, Span<MStudioAnimDesc> panim, Span<float> weight, ref IKContextIKRule ikRule) {
+		int i;
+
+		ikRule = default;
+		ikRule.Start = ikRule.Peak = ikRule.Tail = ikRule.End = 0;
+
+		MStudioIKRule? prevRule = null;
+
+		for (i = 0; i < 4; i++) {
+			if (weight[i] != 0) {
+				if (rule >= panim[i].NumIKRules || panim[i].NumIKRules != panim[0].NumIKRules) {
+					Assert(false);
+					return false;
+				}
+
+				MStudioIKRule? pRule = panim[i].IKRule(rule);
+				if (pRule == null)
+					return false;
+
+				float dt = 0.0f;
+				if (prevRule != null) {
+					if (pRule.Start - prevRule.Start > 0.5)
+						dt = -1.0f;
+					else if (pRule.Start - prevRule.Start < -0.5)
+						dt = 1.0f;
+				}
+				else
+					prevRule = pRule;
+
+				ikRule.Start += (pRule.Start + dt) * weight[i];
+				ikRule.Peak += (pRule.Peak + dt) * weight[i];
+				ikRule.Tail += (pRule.Tail + dt) * weight[i];
+				ikRule.End += (pRule.End + dt) * weight[i];
+			}
+		}
+		if (ikRule.Start > 1.0) {
+			ikRule.Start -= 1.0f;
+			ikRule.Peak -= 1.0f;
+			ikRule.Tail -= 1.0f;
+			ikRule.End -= 1.0f;
+		}
+		else if (ikRule.Start < 0.0) {
+			ikRule.Start += 1.0f;
+			ikRule.Peak += 1.0f;
+			ikRule.Tail += 1.0f;
+			ikRule.End += 1.0f;
+		}
+
+		ikRule.Weight = Studio_IKRuleWeight(ref ikRule, cycle);
+		if (ikRule.Weight <= 0.001f) {
+			if (panim[0].IKRule(rule) == null)
+				return false;
+			if ((panim[0].Flags & StudioAnimSeqFlags.Looping) != 0 && panim[0].IKRule(rule)!.Type == Studio.IK_GROUND && ikRule.End - ikRule.Start > 0.75) {
+				ikRule.Weight = 0.001f;
+				cycle = ikRule.End - 0.001;
+			}
+			else
+				return false;
+		}
+
+		Assert(ikRule.Weight > 0.0f);
+
+		ikRule.Pos = default;
+		ikRule.Q = default;
+
+		float total = 0.0f;
+		for (i = 0; i < 4; i++) {
+			if (weight[i] != 0) {
+				MStudioIKRule? pRule = panim[i].IKRule(rule);
+				if (pRule == null)
+					return false;
+
+				ikRule.Chain = pRule.Chain;
+				ikRule.Bone = pRule.Bone;
+				ikRule.Type = pRule.Type;
+				ikRule.Slot = pRule.Slot;
+
+				ikRule.Height += pRule.Height * weight[i];
+				ikRule.Floor += pRule.Floor * weight[i];
+				ikRule.Radius += pRule.Radius * weight[i];
+				ikRule.Drop += pRule.Drop * weight[i];
+				ikRule.Top += pRule.Top * weight[i];
+
+				ikRule.Release += Studio_IKTail(ref ikRule, cycle) * weight[i];
+
+				switch (ikRule.Type) {
+					case Studio.IK_SELF:
+					case Studio.IK_WORLD:
+					case Studio.IK_GROUND:
+					case Studio.IK_ATTACHMENT: {
+							bool result = Studio_IKAnimationError(studioHdr, pRule, panim[i], cycle, out Vector3 pos1, out Quaternion q1, out _);
+
+							if (result) {
+								ikRule.Pos = ikRule.Pos + pos1 * weight[i];
+								QuaternionAccumulate(ikRule.Q, weight[i], q1, out ikRule.Q);
+								total += weight[i];
+							}
+						}
+						break;
+					default:
+						total += weight[i];
+						break;
+				}
+
+				ikRule.Latched = (Studio_IKShouldLatch(ref ikRule, cycle) ? 1 : 0) * ikRule.Weight;
+
+				if (ikRule.Type == Studio.IK_ATTACHMENT)
+					ikRule.Label = pRule.Attachment();
+			}
+		}
+
+		if (total <= 0.0001f)
+			return false;
+
+		if (total < 0.999f) {
+			ikRule.Pos = ikRule.Pos * (1.0f / total);
+			MathLib.QuaternionScale(ikRule.Q, 1.0f / total, out Quaternion scaledQ);
+			ikRule.Q = scaledQ;
+		}
+
+		if (ikRule.Type == Studio.IK_SELF && ikRule.Bone != -1) {
+			ikRule.Bone = studioHdr.RemapSeqBone(sequence, ikRule.Bone);
+			if (ikRule.Bone == -1)
+				return false;
+		}
+
+		MathLib.QuaternionNormalize(ref ikRule.Q);
+		return true;
+	}
+}
