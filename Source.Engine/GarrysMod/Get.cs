@@ -146,17 +146,20 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 					Msg("Attempting to load Chromium...\n");
 					// todo: LoadHTML("html_chromium.dll");
 				}
+				LoadHTML("html_chromium");
 
-				if (html == null && !commandLine.CheckParm("-noawesomium")) {
-					Msg("Attempting to load Awesomium...\n");
+				// if (html == null && !commandLine.CheckParm("-noawesomium")) {
+					// Msg("Attempting to load Awesomium...\n");
 					// todo: LoadHTML("html_awesomium.dll");
-				}
+				// }
 			}
 
 			if (html == null) {
 				Msg("Attempting to load Stub...\n");
+				LoadHTML("html_stub");
 				// todo: LoadHTML("html_stub.dll");
-				// todo: if (html == null) Error("Couldn't find an HTML system.");
+				if (html == null) 
+					Error("Couldn't find an HTML system.");
 			}
 		}
 
@@ -165,6 +168,10 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 		strcpy(gameDirParent, Common.Gamedir);
 		FixSlashes(gameDirParent, '\\');
 		StripLastDir(gameDirParent);
+	}
+
+	private void LoadHTML(string name) {
+
 	}
 
 	static void FixSlashes(Span<char> str, char separator) {
