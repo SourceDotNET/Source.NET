@@ -32,9 +32,6 @@ public interface IMapEntityFilter
 	BaseEntity? CreateNextEntity(ReadOnlySpan<char> className);
 }
 
-[LinkEntityToClass("point_template")]
-public class PointTemplate : BaseEntity { } // TODO move this
-
 [InlineArray(EntityMapData.MAPKEY_MAXLENGTH)] public struct InlineArrayMapKeyMaxLength<T> { T first; }
 public static class MapEntities
 {
@@ -164,7 +161,6 @@ public static class MapEntities
 			}
 		}
 
-#if false // TODO: point_template not implemented yet
 		// Now loop through all our point_template entities and tell them to make templates of everything they're pointing to
 		int templates = pointTemplates.Count;
 		for (int i = 0; i < templates; i++) {
@@ -183,7 +179,7 @@ public static class MapEntities
 			int numTemplates = pointTemplate.GetNumTemplateEntities();
 			for (int templateNm = 0; templateNm < numTemplates; templateNm++) {
 				// Find it in the spawn list
-				BaseEntity entity = pointTemplate.GetTemplateEntity(templateNm);
+				BaseEntity? entity = pointTemplate.GetTemplateEntity(templateNm);
 				for (int iEntNum = 0; iEntNum < numEntities; iEntNum++) {
 					if (spawnList[iEntNum].Entity == entity) {
 						// Give the point_template the mapdata
@@ -204,9 +200,23 @@ public static class MapEntities
 
 			pointTemplate.FinishBuildingTemplates();
 		}
-#endif
 
 		SpawnHierarchicalList(numEntities, spawnList, activateEntities);
+	}
+
+	public static void MapEntity_PrecacheEntity(ReadOnlyMemory<byte> entData, int entDataSize) {
+		EntityMapData mapData = new(entData, entDataSize);
+		Span<byte> className = stackalloc byte[EntityMapData.MAPKEY_MAXLENGTH];
+
+		if (!mapData.ExtractValue("classname"u8, className))
+			Error("classname missing from entity!\n");
+
+		BaseEntity? entity = CreateEntityByName(TokenString(className));
+		if (entity != null) {
+			entity.ParseMapData(mapData);
+			entity.Precache();
+			Util.RemoveImmediate(entity);
+		}
 	}
 
 	public static void FreeContainingEntity(Edict? ed) {
@@ -325,7 +335,7 @@ public static class MapEntities
 		}
 	}
 
-	static void SpawnHierarchicalList(int entities, HierarchicalSpawn_t[] spawnList, bool activateEntities) {
+	internal static void SpawnHierarchicalList(int entities, HierarchicalSpawn_t[] spawnList, bool activateEntities) {
 		// Compute the hierarchical depth of all entities hierarchically attached
 		ComputeSpawnHierarchyDepth(entities, spawnList);
 
