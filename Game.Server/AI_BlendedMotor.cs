@@ -101,6 +101,160 @@ public class AI_BlendedMotor : AI_Motor
 		return newYaw;
 	}
 
+	void BuildMoveScript(in AILocalMoveGoal move) {
+		ScriptMove.Clear();
+		ScriptTurn.Clear();
+
+		BuildVelocityScript(move);
+		BuildTurnScript(move);
+	}
+
+	const float YAWSPEED = 150;
+
+	ref AI_MovementScript Turn(int i) => ref CollectionsMarshal.AsSpan(ScriptTurn)[i];
+
+	void BuildTurnScript(in AILocalMoveGoal move) {
+		int i;
+
+		AI_MovementScript script = default;
+
+		script.Location = GetOuter()!.GetAbsOrigin();
+		script.Yaw = GetOuter()!.GetAbsAngles().Y;
+		ScriptTurn.Add(script);
+
+		int prev = 0;
+		for (i = 0; i < ScriptMove.Count; i++) {
+			AI_Waypoint? curWaypoint = ScriptMove[i].Waypoint;
+			if (curWaypoint != null) {
+				script = default;
+				script.Location = curWaypoint.VecLocation;
+				script.Waypoint = curWaypoint;
+				script.ElapsedTime = ScriptMove[i].ElapsedTime;
+
+				Turn(prev).Time = script.ElapsedTime - ScriptTurn[prev].ElapsedTime;
+
+				if (curWaypoint.GetNext() != null) {
+					Vector3 d1 = curWaypoint.GetNext()!.VecLocation - script.Location;
+					Vector3 d2 = script.Location - ScriptTurn[prev].Location;
+
+					d1.Z = 0;
+					MathLib.VectorNormalize(ref d1);
+					d2.Z = 0;
+					MathLib.VectorNormalize(ref d2);
+
+					float y1 = Util.VecToYaw(d1);
+					float y2 = Util.VecToYaw(d2);
+
+					float deltaYaw = MathF.Abs(Util.AngleDiff(y1, y2));
+
+					if (deltaYaw > 0.1) {
+						script.Yaw = MathLib.ApproachAngle(y1, y2, deltaYaw * 0.8f);
+						ScriptTurn.Add(script);
+						prev++;
+					}
+				}
+				else {
+					Vector3 dir = GetNavigator()!.GetArrivalDirection();
+					script.Yaw = Util.VecToYaw(dir);
+					ScriptTurn.Add(script);
+					prev++;
+				}
+			}
+		}
+
+		for (i = ScriptTurn.Count - 1; i > 1; i--) {
+			float deltaYaw = Util.AngleDiff(ScriptTurn[i - 1].Yaw, ScriptTurn[i].Yaw);
+
+			float maxYaw = (float)(YAWSPEED * ScriptTurn[i - 1].Time);
+
+			if (MathF.Abs(deltaYaw) > maxYaw)
+				Turn(i - 1).Yaw = MathLib.ApproachAngle(ScriptTurn[i - 1].Yaw, ScriptTurn[i].Yaw, maxYaw);
+		}
+
+		for (i = 0; i < ScriptTurn.Count - 1;)
+			i = i + BuildTurnScript(i, i + 1) + 1;
+	}
+
+	int BuildTurnScript(int i, int j) {
+		int k;
+
+		Vector3 dir = ScriptTurn[j].Location - ScriptTurn[i].Location;
+		float interiorYaw = Util.VecToYaw(dir);
+
+		float deltaYaw;
+
+		deltaYaw = MathF.Abs(Util.AngleDiff(interiorYaw, ScriptTurn[i].Yaw));
+		TimeUnit_t t1 = deltaYaw / YAWSPEED;
+
+		deltaYaw = MathF.Abs(Util.AngleDiff(ScriptTurn[j].Yaw, interiorYaw));
+		TimeUnit_t t2 = deltaYaw / YAWSPEED;
+
+		TimeUnit_t totalTime = ScriptTurn[j].ElapsedTime - ScriptTurn[i].ElapsedTime;
+
+		Assert(totalTime > 0);
+
+		if (t1 < 0.01) {
+			if (t2 > totalTime * 0.8)
+				return 0;
+
+			Turn(i).Yaw = interiorYaw;
+
+			k = BuildInsertNode(i, totalTime - t2);
+			Turn(k).Yaw = interiorYaw;
+
+			return 1;
+		}
+		else if (t2 < 0.01) {
+			if (t1 > totalTime * 0.8)
+				return 0;
+
+			k = BuildInsertNode(i, t1);
+			Turn(k).Yaw = interiorYaw;
+
+			return 1;
+		}
+		else if (t1 + t2 > totalTime)
+			return 0;
+		else if (t1 + t2 < totalTime * 0.8) {
+			k = BuildInsertNode(i, t1);
+			Turn(k).Yaw = interiorYaw;
+
+			k = BuildInsertNode(i, t2);
+			Turn(k).Yaw = interiorYaw;
+
+			return 2;
+		}
+		return 0;
+	}
+
+	int BuildInsertNode(int i, TimeUnit_t time) {
+		AI_MovementScript script = default;
+
+		Assert(time > 0.0);
+
+		for (; i < ScriptTurn.Count - 1; i++) {
+			if (ScriptTurn[i].Time < time)
+				time -= ScriptTurn[i].Time;
+			else {
+				TimeUnit_t a = time / ScriptTurn[i].Time;
+
+				script.Time = ScriptTurn[i].Time - time;
+
+				Turn(i).Time = time;
+
+				script.ElapsedTime = ScriptTurn[i].ElapsedTime * (1 - a) + ScriptTurn[i + 1].ElapsedTime * a;
+
+				script.Location = ScriptTurn[i].Location * (float)(1 - a) + ScriptTurn[i + 1].Location * (float)a;
+
+				ScriptTurn.Insert(i + 1, script);
+
+				return i + 1;
+			}
+		}
+		Assert(false);
+		return 0;
+	}
+
 	public static readonly ConVar ai_path_insert_pause_at_obstruction = new("ai_path_insert_pause_at_obstruction", "1");
 	public static readonly ConVar ai_path_adjust_speed_on_immediate_turns = new("ai_path_adjust_speed_on_immediate_turns", "1");
 	public static readonly ConVar ai_path_insert_pause_at_est_end = new("ai_path_insert_pause_at_est_end", "1");
