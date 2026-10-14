@@ -1,6 +1,7 @@
 using Game.Shared;
 
 using Source.Common.Commands;
+using Source.Common.Formats.Keyvalues;
 using Source.Common.Mathematics;
 
 using System.Numerics;
@@ -99,6 +100,144 @@ public class AI_BlendedMotor : AI_Motor
 		}
 
 		return newYaw;
+	}
+
+	void SetMoveScriptAnim(float newSpeed) {
+		if (!GetOuter()!.IsAlive())
+			return;
+
+		AI_Navigator navigator = GetNavigator()!;
+
+		GetOuter()!.SetPlaybackRate(CurrRate);
+		float weight = 0.0f;
+		if (GetIdealSpeed() > 0.0f)
+			weight = 1.0f - (newSpeed / (float)(GetIdealSpeed() * GetOuter()!.GetPlaybackRate()));
+		if (weight < 0.0f) {
+			CurrRate = newSpeed / GetIdealSpeed();
+			CurrRate = Math.Clamp(CurrRate, 0.0f, 1.0f);
+			GetOuter()!.SetPlaybackRate(CurrRate);
+			weight = 0.0f;
+		}
+		CurrRate = (float)Math.Min(CurrRate + (1.0 - CurrRate) * 0.8f, 1.0f);
+
+		if (SavedGoalActivity == Activity.ACT_INVALID)
+			ResetGoalSequence();
+
+		Activity activity = GetOuter()!.NPC_TranslateActivity(SavedGoalActivity);
+		if (activity != SavedTranslatedGoalActivity) {
+			SavedTranslatedGoalActivity = activity;
+			InteriorSequence = (int)Activity.ACT_INVALID;
+			GoalSequence = navigator.GetArrivalSequence(PrimarySequence);
+		}
+
+		if (DeceleratingToGoal) {
+			GoalSequence = navigator.GetArrivalSequence(PrimarySequence);
+
+			if (GoalSequence == (int)Activity.ACT_INVALID)
+				GoalSequence = GetInteriorSequence(PrimarySequence);
+
+			Assert(GoalSequence != (int)Activity.ACT_INVALID);
+		}
+
+		if (SecondaryWeight == 1.0 || (SecondaryLayer != -1 && PrimarySequence == SecondarySequence)) {
+			GetOuter()!.RemoveLayer(PrimaryLayer, 0.0f, 0.0f);
+
+			PrimaryLayer = SecondaryLayer;
+			PrimarySequence = SecondarySequence;
+			SecondaryLayer = -1;
+			SecondarySequence = (int)Activity.ACT_INVALID;
+			SecondaryWeight = 0.0f;
+		}
+
+		if (SecondarySequence == (int)Activity.ACT_INVALID) {
+			if (!DeceleratingToGoal && GoalSequence != GetInteriorSequence(PrimarySequence))
+				GoalSequence = GetInteriorSequence(PrimarySequence);
+
+			if (GoalSequence != (int)Activity.ACT_INVALID && PrimarySequence != GoalSequence) {
+				SecondarySequence = GetOuter()!.FindTransitionSequence(PrimarySequence, GoalSequence);
+				if (SecondarySequence == (int)Activity.ACT_INVALID)
+					SecondarySequence = GoalSequence;
+			}
+		}
+
+		if (SecondarySequence != (int)Activity.ACT_INVALID) {
+			if (SecondaryLayer == -1) {
+				SecondaryLayer = GetOuter()!.AddLayeredSequence(SecondarySequence, 0);
+				GetOuter()!.SetLayerWeight(SecondaryLayer, 0.0f);
+				if (SecondarySequence == GoalSequence)
+					GetOuter()!.SetLayerPlaybackRate(SecondaryLayer, 0.0);
+				else
+					GetOuter()!.SetLayerPlaybackRate(SecondaryLayer, 1.0);
+				GetOuter()!.SetLayerNoRestore(SecondaryLayer, true);
+				SecondaryWeight = 0.0f;
+			}
+
+			SecondaryWeight = (float)Math.Min(SecondaryWeight + 0.3, 1.0);
+
+			if (SecondaryWeight < 1.0) {
+				GetOuter()!.SetLayerWeight(PrimaryLayer, (weight - SecondaryWeight * weight) / (1.0f - SecondaryWeight * weight));
+				GetOuter()!.SetLayerWeight(SecondaryLayer, weight * SecondaryWeight);
+			}
+			else {
+				GetOuter()!.SetLayerWeight(PrimaryLayer, 0.0f);
+				GetOuter()!.SetLayerWeight(SecondaryLayer, weight);
+			}
+		}
+		else {
+			if (PrimaryLayer == -1)
+				MoveContinue();
+
+			if (SecondaryLayer != -1) {
+				GetOuter()!.RemoveLayer(SecondaryLayer, 0.0f, 0.0f);
+				SecondaryLayer = -1;
+				SecondarySequence = (int)Activity.ACT_INVALID;
+				SecondaryWeight = 0.0f;
+			}
+
+			GetOuter()!.SetLayerWeight(PrimaryLayer, weight);
+		}
+	}
+
+	int GetInteriorSequence(int fromSequence) {
+		int sequence = GetNavigator()!.GetMovementSequence();
+
+		if (InteriorSequence != (int)Activity.ACT_INVALID && sequence == PrevMovementSequence)
+			return InteriorSequence;
+
+		PrevMovementSequence = sequence;
+
+		KeyValues? seqKeyValues = GetOuter()!.GetSequenceKeyValues(sequence);
+		if (seqKeyValues != null) {
+			KeyValues? kvInterior = seqKeyValues.FindKey("interior");
+			if (kvInterior != null) {
+				ReadOnlySpan<char> activityName = kvInterior.GetString();
+
+				Activity activity = GetOuter()!.LookupActivity(activityName);
+				if (activity != Activity.ACT_INVALID)
+					InteriorSequence = GetOuter()!.SelectWeightedSequence(GetOuter()!.TranslateActivity(activity), fromSequence);
+				else {
+					activity = (Activity)AI_BaseNPC.GetActivityID(activityName);
+					if (activity != Activity.ACT_INVALID)
+						InteriorSequence = GetOuter()!.SelectWeightedSequence(GetOuter()!.TranslateActivity(activity), fromSequence);
+				}
+
+				if (activity == Activity.ACT_INVALID || InteriorSequence == (int)Activity.ACT_INVALID)
+					InteriorSequence = GetOuter()!.LookupSequence(activityName);
+			}
+		}
+
+		if (InteriorSequence == (int)Activity.ACT_INVALID) {
+			Activity activity = GetNavigator()!.GetMovementActivity();
+			if (activity == Activity.ACT_WALK_AIM || activity == Activity.ACT_RUN_AIM)
+				activity = Activity.ACT_IDLE_ANGRY;
+			else
+				activity = Activity.ACT_IDLE;
+			InteriorSequence = GetOuter()!.SelectWeightedSequence(GetOuter()!.TranslateActivity(activity), fromSequence);
+
+			Assert(InteriorSequence != (int)Activity.ACT_INVALID);
+		}
+
+		return InteriorSequence;
 	}
 
 	void BuildMoveScript(in AILocalMoveGoal move) {
@@ -571,6 +710,46 @@ public class AI_BlendedMotor : AI_Motor
 		ScriptTurn.Clear();
 	}
 
+	public override void MoveStart() {
+		if (PrimarySequence == -1) {
+			PrimarySequence = GetOuter()!.GetSequence();
+			StartCycle = GetOuter()!.GetCycle();
+			CurrRate = 0.4f;
+
+			SecondarySequence = -1;
+
+			PrimaryLayer = GetOuter()!.AddLayeredSequence(PrimarySequence, 0);
+			GetOuter()!.SetLayerWeight(PrimaryLayer, 0.0f);
+			GetOuter()!.SetLayerPlaybackRate(PrimaryLayer, 0.0);
+			GetOuter()!.SetLayerNoRestore(PrimaryLayer, true);
+			GetOuter()!.SetLayerCycle(PrimaryLayer, StartCycle, (float)StartCycle);
+
+			SecondaryWeight = 0.0f;
+		}
+
+		if (GoalSequence == (int)Activity.ACT_INVALID)
+			ResetGoalSequence();
+
+		PrevOrigin2 = GetOuter()!.GetAbsOrigin();
+		PrevOrigin1 = GetOuter()!.GetAbsOrigin();
+
+		DeceleratingToGoal = false;
+	}
+
+	public void ResetGoalSequence() {
+		SavedGoalActivity = GetNavigator()!.GetArrivalActivity();
+		if (SavedGoalActivity == Activity.ACT_INVALID)
+			SavedGoalActivity = GetOuter()!.GetStoppedActivity();
+
+		SavedTranslatedGoalActivity = GetOuter()!.NPC_TranslateActivity(SavedGoalActivity);
+
+		GoalSequence = GetNavigator()!.GetArrivalSequence(PrimarySequence);
+
+		GoalSequence = GetInteriorSequence(PrimarySequence);
+
+		Assert(GoalSequence != (int)Activity.ACT_INVALID);
+	}
+
 	public override float OverrideMaxYawSpeed(Activity activity) {
 		if (IsYawLocked())
 			return 0.0f;
@@ -602,6 +781,33 @@ public class AI_BlendedMotor : AI_Motor
 		PrevMovementSequence = (int)Activity.ACT_INVALID;
 		InteriorSequence = (int)Activity.ACT_INVALID;
 	}
+
+	public override void MovePaused() {
+		base.MovePaused();
+		SetMoveScriptAnim(0.0f);
+	}
+
+	public void MoveContinue() {
+		PrimarySequence = GetInteriorSequence((int)Activity.ACT_INVALID);
+		GoalSequence = PrimarySequence;
+
+		Assert(PrimarySequence != (int)Activity.ACT_INVALID);
+
+		if (PrimarySequence == (int)Activity.ACT_INVALID)
+			return;
+
+		StartCycle = 0.0;
+
+		PrimaryLayer = GetOuter()!.AddLayeredSequence(PrimarySequence, 0);
+		GetOuter()!.SetLayerWeight(PrimaryLayer, 0.0f);
+		GetOuter()!.SetLayerPlaybackRate(PrimaryLayer, 0.0);
+		GetOuter()!.SetLayerNoRestore(PrimaryLayer, true);
+		GetOuter()!.SetLayerCycle(PrimaryLayer, StartCycle, (float)StartCycle);
+
+		DeceleratingToGoal = false;
+	}
+
+	public new bool IsDeceleratingToGoal() => DeceleratingToGoal;
 
 	public override void UpdateYaw(int speed = -1) {
 		if (IsYawLocked())
@@ -711,7 +917,9 @@ public class AI_BlendedMotor : AI_Motor
 	public int PrevMovementSequence;
 	public int InteriorSequence;
 
-	public float StartCycle;
+	public TimeUnit_t StartCycle;
+
+	public float CurrRate;
 
 	public float PredictiveSpeedAdjust;
 	public float ReactiveSpeedAdjust;
