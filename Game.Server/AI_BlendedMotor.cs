@@ -37,7 +37,65 @@ public class AI_BlendedMotor : AI_Motor
 		NextTurnAct = 0.0;
 	}
 
-	public float GetMoveScriptTotalTime() => throw new NotImplementedException();
+	float GetMoveScriptDist(out float newSpeed) {
+		int i;
+		float totalDist = 0;
+		TimeUnit_t t = GetMoveInterval();
+
+		Assert(ScriptMove.Count > 1);
+
+		newSpeed = 0;
+		for (i = 0; i < ScriptMove.Count - 1; i++) {
+			if (t < ScriptMove[i].Time) {
+				TimeUnit_t a = t / ScriptMove[i].Time;
+				newSpeed = (float)(ScriptMove[i].MaxVelocity * (1 - a) + ScriptMove[i + 1].MaxVelocity * a);
+
+				totalDist += (float)((ScriptMove[i].MaxVelocity + newSpeed) * 0.5 * t);
+				break;
+			}
+			else {
+				newSpeed = ScriptMove[i + 1].MaxVelocity;
+				totalDist += ScriptMove[i].Dist;
+				t -= ScriptMove[i].Time;
+			}
+		}
+
+		return totalDist;
+	}
+
+	public float GetMoveScriptTotalTime() {
+		float dist = GetNavigator()!.GetArrivalDistance();
+
+		int i = ScriptMove.Count - 1;
+
+		if (i < 0)
+			return -1;
+
+		while (i > 0 && dist > 1) {
+			dist -= ScriptMove[i].Dist;
+			i--;
+		}
+		return (float)ScriptMove[i].ElapsedTime;
+	}
+
+	float GetMoveScriptYaw() {
+		int i;
+
+		float newYaw = GetOuter()!.GetAbsAngles().Y;
+		TimeUnit_t t = GetMoveInterval();
+		for (i = 0; i < ScriptTurn.Count - 1; i++) {
+			if (t < ScriptTurn[i].Time) {
+				TimeUnit_t a = t / ScriptTurn[i].Time;
+				float deltaYaw = Util.AngleDiff(ScriptTurn[i + 1].Yaw, ScriptTurn[i].Yaw);
+				newYaw = Util.AngleMod((float)(ScriptTurn[i].Yaw + a * deltaYaw));
+				break;
+			}
+			else
+				t -= ScriptTurn[i].Time;
+		}
+
+		return newYaw;
+	}
 
 	public override void ResetMoveCalculations() {
 		base.ResetMoveCalculations();
