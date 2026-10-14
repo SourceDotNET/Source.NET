@@ -10,6 +10,7 @@ using Source.Common.Steam;
 
 using Steamworks;
 
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace Source.Engine.GarrysMod;
@@ -26,7 +27,8 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 	IGMod_Audio? audio;
 	// IAnalytics? analytics;
 	IServerAddons? serverAddons;
-	IGMHTML? html;
+	IHtmlSystem? html;
+	Assembly? htmlModule;
 	InlineArrayMaxPath<char> gameDirParent;
 	InlineArrayMaxPath<char> gameDir;
 	bool filterTextInitialized;
@@ -74,7 +76,7 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 	public IIntroScreen? IntroScreen() => introScreen;
 	public IMaterialSystem? Materials() => materials;
 	public IServerAddons? ServerAddons() => serverAddons;
-	public IGMHTML? HTML() => html;
+	public IHtmlSystem? HTML() => html;
 
 	public ISteamHTTP? SteamHTTP() {
 #if !SWDS
@@ -144,9 +146,8 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 			if (html == null) {
 				if (!commandLine.CheckParm("-nochromium")) {
 					Msg("Attempting to load Chromium...\n");
-					// todo: LoadHTML("html_chromium.dll");
+					LoadHTML("html_chromium");
 				}
-				LoadHTML("html_chromium");
 
 				// if (html == null && !commandLine.CheckParm("-noawesomium")) {
 					// Msg("Attempting to load Awesomium...\n");
@@ -157,8 +158,7 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 			if (html == null) {
 				Msg("Attempting to load Stub...\n");
 				LoadHTML("html_stub");
-				// todo: LoadHTML("html_stub.dll");
-				if (html == null) 
+				if (html == null)
 					Error("Couldn't find an HTML system.");
 			}
 		}
@@ -170,8 +170,26 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 		StripLastDir(gameDirParent);
 	}
 
-	private void LoadHTML(string name) {
+	bool LoadHTML(string name) {
+		string path = Path.Combine(AppContext.BaseDirectory, $"{name}.dll");
+		if (!File.Exists(path))
+			return false;
 
+		Assembly module;
+		try {
+			module = Assembly.LoadFrom(path);
+		}
+		catch (Exception) {
+			return false;
+		}
+
+		IHtmlSystem? system = HtmlSystemExportAttribute.Find(module);
+		if (system == null)
+			return false;
+
+		html = system;
+		htmlModule = module;
+		return true;
 	}
 
 	static void FixSlashes(Span<char> str, char separator) {
