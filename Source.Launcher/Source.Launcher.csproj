@@ -40,6 +40,7 @@
 		<ProjectReference Include="..\Source.StdShader.Gl46\Source.StdShader.Gl46.csproj" />
 		<ProjectReference Include="..\Source.StudioRender\Source.StudioRender.csproj" />
 		<ProjectReference Include="..\Source.VTF\Source.VTF.csproj" />
+		<ProjectReference Include="..\HTML.Stub\HTML.Stub.csproj" />
 	</ItemGroup>
 
 	<!-- Copy LuaJIT (Game.Lua imports "lua51", which .NET resolves to liblua51.so on Linux) -->

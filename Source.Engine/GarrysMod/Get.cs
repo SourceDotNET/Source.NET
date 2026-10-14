@@ -28,7 +28,6 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 	// IAnalytics? analytics;
 	IServerAddons? serverAddons;
 	IHtmlSystem? html;
-	Assembly? htmlModule;
 	InlineArrayMaxPath<char> gameDirParent;
 	InlineArrayMaxPath<char> gameDir;
 	bool filterTextInitialized;
@@ -171,25 +170,8 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 	}
 
 	bool LoadHTML(string name) {
-		string path = Path.Combine(AppContext.BaseDirectory, $"{name}.dll");
-		if (!File.Exists(path))
-			return false;
-
-		Assembly module;
-		try {
-			module = Assembly.LoadFrom(path);
-		}
-		catch (Exception) {
-			return false;
-		}
-
-		IHtmlSystem? system = HtmlSystemExportAttribute.Find(module);
-		if (system == null)
-			return false;
-
-		html = system;
-		htmlModule = module;
-		return true;
+		html = appSystemFactory.GetKeyedService<IHtmlSystem>(name);
+		return html != null;
 	}
 
 	static void FixSlashes(Span<char> str, char separator) {

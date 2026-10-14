@@ -113,6 +113,9 @@
     <Project Path="Source.StudioRender/Source.StudioRender.csproj">
       <Platform Project="x64" />
     </Project>
+    <Project Path="HTML.Stub/HTML.Stub.csproj">
+      <Platform Project="x64" />
+    </Project>
   </Folder>
   <Folder Name="/5. Game Libraries/">
     <Project Path="Game.Client/Game.Client.csproj">
