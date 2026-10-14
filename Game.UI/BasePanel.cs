@@ -638,7 +638,7 @@ public class BasePanel : Panel
 		g_BasePanel?.RunMenuCommand(args[1]);
 	}
 
-	private void RunMenuCommand(ReadOnlySpan<char> command) {
+	public void RunMenuCommand(ReadOnlySpan<char> command) {
 		DevMsg($"Incoming BasePanel message '{command}'\n");
 		switch (command) {
 			case "OpenGameMenu": PostMessage(GameMenu, new("Command", "command", "open")); break;

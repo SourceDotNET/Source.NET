@@ -568,8 +568,28 @@ public static partial class LuaRender
 		renderContext.Viewport((int)x, (int)y, (int)w, (int)h);
 		return 0;
 	}
-	// todo: Clear
-	// todo: ClearDepth
+	[LuaFunction]
+	static int Clear(ILuaInterface lua) {
+		int r = (int)lua.CheckNumber(1);
+		int g = (int)lua.CheckNumber(2);
+		int b = (int)lua.CheckNumber(3);
+		int a = (int)lua.CheckNumber(4);
+		bool depth = lua.GetBool(5);
+		bool stencil = lua.GetBool(6);
+		using MatRenderContextPtr renderContext = new(materials);
+		renderContext.ClearColor3ub((byte)r, (byte)g, (byte)b);
+		renderContext.ClearColor4ub((byte)r, (byte)g, (byte)b, (byte)a);
+		renderContext.ClearBuffers(true, depth, stencil);
+		return 0;
+	}
+
+	[LuaFunction]
+	static int ClearDepth(ILuaInterface lua) {
+		bool stencil = lua.GetType(1) == (int)LuaType.Nil || lua.GetBool(1);
+		using MatRenderContextPtr renderContext = new(materials);
+		renderContext.ClearBuffers(false, true, stencil);
+		return 0;
+	}
 	// todo: RenderView
 	// todo: GetViewSetup
 	// todo: RenderHUD
@@ -865,8 +885,69 @@ public static partial class LuaRender
 		return 0;
 	}
 
-	// todo: OverrideBlend
-	// todo: OverrideBlendFunc
+	[LuaFunction]
+	static int OverrideBlend(ILuaInterface lua) {
+		using (MatRenderContextPtr renderContext = new(materials)) {
+			renderContext.OverrideBlend(false, true, -1, -1, -1);
+			renderContext.OverrideBlendSeparateAlpha(false, true, -1, -1, -1);
+		}
+
+		if (!lua.GetBool(1))
+			return 0;
+
+		int top = lua.Top();
+		bool color = false, alpha = false;
+		int src = -1, dst = -1, op = -1, srcAlpha = -1, dstAlpha = -1, opAlpha = -1;
+		if (top > 1) {
+			color = true;
+			src = (int)lua.CheckNumber(2);
+			dst = (int)lua.CheckNumber(3);
+			op = (int)lua.CheckNumber(4);
+		}
+		if (top > 4) {
+			alpha = true;
+			srcAlpha = (int)lua.CheckNumber(5);
+			dstAlpha = (int)lua.CheckNumber(6);
+			opAlpha = (int)lua.CheckNumber(7);
+		}
+
+		using (MatRenderContextPtr renderContext = new(materials)) {
+			renderContext.OverrideBlend(true, color, src, dst, op);
+			renderContext.OverrideBlendSeparateAlpha(true, alpha, srcAlpha, dstAlpha, opAlpha);
+		}
+		return 0;
+	}
+
+	[LuaFunction]
+	static int OverrideBlendFunc(ILuaInterface lua) {
+		using (MatRenderContextPtr renderContext = new(materials)) {
+			renderContext.OverrideBlend(false, true, -1, -1, -1);
+			renderContext.OverrideBlendSeparateAlpha(false, true, -1, -1, -1);
+		}
+
+		if (!lua.GetBool(1))
+			return 0;
+
+		int top = lua.Top();
+		bool color = false, alpha = false;
+		int src = -1, dst = -1, srcAlpha = -1, dstAlpha = -1;
+		if (top > 1) {
+			color = true;
+			src = (int)lua.CheckNumber(2);
+			dst = (int)lua.CheckNumber(3);
+		}
+		if (top > 3) {
+			alpha = true;
+			srcAlpha = (int)lua.CheckNumber(4);
+			dstAlpha = (int)lua.CheckNumber(5);
+		}
+
+		using (MatRenderContextPtr renderContext = new(materials)) {
+			renderContext.OverrideBlend(true, color, src, dst, -1);
+			renderContext.OverrideBlendSeparateAlpha(true, alpha, srcAlpha, dstAlpha, -1);
+		}
+		return 0;
+	}
 
 #if !MENU_DLL
 	[LuaFunction]

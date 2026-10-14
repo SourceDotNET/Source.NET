@@ -33,6 +33,7 @@ public interface IGameUI
 	public bool IsMainMenuVisible();
 
 	public void SetMainMenuOverride(IPanel? panel);
+	public void SendMainMenuCommand(ReadOnlySpan<char> command);
 	bool IsInLevel();
 	bool IsInReplay();
 	bool IsConsoleUI();

@@ -137,6 +137,10 @@ public class GameUI(IEngineClient engine) : IGameUI
 		staticPanel.RunFrame();
 	}
 
+	public void SendMainMenuCommand(ReadOnlySpan<char> command) {
+		BasePanel()?.RunMenuCommand(command);
+	}
+
 	public void SetMainMenuOverride(IPanel? panel) {
 		BasePanel? basePanel = BasePanel();
 		if (basePanel != null)

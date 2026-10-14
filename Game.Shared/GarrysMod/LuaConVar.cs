@@ -135,6 +135,9 @@ public static partial class LuaConVar
 		return (float)min;
 	}
 
+#if CLIENT_DLL || MENU_DLL
+	[LuaGlobal("GetConVar")]
+#endif
 	[LuaGlobal]
 	static ConVar? GetConVar_Internal(string name) {
 		if (!IsAllowedToGetConvarInfo(name) || stricmp("con_logfile", name) == 0)

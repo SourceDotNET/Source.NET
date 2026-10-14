@@ -409,6 +409,73 @@ public static partial class LuaMaterial
 	static int IMaterial__SetShader(ILuaInterface lua) => 0;
 
 	[LuaMethod]
+	static int IMaterial____gc(ILuaInterface lua) {
+		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
+		if (material == null)
+			return 0;
+		material.DecrementReferenceCount();
+		lua.SetUserType(1, 0);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int IMaterial____tostring(ILuaInterface lua) {
+		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
+		if (material == null)
+			lua.PushString("Material [NULL]");
+		else
+			lua.PushString($"Material [{material.GetName()}]");
+		return 1;
+	}
+
+	[LuaMethod]
+	static int IMaterial__GetColor4Part(ILuaInterface lua) {
+		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
+		if (material == null) {
+			lua.Error("Tried to use a NULL IMaterial!");
+			return 0;
+		}
+
+		IMaterialVar var = material.FindVar("$basetexture", out bool found, false);
+		if (var == null || !found)
+			return 0;
+
+		ITexture? texture = GetTextureValue(var);
+		if (texture == null)
+			return 0;
+
+		Color color = default;
+		if (get.Resources() != null)
+			color = get.Resources()!.GetTextureColour(texture, (int)lua.CheckNumber(2), (int)lua.CheckNumber(3));
+		lua.PushNumber(color.R);
+		lua.PushNumber(color.G);
+		lua.PushNumber(color.B);
+		lua.PushNumber(color.A);
+		return 4;
+	}
+
+#if MENU_DLL
+	[LuaMethod]
+	static int IMaterial__SetDynamicImage(ILuaInterface lua) {
+		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
+		if (material == null) {
+			lua.Error("Tried to use a NULL IMaterial!");
+			return 0;
+		}
+
+		ReadOnlySpan<char> url = lua.CheckString(2);
+		IMaterialVar var = material.FindVar("$basetexture", out _, true);
+		ITexture? texture = var?.GetTextureValue();
+		if (texture == null)
+			return 0;
+
+		get.Resources()!.SetImage(texture, url);
+		texture.Download();
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
 	static int IMaterial__Recompute(ILuaInterface lua) {
 		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
 		if (material == null) {
@@ -453,7 +520,7 @@ public static partial class LuaMaterial
 						if (texture == null)
 							lua.PushNil();
 						else
-							LuaTexture.LC_ITexture.Push(texture);
+							LuaTexture.Push(texture);
 						break;
 					}
 				case MaterialVarType.Int:

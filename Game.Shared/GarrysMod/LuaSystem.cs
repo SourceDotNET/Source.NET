@@ -23,15 +23,54 @@ public static partial class LuaSystem
 	[LuaFunction]
 	static bool IsLinux() => OperatingSystem.IsLinux();
 
-	// todo: HasFocus
-	// todo: BatteryPower
-	// todo: AppTime
-	// todo: UpTime
-	// todo: SteamTime
-	// todo: GetCountry
-#if CLIENT_DLL
-	// todo: FlashWindow
-	// todo: IsWindowed
+#if CLIENT_DLL || MENU_DLL
+	[LuaFunction]
+	static int HasFocus(ILuaInterface lua) {
+		lua.PushBool(engine.IsActiveApp());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int BatteryPower(ILuaInterface lua) {
+		lua.PushNumber(Steamworks.SteamUtils.GetCurrentBatteryPower());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int AppTime(ILuaInterface lua) {
+		lua.PushNumber(Steamworks.SteamUtils.GetSecondsSinceAppActive());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int UpTime(ILuaInterface lua) {
+		lua.PushNumber(Steamworks.SteamUtils.GetSecondsSinceComputerActive());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int SteamTime(ILuaInterface lua) {
+		lua.PushNumber(Steamworks.SteamUtils.GetServerRealTime());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetCountry(ILuaInterface lua) {
+		lua.PushString(Steamworks.SteamUtils.GetIPCountry());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int FlashWindow(ILuaInterface lua) {
+		engine.FlashWindow();
+		return 0;
+	}
+
+	[LuaFunction]
+	static int IsWindowed(ILuaInterface lua) {
+		lua.PushBool(engine.IsWindowedMode());
+		return 1;
+	}
 #endif
 }
 #endif

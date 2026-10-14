@@ -82,7 +82,9 @@ public interface IEngineVGuiInternal : IEngineVGui
 	void Paint(PaintMode paintMode);
 	void ActivateGameUI();
 	bool HideGameUI();
+#if !GMOD_DLL
 	void ShowConsole();
+#endif
 	void HideConsole();
 	bool ShouldPause();
 }
