@@ -25,6 +25,10 @@ namespace Game.Server
 	{
 		public IKContext? Ik;
 
+#if !CLIENT_DLL
+		int IKCounter;
+#endif
+
 		Vector3 GetIKOrigin() {
 #if CLIENT_DLL
 			return GetRenderOrigin();
@@ -41,6 +45,14 @@ namespace Game.Server
 #endif
 		}
 
+		int NextIKFrameCounter() {
+#if CLIENT_DLL
+			return (int)gpGlobals.FrameCount;
+#else
+			return ++IKCounter;
+#endif
+		}
+
 #if CLIENT_DLL
 		protected void UpdateIKContext(StudioHdr hdr) {
 			if (!IsModelScaled()) {
@@ -50,9 +62,22 @@ namespace Game.Server
 			else
 				Ik = null;
 		}
+#else
+		public void EnableServerIK() {
+			if (Ik == null) {
+				Ik = new IKContext();
+				IKCounter = 0;
+			}
+		}
 
+		public void DisableServerIK() {
+			Ik = null;
+		}
+#endif
+
+#if CLIENT_DLL
 		protected void InitIK(StudioHdr hdr, TimeUnit_t currentTime, int boneMask) {
-			Ik!.Init(hdr, GetIKAngles(), GetIKOrigin(), currentTime, (int)gpGlobals.FrameCount, boneMask);
+			Ik!.Init(hdr, GetIKAngles(), GetIKOrigin(), currentTime, NextIKFrameCounter(), boneMask);
 		}
 #endif
 

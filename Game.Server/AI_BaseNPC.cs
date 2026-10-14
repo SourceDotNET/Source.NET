@@ -593,6 +593,7 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		InChoreo = true;
 
 		SetCollisionGroup(Source.CollisionGroup.NPC);
+		EnableServerIK();
 	}
 
 	public override void PostConstructor(ReadOnlySpan<char> classname) {
