@@ -622,6 +622,14 @@ public partial class BaseAnimating : BaseEntity
 		RemoveEFlags(EFL.SettingUpBones);
 	}
 
+	public int LookupBone(ReadOnlySpan<char> name) {
+		StudioHdr? studioHdr = GetModelPtr();
+		Assert(studioHdr);
+		if (studioHdr == null)
+			return -1;
+		return BoneSetup.Studio_BoneIndexByName(studioHdr, name);
+	}
+
 	public int LookupAttachment(ReadOnlySpan<char> name) {
 		StudioHdr? studioHdr = GetModelPtr();
 		if (studioHdr == null) {

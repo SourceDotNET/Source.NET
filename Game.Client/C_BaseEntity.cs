@@ -713,6 +713,14 @@ public partial class C_BaseEntity : IClientEntity
 		DEFINE.FIELD(nameof(ProxyRandomValue), FieldType.Float ),
 	]); public virtual DataMap? GetPredDescMap() => PredMap;
 
+	public static readonly DataMap DataDesc = new(typeof(C_BaseEntity), [
+		DEFINE.FIELD(nameof(ModelName), FieldType.String),
+		DEFINE.FIELD(nameof(AbsOrigin), FieldType.PositionVector),
+		DEFINE.FIELD(nameof(AbsRotation), FieldType.Vector),
+		// DEFINE.ARRAY(nameof(CoordinateFrame), FieldType.Float, 12),
+		DEFINE.FIELD(nameof(flags), FieldType.Integer),
+	]); public virtual DataMap? GetDataDescMap() => DataDesc;
+
 
 	static readonly DynamicAccessor DA_Origin = FIELD.OF(nameof(Origin));
 	static readonly DynamicAccessor DA_Rotation = FIELD.OF(nameof(Rotation));

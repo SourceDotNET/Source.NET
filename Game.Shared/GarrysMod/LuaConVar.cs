@@ -209,9 +209,8 @@ public static partial class LuaConVar
 		ConVar convar = g_Lua.CreateConVar(name, defaultValue, helpString, flags);
 		convar.SetMin(hasMin, min);
 		convar.SetMax(hasMax, max);
-		if ((flags & (int)FCvar.UserInfo) != 0) {
-			// todo: cvar.CallGlobalChangeCallbacks(convar, "", 0.0f);
-		}
+		if ((flags & (int)FCvar.UserInfo) != 0)
+			cvar.CallGlobalChangeCallbacks(convar, new ConVarChangeContext { Old = "" });
 
 		Push_ConVar(convar);
 		return 1;

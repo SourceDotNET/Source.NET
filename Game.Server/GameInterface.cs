@@ -22,8 +22,9 @@ using System.Numerics;
 
 namespace Game.Server;
 
-public static class GameInterfaceGlobals {
-	public static readonly ConVar sv_unlockedchapters = new( "sv_unlockedchapters", "1", FCvar.Archive | FCvar.ArchiveXbox);
+public static class GameInterfaceGlobals
+{
+	public static readonly ConVar sv_unlockedchapters = new("sv_unlockedchapters", "1", FCvar.Archive | FCvar.ArchiveXbox);
 }
 
 [EngineComponent]
@@ -40,9 +41,24 @@ public static class GameInterface
 	public static INetworkStringTable? g_pStringTableClientSideChoreoScenes;
 	public static INetworkStringTable? g_pStringTableMaterials;
 
-	public static void PrecacheMaterial(ReadOnlySpan<char> materialName){
+	public static void PrecacheMaterial(ReadOnlySpan<char> materialName) {
 		g_pStringTableMaterials!.AddString(true, materialName);
 	}
+
+	public static int GetMaterialIndex(ReadOnlySpan<char> materialName) {
+		if (!materialName.IsEmpty) {
+			int index = g_pStringTableMaterials!.FindStringIndex(materialName);
+			if (index != INetworkStringTable.INVALID_STRING_INDEX)
+				return index;
+			else {
+				DevMsg($"Warning! GetMaterialIndex: couldn't find material {materialName}\n ");
+				return 0;
+			}
+		}
+		return 0;
+	}
+
+	public static ReadOnlySpan<char> GetMaterialNameFromIndex(int materialIndex) => g_pStringTableMaterials!.GetString(materialIndex);
 
 	public static bf_write? g_pMsgBuffer;
 	public static void UserMessageBegin(in IRecipientFilter filter, ReadOnlySpan<char> messagename) {

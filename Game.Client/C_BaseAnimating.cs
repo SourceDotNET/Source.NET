@@ -1522,6 +1522,13 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 	}
 
+	public virtual void RemoveFromPreviousBoneSetups() => PreviousBoneSetups.Remove(this);
+
+	public int LookupBone(ReadOnlySpan<char> name) {
+		Assert(GetModelPtr());
+		return BoneSetup.Studio_BoneIndexByName(GetModelPtr(), name);
+	}
+
 	public int LookupAttachment(ReadOnlySpan<char> attachmentName) {
 		StudioHdr? hdr = GetModelPtr();
 		if (hdr == null)

@@ -390,6 +390,58 @@ public static partial class LuaPlayer
 	}
 
 	[LuaMethod]
+	static int Player__GetWeapons(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		LuaTable table = new(null, MAX_WEAPONS);
+		int count = 0;
+		for (int i = 0; i < MAX_WEAPONS; i++) {
+			BaseCombatWeapon? weapon = player.MyWeapons[i].Get();
+			if (weapon != null)
+				table.SetMemberEntity(++count, weapon);
+		}
+		table.Push();
+		table.UnReference();
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetUseEntity(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+#if CLIENT_DLL
+		LuaEntity.Push_Entity(((GMOD_Player)player).FindUseEntity());
+#else
+		LuaEntity.Push_Entity(player.FindUseEntity());
+#endif
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__SetFOV(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		BaseEntity requester = player;
+		if (lua.GetType(4) != LuaType.Nil)
+			requester = LuaEntity.Get_Entity(4, false)!;
+		double zoomRate = lua.CheckNumberOpt(3, 0);
+		double fov = lua.GetNumber(2);
+		player.SetFOV(requester, (int)(float)fov, (float)zoomRate, 0);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__GetFOV(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber(player.GetFOV());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__Nick(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushString(player.GetPlayerName());
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Player__GetShootPos(ILuaInterface lua) {
 		BasePlayer player = Get_Player(1, false)!;
 		LuaVector.Push_Vector(player.Weapon_ShootPosition());
