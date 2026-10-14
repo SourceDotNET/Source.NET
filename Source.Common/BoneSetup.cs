@@ -156,7 +156,7 @@ public readonly struct BoneCache
 	public const int BoneCache_SIZE = 24;
 }
 
-public ref struct BoneSetup
+public ref partial struct BoneSetup
 {
 	public static readonly ConVar anim_3wayblend = new("anim_3wayblend", "1", FCvar.Replicated, "Toggle the 3-way animation blending code.");
 
