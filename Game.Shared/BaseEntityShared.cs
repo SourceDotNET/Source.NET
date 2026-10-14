@@ -349,7 +349,36 @@ public partial class
 	}
 
 	public void VPhysicsInitShadow(bool allowPhysicsMovement, bool allowPhysicsRotation, ref Solid solid) {
+#if !CLIENT_DLL
+		if (!VPhysicsInitSetup())
+			return;
 
+		if (GetSolid() == SolidType.None)
+			return;
+
+		Vector3 origin = GetAbsOrigin();
+		QAngle angles = GetAbsAngles();
+		IPhysicsObject? physicsObject;
+
+		if (GetSolid() == SolidType.BBox) {
+			float radius = 0.25f - DIST_EPSILON;
+			Vector3 mins = WorldAlignMins() + new Vector3(radius, radius, radius);
+			Vector3 maxs = WorldAlignMaxs() - new Vector3(radius, radius, radius);
+			physicsObject = PhysModelCreateBox(this, mins, maxs, origin, false);
+			angles = vec3_angle;
+		}
+		else if (GetSolid() == SolidType.OBB)
+			physicsObject = PhysModelCreateOBB(this, CollisionProp().OBBMins(), CollisionProp().OBBMaxs(), origin, angles, false);
+		else
+			physicsObject = PhysModelCreate(this, GetModelIndex(), origin, angles, ref solid);
+
+		if (physicsObject == null)
+			return;
+
+		VPhysicsSetObject(physicsObject);
+		physicsObject.SetShadow(1e4f, 1e4f, allowPhysicsMovement, allowPhysicsRotation);
+		physicsObject.UpdateShadow(origin, angles, false, 0);
+#endif
 	}
 	public void VPhysicsInitShadow(bool allowPhysicsMovement, bool allowPhysicsRotation) => VPhysicsInitShadow(allowPhysicsMovement, allowPhysicsRotation, ref Unsafe.NullRef<Solid>());
 	public void VPhysicsDestroyObject() {
