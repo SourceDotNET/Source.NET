@@ -962,6 +962,24 @@ public class AI_BlendedMotor : AI_Motor
 		SetYawSpeed(CalcYawSpeed());
 	}
 
+	public override void MoveClimbStart(in Vector3 climbDest, in Vector3 climbDir, float climbDist, float yaw) {
+		if (PrimaryLayer != -1)
+			GetOuter()!.SetLayerWeight(PrimaryLayer, 0);
+		if (SecondaryLayer != -1)
+			GetOuter()!.SetLayerWeight(SecondaryLayer, 0);
+
+		base.MoveClimbStart(climbDest, climbDir, climbDist, yaw);
+	}
+
+	public override void MoveJumpStart(in Vector3 velocity) {
+		if (PrimaryLayer != -1)
+			GetOuter()!.SetLayerWeight(PrimaryLayer, 0);
+		if (SecondaryLayer != -1)
+			GetOuter()!.SetLayerWeight(SecondaryLayer, 0);
+
+		base.MoveJumpStart(velocity);
+	}
+
 	public struct AI_MovementScript
 	{
 		public TimeUnit_t Time;
