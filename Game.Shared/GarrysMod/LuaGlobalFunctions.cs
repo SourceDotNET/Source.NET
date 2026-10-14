@@ -103,6 +103,7 @@ public static partial class LuaGlobalFunctions
 		v = maxInt / 255.0f;
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int LocalToWorld(ILuaInterface lua) {
 		Vector3 localPos = LuaVector.Get_Vector(1);
@@ -118,6 +119,7 @@ public static partial class LuaGlobalFunctions
 		LuaAngle.Push_Angle(worldAng);
 		return 2;
 	}
+#endif
 
 	[LuaGlobal]
 	static int HSVToColor(ILuaInterface lua) {
@@ -158,6 +160,7 @@ public static partial class LuaGlobalFunctions
 		return g_Lua.Top() - top;
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int CompileString(ILuaInterface lua) {
 		string code = g_Lua!.CheckString(1);
@@ -206,6 +209,7 @@ public static partial class LuaGlobalFunctions
 		gGM!.DeriveGamemode(name);
 		return 0;
 	}
+#endif
 
 	[LuaGlobal]
 	static void require(string name) {
@@ -218,6 +222,7 @@ public static partial class LuaGlobalFunctions
 	static ConVar? hostnameCvar;
 #endif
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int GetHostName(ILuaInterface lua) {
 #if CLIENT_DLL
@@ -231,13 +236,16 @@ public static partial class LuaGlobalFunctions
 		return 1;
 #endif
 	}
+#endif
 
 #if CLIENT_DLL
+#if !MENU_DLL
 	[LuaGlobal]
 	static int LocalPlayer(ILuaInterface lua) {
 		LuaEntity.Push_Entity(C_BasePlayer.GetLocalPlayer());
 		return 1;
 	}
+#endif
 #endif
 
 	static string ToStringArgs(LuaObject tostring, int top, string error) {
@@ -369,11 +377,13 @@ public static partial class LuaGlobalFunctions
 		return 1;
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int TypeID(ILuaInterface lua) {
 		g_Lua!.PushNumber((int)g_Lua.GetType(1));
 		return 1;
 	}
+#endif
 
 	static int IsType(LuaType type) {
 		g_Lua!.PushBool(g_Lua.IsType(1, type));
@@ -403,14 +413,18 @@ public static partial class LuaGlobalFunctions
 		return gpGlobals.CurTime;
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static float RealTime() => (float)gpGlobals.RealTime;
+#endif
 
 	[LuaGlobal]
 	static float FrameTime() => (float)gpGlobals.FrameTime;
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static long FrameNumber() => gpGlobals.FrameCount;
+#endif
 
 	[LuaGlobal]
 	static double SysTime() {
@@ -510,6 +524,7 @@ public static partial class LuaGlobalFunctions
 #if CLIENT_DLL
 	static Vector3 EyePosition;
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int EyePos(ILuaInterface lua) {
 		if (IsCurrentViewAccessAllowed())
@@ -517,6 +532,7 @@ public static partial class LuaGlobalFunctions
 		LuaVector.Push_Vector(EyePosition);
 		return 1;
 	}
+#endif
 #endif
 
 	public static void ReadStackFrom(ref LuaError error, ILuaInterface lua) {

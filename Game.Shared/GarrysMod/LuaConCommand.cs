@@ -556,6 +556,7 @@ public static partial class LuaConCommands
 		return 0;
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int AddCSLuaFile(ILuaInterface lua) {
 #if GAME_DLL
@@ -578,5 +579,6 @@ public static partial class LuaConCommands
 #endif
 		return 0;
 	}
+#endif
 }
 #endif

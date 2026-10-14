@@ -764,6 +764,7 @@ public static partial class LuaFileLibrary
 		return 1;
 	}
 
+#if !MENU_DLL
 	[LuaFunction]
 	static int AsyncRead(ILuaInterface lua) {
 		string fileName = lua.CheckString(1);
@@ -808,6 +809,7 @@ public static partial class LuaFileLibrary
 		lua.PushNumber((double)filesystem.AsyncRead(request));
 		return 1;
 	}
+#endif
 
 	[LuaFunction]
 	static int Find(ILuaInterface lua) {

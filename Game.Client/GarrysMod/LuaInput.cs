@@ -223,6 +223,7 @@ public static partial class LuaInput
 		return 1;
 	}
 
+#if !MENU_DLL
 	[LuaFunction]
 	static int TranslateAlias(ILuaInterface lua) {
 		ReadOnlySpan<char> alias = engine.GMOD_TranslateAlias(lua.CheckString(1));
@@ -245,4 +246,5 @@ public static partial class LuaInput
 		SelectWeapon(LuaEntity.Get_Entity(1, false));
 		return 0;
 	}
+#endif
 }

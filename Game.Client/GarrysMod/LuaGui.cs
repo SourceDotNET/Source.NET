@@ -13,6 +13,7 @@ public static partial class LuaGui
 	[LuaLibrary]
 	static readonly LuaLibrary LL_Factory_gui = new("gui");
 
+#if !MENU_DLL
 	[LuaFunction]
 	static int EnableScreenClicker(ILuaInterface lua) {
 		if (!g_Lua!.GetBool(1)) {
@@ -28,6 +29,7 @@ public static partial class LuaGui
 		GModBase.GetMouseInput()!.SetMouseInputEnabled(false);
 		return 0;
 	}
+#endif
 
 	public static Vector3 ScreenToVector(int x, int y) {
 		float halfWide = ScreenWidth() * 0.5f;

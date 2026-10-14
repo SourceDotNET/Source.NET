@@ -1,5 +1,7 @@
 #if CLIENT_DLL || GAME_DLL || MENU_DLL
+#if !MENU_DLL
 using Game.Shared;
+#endif
 
 using Source;
 using Source.Common;
@@ -33,7 +35,9 @@ namespace Game.Server.GarrysMod;
 public static class LuaEnumsGlobals
 {
 	public static readonly LuaEnums LuaEnums = new();
+#if !MENU_DLL
 	public static readonly LuaGameEnums LuaGameEnums = new();
+#endif
 }
 
 public class LuaEnums : LuaUser
@@ -307,6 +311,7 @@ public class LuaEnums : LuaUser
 		global.SetMemberEnumValue($"{EF}_PARENT_ANIMATES", EntityEffects.ParentAnimates);
 		global.SetMemberEnumValue($"{EF}_FOLLOWBONE", EntityEffects.FollowBone);
 
+#if !MENU_DLL
 		global.SetMemberEnumValue(nameof(Activity.ACT_INVALID), Activity.ACT_INVALID);
 		global.SetMemberEnumValue(nameof(Activity.ACT_RESET), Activity.ACT_RESET);
 		global.SetMemberEnumValue(nameof(Activity.ACT_IDLE), Activity.ACT_IDLE);
@@ -1906,6 +1911,7 @@ public class LuaEnums : LuaUser
 		global.SetMemberEnumValue(nameof(Activity.ACT_GMOD_SHOWOFF_STAND_04), Activity.ACT_GMOD_SHOWOFF_STAND_04);
 		global.SetMemberEnumValue(nameof(Activity.ACT_GMOD_SHOWOFF_DUCK_01), Activity.ACT_GMOD_SHOWOFF_DUCK_01);
 		global.SetMemberEnumValue(nameof(Activity.ACT_GMOD_SHOWOFF_DUCK_02), Activity.ACT_GMOD_SHOWOFF_DUCK_02);
+#endif
 
 		global.SetMemberEnumValue($"{BLEND}_ZERO", ShaderBlendFactor.Zero);
 		global.SetMemberEnumValue($"{BLEND}_ONE", ShaderBlendFactor.One);
@@ -1944,7 +1950,7 @@ public class LuaEnums : LuaUser
 		table.SetMemberDouble("ANISOTROPIC", 3.0);
 		global.SetMember("TEXFILTER", table);
 		lua.DestroyObject(table);
-#if CLIENT_DLL
+#if CLIENT_DLL || MENU_DLL
 		// TODO: Enum this!!
 		global.SetMemberDouble("NODOCK", 0.0);
 		global.SetMemberDouble("LEFT", 2.0);
@@ -1953,7 +1959,11 @@ public class LuaEnums : LuaUser
 		global.SetMemberDouble("RIGHT", 3.0);
 		global.SetMemberDouble("FILL", 1.0);
 
+#if MENU_DLL
+		global.SetMember("MENU_DLL", true);
+#else
 		global.SetMember("CLIENT_DLL", true);
+#endif
 #else
 		global.SetMember("GAME_DLL", true);
 #endif
@@ -1961,6 +1971,7 @@ public class LuaEnums : LuaUser
 }
 
 // TODO: Clean this up, in the same way we cleaned up the above.
+#if !MENU_DLL
 public class LuaGameEnums : LuaUser
 {
 	public LuaGameEnums() => SetUsingLua(true);
@@ -3057,4 +3068,5 @@ public class LuaGameEnums : LuaUser
 #endif
 	}
 }
+#endif
 #endif

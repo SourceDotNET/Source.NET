@@ -1,4 +1,6 @@
+#if !MENU_DLL
 using Game.Client.HUD;
+#endif
 
 using Source;
 using Source.Common.GarrysMod.Lua;
@@ -291,6 +293,7 @@ public static partial class LuaSurface
 		return (wide, tall);
 	}
 
+#if !MENU_DLL
 	[LuaFunction]
 	static int GetHUDTexture(ILuaInterface lua) {
 		HudTexture? icon = gHUD.GetIcon(lua.CheckString(1));
@@ -299,6 +302,7 @@ public static partial class LuaSurface
 		lua.PushNumber((int)icon.TextureID);
 		return 1;
 	}
+#endif
 
 	[LuaFunction]
 	static int DrawTexturedRect(ILuaInterface lua) {

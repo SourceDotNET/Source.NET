@@ -1,6 +1,8 @@
 using Source;
 #if CLIENT_DLL || GAME_DLL || MENU_DLL
+#if !MENU_DLL
 using Game.Shared;
+#endif
 
 using Source.Common;
 using Source.Common.DataCache;
@@ -31,6 +33,7 @@ public static partial class LuaUtil
 	[LuaLibrary]
 	static readonly LuaLibrary LL_Factory_util = new("util");
 
+#if !MENU_DLL
 	public static bool UTIL_IsValidModel(ReadOnlySpan<char> name) {
 		if (name.IsEmpty || name[0] <= ' ' || name.Length <= 3)
 			return false;
@@ -98,6 +101,8 @@ public static partial class LuaUtil
 		return collide != null && collide.SolidCount > 1;
 	}
 
+#endif
+
 	[LuaFunction]
 	static int AimVector(ILuaInterface lua) {
 		QAngle angles = LuaAngle.Get_Angle(1);
@@ -117,6 +122,7 @@ public static partial class LuaUtil
 		return 1;
 	}
 
+#if !MENU_DLL
 	[LuaFunction]
 	static int IntersectRayWithOBB(ILuaInterface lua) {
 		Vector3 rayStart = LuaVector.Get_Vector(1);
@@ -197,6 +203,8 @@ public static partial class LuaUtil
 	[LuaFunction]
 	static int NetworkStringToID(string name) => NetworkString.Get(name);
 
+#endif
+
 	[LuaFunction]
 	static int Base64Decode(ILuaInterface lua) {
 		string str = lua.GetString(1) ?? "";
@@ -218,6 +226,7 @@ public static partial class LuaUtil
 		return 1;
 	}
 
+#if !MENU_DLL
 #if GAME_DLL
 	[LuaFunction]
 	static int AddNetworkString(string name) => NetworkString.Add(name);
@@ -382,5 +391,6 @@ public static partial class LuaUtil
 		data.UnReference();
 		return 1;
 	}
+#endif
 }
 #endif

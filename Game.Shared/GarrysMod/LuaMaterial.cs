@@ -177,6 +177,7 @@ public static partial class LuaMaterial
 		return 0;
 	}
 
+#if !MENU_DLL
 	[LuaMethod]
 	static int IMaterial__GetMatrix(ILuaInterface lua) {
 		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
@@ -208,6 +209,7 @@ public static partial class LuaMaterial
 		var.SetMatrixValue(LuaVMatrix.Get_VMatrix(3));
 		return 0;
 	}
+#endif
 
 	[LuaMethod]
 	static int IMaterial__GetInt(ILuaInterface lua) {
@@ -418,6 +420,7 @@ public static partial class LuaMaterial
 		return 0;
 	}
 
+#if !MENU_DLL
 	[LuaMethod]
 	static int IMaterial__GetKeyValues(ILuaInterface lua) {
 		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
@@ -467,6 +470,7 @@ public static partial class LuaMaterial
 		}
 		return 1;
 	}
+#endif
 
 	static bool IsAllowedMaterialPath(ReadOnlySpan<char> name) {
 		Span<char> buffer = stackalloc char[MAX_PATH];
@@ -579,6 +583,7 @@ public static partial class LuaMaterial
 		g_Lua.Pop(1);
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int CreateMaterial(ILuaInterface lua) {
 		string name = lua.CheckString(1);
@@ -626,5 +631,6 @@ public static partial class LuaMaterial
 		visited.UnReference();
 		return 1;
 	}
+#endif
 }
 #endif

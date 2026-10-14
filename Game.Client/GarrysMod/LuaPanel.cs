@@ -184,6 +184,7 @@ public static partial class LuaVGUI
 		panel.SetParent(parent);
 	}
 
+#if !MENU_DLL
 	[LuaMethod]
 	static int Panel__ParentToHUD(ILuaInterface lua) {
 		Panel? panel = Get_Panel(1);
@@ -193,6 +194,7 @@ public static partial class LuaVGUI
 			panel.SetParent(GModBase.GetGModParentToHUDPanel());
 		return 0;
 	}
+#endif
 
 	[LuaMethod]
 	static int Panel__IsValid(ILuaInterface lua) {
@@ -591,6 +593,7 @@ public static partial class LuaVGUI
 		return 0;
 	}
 
+#if !MENU_DLL
 	[LuaMethod]
 	static int Panel__SetModel(ILuaInterface lua) {
 		Panel? panel = (Panel?)PanelClass.Get(1);
@@ -602,6 +605,7 @@ public static partial class LuaVGUI
 			spawnIcon.SetModel(lua.CheckString(2), (int)lua.CheckNumberOpt(3, 0), lua.CheckStringOpt(4, ""));
 		return 0;
 	}
+#endif
 
 	[LuaMethod]
 	static int Panel__SetAllowNonAsciiCharacters(ILuaInterface lua) {
@@ -891,6 +895,7 @@ public static partial class LuaVGUI
 		return 1;
 	}
 
+#if !MENU_DLL
 	[LuaMethod]
 	static int Panel__UpdateHTMLTexture(ILuaInterface lua) {
 		Panel? panel = (Panel?)PanelClass.Get(1);
@@ -922,6 +927,7 @@ public static partial class LuaVGUI
 		LuaMaterial.Push(material);
 		return 1;
 	}
+#endif
 
 	[LuaMethod]
 	static int Panel__SetHTML(ILuaInterface lua) {
