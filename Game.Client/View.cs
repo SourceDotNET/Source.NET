@@ -525,6 +525,8 @@ public class ViewRender : IViewRender
 				renderContext.Flush();
 			}
 		}
+
+		RenderingView = false;
 	}
 
 	private void ViewDrawScene(bool drew3dSkybox, SkyboxVisibility skyboxVisible, in ViewSetup viewRender, ClearFlags clearFlags, ViewID viewID, bool drawViewModel = false, DrawFlags baseDrawFlags = 0) {

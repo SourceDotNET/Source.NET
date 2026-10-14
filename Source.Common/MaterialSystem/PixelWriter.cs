@@ -219,7 +219,7 @@ public struct PixelWriterState
 			// FIXME: Add more color formats as need arises
 			default: {
 					if (!format_error_printed[(int)format]) {
-						Assert(false);
+						Assert(false, $"Unsupported image format {format}");
 						Msg($"PixelWriter.SetPixelMemory:  Unsupported image format {format}\n");
 						format_error_printed[(int)format] = true;
 					}
