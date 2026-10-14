@@ -61,7 +61,7 @@ public static class PhysicsSound
 				ep.Pitch = parms.Pitch;
 				ep.Origin = ref sound.Origin;
 
-				BaseEntity.EmitSound(filter, 0, ref ep, ref ep.SoundScriptHandle);
+				BaseEntity.EmitSound(filter, 0, in ep);
 			}
 		}
 		list.Clear();
@@ -136,7 +136,7 @@ public static class PhysicsSound
 			ep.SoundLevel = parms.SoundLevel;
 			ep.Pitch = parms.Pitch;
 			ep.Origin = ref sound.Origin;
-			BaseEntity.EmitSound(filter, 0, ref ep, ref ep.SoundScriptHandle);
+			BaseEntity.EmitSound(filter, 0, in ep);
 		}
 		list.Clear();
 	}
