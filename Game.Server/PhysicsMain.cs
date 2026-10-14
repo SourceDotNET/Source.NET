@@ -414,7 +414,7 @@ public partial class BaseEntity
 			VPhysicsGetObject()!.GetShadowPosition(out Vector3 position, out _);
 			float delta = (GetAbsOrigin() - position).LengthSqr();
 			if (delta < 1) {
-				Physics.TraceEntity(this, GetAbsOrigin(), GetAbsOrigin(), (uint)Mask.Solid, out Trace tr); // PhysicsSolidMaskForEntity
+				Physics.TraceEntity(this, GetAbsOrigin(), GetAbsOrigin(), (uint)PhysicsSolidMaskForEntity(), out Trace tr);
 				updateFromVPhysics = tr.StartSolid;
 			}
 
