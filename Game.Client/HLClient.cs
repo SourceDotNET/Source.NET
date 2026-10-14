@@ -135,6 +135,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		randomgaussian.AttachToStream(random);
 
 #if GMOD_DLL
+		get.HTML()?.Init(get.GameDirParent(), HtmlResourceHandler.g_HtmlResourceHandler);
 		get.IntroScreen()!.Start();
 		get.IntroScreen()!.Update("Start", true);
 		garrysmod.InitializeMod(services);
@@ -211,6 +212,9 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 	public void Shutdown() {
 		ClientVoiceMgr_Shutdown();
 		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
+#if GMOD_DLL
+		get.HTML()?.Shutdown();
+#endif
 	}
 
 	public void VoiceStatus(int entindex, bool talking) {
@@ -473,6 +477,10 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 	public void HudUpdate(bool active) {
 		TimeUnit_t frameTime = gpGlobals.FrameTime;
+
+#if GMOD_DLL
+		garrysmod.Update();
+#endif
 
 		GetClientVoiceMgr().Frame(frameTime);
 

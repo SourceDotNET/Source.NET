@@ -1,6 +1,7 @@
 using Source;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.GUI;
+using Source.Common.MaterialSystem;
 using Source.GUI.Controls;
 
 namespace Game.Client.GarrysMod;
@@ -795,13 +796,8 @@ public static partial class LuaVGUI
 	[LuaMethod]
 	static int Panel__NewObject(ILuaInterface lua) {
 		Panel? panel = (Panel?)PanelClass.Get(1);
-		if (panel == null) {
+		if (panel == null)
 			lua.Error("Tried to use a NULL Panel!");
-			return 0;
-		}
-
-		if (panel is HtmlPanel html)
-			html.NewObject(lua.CheckString(2));
 		return 0;
 	}
 
@@ -890,6 +886,134 @@ public static partial class LuaVGUI
 		lua.PushBool(html.IsLoading());
 		return 1;
 	}
+
+	[LuaMethod]
+	static int Panel__UpdateHTMLTexture(ILuaInterface lua) {
+		Panel? panel = (Panel?)PanelClass.Get(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+
+		if (panel is HtmlPanel html)
+			html.UpdateHTMLTexture();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Panel__GetHTMLMaterial(ILuaInterface lua) {
+		Panel? panel = (Panel?)PanelClass.Get(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+
+		if (panel is not HtmlPanel html)
+			return 0;
+
+		IMaterial? material = html.GetHTMLMaterial();
+		if (material == null)
+			return 0;
+
+		LuaMaterial.Push(material);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Panel__SetHTML(ILuaInterface lua) {
+		Panel? panel = (Panel?)PanelClass.Get(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+
+		if (panel is HtmlPanel html)
+			html.SetHTML(lua.CheckString(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Panel__Refresh(ILuaInterface lua) {
+		Panel? panel = (Panel?)PanelClass.Get(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+
+		if (panel is HtmlPanel html)
+			html.Refresh();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Panel__StopLoading(ILuaInterface lua) {
+		Panel? panel = (Panel?)PanelClass.Get(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+
+		if (panel is HtmlPanel html)
+			html.StopLoading();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Panel__GoBack(ILuaInterface lua) {
+		Panel? panel = (Panel?)PanelClass.Get(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+
+		if (panel is HtmlPanel html)
+			html.GoBack();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Panel__GoForward(ILuaInterface lua) {
+		Panel? panel = (Panel?)PanelClass.Get(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+
+		if (panel is HtmlPanel html)
+			html.GoForward();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Panel__GoToHistoryOffset(ILuaInterface lua) {
+		Panel? panel = (Panel?)PanelClass.Get(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+
+		if (panel is HtmlPanel)
+			Msg("TODO: HTMLPanel.GoToHistoryOffset is NYI.\n");
+		return 0;
+	}
+
+	static int RunJavascript(ILuaInterface lua) {
+		Panel? panel = (Panel?)PanelClass.Get(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+
+		if (panel is HtmlPanel html)
+			html.RunJavascript(lua.CheckString(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Panel__Exec(ILuaInterface lua) => RunJavascript(lua);
+
+	[LuaMethod]
+	static int Panel__RunJavascript(ILuaInterface lua) => RunJavascript(lua);
 
 	static readonly int[] ContentAlignmentToNumpad = [7, 8, 9, 4, 5, 6, 1, 2, 3];
 

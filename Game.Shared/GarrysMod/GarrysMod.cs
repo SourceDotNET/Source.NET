@@ -128,6 +128,10 @@ public class GarrysMod : IGarrysMod
 	}
 
 #if CLIENT_DLL
+	public void Update() {
+		get.HTML()?.Update();
+	}
+
 	public void LevelInit(ReadOnlySpan<char> mapName) {
 		get.Audio()?.StopAllPlayback();
 
