@@ -2,7 +2,11 @@ using Source.Common.GarrysMod.Lua;
 using Source.Common.GUI;
 using Source.GUI.Controls;
 
+#if MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
+#else
 namespace Game.Client.GarrysMod;
+#endif
 
 public static partial class LuaVGUI
 {

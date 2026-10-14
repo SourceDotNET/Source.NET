@@ -1,6 +1,8 @@
-﻿#if CLIENT_DLL || GAME_DLL
+﻿#if CLIENT_DLL || GAME_DLL || MENU_DLL
 #if CLIENT_DLL
 global using static Game.Client.GarrysMod.LuaGlobals;
+#elif MENU_DLL
+global using static Game.MenuSystem.GarrysMod.LuaGlobals;
 #else
 global using static Game.Server.GarrysMod.LuaGlobals;
 #endif
@@ -17,6 +19,8 @@ using System.Runtime.InteropServices;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
+#elif MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
 #else
 namespace Game.Server.GarrysMod;
 #endif

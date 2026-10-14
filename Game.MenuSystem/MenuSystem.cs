@@ -18,9 +18,9 @@ public class MenuSystem : IMenuSystem
 
 	public void OnLuaError(in LuaError err, IAddonSystem.Information? addonInfo) {
 		if (addonInfo.HasValue)
-			LuaHelper.CallOnLuaErrorHook(in err, addonInfo.Value.Title ?? "", addonInfo.Value.WorkshopID);
+			GarrysMod.LuaHelper.CallOnLuaErrorHook(in err, addonInfo.Value.Title ?? "", addonInfo.Value.WorkshopID);
 		else
-			LuaHelper.CallOnLuaErrorHook(in err, null, 0);
+			GarrysMod.LuaHelper.CallOnLuaErrorHook(in err, null, 0);
 	}
 
 	public void SendProblemToMenu(ReadOnlySpan<char> id, int severity, ReadOnlySpan<char> parms) {

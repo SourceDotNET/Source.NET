@@ -5,7 +5,11 @@ using Source.Common.GarrysMod.Lua;
 
 using Steamworks;
 
+#if MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
+#else
 namespace Game.Client.GarrysMod;
+#endif
 
 public static partial class LuaAchievements
 {

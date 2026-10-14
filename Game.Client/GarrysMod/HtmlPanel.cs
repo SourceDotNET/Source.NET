@@ -9,7 +9,11 @@ using Source.GUI.Controls;
 
 using static Source.Common.GarrysMod.Lua.PooledStrings;
 
+#if MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
+#else
 namespace Game.Client.GarrysMod;
+#endif
 
 public class HtmlPanel : EditablePanel, IHtmlClientListener
 {

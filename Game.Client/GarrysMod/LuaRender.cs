@@ -11,7 +11,11 @@ using TextureFlags = Source.Common.TextureFlags;
 
 using System.Numerics;
 
+#if MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
+#else
 namespace Game.Client.GarrysMod;
+#endif
 
 public static partial class LuaRender
 {
