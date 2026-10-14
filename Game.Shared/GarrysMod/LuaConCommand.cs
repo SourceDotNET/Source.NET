@@ -15,6 +15,7 @@ public static partial class LuaConCommands
 {
 
 	static readonly string[] s_BannedConvars = [
+#if CLIENT_DLL || GAME_DLL
 		"crosshair_setup",
 		"hud_fastswitch",
 		"hud_quickinfo",
@@ -347,6 +348,7 @@ public static partial class LuaConCommands
 		"test_loop",
 		"plugin_load",
 		"sv_allow_wait_command",
+#endif
 	];
 
 	static readonly bool[] g_bKeyState = new bool[(int)ButtonCode.KeyCount];
