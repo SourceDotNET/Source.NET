@@ -1533,8 +1533,8 @@ public class MStudioAnimDesc
 	public MStudioAnimSections Section(int i) => Studio.ProduceArrayIdx(this, ref sections, (NumFrames / SectionFrames) + 2, SectionIndex, i, MStudioAnimSections.SIZEOF, Data, MStudioAnimSections.FACTORY);
 
 
-	public int ZeroFrameSpan;
-	public int ZeroFrameCount;
+	public short ZeroFrameSpan;
+	public short ZeroFrameCount;
 	public int ZeroFrameIndex;
 	public Span<byte> ZeroFrameData() {
 		if (ZeroFrameIndex != 0) {
