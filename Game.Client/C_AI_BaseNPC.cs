@@ -39,6 +39,8 @@ public class C_AI_BaseNPC : C_BaseCombatCharacter
 	public bool ImportantRagdoll;
 	public float TimePingEffect;
 
+	public override bool IsNPC() => true;
+
 	public override Mask PhysicsSolidMaskForEntity() {
 		if (!IsRagdoll())
 			return Mask.NPCSolid;
