@@ -23,7 +23,7 @@ public interface IGet
 	IIntroScreen? IntroScreen();
 	IMaterialSystem? Materials();
 	IServerAddons? ServerAddons();
-	IGMHTML? HTML();
+	IHtmlSystem? HTML();
 	ISteamHTTP? SteamHTTP();
 	ISteamUtils? SteamUtils();
 	ISteamUGC? SteamUGC();
