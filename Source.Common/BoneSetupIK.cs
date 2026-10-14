@@ -677,6 +677,10 @@ public class IKContext
 
 	public readonly List<IKTarget> Target = new(12);
 
+	public readonly float[] FootClearanceHeight = new float[32];
+	public readonly float[] FootClearanceRadius = new float[32];
+	public readonly bool[] HasFootClearance = new bool[32];
+
 	StudioHdr? studioHdr;
 
 	readonly List<List<IKContextIKRule>> ikChainRule = [];

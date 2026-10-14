@@ -90,7 +90,6 @@ namespace Game.Server
 			return autoIK;
 		}
 
-#if CLIENT_DLL
 		struct TraceFilterSkipNPCsAndPlayers(IHandleEntity? passentity, CollisionGroup collisionGroup) : ITraceFilter
 		{
 			TraceFilterSimple Simple = new(passentity, collisionGroup);
@@ -110,6 +109,73 @@ namespace Game.Server
 			}
 		}
 
+		protected void ApplyFootClearance(StudioHdr hdr, Span<Vector3> pos, Span<Quaternion> q, Span<Matrix3x4> boneToWorld) {
+			if (Ik == null)
+				return;
+
+			MathLib.AngleVectors(GetIKAngles(), out _, out _, out Vector3 up);
+
+			for (int i = 0; i < Ik.Target.Count; i++) {
+				IKTarget target = Ik.Target[i];
+				if (target.Type != Studio.IK_GROUND || !target.IsActive() || (uint)target.Chain >= 32)
+					continue;
+
+				MathLib.QuaternionMatrix(target.Est.Q, out Matrix3x4 footpad);
+				MathLib.VectorRotate(target.Offset.Pos, footpad, out Vector3 ankle);
+				float ankleHeight = Vector3.Dot(ankle, up);
+				if (ankleHeight <= 0)
+					continue;
+
+				Ik.FootClearanceHeight[target.Chain] = ankleHeight;
+				Ik.FootClearanceRadius[target.Chain] = Math.Max(target.Est.Radius, 1);
+				Ik.HasFootClearance[target.Chain] = true;
+			}
+
+			Ray ray = default;
+			TraceFilterSkipNPCsAndPlayers traceFilter = new(this, GetCollisionGroup());
+
+			int numChains = Math.Min(hdr.GetNumIKChains(), 32);
+			for (int i = 0; i < numChains; i++) {
+				if (!Ik.HasFootClearance[i])
+					continue;
+
+				MStudioIKChain chain = hdr.IKChain(i);
+				if (chain.NumLinks < 3)
+					continue;
+
+				int foot = chain.Link(2).Bone;
+				if (foot < 0 || foot >= hdr.NumBones())
+					continue;
+
+				float ankleHeight = Ik.FootClearanceHeight[i];
+				float r = Ik.FootClearanceRadius[i];
+
+				MathLib.MatrixPosition(boneToWorld[foot], out Vector3 footPos);
+
+				ray.Init(footPos + up * FootClearanceMaxRaise, footPos - up * ankleHeight, new Vector3(-r, -r, 0), new Vector3(r, r, 1));
+				enginetrace.TraceRay(ray, PhysicsSolidMaskForEntity(), ref traceFilter, out Trace trace);
+
+				if (trace.StartSolid || trace.Fraction >= 1.0f)
+					continue;
+
+				float raise = Vector3.Dot(trace.EndPos, up) + ankleHeight - Vector3.Dot(footPos, up);
+				if (raise <= FootClearanceTolerance)
+					continue;
+
+				raise = Math.Min(raise, FootClearanceMaxRaise);
+
+				if (BoneSetup.Studio_SolveIK(chain, footPos + up * raise, boneToWorld)) {
+					BoneSetup.SolveBone(hdr, chain.Link(2).Bone, boneToWorld, pos, q);
+					BoneSetup.SolveBone(hdr, chain.Link(1).Bone, boneToWorld, pos, q);
+					BoneSetup.SolveBone(hdr, chain.Link(0).Bone, boneToWorld, pos, q);
+				}
+			}
+		}
+
+		const float FootClearanceMaxRaise = 18.0f;
+		const float FootClearanceTolerance = 0.1f;
+
+#if CLIENT_DLL
 		protected void SolveIK(Span<Vector3> pos, Span<Quaternion> q, Span<Matrix3x4> boneToWorld, ref BoneBitList boneComputed, TimeUnit_t currentTime) {
 			UpdateIKLocks(currentTime);
 
@@ -117,6 +183,7 @@ namespace Game.Server
 
 			CalculateIKLocks(currentTime);
 			Ik.SolveDependencies(pos, q, boneToWorld, ref boneComputed);
+			ApplyFootClearance(GetModelPtr()!, pos, q, boneToWorld);
 		}
 
 		public void UpdateIKLocks(TimeUnit_t currentTime) {

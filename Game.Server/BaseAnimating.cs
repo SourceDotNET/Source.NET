@@ -773,6 +773,7 @@ public partial class BaseAnimating : BaseEntity
 			Ik.UpdateTargets(pos, q, boneToWorld, ref boneComputed);
 			CalculateIKLocks(gpGlobals.CurTime);
 			Ik.SolveDependencies(pos, q, boneToWorld, ref boneComputed);
+			ApplyFootClearance(studioHdr, pos, q, boneToWorld);
 		}
 		else
 			GetSkeleton(studioHdr, pos, q, boneMask);
