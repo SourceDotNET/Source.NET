@@ -348,7 +348,7 @@ public static partial class LuaGlobalFunctions
 		};
 		ReadStackFrom(ref error, g_Lua);
 
-		bool isAddon = LuaGameCallback.GetAddonFromError(in error, out IAddonSystem.Information addon, out _);
+		bool isAddon = LuaHelper.GetAddonFromError(in error, out IAddonSystem.Information addon, out _);
 		get.MenuSystem()?.OnLuaError(in error, isAddon ? addon : null);
 		LuaHelper.CallOnLuaErrorHook(in error, isAddon ? addon.Title : null, isAddon ? addon.WorkshopID : 0);
 
@@ -513,7 +513,7 @@ public static partial class LuaGlobalFunctions
 		string result = buffer.ToString();
 		if (result.Length > 1023)
 			result = result[..1023];
-#if CLIENT_DLL
+#if CLIENT_DLL || MENU_DLL
 		engine.ClientCmd(result);
 #else
 		engine.ServerCommand(result);

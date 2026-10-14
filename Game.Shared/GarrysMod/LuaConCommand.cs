@@ -429,7 +429,7 @@ public static partial class LuaConCommands
 
 #if CLIENT_DLL
 		C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
-#else
+#elif !MENU_DLL
 		BasePlayer? player = Util.GetCommandClient();
 		if (player == null && Util.GetCommandClientIndex() > 0) {
 			Warning($"Warning: Player issued command but is now vanished (Command was \"{args.ArgS()}\")\n");
@@ -444,6 +444,7 @@ public static partial class LuaConCommands
 			concommand.GetMember("Run", run);
 			if (run.isFunction()) {
 				ReadOnlySpan<char> command = args.Arg(0);
+#if !MENU_DLL
 				if (command.Length > 0 && command[0] == '+') {
 					if (args.ArgC() > 1)
 						MarkButtonStatus((ButtonCode)atoi(args.Arg(1)), true);
@@ -452,9 +453,14 @@ public static partial class LuaConCommands
 					if (args.ArgC() > 1)
 						MarkButtonStatus((ButtonCode)atoi(args.Arg(1)), false);
 				}
+#endif
 
 				run.Push();
+#if MENU_DLL
+				g_Lua.PushNil();
+#else
 				LuaEntity.Push_Entity(player);
+#endif
 				g_Lua.PushString(command);
 
 				LuaTable arguments = new(null, (uint)args.ArgC());

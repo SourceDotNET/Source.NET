@@ -64,8 +64,10 @@ public static partial class LuaTimer
 
 	[LuaFunction]
 	static int Check(ILuaInterface lua) {
+#if !MENU_DLL
 		if (Game.Client.GarrysMod.GarrysMod.lua_strict.GetInt() != 0)
 			lua.ErrorFromLua("timer.Check is deprecated and does nothing. Do not use it.");
+#endif
 		return 0;
 	}
 
@@ -388,6 +390,9 @@ public static partial class LuaTimer
 			return;
 		Dump();
 	}
+#elif MENU_DLL
+	[ConCommand("lua_dumptimers_menu", "Dumps all the currently active Lua timers in the menu")]
+	static void lua_dumptimers_menu(in TokenizedCommand args) => Dump();
 #else
 	[ConCommand("lua_dumptimers_cl", "Dumps all the currently active Lua timers on the client")]
 	static void lua_dumptimers_cl(in TokenizedCommand args) => Dump();

@@ -131,6 +131,28 @@ public class GameMenu(Panel parent, ReadOnlySpan<char> name) : Menu(parent, name
 
 	IPanel? MainMenuOverridePanel;
 
+	public void SetMainMenuOverride(IPanel? panel) {
+		MainMenuOverridePanel = panel;
+
+		if (MainMenuOverridePanel != null)
+			DeleteAllItems();
+	}
+
+	public override void OnCommand(ReadOnlySpan<char> command) {
+		if (stricmp(command, "Open") == 0) {
+			if (MainMenuOverridePanel != null) {
+				MainMenuOverridePanel.MoveToFront();
+				MainMenuOverridePanel.RequestFocus();
+			}
+			else {
+				MoveToFront();
+				RequestFocus();
+			}
+		}
+		else
+			base.OnCommand(command);
+	}
+
 	public override void SetVisible(bool state) {
 		if (MainMenuOverridePanel != null) {
 			MainMenuOverridePanel.SetVisible(true);
@@ -582,6 +604,7 @@ public class QuitQueryBox : QueryBox
 public class BasePanel : Panel
 {
 	GameMenu? GameMenu;
+	IPanel? MainMenuOverridePanel;
 
 	readonly public IFileSystem FileSystem = Singleton<IFileSystem>();
 	readonly public IEngineClient engine = Singleton<IEngineClient>();
@@ -1048,6 +1071,14 @@ public class BasePanel : Panel
 		}
 	}
 
+	public void SetMainMenuOverride(IPanel? panel) {
+		MainMenuOverridePanel = panel;
+
+		GameMenu?.SetMainMenuOverride(panel);
+
+		MainMenuOverridePanel?.SetParent(this);
+	}
+
 	public override void OnThink() {
 		// KeyRepeat todo
 		base.OnThink();
@@ -1099,6 +1130,9 @@ public class BasePanel : Panel
 		LastGameMenuState = state;
 
 		GameMenu!.UpdateMenuItemState(isInGame, isMulti);
+
+		if (MainMenuOverridePanel != null)
+			Singleton<IVGui>().PostMessage(MainMenuOverridePanel, new KeyValues("UpdateMenu"), null);
 
 		InvalidateLayout();
 		GameMenu!.SetVisible(true);

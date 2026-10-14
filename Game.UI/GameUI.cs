@@ -137,10 +137,10 @@ public class GameUI(IEngineClient engine) : IGameUI
 		staticPanel.RunFrame();
 	}
 
-	public void SetMainMenuOverride(IPanel panel) {
-		//BasePanel? basePanel = BasePanel();
-		//if (basePanel != null)
-		// basePanel.SetMainMenuOverride(panel); // todo
+	public void SetMainMenuOverride(IPanel? panel) {
+		BasePanel? basePanel = BasePanel();
+		if (basePanel != null)
+			basePanel.SetMainMenuOverride(panel);
 	}
 
 	public bool SetShowProgressText(bool show) {

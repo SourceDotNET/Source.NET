@@ -172,11 +172,19 @@ public static partial class LuaVGUI
 		if (!panel.LuaPanel || panel.IsMarkedForDeletion())
 			return;
 
+#if MENU_DLL
+		Panel? parent = MenuPanels.GetMenuPanel();
+#else
 		Panel? parent = GModBase.GetGModBasePanel(true);
+#endif
 		if (lua.GetType(2) == LuaType.Panel)
 			parent = Get_Panel(2);
 
+#if MENU_DLL
+		if (parent != null && parent != MenuPanels.GetMenuPanel() && parent != MenuPanels.GetOverlayPanel()) {
+#else
 		if (parent != null && parent != GModBase.GetGModBasePanel(true) && parent != HudGMod.g_HudGMod && parent != GModBase.GetGModParentToHUDPanel()) {
+#endif
 			if (!parent.LuaPanel || parent.IsMarkedForDeletion())
 				return;
 		}
@@ -1165,7 +1173,11 @@ public static partial class LuaVGUI
 	static void Panel__SetFontInternal(ILuaInterface lua, Panel panel) {
 		IFont? font = LuaFonts.GetFont(lua.GetString(2));
 		if (font == null) {
+#if MENU_DLL
+			font = MenuPanels.GetMenuPanel()!.GetScheme()!.GetFont(lua.GetString(2), false);
+#else
 			font = GModBase.GetGModBasePanel(true)!.GetScheme()!.GetFont(lua.GetString(2), false);
+#endif
 			if (font == null) {
 				lua.ErrorNoHalt($"SetFontInternal: font doesn't exist ({lua.GetString(2)})\n");
 				return;

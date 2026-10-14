@@ -31,6 +31,7 @@ public static partial class LuaGui
 	}
 #endif
 
+#if !MENU_DLL
 	public static Vector3 ScreenToVector(int x, int y) {
 		float halfWide = ScreenWidth() * 0.5f;
 		float dx = x - halfWide;
@@ -40,6 +41,7 @@ public static partial class LuaGui
 		Vector3 vec = ViewRender.g_VecVRight * dx + ViewRender.g_VecVForward * dz + ViewRender.g_VecVUp * dy;
 		return Vector3.Normalize(vec);
 	}
+#endif
 
 	[LuaFunction]
 	static (int, int) MousePos() {

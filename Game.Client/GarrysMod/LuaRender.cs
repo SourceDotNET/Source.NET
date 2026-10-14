@@ -345,11 +345,13 @@ public static partial class LuaRender
 	}
 #endif
 
+#if !MENU_DLL
 	[LuaFunction]
 	static (float, float, float) GetColorModulation() {
 		Vector3 color = render.GetColorModulation();
 		return (color.X, color.Y, color.Z);
 	}
+#endif
 
 #if !MENU_DLL
 	[LuaFunction]

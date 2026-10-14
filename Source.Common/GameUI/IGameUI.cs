@@ -32,7 +32,7 @@ public interface IGameUI
 	public void OnConfirmQuit();
 	public bool IsMainMenuVisible();
 
-	public void SetMainMenuOverride(IPanel panel);
+	public void SetMainMenuOverride(IPanel? panel);
 	bool IsInLevel();
 	bool IsInReplay();
 	bool IsConsoleUI();

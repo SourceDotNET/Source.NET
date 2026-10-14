@@ -255,10 +255,12 @@ public static partial class LuaFileLibrary
 		if (!pastEnd && length > 0)
 			toRead = length;
 		else {
+#if !MENU_DLL
 			if (Game.Client.GarrysMod.GarrysMod.lua_strict.GetInt() != 0) {
 				lua.ErrorFromLua($"File:Read() - Invalid requested size {(int)length}\n");
 				return 0;
 			}
+#endif
 
 			toRead = pastEnd && size > pos ? size - pos : 0;
 		}
@@ -307,7 +309,9 @@ public static partial class LuaFileLibrary
 			return 0;
 		}
 
+#if !MENU_DLL
 		if (Game.Client.GarrysMod.GarrysMod.lua_strict.GetInt() != 0)
+#endif
 			lua.ErrorFromLua($"File:Write() - Invalid write size {data.Length}\n");
 		return 0;
 	}

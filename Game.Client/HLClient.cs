@@ -213,6 +213,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		ClientVoiceMgr_Shutdown();
 		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
 #if GMOD_DLL
+		get.MenuSystem()?.Shutdown();
 		get.HTML()?.Shutdown();
 #endif
 	}
@@ -477,10 +478,6 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 	public void HudUpdate(bool active) {
 		TimeUnit_t frameTime = gpGlobals.FrameTime;
-
-#if GMOD_DLL
-		garrysmod.Update();
-#endif
 
 		GetClientVoiceMgr().Frame(frameTime);
 

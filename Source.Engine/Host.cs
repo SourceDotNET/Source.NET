@@ -555,6 +555,9 @@ public partial class Host
 			Scr = engineAPI.InitSubsystem<Scr>()!;
 			Render = engineAPI.InitSubsystem<Render>()!;
 			// engineAPI.InitSubsystem<Decal>();
+#if GMOD_DLL
+			get.MenuSystem()?.StartLua();
+#endif
 		}
 		else {
 			cl.SignOnState = SignOnState.None;

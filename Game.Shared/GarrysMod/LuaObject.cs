@@ -681,6 +681,10 @@ public class LuaObject : ILuaObject
 	public IHandleEntity? GetMemberEntity(ReadOnlySpan<char> name, IHandleEntity? def) => throw new NotImplementedException();
 	public IHandleEntity? GetMemberEntity(int key, IHandleEntity? def) => throw new NotImplementedException();
 	public void SetMemberEntity(float key, IHandleEntity? ent) => throw new NotImplementedException();
+#if MENU_DLL
+	public void SetMemberEntity(ReadOnlySpan<char> name, IHandleEntity? ent) => throw new NotImplementedException();
+	public IHandleEntity? GetEntity() => throw new NotImplementedException();
+#else
 	public void SetMemberEntity(ReadOnlySpan<char> name, IHandleEntity? ent) {
 		if (!isTable())
 			return;
@@ -696,6 +700,7 @@ public class LuaObject : ILuaObject
 		g_Lua!.Pop(1);
 		return ent;
 	}
+#endif
 	public void SetEntity(IHandleEntity? ent) => throw new NotImplementedException();
 	public void SetMemberPhysObject(ReadOnlySpan<char> name, IPhysicsObject? obj) => throw new NotImplementedException();
 }

@@ -104,7 +104,11 @@ public class GarrysMod : IGarrysMod
 			AddLanguageFiles(uiLanguage.SliceNullTerminatedString());
 #endif
 		get.IntroScreen()!.Update("Setup Menu System", true);
-		// todo: menu system init
+#if CLIENT_DLL
+		if (get.MenuSystem()!.Init(services, get, this, gpGlobals) == 0)
+			Error("Error initializing Menu System");
+		get.MenuSystem()!.SetupNetworkString(networkstringtable);
+#endif
 		get.IntroScreen()!.Update("Setting Convar Defaults", true);
 		// todo: convar defaults
 #endif
@@ -127,10 +131,13 @@ public class GarrysMod : IGarrysMod
 		filesystem.MarkPathIDByRequestOnly("DATA", true);
 	}
 
-#if CLIENT_DLL
 	public void Update() {
+#if CLIENT_DLL
 		get.HTML()?.Update();
+#endif
 	}
+
+#if CLIENT_DLL
 
 	public void LevelInit(ReadOnlySpan<char> mapName) {
 		get.Audio()?.StopAllPlayback();

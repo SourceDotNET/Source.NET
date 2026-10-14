@@ -246,7 +246,11 @@ public static partial class LuaSurface
 		string name = lua.CheckString(1);
 		CurrentFont = LuaFonts.GetFont(name);
 		if (CurrentFont == null) {
+#if MENU_DLL
+			CurrentFont = MenuPanels.GetMenuPanel()!.GetScheme()!.GetFont(name, false);
+#else
 			CurrentFont = GModBase.GetGModBasePanel(true)!.GetScheme()!.GetFont(name, false);
+#endif
 			if (CurrentFont == null) {
 				lua.ErrorFromLua($"'{name}' isn't a valid font\n");
 				return 0;
@@ -344,6 +348,7 @@ public static partial class LuaSurface
 	[LuaFunction]
 	static int PlaySound(ILuaInterface lua) {
 		ReadOnlySpan<char> sound = lua.CheckString(1);
+#if !MENU_DLL
 		int index = soundemitterbase.GetSoundIndex(sound);
 		if (soundemitterbase.IsValidIndex(index)) {
 			ref SoundParametersInternal internalParams = ref soundemitterbase.InternalGetParametersForSound(index);
@@ -351,6 +356,7 @@ public static partial class LuaSurface
 			int pick = RandomInt(0, soundNames.Length - 1);
 			sound = soundemitterbase.GetWaveName(soundNames[pick].Symbol);
 		}
+#endif
 		surface.PlaySound(sound);
 		return 0;
 	}
