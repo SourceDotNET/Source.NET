@@ -3,6 +3,7 @@ global using static Game.Shared.PhysicsSharedGlobals;
 
 using Source;
 using Source.Common;
+using Source.Common.Engine;
 using Source.Common.Filesystem;
 using Source.Common.Formats.BSP;
 using Source.Common.Formats.Keyvalues;
@@ -439,6 +440,90 @@ public static class PhysicsSharedGlobals
 
 		IPhysicsObject? obj = physenv.CreatePolyObject(collide.Solids![solid.Index]!, surfaceProp, in origin, in angles, ref solid.Params);
 		return obj;
+	}
+
+	public static PhysCollide? PhysCreateBbox(in Vector3 minsIn, in Vector3 maxsIn) {
+		Vector3 mins = minsIn;
+		Vector3 maxs = maxsIn;
+
+		return physcollision.BBoxToCollide(mins, maxs);
+	}
+
+	static ReadOnlySpan<char> PhysModelDefaultSurfaceProps(int modelIndex) {
+		if (modelIndex != 0) {
+			Model? model = modelinfo.GetModel(modelIndex);
+			if (model != null) {
+				StudioHeader? studioHdr = modelinfo.GetStudiomodel(model);
+				if (studioHdr != null)
+					return studioHdr.SurfaceProp();
+			}
+		}
+		return "flesh";
+	}
+
+	public static IPhysicsObject? PhysModelCreateBox(BaseEntity entity, in Vector3 mins, in Vector3 maxs, in Vector3 origin, bool isStatic) {
+		int modelIndex = entity.GetModelIndex();
+		Solid solid = default;
+		PhysGetDefaultAABBSolid(ref solid);
+		Vector3 dims = maxs - mins;
+		solid.Params.Volume = dims.X * dims.Y * dims.Z;
+		strcpy(solid.SurfaceProp, PhysModelDefaultSurfaceProps(modelIndex));
+
+#if GMOD_DLL
+		if (modelIndex != 0)
+			PhysModelParseSolid(ref solid, entity, modelIndex);
+
+		solid.Params = g_PhysDefaultObjectParams;
+#endif
+
+		PhysCollide? collide = PhysCreateBbox(mins, maxs);
+		if (collide == null)
+			return null;
+
+		return PhysModelCreateCustom(entity, collide, origin, vec3_angle, ((ReadOnlySpan<char>)entity.GetModelName()).SliceNullTerminatedString(), isStatic, ref solid);
+	}
+
+	public static IPhysicsObject? PhysModelCreateOBB(BaseEntity entity, in Vector3 mins, in Vector3 maxs, in Vector3 origin, in QAngle angle, bool isStatic) {
+		int modelIndex = entity.GetModelIndex();
+		Solid solid = default;
+		PhysGetDefaultAABBSolid(ref solid);
+		Vector3 dims = maxs - mins;
+		solid.Params.Volume = dims.X * dims.Y * dims.Z;
+		strcpy(solid.SurfaceProp, PhysModelDefaultSurfaceProps(modelIndex));
+
+		PhysCollide? collide = PhysCreateBbox(mins, maxs);
+		if (collide == null)
+			return null;
+
+		return PhysModelCreateCustom(entity, collide, origin, angle, ((ReadOnlySpan<char>)entity.GetModelName()).SliceNullTerminatedString(), isStatic, ref solid);
+	}
+
+	public static IPhysicsObject? PhysModelCreateCustom(BaseEntity entity, PhysCollide model, in Vector3 origin, in QAngle angles, ReadOnlySpan<char> name, bool isStatic, ref Solid solid) {
+		if (physenv == null)
+			return null;
+
+		if (Unsafe.IsNullRef(ref solid)) {
+			Solid tmpSolid = default;
+			PhysGetDefaultAABBSolid(ref tmpSolid);
+			return PhysModelCreateCustom(entity, model, origin, angles, name, isStatic, ref tmpSolid);
+		}
+		int surfaceProp = (int)physprops.GetSurfaceIndex(((ReadOnlySpan<char>)solid.SurfaceProp).SliceNullTerminatedString());
+		solid.Params.GameData = entity;
+		solid.Params.Name = new string(name);
+		IPhysicsObject? obj;
+		if (isStatic)
+			obj = physenv.CreatePolyObjectStatic(model, surfaceProp, origin, angles, ref solid.Params);
+		else
+			obj = physenv.CreatePolyObject(model, surfaceProp, origin, angles, ref solid.Params);
+
+		return obj;
+	}
+
+	public static void PhysGetDefaultAABBSolid(ref Solid solid) {
+		solid.Params = g_PhysDefaultObjectParams;
+		solid.Params.Mass = 85.0f;
+		solid.Params.Inertia = 1e24f;
+		strcpy(solid.SurfaceProp, "default");
 	}
 
 	public static void PhysCreateVirtualTerrain(BaseEntity world, in ObjectParams defaultParams) {

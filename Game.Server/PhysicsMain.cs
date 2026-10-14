@@ -7,6 +7,7 @@ using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Formats.BSP;
 using Source.Common.Mathematics;
+using Source.Common.Physics;
 using Source.Engine;
 
 using Steamworks;
@@ -398,8 +399,8 @@ public partial class BaseEntity
 			PhysicsStepRunTimestep(gpGlobals.FrameTime);
 			// PhysicsCheckWaterTransition();
 			SetLastThink(-1, gpGlobals.CurTime);
-			// UpdatePhysicsShadowToCurrentPosition(gpGlobals.FrameTime);
-			// PhysicsRelinkChildren(gpGlobals.FrameTime);
+			UpdatePhysicsShadowToCurrentPosition(gpGlobals.FrameTime);
+			PhysicsRelinkChildren(gpGlobals.FrameTime);
 			return;
 		}
 
@@ -407,14 +408,22 @@ public partial class BaseEntity
 
 		bool updateFromVPhysics = Physics.npc_vphysics.GetBool();
 		if (HasDataObjectType(DataObjectType.VPhysicsUpdateAI)) {
-			// todo
+			VPhysicsUpdateAI update = GetDataObject<VPhysicsUpdateAI>(DataObjectType.VPhysicsUpdateAI);
+			if (update.StopUpdateTime > gpGlobals.CurTime)
+				updateFromVPhysics = true;
+			else {
+				IPhysicsShadowController controller = VPhysicsGetObject()!.GetShadowController();
+				controller.GetMaxSpeed(out _, out float maxAngular);
+				controller.MaxSpeed(update.SavedShadowControllerMaxSpeed, maxAngular);
+				DestroyDataObject(DataObjectType.VPhysicsUpdateAI);
+			}
 		}
 
 		if (updateFromVPhysics && VPhysicsGetObject() != null && GetParent() == null) {
 			VPhysicsGetObject()!.GetShadowPosition(out Vector3 position, out _);
 			float delta = (GetAbsOrigin() - position).LengthSqr();
 			if (delta < 1) {
-				Physics.TraceEntity(this, GetAbsOrigin(), GetAbsOrigin(), (uint)Mask.Solid, out Trace tr); // PhysicsSolidMaskForEntity
+				Physics.TraceEntity(this, GetAbsOrigin(), GetAbsOrigin(), (uint)PhysicsSolidMaskForEntity(), out Trace tr);
 				updateFromVPhysics = tr.StartSolid;
 			}
 
@@ -430,7 +439,7 @@ public partial class BaseEntity
 		if (thinkTime < gpGlobals.CurTime)
 			thinkTime = gpGlobals.CurTime;
 
-		float dt = (float)(thinkTime - 0);//GetLastThink(); todo
+		TimeUnit_t dt = thinkTime - GetLastThink(null);
 
 		StepSimulationThink(dt);
 
@@ -438,10 +447,10 @@ public partial class BaseEntity
 
 		if (VPhysicsGetObject() != null) {
 			if (!MathLib.VectorCompare(oldOrigin, GetAbsOrigin()))
-				VPhysicsGetObject()!.UpdateShadow(GetAbsOrigin(), vec3_angle, (GetFlags() & EntityFlags.Fly) != 0, dt);
+				VPhysicsGetObject()!.UpdateShadow(GetAbsOrigin(), vec3_angle, (GetFlags() & EntityFlags.Fly) != 0, (float)dt);
 		}
 
-		// PhysicsRelinkChildren(dt);
+		PhysicsRelinkChildren(dt);
 	}
 
 	BaseEntity? PhysicsPushMove(TimeUnit_t movetime) {
