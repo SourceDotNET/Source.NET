@@ -19,7 +19,7 @@ public class MenuSystem : IMenuSystem
 
 	bool WasInGame;
 	readonly AddonDownloadNotifications DownloadNotifications = new();
-	int LuaStarts;
+	public int LuaStarts;
 	int LastFilesystemRefresh;
 
 	public MenuSystem() => g_MenuSystem = this;

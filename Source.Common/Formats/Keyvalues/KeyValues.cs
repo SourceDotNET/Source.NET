@@ -709,7 +709,7 @@ public class KeyValues : IEnumerable<KeyValues>
 
 			if (value.IsEmpty)
 				value = "";
-			dat.Value = new string(value);
+			dat.Value = new string(value.SliceNullTerminatedString());
 			dat.Type = Types.String;
 		}
 	}

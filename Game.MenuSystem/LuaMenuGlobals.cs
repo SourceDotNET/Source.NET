@@ -8,6 +8,14 @@ namespace Game.MenuSystem.GarrysMod;
 public static partial class LuaMenuGlobals
 {
 	[LuaGlobal]
+	static int GetAPIManifest(ILuaInterface lua) {
+		ILuaObject? callback = lua.GetObject(1);
+		if (callback != null && callback.isFunction())
+			GMODGetAPIManifest.Request(callback);
+		return 0;
+	}
+
+	[LuaGlobal]
 	static int GetAddonStatus(ILuaInterface lua) {
 		lua.PushBool(commandLine.FindParm("-noaddons") == 0);
 		lua.PushBool(commandLine.FindParm("-noworkshop") == 0);
@@ -29,6 +37,21 @@ public static partial class LuaMenuGlobals
 	[LuaGlobal]
 	static int IsHostingGame(ILuaInterface lua) {
 		lua.PushBool(engine.IsHostingGame());
+		return 1;
+	}
+
+	[LuaGlobal]
+	static int GetLoadStatus(ILuaInterface lua) {
+		// todo
+		Warning("GetLoadStatus TODO\n");
+		lua.PushString("GetLoadStatus TODO");
+		return 1;
+	}
+	[LuaGlobal]
+	static int NumDownloadables(ILuaInterface lua) {
+		// todo
+		Warning("NumDownloadables TODO\n");
+		lua.PushString("NumDownloadables TODO");
 		return 1;
 	}
 
