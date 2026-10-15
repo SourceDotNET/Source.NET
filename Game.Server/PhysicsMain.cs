@@ -495,7 +495,21 @@ public partial class BaseEntity
 		PhysicsRunThink();
 	}
 
-	void PhysicsRigidChild() { }
+	void PhysicsRigidChild() {
+		Vector3 prevOrigin = GetAbsOrigin();
+
+		if (!PhysicsRunThink())
+			return;
+
+		PhysicsTouchTriggers(prevOrigin);
+
+		IPhysicsObject? physics = VPhysicsGetObject();
+		if (physics != null) {
+			SolidType solidType = GetSolid();
+			bool axisAligned = solidType == SolidType.BBox || solidType == SolidType.None;
+			physics.UpdateShadow(GetAbsOrigin(), axisAligned ? vec3_angle : GetAbsAngles(), true, (float)gpGlobals.FrameTime);
+		}
+	}
 
 	void PhysicsNoclip() {
 		if (!PhysicsRunThink()) {
