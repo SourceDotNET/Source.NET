@@ -226,6 +226,12 @@ public class VideoMode_Common(Sys Sys, IServiceProvider services, IFileSystem fi
 			// I guess it just sets it to 1, 1, 1 but still, need to review how we'd even replicate tone mapping 
 			float depth = 0.5f;
 
+#if !SWDS
+			renderUtils.DrawScreenSpaceRectangle(material, 0, 0, w, h, 0, 0, tw - 1, th - 1, tw, th, null, 1, 1, depth);
+			renderUtils.DrawScreenSpaceRectangle(loadingMaterial, w - lw, h - lh, lw, lh, 0, 0, lw - 1, lh - 1, lw, lh, null, 1, 1, depth);
+			Singleton<IShaderSystem>().WaitForPendingCompiles(null);
+#endif
+
 			for (int i = 0; i < 2; i++) {
 				renderContext.ClearColor3ub(0, 0, 0);
 				renderContext.ClearBuffers(true, true, true);
