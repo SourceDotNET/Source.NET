@@ -1407,8 +1407,248 @@ public partial class BaseEntity : IServerEntity
 					PhysicsRelinkChildren(gpGlobals.FrameTime);
 					break;
 				}
+
+			case Source.MoveType.Push:
+				VPhysicsUpdatePusher(physics);
+				break;
+
 			default:
 				break;
+		}
+	}
+
+	static BaseEntity? FindPhysicsBlocker(IPhysicsObject physics, PhysicsPushList list, in Vector3 pushVel) {
+		IPhysicsFrictionSnapshot snapshot = physics.CreateFrictionSnapshot();
+		BaseEntity? blocker = null;
+		float maxForce = 0;
+		while (snapshot.IsValid()) {
+			IPhysicsObject other = snapshot.GetObject(1)!;
+			BaseEntity? otherEntity = other.GetGameData() as BaseEntity;
+			bool inList = false;
+			for (int i = 0; i < list.PushedCount; i++) {
+				if (otherEntity == list.PushedEnts[i].Get()) {
+					inList = true;
+					break;
+				}
+			}
+
+			snapshot.GetSurfaceNormal(out Vector3 normal);
+			float dot = Vector3.Dot(pushVel, snapshot.GetNormalForce() * normal);
+			if (blocker == null || (!inList && dot > maxForce)) {
+				blocker = otherEntity;
+				if (!inList)
+					maxForce = dot;
+			}
+
+			snapshot.NextFrictionData();
+		}
+		physics.DestroyFrictionSnapshot(snapshot);
+
+		return blocker;
+	}
+
+	struct PushBlock
+	{
+		public PhysicsPushList? List;
+		public BaseEntity RootParent;
+		public BaseEntity? BlockedEntity;
+		public float MoveBackFraction;
+		public float MoveTime;
+	}
+
+	static void ComputePushStartMatrix(out Matrix3x4 start, BaseEntity entity, in PushBlock pushBlock) {
+		Vector3 localOrigin;
+		QAngle localAngles;
+		if (pushBlock.List != null) {
+			localOrigin = pushBlock.List.LocalOrigin;
+			localAngles = pushBlock.List.LocalAngles;
+		}
+		else {
+			localOrigin = pushBlock.RootParent.GetAbsOrigin() - pushBlock.RootParent.GetAbsVelocity() * pushBlock.MoveTime;
+			localAngles = pushBlock.RootParent.GetAbsAngles() - pushBlock.RootParent.GetLocalAngularVelocity() * pushBlock.MoveTime;
+		}
+		MathLib.AngleMatrix(localAngles, localOrigin, out Matrix3x4 xform);
+
+		MathLib.MatrixInvert(pushBlock.RootParent.EntityToWorldTransform(), out Matrix3x4 srcInv);
+		MathLib.ConcatTransforms(xform, srcInv, out Matrix3x4 delta);
+		MathLib.ConcatTransforms(delta, entity.EntityToWorldTransform(), out start);
+	}
+
+	static void CheckPushedEntity(BaseEntity entity, ref PushBlock pushBlock) {
+		IPhysicsObject? physics = entity.VPhysicsGetObject();
+		if (physics == null)
+			return;
+
+		Assert(physics.IsMoveable());
+		IPhysicsShadowController? shadow = physics.GetShadowController();
+		if (!physics.IsMoveable() || shadow == null)
+			return;
+
+		bool checkrot = true;
+		bool checkmove = true;
+		physics.GetShadowPosition(out Vector3 origin, out QAngle angles);
+		float fraction = -1.0f;
+
+		if (entity == pushBlock.RootParent) {
+			if (entity.GetLocalAngularVelocity() == vec3_angle)
+				checkrot = false;
+			if (entity.GetLocalVelocity() == vec3_origin)
+				checkmove = false;
+		}
+
+		if (checkmove) {
+			Vector3 dir = entity.GetAbsVelocity();
+			float speed = MathLib.VectorNormalize(ref dir);
+			shadow.GetTargetPosition(out Vector3 targetPos, out _);
+			float targetAmount = Vector3.Dot(targetPos, dir);
+			float currentAmount = Vector3.Dot(origin, dir);
+			float entityAmount = Vector3.Dot(entity.GetAbsOrigin(), dir);
+
+			if ((targetAmount - entityAmount) > 1)
+				entity.UpdatePhysicsShadowToCurrentPosition(0);
+			else {
+				float dist = targetAmount - currentAmount;
+				if (dist > 1) {
+					float movementAmount = targetAmount - (speed * pushBlock.MoveTime);
+					if (entity == pushBlock.RootParent) {
+						if (pushBlock.List != null) {
+							Vector3 localVel = entity.GetLocalVelocity();
+							MathLib.VectorNormalize(ref localVel);
+							float localTargetAmt = Vector3.Dot(entity.GetLocalOrigin(), localVel);
+							movementAmount = targetAmount + Vector3.Dot(pushBlock.List.LocalOrigin, localVel) - localTargetAmt;
+						}
+					}
+					else {
+						ComputePushStartMatrix(out Matrix3x4 start, entity, pushBlock);
+						MathLib.MatrixPosition(start, out Vector3 startPos);
+						movementAmount = Vector3.Dot(startPos, dir);
+					}
+					float expectedDist = targetAmount - movementAmount;
+					if (expectedDist <= 0)
+						fraction = 1;
+					else {
+						fraction = dist / expectedDist;
+						fraction = Math.Clamp(fraction, 0.0f, 1.0f);
+					}
+				}
+			}
+		}
+
+		if (checkrot) {
+			MathLib.RotationDeltaAxisAngle(angles, entity.GetAbsAngles(), out Vector3 axis, out float deltaAngle);
+			if (MathF.Abs(deltaAngle) > 0.5f) {
+				shadow.GetTargetPosition(out _, out QAngle targetRot);
+				MathLib.RotationDeltaAxisAngle(angles, targetRot, out _, out float deltaTargetAngle);
+				if (MathF.Abs(deltaTargetAngle) > 0.01f) {
+					float expectedDist = deltaAngle;
+					if (entity == pushBlock.RootParent)
+						expectedDist = entity.GetLocalAngularVelocity().Length() * pushBlock.MoveTime;
+					else {
+						ComputePushStartMatrix(out Matrix3x4 start, entity, pushBlock);
+						MathLib.MatrixAngles(start, out QAngle startAngles, out _);
+						MathLib.RotationDeltaAxisAngle(startAngles, entity.GetAbsAngles(), out Vector3 startAxis, out float startAngle);
+						expectedDist = startAngle * Vector3.Dot(startAxis, axis);
+					}
+
+					float t = expectedDist != 0.0f ? MathF.Abs(deltaAngle / expectedDist) : 1.0f;
+					t = Math.Clamp(t, 0.0f, 1.0f);
+					fraction = Math.Max(fraction, t);
+				}
+				else
+					entity.UpdatePhysicsShadowToCurrentPosition(0);
+			}
+		}
+
+		if (fraction >= pushBlock.MoveBackFraction) {
+			pushBlock.MoveBackFraction = fraction;
+			pushBlock.BlockedEntity = entity;
+		}
+	}
+
+	public void VPhysicsUpdatePusher(IPhysicsObject physics) {
+		float movetime = (float)(LocalTime - VPhysicsUpdateLocalTime);
+		if (movetime <= 0)
+			return;
+
+		if (!PhysIsFinalTick())
+			return;
+
+		if (GetSolid() != SolidType.BSP && physics.GetShadowPosition(out _, out _) != 0) {
+			List<BaseEntity> list = [];
+			Hierarchy.GetAllInHierarchy(this, list);
+
+			PhysicsPushList? pushList = null;
+			if (HasDataObjectType(DataObjectType.PhysicsPushList)) {
+				pushList = GetDataObject<PhysicsPushList>(DataObjectType.PhysicsPushList);
+				Assert(pushList != null);
+			}
+			bool checkrot = GetLocalAngularVelocity() != vec3_angle;
+			bool checkmove = GetLocalVelocity() != vec3_origin;
+
+			PushBlock pushBlock = new() {
+				RootParent = this,
+				List = pushList,
+				BlockedEntity = null,
+				MoveBackFraction = 0.0f,
+				MoveTime = movetime
+			};
+			for (int i = 0; i < list.Count; i++) {
+				if (list[i].IsSolid())
+					CheckPushedEntity(list[i], ref pushBlock);
+			}
+
+			TimeUnit_t physLocalTime = LocalTime;
+			if (pushBlock.BlockedEntity != null) {
+				float moveback = movetime * pushBlock.MoveBackFraction;
+				if (moveback > 0) {
+					physLocalTime = LocalTime - moveback;
+					if (physLocalTime <= (VPhysicsUpdateLocalTime + movetime * 0.99f)) {
+						BaseEntity? blocked = null;
+
+						if (pushList != null) {
+							SetLocalOrigin(pushList.LocalOrigin);
+							SetLocalAngles(pushList.LocalAngles);
+							physLocalTime = pushList.LocalMoveTime;
+							for (int i = 0; i < pushList.PushedCount; i++) {
+								BaseEntity? pushedEntity = pushList.PushedEnts[i].Get();
+								if (pushedEntity == null)
+									continue;
+
+								pushedEntity.SetAbsOrigin(pushedEntity.GetAbsOrigin() - pushList.PushVec[i]);
+							}
+							BaseEntity? physicsBlocker = FindPhysicsBlocker(VPhysicsGetObject()!, pushList, pushList.PushVec[0]);
+							if (physicsBlocker != null)
+								blocked = physicsBlocker;
+						}
+						else {
+							Vector3 origin = GetLocalOrigin();
+							QAngle angles = GetLocalAngles();
+
+							if (checkmove)
+								origin -= GetLocalVelocity() * moveback;
+							if (checkrot)
+								angles -= GetLocalAngularVelocity() * moveback;
+
+							SetLocalOrigin(origin);
+							SetLocalAngles(angles);
+						}
+
+						if (blocked != null)
+							Blocked(blocked);
+
+						LocalTime = physLocalTime;
+					}
+				}
+			}
+		}
+
+		if (HasDataObjectType(DataObjectType.PhysicsPushList))
+			DestroyDataObject(DataObjectType.PhysicsPushList);
+
+		VPhysicsUpdateLocalTime = LocalTime;
+		if (MoveDoneTime <= LocalTime && MoveDoneTime > 0) {
+			SetMoveDoneTime(-1);
+			MoveDone();
 		}
 	}
 

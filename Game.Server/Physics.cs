@@ -258,6 +258,7 @@ public static class PhysicsHookGlobals {
 
 	public static void PhysAddShadow(BaseEntity entity) => g_ShadowEntities!.AddEntity(entity);
 	public static void PhysRemoveShadow(BaseEntity entity) => g_ShadowEntities!.DeleteEntity(entity);
+	public static bool PhysIsFinalTick() => g_PhysicsHook.IsFinalTick;
 	public static void PhysGetListOfPenetratingEntities(BaseEntity search, List<BaseEntity> list) => g_Collisions.GetListOfPenetratingEntities(search, list);
 
 	public static void PhysOnCleanupDeleteList() {
@@ -472,8 +473,18 @@ public class PhysicsHook : BaseGameSystemPerFrame
 	}
 	public override void FrameUpdatePostEntityThink() {
 		base.FrameUpdatePostEntityThink();
-		PhysFrame(gpGlobals.FrameTime);
+
+		TimeUnit_t interval = gpGlobals.FrameTime > 0.0 ? TICK_INTERVAL : 0.0;
+
+		if (BaseEntity.IsSimulatingOnAlternateTicks()) {
+			IsFinalTick = false;
+			PhysFrame(interval);
+		}
+		IsFinalTick = true;
+		PhysFrame(interval);
 	}
+
+	public bool IsFinalTick = true;
 	public override void PreClientUpdate() {
 		ImpactSoundTime += gpGlobals.FrameTime;
 		if (ImpactSoundTime > 0.05) {

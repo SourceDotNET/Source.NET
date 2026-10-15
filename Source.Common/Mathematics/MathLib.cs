@@ -3132,6 +3132,25 @@ public static class MathLib
 		}
 	}
 
+	public static void QuaternionAxisAngle(in Quaternion q, out Vector3 axis, out float angle) {
+		angle = RAD2DEG(2 * MathF.Acos(q.W));
+		if (angle > 180)
+			angle -= 360;
+
+		axis = new(q.X, q.Y, q.Z);
+		VectorNormalize(ref axis);
+	}
+
+	public static void RotationDeltaAxisAngle(in QAngle srcAngles, in QAngle destAngles, out Vector3 deltaAxis, out float deltaAngle) {
+		AngleQuaternion(srcAngles, out Quaternion srcQuat);
+		AngleQuaternion(destAngles, out Quaternion destQuat);
+		QuaternionScale(srcQuat, -1, out Quaternion srcQuatInv);
+		QuaternionMult(destQuat, srcQuatInv, out Quaternion result);
+
+		QuaternionNormalize(ref result);
+		QuaternionAxisAngle(result, out deltaAxis, out deltaAngle);
+	}
+
 	public static void AxisAngleQuaternion(in Vector3 axis, float angle, out Quaternion q) {
 		SinCos(DEG2RAD(angle) * 0.5f, out float sa, out float ca);
 		q.X = axis.X * sa;
