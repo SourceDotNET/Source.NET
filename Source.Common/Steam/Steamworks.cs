@@ -27,6 +27,7 @@ public class SteamworksExts
 	static GetPtrFn CSteamAPIContext_GetSteamUser;
 	static GetPtrFn CSteamGameServerAPIContext_GetSteamClient;
 	static GetPtrFn CSteamAPIContext_GetSteamHTTP;
+	static GetPtrFn CSteamAPIContext_GetSteamUGC;
 
 	static GetPtrFn RetrievePtrFn(string searchClass, string searchMethod) {
 		Type typeSearch;
@@ -53,9 +54,11 @@ public class SteamworksExts
 		CSteamAPIContext_GetSteamUser = RetrievePtrFn("CSteamAPIContext", "GetSteamUser");
 		CSteamGameServerAPIContext_GetSteamClient = RetrievePtrFn("CSteamGameServerAPIContext", "GetSteamClient");
 		CSteamAPIContext_GetSteamHTTP = RetrievePtrFn("CSteamAPIContext", "GetSteamHTTP");
+		CSteamAPIContext_GetSteamUGC = RetrievePtrFn("CSteamAPIContext", "GetSteamUGC");
 	}
 
 	public static IntPtr GetSteamUser() => CSteamAPIContext_GetSteamUser();
+	public static IntPtr GetSteamUGC() => CSteamAPIContext_GetSteamUGC();
 	public static bool HasSteamClient() => CSteamAPIContext_GetSteamClient() != IntPtr.Zero;
 	public static bool HasSteamGameServer() => CSteamGameServerAPIContext_GetSteamClient() != IntPtr.Zero;
 	public static bool HasSteamHTTP() => CSteamAPIContext_GetSteamHTTP() != IntPtr.Zero;
