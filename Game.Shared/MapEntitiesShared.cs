@@ -1,5 +1,7 @@
 using Source.Engine;
 
+using System.Runtime.InteropServices;
+
 namespace Game.Shared;
 
 public class EntityMapData
@@ -73,14 +75,66 @@ public class EntityMapData
 	}
 
 	// find the nth keyName in the entdata and change its value to the specified one.
-	// TODO: faithful port of CEntityMapData::SetValue (in-place buffer edit via pointer math).
-	// No callers yet (only used by the not-yet-ported ParseMapData / entity I/O fixup path).
 	public bool SetValue(ReadOnlySpan<byte> keyName, ReadOnlySpan<byte> newValue, int nKeyInstance = 0) {
 		Assert(EntDataSize != -1);
 		if (EntDataSize == -1)
 			return false;
 
-		throw new NotImplementedException();
+		Span<byte> token = stackalloc byte[MAPKEY_MAXLENGTH];
+		Span<byte> newValueBuf = stackalloc byte[1024];
+		Span<byte> entData = MemoryMarshal.AsMemory(EntData).Span;
+		ReadOnlySpan<byte> key = keyName[..MapEntity.StrLen(keyName)];
+		ReadOnlySpan<byte> inputData = entData;
+		int currKeyInstance = 0;
+
+		while (!inputData.IsEmpty) {
+			inputData = MapEntity.ParseToken(inputData, token);
+			if (token[0] == '}')
+				break;
+
+			if (token[..MapEntity.StrLen(token)].SequenceEqual(key)) {
+				++currKeyInstance;
+				if (currKeyInstance > nKeyInstance) {
+					int prevOffset = entData.Length - inputData.Length;
+					inputData = MapEntity.ParseToken(inputData, token);
+					int postOffset = entData.Length - inputData.Length;
+					byte[] postData = entData.Slice(postOffset, MapEntity.StrLen(entData[postOffset..])).ToArray();
+
+					ReadOnlySpan<byte> value = newValue[..MapEntity.StrLen(newValue)];
+					int newValueLen;
+					if (value.IsEmpty || value[0] != '"') {
+						newValueLen = Math.Min(value.Length, newValueBuf.Length - 3);
+						newValueBuf[0] = (byte)'"';
+						value[..newValueLen].CopyTo(newValueBuf[1..]);
+						newValueBuf[newValueLen + 1] = (byte)'"';
+						newValueLen += 2;
+					}
+					else {
+						newValueLen = Math.Min(value.Length, newValueBuf.Length - 1);
+						value[..newValueLen].CopyTo(newValueBuf);
+					}
+
+					int padding = newValueLen - MapEntity.StrLen(token) - 2;
+
+					int writeOffset = prevOffset + 1;
+					int destEnd = Math.Min(EntDataSize, entData.Length);
+					int copyLen = Math.Min(newValueLen, destEnd - writeOffset - 1);
+					newValueBuf[..copyLen].CopyTo(entData[writeOffset..]);
+					writeOffset += copyLen;
+
+					int postLen = Math.Min(postData.Length, destEnd - writeOffset - 1);
+					postData.AsSpan(0, postLen).CopyTo(entData[writeOffset..]);
+					entData[writeOffset + postLen] = 0;
+
+					CurrentKey = EntData[(EntData.Length - CurrentKey.Length + padding)..];
+					return true;
+				}
+			}
+
+			inputData = MapEntity.ParseToken(inputData, token);
+		}
+
+		return false;
 	}
 }
 

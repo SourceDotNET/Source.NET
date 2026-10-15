@@ -144,7 +144,7 @@ public static class AssertDialog
 					IgnoreAssertsInCurrentFile(result.AssertInfo.FileName);
 					break;
 				case AssertDialogResultType.Ignore:
-					if (result.UserInfo.LineRange > 0) {
+					if (result.UserInfo.IgnoreNumTimes > 1) {
 						AssertDisable pDisable = IgnoreAssertsNearby(result.AssertInfo.FileName, result.AssertInfo.Line, 0);
 						pDisable.IgnoreTimes = result.UserInfo.IgnoreNumTimes - 1;
 					}
@@ -153,10 +153,10 @@ public static class AssertDialog
 					IgnoreAssertsNearby(result.AssertInfo.FileName, result.AssertInfo.Line, 0);
 					break;
 				case AssertDialogResultType.IgnoreNearby:
-					if (result.UserInfo.IgnoreNumTimes < 1)
+					if (result.UserInfo.LineRange < 1)
 						break;
 
-					IgnoreAssertsNearby(result.AssertInfo.FileName, result.AssertInfo.Line, result.UserInfo.IgnoreNumTimes);
+					IgnoreAssertsNearby(result.AssertInfo.FileName, result.AssertInfo.Line, result.UserInfo.LineRange);
 					break;
 				case AssertDialogResultType.IgnoreAll:
 					AssertsEnabled = false;

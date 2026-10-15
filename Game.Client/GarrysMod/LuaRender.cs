@@ -212,6 +212,17 @@ public static partial class LuaRender
 	}
 
 	[LuaFunction]
+	static int CopyRenderTargetToTexture(ILuaInterface lua) {
+		ITexture? texture = (ITexture?)LuaTexture.LC_ITexture.Get(1);
+		using MatRenderContextPtr renderContext = new(materials);
+		ITexture? renderTarget = renderContext.GetRenderTarget();
+		if (enginevgui.IsConsoleVisible() && !(renderTarget == null ? ViewRender.RenderingView : renderTarget.IsRenderTarget()))
+			return 0;
+		renderContext.CopyRenderTargetToTexture(texture);
+		return 0;
+	}
+
+	[LuaFunction]
 	static int SetRenderTarget(ILuaInterface lua) {
 		ITexture? texture = null;
 		if (lua.IsType(1, LuaType.Texture))
@@ -593,7 +604,6 @@ public static partial class LuaRender
 	// todo: RenderView
 	// todo: GetViewSetup
 	// todo: RenderHUD
-	// todo: CopyRenderTargetToTexture
 	static int CustomClipPlaneCount;
 
 	[LuaFunction]

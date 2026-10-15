@@ -1097,6 +1097,28 @@ IModelLoader modelloader, ICommandLine commandLine,
 			p.SetModel(null);
 	}
 
+	protected override bool ProcessFixAngle(SVC_FixAngle msg) {
+		if (msg.Angle.X > 180)
+			msg.Angle.X -= 360;
+		if (msg.Angle.Y > 180)
+			msg.Angle.Y -= 360;
+		if (msg.Angle.Z > 180)
+			msg.Angle.Z -= 360;
+
+		if (msg.Relative) {
+			AddAngleTotal += msg.Angle.Y;
+
+			AddAngle.Add(new() {
+				Total = AddAngleTotal,
+				StartTime = LastServerTickTime
+			});
+		}
+		else
+			ViewAngles = msg.Angle;
+
+		return true;
+	}
+
 	protected override bool ProcessCrosshairAngle(SVC_CrosshairAngle msg) {
 		g_ClientDLL!.SetCrosshairAngle(msg.Angle);
 		return true;

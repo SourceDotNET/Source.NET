@@ -1132,6 +1132,22 @@ public static class MathLib
 		qt.Z = p.X * q2.Y - p.Y * q2.X + p.Z * q2.W + p.W * q2.Z;
 		qt.W = -p.X * q2.X - p.Y * q2.Y - p.Z * q2.Z + p.W * q2.W;
 	}
+	public static float QuaternionNormalize(ref Quaternion q) {
+		float radius, iradius;
+
+		radius = q.X * q.X + q.Y * q.Y + q.Z * q.Z + q.W * q.W;
+
+		if (radius != 0) {
+			radius = MathF.Sqrt(radius);
+			iradius = 1.0f / radius;
+			q.W *= iradius;
+			q.Z *= iradius;
+			q.Y *= iradius;
+			q.X *= iradius;
+		}
+		return radius;
+	}
+
 	public static void QuaternionScale(in Quaternion p, float t, out Quaternion q) {
 		float r;
 		float sinom = MathF.Sqrt(DotProduct(in p, in p));
@@ -3114,6 +3130,25 @@ public static class MathLib
 			// Assume no roll in this case as one degree of freedom has been lost (i.e. yaw == roll)
 			angles[2] = 0;
 		}
+	}
+
+	public static void QuaternionAxisAngle(in Quaternion q, out Vector3 axis, out float angle) {
+		angle = RAD2DEG(2 * MathF.Acos(q.W));
+		if (angle > 180)
+			angle -= 360;
+
+		axis = new(q.X, q.Y, q.Z);
+		VectorNormalize(ref axis);
+	}
+
+	public static void RotationDeltaAxisAngle(in QAngle srcAngles, in QAngle destAngles, out Vector3 deltaAxis, out float deltaAngle) {
+		AngleQuaternion(srcAngles, out Quaternion srcQuat);
+		AngleQuaternion(destAngles, out Quaternion destQuat);
+		QuaternionScale(srcQuat, -1, out Quaternion srcQuatInv);
+		QuaternionMult(destQuat, srcQuatInv, out Quaternion result);
+
+		QuaternionNormalize(ref result);
+		QuaternionAxisAngle(result, out deltaAxis, out deltaAngle);
 	}
 
 	public static void AxisAngleQuaternion(in Vector3 axis, float angle, out Quaternion q) {

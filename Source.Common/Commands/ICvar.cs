@@ -42,6 +42,7 @@ public interface ICvar
 	IEnumerable<ConCommandBase> GetCommands();
 
 	event FnChangeCallback? Changed;
+	void CallGlobalChangeCallbacks(ConVar var, in ConVarChangeContext ctx);
 
 	void InstallConsoleDisplayFunc(IConsoleDisplayFunc displayFunc);
 	void RemoveConsoleDisplayFunc(IConsoleDisplayFunc displayFunc);

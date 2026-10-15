@@ -96,6 +96,7 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	public int ButtonsArray;
 
 	public override bool IsPlayer() => true;
+	public override Mask PhysicsSolidMaskForEntity() => Mask.PlayerSolid;
 	public TimeUnit_t GetFinalPredictedTime() => FinalPredictedTick * TICK_INTERVAL;
 	public bool IsLocalPlayer() => GetLocalPlayer() == this;
 
@@ -550,6 +551,7 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	public float GetStepSize() => Local.StepSize;
 
 	float OldPlayerZ;
+	float OldPlayerViewOffsetZ;
 	bool WasFreezeFraming;
 	Vector3 FreezeFrameStart;
 	TimeUnit_t FreezeFrameStartTime;

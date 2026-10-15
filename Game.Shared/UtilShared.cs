@@ -43,7 +43,7 @@ public static partial class Util_Globals
 		return (int)(retval);
 	}
 
-	public static float SharedRandomFloat(ReadOnlySpan<char> sharedname, int minVal, int maxVal, int additionalSeed = 0) {
+	public static float SharedRandomFloat(ReadOnlySpan<char> sharedname, float minVal, float maxVal, int additionalSeed = 0) {
 		int seed = SeedFileLineHash(BaseEntity.GetPredictionRandomSeed(), sharedname, additionalSeed);
 		RandomSeed(seed);
 		return RandomFloat(minVal, maxVal);

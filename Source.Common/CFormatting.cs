@@ -701,6 +701,13 @@ public static class CFormatting
 				return char.ToLowerInvariant(a[i]) - char.ToLowerInvariant(b[i]);
 		return a.Length - b.Length;
 	}
+	public static int stricmp(scoped ReadOnlySpan<byte> a, scoped ReadOnlySpan<byte> b) {
+		a = a.SliceNullTerminatedString(); b = b.SliceNullTerminatedString();
+		for (int i = 0; i < a.Length && i < b.Length; i++)
+			if (char.ToLowerInvariant((char)a[i]) != char.ToLowerInvariant((char)b[i]))
+				return char.ToLowerInvariant((char)a[i]) - char.ToLowerInvariant((char)b[i]);
+		return a.Length - b.Length;
+	}
 	public static int strcmpi(scoped ReadOnlySpan<char> a, scoped ReadOnlySpan<char> b) => stricmp(a, b);
 
 

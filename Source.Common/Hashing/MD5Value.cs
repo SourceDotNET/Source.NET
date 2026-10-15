@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.HighPerformance;
 
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 
 using FIELD_W_TYPE = System.UInt32;
@@ -38,6 +39,14 @@ public readonly record struct MD5Value
 		Span<byte> hash = stackalloc byte[SIZE_BYTES];
 		HASH_ALGORITHM.HashData(data, hash);
 		return FromBytes(hash);
+	}
+
+	public static uint PseudoRandom(uint seed) {
+		Span<byte> data = stackalloc byte[sizeof(uint)];
+		BinaryPrimitives.WriteUInt32LittleEndian(data, seed);
+		Span<byte> hash = stackalloc byte[SIZE_BYTES];
+		HASH_ALGORITHM.HashData(data, hash);
+		return BinaryPrimitives.ReadUInt32LittleEndian(hash[6..]);
 	}
 
 	public readonly override string ToString() {

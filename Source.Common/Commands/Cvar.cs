@@ -23,6 +23,7 @@ public class Cvar : ICvar
 		this.cvarQuery = cvarQuery;
 	}
 	public event FnChangeCallback? Changed;
+	public void CallGlobalChangeCallbacks(ConVar var, in ConVarChangeContext ctx) => Changed?.Invoke(var, in ctx);
 	List<IConsoleDisplayFunc> DisplayFuncs = [];
 	Assembly? NextDLLIdentifier;
 	

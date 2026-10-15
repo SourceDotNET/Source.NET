@@ -242,6 +242,24 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 	public static bool g_bLevelInitialized;
 	public static INetworkStringTable? g_pStringTableClientSideChoreoScenes;
+	public static INetworkStringTable? g_pStringTableMaterials;
+
+	public static int GetMaterialIndex(ReadOnlySpan<char> materialName) {
+		if (!materialName.IsEmpty) {
+			int index = g_pStringTableMaterials!.FindStringIndex(materialName);
+			Assert(index >= 0);
+			if (index >= 0)
+				return index;
+		}
+		return 0;
+	}
+
+	public static ReadOnlySpan<char> GetMaterialNameFromIndex(int index) {
+		if (index != (g_pStringTableMaterials!.GetMaxStrings() - 1))
+			return g_pStringTableMaterials.GetString(index);
+		else
+			return null;
+	}
 
 	public void EncodeUserCmdToBuffer(bf_write buf, int slot) {
 		input.EncodeUserCmdToBuffer(buf, slot);
@@ -277,7 +295,9 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 	public void InstallStringTableCallback(ReadOnlySpan<char> tableName) {
 		switch (tableName) {
 			case "VguiScreen": Warning("FIXME: VguiScreen string table not being processed yet\n"); break;
-			case "Materials": Warning("FIXME: Materials string table not being processed yet\n"); break;
+			case "Materials":
+				g_pStringTableMaterials = networkstringtable.FindTable(tableName);
+				break;
 			case "EffectDispatch": Warning("FIXME: EffectDispatch string table not being processed yet\n"); break;
 			// I don't think InfoPanel is a thing?
 			case "Scenes":

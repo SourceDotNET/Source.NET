@@ -229,7 +229,7 @@ public class BreakableProp : BaseProp, IBreakableWithPropData, IPlayerPickupVPhy
 
 	public virtual Vector3 PhysGunLaunchVelocity(in Vector3 forward, float mass) => Pickup.DefaultPhysGunLaunchVelocity(forward, mass);
 
-	public virtual BasePlayer? HasPhysicsAttacker(TimeUnit_t dt) {
+	public override BasePlayer? HasPhysicsAttacker(TimeUnit_t dt) {
 		if (gpGlobals.CurTime - dt <= LastPhysicsInfluenceTime)
 			return PhysicsAttacker.Get();
 

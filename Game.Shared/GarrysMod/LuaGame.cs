@@ -17,6 +17,47 @@ public static partial class LuaGame
 	static readonly LuaLibrary LL_Factory_game = new("game");
 
 	[LuaFunction]
+	static int AddParticles(ILuaInterface lua) {
+		string file = g_Lua!.CheckString(1);
+		if (LuaFileLibrary.IsFileAccessAllowed(file, "GAME", false, false)) {
+			// GMOD_LoadParticleConfigFile(file); // TODO!
+		}
+		return 0;
+	}
+
+	[LuaFunction]
+	static int AddDecal(ILuaInterface lua) {
+		LuaObject materials = new();
+		materials.SetFromStack(2);
+		if (!materials.isTable()) {
+			// decalsystem.AddDecal(lua.CheckString(1), lua.CheckString(2)); // TODO!!!
+			materials.UnReference();
+			return 0;
+		}
+
+		List<string> list = [];
+		LuaObject entry = new();
+		for (int i = 1; ; i++) {
+			materials.GetMember(i, entry);
+			if (!entry.isString())
+				break;
+			list.Add(entry.GetString()!);
+		}
+		entry.UnReference();
+
+		// if (list.Count != 0)
+		// 	decalsystem.AddDecal(lua.CheckString(1), list); // TODO!!!
+		materials.UnReference();
+		return 0;
+	}
+
+	[LuaFunction]
+	static int MaxPlayers(ILuaInterface lua) {
+		g_Lua!.PushNumber(gpGlobals.MaxClients);
+		return 1;
+	}
+
+	[LuaFunction]
 	static int GetMap(ILuaInterface lua) {
 #if CLIENT_DLL
 		string? mapName = IGameSystem.s_MapName;

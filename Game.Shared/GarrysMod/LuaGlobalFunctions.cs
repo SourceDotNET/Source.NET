@@ -122,6 +122,48 @@ public static partial class LuaGlobalFunctions
 #endif
 
 	[LuaGlobal]
+	static int WorldToLocal(ILuaInterface lua) {
+		Vector3 pos = LuaVector.Get_Vector(1);
+		QAngle ang = LuaAngle.Get_Angle(2);
+		Vector3 newSystemOrigin = LuaVector.Get_Vector(3);
+		QAngle newSystemAngles = LuaAngle.Get_Angle(4);
+
+		MathLib.AngleMatrix(newSystemAngles, newSystemOrigin, out Matrix3x4 matrix);
+		MathLib.MatrixInvert(matrix, out Matrix3x4 inverse);
+		MathLib.VectorTransform(pos, inverse, out Vector3 localPos);
+		QAngle localAng = MathLib.TransformAnglesToWorldSpace(ang, inverse);
+
+		LuaVector.Push_Vector(localPos);
+		LuaAngle.Push_Angle(localAng);
+		return 2;
+	}
+
+	[LuaGlobal]
+	static int PrecacheParticleSystem(ILuaInterface lua) {
+		string name = lua.CheckString(1);
+		// PrecacheParticleSystem(name); // TODO!
+		return 0;
+	}
+
+	[LuaGlobal]
+	static int CompileFile(ILuaInterface lua) {
+		bool showErrors = true;
+		if (lua.GetType(2) != LuaType.Nil)
+			showErrors = lua.GetBool(2);
+		return lua.FindAndRunScript(lua.CheckString(1), false, showErrors, "!UNKNOWN", true) ? 1 : 0;
+	}
+
+	[LuaGlobal]
+	static int IsFirstTimePredicted(ILuaInterface lua) {
+#if CLIENT_DLL
+		lua.PushBool(prediction.InPrediction() && prediction.IsFirstTimePredicted());
+#else
+		lua.PushBool(true);
+#endif
+		return 1;
+	}
+
+	[LuaGlobal]
 	static int HSVToColor(ILuaInterface lua) {
 		float value = (float)lua.CheckNumber(3);
 		float saturation = (float)lua.CheckNumber(2);
@@ -270,6 +312,34 @@ public static partial class LuaGlobalFunctions
 		tostring.UnReference();
 		return 0;
 	}
+
+#if GAME_DLL
+	[LuaGlobal]
+	static int MsgAll(ILuaInterface lua) {
+		int top = g_Lua!.Top();
+		LuaObject tostring = new();
+		g_Lua.Global().GetMember("tostring", tostring);
+		if (tostring.isFunction()) {
+			StringBuilder buffer = new();
+			for (int i = 1; i <= top; i++) {
+				LuaObject obj = new(i, LuaType.None);
+				tostring.Push();
+				obj.Push();
+				string str = g_Lua.CallInternalGetString(1) ?? "ERROR";
+				buffer.Append(str.AsSpan(0, Math.Min(str.Length, Math.Max(0, 4096 - 1 - buffer.Length))));
+				obj.UnReference();
+			}
+			if (buffer.Length > 0) {
+				string message = buffer.ToString();
+				Util.ClientPrintAll(Game.Shared.HudPrint.Console, "%s1", message);
+				if (engine.IsDedicatedServer())
+					Dbg.Msg(message);
+			}
+		}
+		tostring.UnReference();
+		return 0;
+	}
+#endif
 
 	static Color GetColor(ILuaObject obj) => new(
 		(byte)(int)obj.GetMemberFloat("r", 255.0f),

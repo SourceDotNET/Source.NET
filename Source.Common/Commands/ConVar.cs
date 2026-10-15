@@ -241,14 +241,17 @@ public class ConVar : ConCommandBase, IConVar
 
 		value = new(tempValue);
 		if (!Equals(oldValue, value)) {
-			Changed?.Invoke(this, new() {
+			ConVarChangeContext ctx = new() {
 				Old = oldValue,
 				New = value
-			});
+			};
+			Changed?.Invoke(this, in ctx);
 
-			// How do we link up global change callbacks? An interesting dilemma...
+			CVar.CallGlobalChangeCallbacks(this, in ctx);
 		}
 	}
+
+	static ICvar CVar => field ??= Singleton<ICvar>();
 
 	public virtual void SetValue(ReadOnlySpan<char> value) {
 		parent!.InternalSetValue(value);

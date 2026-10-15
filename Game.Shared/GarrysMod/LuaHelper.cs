@@ -47,6 +47,56 @@ public static class LuaHelper
 		}
 	}
 
+	public static void KeyValuesToTablePreserveOrder(KeyValues kv, ILuaObject? table, bool preserveKeyCase) {
+		int count = 0;
+		int arrayIndex = 1;
+		bool isArray = true;
+		KeyValues? sub = kv.GetFirstSubKey();
+		if (sub != null) {
+			do {
+				count++;
+				if (sub.Name != "0") {
+					isArray = false;
+					break;
+				}
+				sub = sub.GetNextKey();
+			} while (sub != null);
+			if (count == 1)
+				isArray = false;
+		}
+
+		int entryIndex = 1;
+		for (sub = kv.GetFirstSubKey(); sub != null; sub = sub.GetNextKey()) {
+			string name = sub.Name.Length > 255 ? sub.Name[..255] : sub.Name;
+			if (!preserveKeyCase)
+				name = name.ToLowerInvariant();
+			if (name == "0" && isArray)
+				name = (arrayIndex++).ToString();
+
+			LuaTable entry = new(null, 0);
+			entry.SetMember("Key", name);
+			table?.SetMember(entryIndex++, entry);
+
+			switch (sub.Type) {
+				case KeyValues.Types.None: {
+						LuaTable subTable = new(null, 0);
+						entry.SetMember("Value", subTable);
+						KeyValuesToTablePreserveOrder(sub, subTable, preserveKeyCase);
+						subTable.UnReference();
+						break;
+					}
+				case KeyValues.Types.Int:
+				case KeyValues.Types.Double:
+					entry.SetMember("Value", sub.GetFloat());
+					break;
+				default:
+					entry.SetMember("Value", sub.GetString());
+					break;
+			}
+			entry.UnReference();
+		}
+	}
+
 	public static void CallOnLuaErrorHook(in LuaError error, string? addonTitle, ulong workshopID) {
 		if (g_Lua == null || g_Lua.Global() == null)
 			return;

@@ -8,6 +8,7 @@ using Source;
 using Source.Common;
 using Source.Common.Commands;
 using Source.Common.Engine;
+using Source.Common.Formats.BSP;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.Mathematics;
 
@@ -102,6 +103,8 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	}
 	public bool IsSequenceFinished() => SequenceFinished;
 	public override void ResetLatched() {
+		Ik = null;
+
 		base.ResetLatched();
 	}
 	public bool IsRagdoll() => Ragdoll != null && RenderFX == (byte)RenderFx.Ragdoll;
@@ -454,7 +457,63 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 			RemoveVar(this, DA_Cycle, false);
 	}
 
-	public bool ComputeHitboxSurroundingBox(out Vector3 vecWorldMins, out Vector3 vecWorldMaxs) => throw new NotImplementedException();
+	memhandle_t HitboxBoneCacheHandle;
+
+	public BoneCache GetBoneCache(StudioHdr? studioHdr) {
+		int boneMask = Studio.BONE_USED_BY_HITBOX;
+		BoneCache cache = Studio.GetBoneCache(HitboxBoneCacheHandle);
+		if (!cache.IsNull()) {
+			if (cache.IsValid(gpGlobals.CurTime, 0.0))
+				return cache;
+
+			if ((cache.BoneMask & boneMask) != boneMask) {
+				Studio.DestroyBoneCache(HitboxBoneCacheHandle);
+				HitboxBoneCacheHandle = 0;
+				cache = default;
+			}
+		}
+
+		studioHdr ??= GetModelPtr();
+		Assert(studioHdr != null);
+
+		PushAllowBoneAccess(true, false, (BoneAccessTag)"GetBoneCache");
+		SetupBones(null, -1, boneMask, gpGlobals.CurTime);
+		PopAllowBoneAccess((BoneAccessTag)"GetBoneCache");
+
+		if (!cache.IsNull())
+			cache.UpdateBones(CachedBoneData.AsSpan(), studioHdr!.NumBones(), gpGlobals.CurTime);
+		else {
+			BoneCacheParams parms = new();
+			parms.StudioHdr = studioHdr!;
+			parms.BoneToWorld = CachedBoneData.AsSpan();
+			parms.CurTime = gpGlobals.CurTime;
+			parms.BoneMask = boneMask;
+
+			HitboxBoneCacheHandle = Studio.CreateBoneCache(in parms);
+			cache = Studio.GetBoneCache(HitboxBoneCacheHandle);
+		}
+
+		Assert(!cache.IsNull());
+		return cache;
+	}
+
+	public override bool GetSoundSpatialization(ref SpatializationInfo info) {
+		using (AutoAllowBoneAccess boneaccess = new(true, false)) {
+			if (!base.GetSoundSpatialization(ref info))
+				return false;
+		}
+
+		if (!Unsafe.IsNullRef(ref info.Origin) && IsNPC() && Ik != null) {
+			info.Origin = GetAbsOrigin();
+
+			modelinfo.GetModelBounds(GetModel(), out Vector3 mins, out Vector3 maxs);
+			MathLib.VectorAdd(mins, maxs, out Vector3 center);
+			MathLib.VectorScale(center, 0.5f, out center);
+
+			info.Origin += center;
+		}
+		return true;
+	}
 
 	public override bool SetupBones(Span<Matrix3x4> boneToWorldOut, int maxBones, int boneMask, double currentTime) {
 		if (!boneToWorldOut.IsEmpty && !IsBoneAccessAllowed()) {
@@ -502,6 +561,8 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 				AddFlag((EntityFlags)EFL.SettingUpBones);
 
+				UpdateIKContext(hdr);
+
 				Span<Vector3> pos = stackalloc Vector3[Studio.MAXSTUDIOBONES];
 				Span<Quaternion> q = stackalloc Quaternion[Studio.MAXSTUDIOBONES];
 				memset(pos.Cast<Vector3, float>(), float.NaN);
@@ -509,9 +570,19 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 				int bonesMaskNeedRecalc = boneMask | oldReadableBones;
 
+				if (Ik != null) {
+					if (Teleported() || IsNoInterpolationFrame())
+						Ik.ClearTargets();
+
+					InitIK(hdr, currentTime, bonesMaskNeedRecalc);
+				}
+
 				StandardBlendingRules(hdr, pos, q, currentTime, bonesMaskNeedRecalc);
 
 				BoneBitList boneComputed = new();
+				if (Ik != null && !IsRagdoll())
+					SolveIK(pos, q, BoneAccessor.GetBoneArrayForWrite(), ref boneComputed, currentTime);
+
 				BuildTransformations(hdr, pos, q, parentTransform, bonesMaskNeedRecalc, ref boneComputed);
 
 				RemoveFlag((EntityFlags)EFL.SettingUpBones);
@@ -632,10 +703,11 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		TimeUnit_t cycle = GetCycle();
 		BoneSetup setup = new(hdr, boneMask, poseparam);
 		setup.InitPose(pos, q);
-		setup.AccumulatePose(pos, q, GetSequence(), cycle, 1.0f, currentTime, null);
+		setup.AccumulatePose(pos, q, GetSequence(), cycle, 1.0f, currentTime, Ik);
 		MaintainSequenceTransitions(ref setup, cycle, pos, q);
 		AccumulateLayers(ref setup, pos, q, currentTime);
-		setup.CalcAutoplaySequences(pos, q, currentTime, null);
+
+		setup.CalcAutoplaySequences(pos, q, currentTime, CreateAutoplayIK(hdr, currentTime, boneMask));
 
 		if (hdr.NumBoneControllers() != 0) {
 			// todo
@@ -709,7 +781,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 			cycle = blend.Cycle + dt * blend.PlaybackRate * GetSequenceCycleRate(boneSetup.GetStudioHdr(), blend.Sequence);
 			cycle = ClampCycle(cycle, IsSequenceLooping(boneSetup.GetStudioHdr(), blend.Sequence));
 
-			boneSetup.AccumulatePose(pos, q, blend.Sequence, cycle, blend.Weight, gpGlobals.CurTime, null);
+			boneSetup.AccumulatePose(pos, q, blend.Sequence, cycle, blend.Weight, gpGlobals.CurTime, Ik);
 		}
 	}
 
@@ -917,12 +989,17 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		InvalidateBoneCache();
 		BoneMergeCache = null;
 
+		Studio.DestroyBoneCache(HitboxBoneCacheHandle);
+		HitboxBoneCacheHandle = 0;
+
 		if (CachedBoneData.Count != hdr.NumBones()) {
 			CachedBoneData.SetSize(hdr.NumBones());
 			for (i = 0; i < hdr.NumBones(); i++)
 				MathLib.SetIdentityMatrix(out CachedBoneData.AsSpan()[i]);
 		}
 		BoneAccessor.Init(CachedBoneData.Base());
+
+		Ik = null;
 
 		if (Attachments.Count != hdr.GetNumAttachments())
 			Attachments.SetSizeInitialized(hdr.GetNumAttachments());
@@ -1520,6 +1597,13 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 	private void UpdateBoneAttachments() {
 
+	}
+
+	public virtual void RemoveFromPreviousBoneSetups() => PreviousBoneSetups.Remove(this);
+
+	public int LookupBone(ReadOnlySpan<char> name) {
+		Assert(GetModelPtr());
+		return BoneSetup.Studio_BoneIndexByName(GetModelPtr(), name);
 	}
 
 	public int LookupAttachment(ReadOnlySpan<char> attachmentName) {

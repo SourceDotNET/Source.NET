@@ -19,6 +19,7 @@ using Steamworks;
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using Source.Common.Hashing;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
@@ -226,7 +227,52 @@ public static partial class LuaUtil
 		return 1;
 	}
 
+	[LuaFunction]
+	static int KeyValuesToTablePreserveOrder(ILuaInterface lua) {
+		LuaTable table = new(null, 0);
+		KeyValues kv = new("KeyValuesToTablePreserveOrder");
+		kv.UsesEscapeSequences(g_Lua!.GetBool(2));
+		kv.LoadFromBuffer("util.KeyValuesToTablePreserveOrder", g_Lua.CheckString(1));
+		LuaHelper.KeyValuesToTablePreserveOrder(kv, table, g_Lua.GetBool(3));
+		table.Push();
+		table.UnReference();
+		return 1;
+	}
+
 #if !MENU_DLL
+	[LuaFunction]
+	static int SharedRandom(ILuaInterface lua) {
+		int seed = 0;
+		if (g_Lua!.GetType(4) == LuaType.Number)
+			seed = (int)g_Lua.CheckNumber(4);
+		g_Lua.PushNumber(SharedRandomFloat(g_Lua.CheckString(1), (float)g_Lua.CheckNumber(2), (float)g_Lua.CheckNumber(3), seed));
+		return 1;
+	}
+
+	[LuaFunction]
+	static int CRC(ILuaInterface lua) {
+		if (!g_Lua!.IsType(1, LuaType.String))
+			g_Lua.CheckString(1);
+		ReadOnlySpan<byte> data = g_Lua.GetStringBytes(1);
+		CRC32_t crc = 0;
+		CRC32.Init(ref crc);
+		CRC32.ProcessBuffer(ref crc, data, data.Length);
+		CRC32.Final(ref crc);
+		g_Lua.PushString(((uint)crc).ToString());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetSurfacePropName(ILuaInterface lua) {
+		int index = (int)g_Lua!.CheckNumber(1);
+		if (index >= 0 && index < physprops.SurfacePropCount()) {
+			g_Lua.PushString(physprops.GetPropName(index));
+			return 1;
+		}
+		g_Lua.PushString("");
+		return 1;
+	}
+
 #if GAME_DLL
 	[LuaFunction]
 	static int AddNetworkString(string name) => NetworkString.Add(name);
@@ -343,6 +389,68 @@ public static partial class LuaUtil
 		Vector3 end = data.GetMemberVector("endpos", vec3_origin);
 		Mask mask = (Mask)data.GetMemberUInt("mask", (uint)Mask.Solid);
 
+		TraceFilterLua filter = TraceFilterFromTable(data);
+
+		Ray ray = default;
+		ray.Init(start, end);
+
+		enginetrace.TraceRay(ray, mask | (Mask)Contents.HitBox, ref filter, out Trace tr);
+
+		if (r_visualizetraces.GetBool())
+			Game.Shared.DebugOverlay.DebugDrawLine(tr.StartPos, tr.EndPos, 255, 0, 0, true, -1.0f);
+
+		if (!tr.StartSolid)
+			Util.ClipTraceToPlayers(start, end, mask | (Mask)Contents.HitBox, ref filter, ref tr);
+
+		LuaObject output = new();
+		data.GetMember("output", output);
+		PushTableFromTrace(ref tr, output);
+		output.UnReference();
+
+		filter.Function.UnReference();
+		data.UnReference();
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetSurfaceIndex(ILuaInterface lua) {
+		g_Lua!.PushNumber(physprops.GetSurfaceIndex(g_Lua.CheckString(1)));
+		return 1;
+	}
+
+	[LuaFunction]
+	static int TraceHull(ILuaInterface lua) {
+		if (g_PhysWorldObject == null)
+			return 0;
+
+		LuaObject data = new(1, LuaType.None);
+		if (!data.isTable()) {
+			g_Lua!.TypeError("table", 1);
+			data.UnReference();
+			return 0;
+		}
+
+		Vector3 start = data.GetMemberVector("start", vec3_origin);
+		Vector3 end = data.GetMemberVector("endpos", vec3_origin);
+		Mask mask = (Mask)data.GetMemberUInt("mask", (uint)Mask.Solid);
+		Vector3 mins = data.GetMemberVector("mins", vec3_origin);
+		Vector3 maxs = data.GetMemberVector("maxs", vec3_origin);
+
+		TraceFilterLua filter = TraceFilterFromTable(data);
+
+		Util.TraceHull(start, end, mins, maxs, mask, ref filter, out Trace tr);
+
+		LuaObject output = new();
+		data.GetMember("output", output);
+		PushTableFromTrace(ref tr, output);
+		output.UnReference();
+
+		filter.Function.UnReference();
+		data.UnReference();
+		return 1;
+	}
+
+	static TraceFilterLua TraceFilterFromTable(LuaObject data) {
 		TraceFilterLua filter = new((CollisionGroup)data.GetMemberInt("collisiongroup", 0));
 		filter.SetIgnoreWorld(data.GetMemberBool("ignoreworld", false));
 		filter.SetIsWhitelist(data.GetMemberBool("whitelist", false));
@@ -370,73 +478,10 @@ public static partial class LuaUtil
 		else if (filterObj.GetType() == LuaType.Entity)
 			filter.AddEntityToIgnore(filterObj.GetEntity());
 		filterObj.UnReference();
-
-		Ray ray = default;
-		ray.Init(start, end);
-
-		enginetrace.TraceRay(ray, mask | (Mask)Contents.HitBox, ref filter, out Trace tr);
-
-		if (r_visualizetraces.GetBool())
-			Game.Shared.DebugOverlay.DebugDrawLine(tr.StartPos, tr.EndPos, 255, 0, 0, true, -1.0f);
-
-		if (!tr.StartSolid)
-			Util.ClipTraceToPlayers(start, end, mask | (Mask)Contents.HitBox, ref filter, ref tr);
-
-		LuaObject output = new();
-		data.GetMember("output", output);
-		PushTableFromTrace(ref tr, output);
-		output.UnReference();
-
-		filter.Function.UnReference();
-		data.UnReference();
-		return 1;
+		return filter;
 	}
 #endif
 #if CLIENT_DLL || MENU_DLL
-	[LuaFunction]
-	static int KeyValuesToTablePreserveOrder(ILuaInterface lua) {
-		KeyValues kv = new("KeyValuesToTablePreserveOrder");
-		kv.UsesEscapeSequences(lua.GetBool(2));
-		kv.LoadFromBuffer("util.KeyValuesToTablePreserveOrder", lua.CheckString(1));
-		LuaTable table = new(null, 0);
-		KeyValuesToTablePreserveOrder(kv, table, lua.GetBool(3));
-		table.Push();
-		table.UnReference();
-		return 1;
-	}
-
-	static void KeyValuesToTablePreserveOrder(KeyValues kv, LuaTable table, bool preserveKeyCase) {
-		int index = 1;
-		for (KeyValues? sub = kv.GetFirstSubKey(); sub != null; sub = sub.GetNextKey()) {
-			string name = sub.Name.Length > 511 ? sub.Name[..511] : sub.Name;
-			if (!preserveKeyCase)
-				name = name.ToLowerInvariant();
-
-			LuaTable entry = new(null, 0);
-			entry.SetMember("Key", name);
-			switch (sub.Type) {
-				case KeyValues.Types.Int:
-					entry.SetMember("Value", sub.GetInt());
-					break;
-				case KeyValues.Types.Double:
-					entry.SetMember("Value", MathF.Floor(sub.GetFloat() * 10000.0f) / 10000.0f);
-					break;
-				case KeyValues.Types.None: {
-						LuaTable subTable = new(null, 0);
-						KeyValuesToTablePreserveOrder(sub, subTable, preserveKeyCase);
-						entry.SetMember("Value", subTable);
-						subTable.UnReference();
-						break;
-					}
-				default:
-					entry.SetMember("Value", sub.GetString());
-					break;
-			}
-			table.SetMember((float)index++, entry);
-			entry.UnReference();
-		}
-	}
-
 	static void TableToKeyValues(ILuaInterface lua, ILuaObject table, System.Text.StringBuilder output, string name, int depth) {
 		output.Append('\t', depth).Append('"').Append(name).Append("\"\n");
 		output.Append('\t', depth).Append("{\n");

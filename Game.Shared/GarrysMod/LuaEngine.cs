@@ -16,6 +16,12 @@ public static partial class LuaEngine
 	static readonly LuaLibrary LL_Factory_engine = new("engine");
 
 	[LuaFunction]
+	static int TickInterval(ILuaInterface lua) {
+		g_Lua!.PushNumber(gpGlobals.IntervalPerTick);
+		return 1;
+	}
+
+	[LuaFunction]
 	static int ActiveGamemode(ILuaInterface lua) {
 		g_Lua!.PushString(filesystem.Gamemodes().Active().Name);
 		return 1;
@@ -55,12 +61,6 @@ public static partial class LuaEngine
 	[LuaFunction]
 	static int GetDemoPlaybackTotalTicks(ILuaInterface lua) {
 		lua.PushNumber(engine.GetDemoPlaybackTotalTicks());
-		return 1;
-	}
-
-	[LuaFunction]
-	static int TickInterval(ILuaInterface lua) {
-		lua.PushNumber(gpGlobals.IntervalPerTick);
 		return 1;
 	}
 

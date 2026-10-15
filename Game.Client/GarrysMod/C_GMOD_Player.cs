@@ -97,6 +97,21 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 	public override bool RestrictPlayerPitch() => (GModPlayerFlags & 16) == 0;
 	public override bool CanAttack() => PressedWidget.Get() == null;
 
+	public C_BaseEntity? FindUseEntity() {
+		C_BaseEntity? ent = null; // todo: base.FindUseEntity()
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.FindUseEntity)) {
+			LuaEntity.Push_Entity(this);
+			LuaEntity.Push_Entity(ent);
+			if (gGM.CallReturns(2, 1)) {
+				ILuaObject ret = g_Lua!.GetReturn(0);
+				if (ret.GetType() == LuaType.Entity)
+					return (C_BaseEntity?)ret.GetEntity();
+				return null;
+			}
+		}
+		return ent;
+	}
+
 	public override void UpdateClientSideAnimation() {
 		if (Driving.Get() != null) {
 			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerDriveAnimate)) {

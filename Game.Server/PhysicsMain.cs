@@ -495,7 +495,21 @@ public partial class BaseEntity
 		PhysicsRunThink();
 	}
 
-	void PhysicsRigidChild() { }
+	void PhysicsRigidChild() {
+		Vector3 prevOrigin = GetAbsOrigin();
+
+		if (!PhysicsRunThink())
+			return;
+
+		PhysicsTouchTriggers(prevOrigin);
+
+		IPhysicsObject? physics = VPhysicsGetObject();
+		if (physics != null) {
+			SolidType solidType = GetSolid();
+			bool axisAligned = solidType == SolidType.BBox || solidType == SolidType.None;
+			physics.UpdateShadow(GetAbsOrigin(), axisAligned ? vec3_angle : GetAbsAngles(), true, (float)gpGlobals.FrameTime);
+		}
+	}
 
 	void PhysicsNoclip() {
 		if (!PhysicsRunThink()) {
@@ -551,8 +565,12 @@ public partial class BaseEntity
 		}
 
 		if (VPhysicsGetObject() != null) {
-			if (movetime > 0 && Blocker.Get() == null && GetSolid() == SolidType.VPhysics && Physics.PushedEntities.CountMovedEntities() > 0)
-				throw new NotImplementedException();
+			if (movetime > 0 && Blocker.Get() == null && GetSolid() == SolidType.VPhysics && Physics.PushedEntities.CountMovedEntities() > 0) {
+				Assert(!HasDataObjectType(DataObjectType.PhysicsPushList));
+				PhysicsPushList list = CreateDataObject<PhysicsPushList>(DataObjectType.PhysicsPushList);
+				if (list != null)
+					Physics.PushedEntities.StoreMovedEntities(list);
+			}
 		}
 		else {
 			if (MoveDoneTime <= LocalTime && MoveDoneTime > 0) {

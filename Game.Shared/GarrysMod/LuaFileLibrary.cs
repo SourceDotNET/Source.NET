@@ -88,7 +88,7 @@ public static partial class LuaFileLibrary
 			str = str[..pos] + replace + str[(pos + find.Length)..];
 	}
 
-	static bool IsFileAccessAllowed(string file, string path, bool write, bool anyExtension) {
+	public static bool IsFileAccessAllowed(string file, string path, bool write, bool anyExtension) {
 		string str = file;
 		Bootil.String.Util.Trim(ref str, " \t\n\r.");
 
