@@ -583,6 +583,7 @@ public class GarrysMod : IGarrysMod
 #if CLIENT_DLL
 			LuaTimer.Cycle();
 			LuaFileLibrary.AsyncCycle();
+			UGCDownloadManager.Think();
 #else
 			Game.Server.GarrysMod.LuaNetworkedVars.g_LuaNetworkedVars?.Cycle();
 			Game.Server.GarrysMod.LuaTimer.Cycle();
