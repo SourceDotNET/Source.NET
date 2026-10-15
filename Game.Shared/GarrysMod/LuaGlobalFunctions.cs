@@ -663,10 +663,7 @@ public static partial class LuaGlobalFunctions
 	[LuaGlobal] static int isstring(ILuaInterface lua) => IsType(LuaType.String);
 	[LuaGlobal] static int istable(ILuaInterface lua) => IsType(LuaType.Table);
 	[LuaGlobal] static int isfunction(ILuaInterface lua) => IsType(LuaType.Function);
-#if MENU_DLL
-	[LuaGlobal("IsEntity")]
-#endif
-	[LuaGlobal] static int isentity(ILuaInterface lua) => IsType(LuaType.Entity);
+	[LuaGlobal("IsEntity")][LuaGlobal] static int isentity(ILuaInterface lua) => IsType(LuaType.Entity);
 	[LuaGlobal] static int isvector(ILuaInterface lua) => IsType(LuaType.Vector);
 	[LuaGlobal] static int isangle(ILuaInterface lua) => IsType(LuaType.Angle);
 	[LuaGlobal] static int ispanel(ILuaInterface lua) => IsType(LuaType.Panel);
