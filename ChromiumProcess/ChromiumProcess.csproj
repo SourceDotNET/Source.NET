@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Configurations>Debug;Release;Debug (Dedicated);Release (Dedicated)</Configurations>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CefSharp.Common.NETCore" Version="87.1.132" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="CefSharp.BrowserSubprocess.Core">
+      <HintPath>$(PkgCefSharp_Common_NETCore)\runtimes\win-x64\native\CefSharp.BrowserSubprocess.Core.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
