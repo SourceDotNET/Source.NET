@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SourceLauncherNative CXX)
+project(SourceLauncherNative C CXX)
 
 if(WIN32)
 	set(SN_CEF_PLATFORM windows64)
