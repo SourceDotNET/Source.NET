@@ -9085,6 +9085,8 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		SetEfficiency((AI_Efficiency)Math.Clamp((int)efficiency, (int)minEfficiency, (int)maxEfficiency));
 	}
 
+	public virtual void PlayerPenetratingVPhysics() => PerformAvoidance = true;
+
 	public void GetPlayerAvoidBounds(out Vector3 mins, out Vector3 maxs) {
 		mins = WorldAlignMins();
 		maxs = WorldAlignMaxs();

@@ -38,7 +38,7 @@ internal class EntItem
 public class EntityList
 {
 	int NumItems;
-	EntItem? ItemList;
+	internal EntItem? ItemList;
 
 	public void AddEntity(BaseEntity ent) {
 		// check if it's already in the list; if not, add it

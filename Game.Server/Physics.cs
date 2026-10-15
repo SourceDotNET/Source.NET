@@ -34,6 +34,13 @@ public static class PhysicsHookGlobals {
 
 	public const float VPHYSICS_LARGE_OBJECT_MASS = 500.0f;
 
+	public static readonly ConVar phys_timescale = new("phys_timescale", "1", FCvar.Replicated, "Scale time for physics", callback: TimescaleChanged);
+	public static float g_GMOD_PhysTimeScale = 1.0f;
+
+	static void TimescaleChanged(IConVar var, in ConVarChangeContext ctx) => physenv?.ResetSimulationClock();
+
+	public static float GMOD_PhysicsGetTotalTimeScale() => phys_timescale.GetFloat() * g_GMOD_PhysTimeScale;
+
 	static PhysicsHookGlobals(){
 		SetPhysicsGameSystem(g_PhysicsHook);
 	}
@@ -251,6 +258,7 @@ public static class PhysicsHookGlobals {
 
 	public static void PhysAddShadow(BaseEntity entity) => g_ShadowEntities!.AddEntity(entity);
 	public static void PhysRemoveShadow(BaseEntity entity) => g_ShadowEntities!.DeleteEntity(entity);
+	public static void PhysGetListOfPenetratingEntities(BaseEntity search, List<BaseEntity> list) => g_Collisions.GetListOfPenetratingEntities(search, list);
 
 	public static void PhysOnCleanupDeleteList() {
 		g_Collisions.FlushQueuedOperations();
@@ -438,6 +446,18 @@ public class PhysicsHook : BaseGameSystemPerFrame
 			}
 
 			ArrayPool<IPhysicsObject>.Shared.Return(activeList, true);
+		}
+
+		for (EntItem? item = g_ShadowEntities!.ItemList; item != null; item = item.Next) {
+			BaseEntity? entity = item.Ent.Get();
+			if (entity == null) {
+				Msg("Dangling pointer to physics entity!!!\n");
+				continue;
+			}
+
+			IPhysicsObject? physics = entity.VPhysicsGetObject();
+			if (physics != null && !physics.IsAsleep())
+				entity.VPhysicsShadowUpdate(physics);
 		}
 
 		g_Collisions.BufferTouchEvents(false);

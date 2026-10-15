@@ -551,6 +551,7 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	public float GetStepSize() => Local.StepSize;
 
 	float OldPlayerZ;
+	float OldPlayerViewOffsetZ;
 	bool WasFreezeFraming;
 	Vector3 FreezeFrameStart;
 	TimeUnit_t FreezeFrameStartTime;
