@@ -87,9 +87,7 @@ public class Bootloader : IDisposable
 				#if GMOD_DLL
 				.WithComponent<ILuaShared, LuaSharedImpl>()
 				.WithComponent<IMenuSystem, MenuSystem>()
-				#if WIN32
-				.WithKeyedComponent<IHtmlSystem>("html_chromium", HTML.Chromium.ChromiumSystem.g_pHtmlSystem)
-				#endif
+				.WithKeyedComponent<IHtmlSystem>("html_chromium", HTML.CEF.CefSystem.g_pHtmlSystem)
 				.WithKeyedComponent<IHtmlSystem>("html_stub", HTML.Stub.StubSystem.g_pHtmlSystem)
 				#endif
 				.WithComponent<IStudioRender, StudioRenderContext>()

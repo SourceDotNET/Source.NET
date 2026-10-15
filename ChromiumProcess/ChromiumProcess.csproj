@@ -9,6 +9,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>$(MSBuildThisFileDirectory)..\Build\$(Configuration)\cefsharp\</OutputPath>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 

@@ -6,3 +6,6 @@
 	path = Dependencies/Steamworks.NET
 	url = https://github.com/marchc1/Steamworks.NET
 	branch = 1-64
+[submodule "Dependencies/CEF"]
+	path = Dependencies/CEF
+	url = https://github.com/SourceDotNet/CEF-SDK.git

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Configurations>Debug;Release;Debug (Dedicated);Release (Dedicated)</Configurations>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CefGlue.Next.Core" Version="154.8037.98" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Source.Common\Source.Common.csproj" />
+    <ProjectReference Include="..\HTML.Stub\HTML.Stub.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -7,6 +7,13 @@
 		<Configurations>Debug;Release;Debug (Dedicated);Release (Dedicated)</Configurations>
 		<ApplicationIcon>SourceDotNET.ico</ApplicationIcon>
 	</PropertyGroup>
+	<PropertyGroup>
+		<SNClientBuild Condition="!$(Configuration.Contains('(Dedicated)'))">true</SNClientBuild>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(SNClientBuild)'=='true' And '$(IsWindows)'=='true'">
+		<AssemblyName>Source.LauncherMain</AssemblyName>
+		<UseAppHost>false</UseAppHost>
+	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 	  <DefineConstants>$(DefineConstants);DBGFLAG_ASSERT</DefineConstants>
 	</PropertyGroup>
@@ -40,9 +47,16 @@
 		<ProjectReference Include="..\Source.StdShader.Gl46\Source.StdShader.Gl46.csproj" />
 		<ProjectReference Include="..\Source.StudioRender\Source.StudioRender.csproj" />
 		<ProjectReference Include="..\Source.VTF\Source.VTF.csproj" />
-		<ProjectReference Include="..\HTML.Chromium\HTML.Chromium.csproj" GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained" Condition="'$(IsWindows)'=='true'" />
+		<ProjectReference Include="..\HTML.CEF\HTML.CEF.csproj" />
 		<ProjectReference Include="..\HTML.Stub\HTML.Stub.csproj" />
 	</ItemGroup>
+
+	<ItemGroup Condition="'$(SNClientBuild)'=='true'">
+		<PackageReference Include="chromiumembeddedframework.runtime.win-x64" Version="154.0.34" Condition="'$(IsWindows)'=='true'" />
+		<PackageReference Include="cef.runtime.linux-x64" Version="154.0.34" Condition="'$(IsLinux)'=='true'" />
+	</ItemGroup>
+
+	<Import Project="..\Source.Launcher.Native\Source.Launcher.Native.targets" Condition="'$(SNClientBuild)'=='true'" />
 
 	<!-- Copy LuaJIT (Game.Lua imports "lua51", which .NET resolves to liblua51.so on Linux) -->
 	<ItemGroup>
