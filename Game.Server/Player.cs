@@ -401,6 +401,8 @@ public partial class BasePlayer : BaseCombatCharacter
 	int LastDmageAmount;
 	Vector3 DmgOrigin;
 	Vector3 OldOrigin;
+	float OldPlayerZ;
+	float OldPlayerViewOffsetZ;
 	bool ForceOrigin;
 	Vector3 ForcedOrigin;
 	Vector3 SmoothedVelocity;
