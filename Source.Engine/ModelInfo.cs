@@ -2,6 +2,7 @@
 using Source.Common.DataCache;
 using Source.Common.Engine;
 using Source.Common.Filesystem;
+using Source.Common.Formats.BSP;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 using Source.Common.Physics;
@@ -317,7 +318,16 @@ public abstract class ModelInfo(IFileSystem filesystem, IModelLoader modelloader
 	}
 
 	public int GetModelContents(int modelIndex) {
-		throw new NotImplementedException();
+		Model? model = GetModel(modelIndex);
+		if (model != null) {
+			switch (model.Type) {
+				case ModelType.Brush:
+					return (int)CM.InlineModelContents(modelIndex - 1);
+				case ModelType.Studio:
+					return (int)Contents.Solid;
+			}
+		}
+		return 0;
 	}
 
 	public void SetLevelScreenFadeRange(float minSize, float maxSize) {

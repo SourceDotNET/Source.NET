@@ -17,7 +17,7 @@ public class C_Func_LOD : C_BaseEntity
 	public static readonly new ClientClass ClientClass = new ClientClass(DT_Func_LOD);
 
 	[NetworkName("m_fDisappearMinDist")]
-	public float DisappearMinDist;
+	public float DisappearMinDist = 5000.0f;
 	[NetworkName("m_fDisappearMaxDist")]
-	public float DisappearMaxDist;
+	public float DisappearMaxDist = 5800.0f;
 }

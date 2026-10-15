@@ -2420,7 +2420,33 @@ public partial class BaseEntity : IServerEntity
 
 	public virtual void DeathNotice(BaseEntity victim) { }
 
-	public IPhysicsObject? VPhysicsInitStatic() => throw new NotImplementedException();
+	public IPhysicsObject? VPhysicsInitStatic() {
+		if (!VPhysicsInitSetup())
+			return null;
+
+		if (GetMoveParent() != null) {
+			if (GetSolid() == SolidType.BSP && GetRootMoveParent().GetSolid() != SolidType.BSP)
+				SetSolid(SolidType.VPhysics);
+
+			VPhysicsInitShadow(false, false);
+			return VPhysicsGetObject();
+		}
+
+		if (GetSolid() == SolidType.None)
+			return null;
+
+		IPhysicsObject? physicsObject;
+		if (GetSolid() == SolidType.BBox)
+			physicsObject = PhysModelCreateBox(this, WorldAlignMins(), WorldAlignMaxs(), GetAbsOrigin(), true);
+		else
+			physicsObject = PhysModelCreateUnmoveable(this, GetModelIndex(), GetAbsOrigin(), GetAbsAngles());
+
+		if (PhysicsObject != null)
+			Error("VPhysicsInitStatic got a physics object at unexpected time!\n");
+
+		VPhysicsSetObject(physicsObject);
+		return physicsObject;
+	}
 
 	public virtual void Event_KilledOther(BaseEntity killed, in TakeDamageInfo info) {
 
