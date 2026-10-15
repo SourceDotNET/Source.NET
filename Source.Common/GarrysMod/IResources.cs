@@ -25,6 +25,10 @@ public interface IVideoWriter
 	bool ManualFiling();
 
 	ReadOnlySpan<char> FileExtension();
+
+	int Width { get; }
+	int Height { get; }
+	bool RecordSound { get; set; }
 }
 
 public interface IVideoHolly
