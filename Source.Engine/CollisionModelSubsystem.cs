@@ -901,6 +901,36 @@ public static partial class CM
 		return (bspData.MapCollisionModels[index]);
 	}
 
+	static Contents BrushContents_r(CollisionBSPData bspData, int nodenum) {
+		Contents contents = 0;
+
+		while (true) {
+			if (nodenum < 0) {
+				int leafIndex = -1 - nodenum;
+				ref CollisionLeaf leaf = ref bspData.MapLeafs.AsSpan()[leafIndex];
+
+				for (int i = 0; i < leaf.NumLeafBrushes; i++) {
+					ushort brushIndex = bspData.MapLeafBrushes[leaf.FirstLeafBrush + i];
+					contents |= bspData.MapBrushes.AsSpan()[brushIndex].Contents;
+				}
+
+				return contents;
+			}
+
+			ref CollisionNode node = ref bspData.MapNodes.AsSpan()[bspData.MapRootNode + nodenum];
+			contents |= BrushContents_r(bspData, node.Children[0]);
+			nodenum = node.Children[1];
+		}
+	}
+
+	public static Contents InlineModelContents(int index) {
+		CollisionModel? model = InlineModelNumber(index);
+		if (model == null)
+			return 0;
+
+		return BrushContents_r(GetCollisionBSPData(), model.HeadNode);
+	}
+
 	internal static void ClearTrace(ref Trace trace) {
 		trace = default;
 		trace.Fraction = 1;
