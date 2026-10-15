@@ -6,6 +6,7 @@ using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Formats.BSP;
 using Source.Common.Mathematics;
+using Source.Common.Physics;
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -353,6 +354,63 @@ public partial class BaseCombatCharacter : BaseFlex
 	}
 
 	public void SetImpactEnergyScale(float scale) => ImpactEnergyScale = scale;
+
+	static readonly ConVar phys_stressbodyweights = new("phys_stressbodyweights", "5.0");
+
+	static readonly float MaxStressDamageForce = BitConverter.Int32BitsToSingle(0x5f0ede49);
+
+	public override void VPhysicsUpdate(IPhysicsObject physics) {
+		ApplyStressDamage(physics, false);
+		base.VPhysicsUpdate(physics);
+	}
+
+	public virtual float CalculatePhysicsStressDamage(out VPhysicsObjectStress stressOut, IPhysicsObject physics) {
+		float mass = physics.GetMass();
+		CalculateObjectStress(physics, this, out stressOut);
+		float stress = (stressOut.ReceivedStress * ImpactEnergyScale) / mass;
+
+		if (stressOut.HasNonStaticStress && stress > phys_stressbodyweights.GetFloat()) {
+			if ((physics.GetGameFlags() & PhysicsFlags.Penetrating) == 0)
+				return 200;
+		}
+
+		return 0;
+	}
+
+	public virtual void ApplyStressDamage(IPhysicsObject physics, bool requireLargeObject) {
+		if (Classify() == Class_T.PlayerAlly || Classify() == Class_T.PlayerAllyVital) {
+			if (hl2_episodic.GetBool())
+				return;
+		}
+
+		float damage = CalculatePhysicsStressDamage(out VPhysicsObjectStress stressOut, physics);
+		if (damage > 0) {
+			if (requireLargeObject && !stressOut.HasLargeObjectContact)
+				return;
+
+			TakeDamageInfo dmgInfo = new(GetWorldEntity(), GetWorldEntity(), vec3_origin, vec3_origin, damage, DamageType.Crush);
+			float force = -stressOut.ReceivedStress * GetCurrentGravity() * (float)gpGlobals.FrameTime;
+			if (force > -MaxStressDamageForce && force < MaxStressDamageForce)
+				dmgInfo.SetDamageForce(new Vector3(0, 0, force));
+			dmgInfo.SetDamagePosition(GetAbsOrigin());
+
+			if (stressOut.StressObject?.GetGameData() is BaseEntity stressEntity) {
+				dmgInfo.SetInflictor(stressEntity);
+				dmgInfo.SetAttacker(stressEntity);
+
+				BaseEntity? owner = stressEntity.GetOwnerEntity();
+				if (owner != null)
+					dmgInfo.SetAttacker(owner);
+				else {
+					BasePlayer? physicsAttacker = stressEntity.HasPhysicsAttacker(1.0);
+					if (physicsAttacker != null)
+						dmgInfo.SetAttacker(physicsAttacker);
+				}
+			}
+
+			TakeDamage(dmgInfo);
+		}
+	}
 
 	public AI_HullType GetHullType() => Hull;
 	public void SetHullType(AI_HullType hullType) => Hull = hullType;

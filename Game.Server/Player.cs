@@ -1965,6 +1965,14 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	public virtual bool IsFollowingPhysics() => false;
 
+	public override void VPhysicsUpdate(IPhysicsObject physics) {
+		float savedImpact = ImpactEnergyScale;
+
+		ImpactEnergyScale *= 0.125f;
+		ApplyStressDamage(physics, true);
+		ImpactEnergyScale = savedImpact;
+	}
+
 	static readonly ConVar physicsshadowupdate_render = new("physicsshadowupdate_render", "0");
 
 	const float VPHYS_MAX_DISTANCE = 2.0f;
