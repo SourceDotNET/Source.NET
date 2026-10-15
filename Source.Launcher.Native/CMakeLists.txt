@@ -2,7 +2,12 @@ cmake_minimum_required(VERSION 3.21)
 
 project(SourceLauncherNative CXX)
 
-set(CEF_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/CEF/154.0.34" CACHE PATH "CEF binary distribution root")
+if(WIN32)
+	set(SN_CEF_PLATFORM windows64)
+else()
+	set(SN_CEF_PLATFORM linux64)
+endif()
+set(CEF_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../Dependencies/CEF/154.0.34/${SN_CEF_PLATFORM}" CACHE PATH "CEF binary distribution root")
 list(APPEND CMAKE_MODULE_PATH "${CEF_ROOT}/cmake")
 
 find_package(CEF REQUIRED)

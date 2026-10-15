@@ -4,7 +4,8 @@
 		<SNCefVersion>154.0.34</SNCefVersion>
 		<SNNativeSourceDir>$(MSBuildThisFileDirectory)</SNNativeSourceDir>
 		<SNNativeBuildDir>$(MSBuildProjectDirectory)\obj\native\</SNNativeBuildDir>
-		<SNCefRoot>$(MSBuildThisFileDirectory)..\Dependencies\CEF\$(SNCefVersion)\</SNCefRoot>
+		<SNCefRoot Condition="'$(IsWindows)' == 'true'">$(MSBuildThisFileDirectory)..\Dependencies\CEF\$(SNCefVersion)\windows64\</SNCefRoot>
+		<SNCefRoot Condition="'$(IsLinux)' == 'true'">$(MSBuildThisFileDirectory)../Dependencies/CEF/$(SNCefVersion)/linux64/</SNCefRoot>
 		<SNNetHostDir>$(NetCoreTargetingPackRoot)\Microsoft.NETCore.App.Host.win-x64\$(BundledNETCoreAppPackageVersion)\runtimes\win-x64\native\</SNNetHostDir>
 		<SNCefLinuxRuntimeDir>$(NuGetPackageRoot)cef.runtime.linux-x64\$(SNCefVersion)\CEF\linux-x64\</SNCefLinuxRuntimeDir>
 	</PropertyGroup>
