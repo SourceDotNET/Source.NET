@@ -14,7 +14,7 @@ public class MaterialProxyFactory : IMaterialProxyFactory
 #else
 		IMaterialProxy? materialProxy = LookupProxy(proxyName);
 		if (materialProxy == null) {
-			ConDMsg($"Can't find material proxy \"{proxyName}\"");
+			ConDMsg($"Can't find material proxy \"{proxyName}\"\n");
 			return null;
 		}
 
