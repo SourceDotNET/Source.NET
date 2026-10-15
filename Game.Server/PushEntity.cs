@@ -47,6 +47,23 @@ public class PhysicsPushedEntities
 
 	public int CountMovedEntities() => Moved.Count;
 
+	public void StoreMovedEntities(PhysicsPushList list) {
+		list.LocalMoveTime = RootPusherStartLocaltime;
+		list.LocalOrigin = RootPusherStartLocalOrigin;
+		list.LocalAngles = RootPusherStartLocalAngles;
+		list.PushedCount = CountMovedEntities();
+		Assert(list.PushedCount < PhysicsPushList.MAX_PUSHED_ENTITIES);
+		if (list.PushedCount > PhysicsPushList.MAX_PUSHED_ENTITIES)
+			list.PushedCount = PhysicsPushList.MAX_PUSHED_ENTITIES;
+
+		for (int i = 0; i < list.PushedCount; i++) {
+			EHANDLE handle = new();
+			handle.Set(Moved[i].Entity);
+			list.PushedEnts[i] = handle;
+			list.PushVec[i] = Moved[i].Entity.GetAbsOrigin() - Moved[i].StartAbsOrigin;
+		}
+	}
+
 	public void BeginPush(BaseEntity root) {
 		Moved.Clear();
 		Pusher.Clear();

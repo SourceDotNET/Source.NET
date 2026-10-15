@@ -551,8 +551,12 @@ public partial class BaseEntity
 		}
 
 		if (VPhysicsGetObject() != null) {
-			if (movetime > 0 && Blocker.Get() == null && GetSolid() == SolidType.VPhysics && Physics.PushedEntities.CountMovedEntities() > 0)
-				throw new NotImplementedException();
+			if (movetime > 0 && Blocker.Get() == null && GetSolid() == SolidType.VPhysics && Physics.PushedEntities.CountMovedEntities() > 0) {
+				Assert(!HasDataObjectType(DataObjectType.PhysicsPushList));
+				PhysicsPushList list = CreateDataObject<PhysicsPushList>(DataObjectType.PhysicsPushList);
+				if (list != null)
+					Physics.PushedEntities.StoreMovedEntities(list);
+			}
 		}
 		else {
 			if (MoveDoneTime <= LocalTime && MoveDoneTime > 0) {
