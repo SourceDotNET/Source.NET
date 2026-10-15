@@ -114,13 +114,18 @@ public partial class Host
 			return cl.MaxClients == 1;
 	}
 
+	const TimeUnit_t MAX_FRAMETIME = 0.1;
+
 	void AccumulateTime(TimeUnit_t dt) {
 		RealTime += dt;
 		FrameTime = dt;
 		FrameTimeUnbounded = FrameTime;
-		TimeUnit_t fullscale = 1; // TODO: host_timescale
-		FrameTime *= fullscale;
-		FrameTimeUnbounded = FrameTime;
+		if (host_timescale.GetFloat() > 0 && CanCheat()) {
+			TimeUnit_t fullscale = host_timescale.GetFloat();
+			FrameTime *= fullscale;
+			FrameTimeUnbounded = FrameTime;
+			FrameTime = Math.Min(FrameTime, MAX_FRAMETIME * fullscale);
+		}
 
 		soundServices.SetSoundFrametime(dt, FrameTime);
 	}
