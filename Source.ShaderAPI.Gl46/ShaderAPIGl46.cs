@@ -2102,7 +2102,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			}
 		}
 		else {
-			for (int i = 0; i < vtf.MipCount(); i++) {
+			int mipCount = Math.Min(vtf.MipCount(), Math.Max(tex.Levels, 1));
+			for (int i = 0; i < mipCount; i++) {
 				info.Level = i;
 				LoadTextureFromVTF(in info, vtf, vtfFrame);
 			}
@@ -2128,7 +2129,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-		int mipCount = vtf.MipCount();
+		int mipCount = Math.Min(vtf.MipCount(), Math.Max(GetTexture(info.TextureHandle).Levels, 1));
 		for (int mip = 0; mip < mipCount; ++mip) {
 			vtf.ComputeMipLevelDimensions(mip, out int w, out int h, out _);
 			for (int face = 0; face < 6; ++face) {
@@ -2217,6 +2218,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			texture.Width = width;
 			texture.Height = height;
 			texture.Depth = depth;
+			texture.Levels = mipCount;
 			texture.Count = count;
 			texture.CountIndex = i;
 
@@ -2558,7 +2560,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		var err = glGetError();
 		// System.Diagnostics.Debug.Assert(err == 0);
 		if (err != 0)
-			Warning($"glTextureSubImage2D error: {err}\n");
+			Warning($"glTextureSubImage2D error: {err} (blit tex {info.Texture} mip {mip} rect {xOffset},{yOffset} {width >> mip}x{height >> mip}, src {srcFormat} stride {srcStride})\n");
 	}
 
 	public void SetModifyTexture(uint textureID) {
@@ -2577,12 +2579,16 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, srcStride / srcFormat.SizeInBytes());
 		ConvertDataToAcceptableGLFormat(srcFormat, imageData, out srcFormat, out Span<byte> convertedData);
 		fixed (byte* data = convertedData)
-			glTextureSubImage2D(GetModifyTexture(), mip, x, y, width >> mip, height >> mip, ImageLoader.GetGLImageUploadFormat(srcFormat), ImageLoader.GetGLImageUploadType(srcFormat), data);
+			glTextureSubImage2D(GetModifyTexture(), mip, x, y, Math.Max(width >> mip, 1), Math.Max(height >> mip, 1), ImageLoader.GetGLImageUploadFormat(srcFormat), ImageLoader.GetGLImageUploadType(srcFormat), data);
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 		var err = glGetError();
 		// System.Diagnostics.Debug.Assert(err == 0);
-		if (err != 0)
-			Warning($"glTextureSubImage2D error: {err}\n");
+		if (err != 0) {
+			InternalTextureInfo tex = GetTexture(ModifyTextureHandle);
+			int levels = 0;
+			glGetTextureParameteriv(GetModifyTexture(), GL_TEXTURE_IMMUTABLE_LEVELS, &levels);
+			Warning($"glTextureSubImage2D error: {err} ('{tex.DebugName.String()}' {tex.Width}x{tex.Height} {tex.Format} levels {levels}, mip {mip} rect {x},{y} {width >> mip}x{height >> mip}, src {srcFormat} stride {srcStride})\n");
+		}
 	}
 
 	readonly ThreadLocal<byte[]> tempTransformBuffers = new ThreadLocal<byte[]>(() => new byte[1024 * 1024]);
