@@ -84,6 +84,21 @@ public partial class GMOD_Player : HL2MP_Player
 	public override bool RestrictPlayerPitch() => (GModPlayerFlags & 16) == 0;
 	public override bool CanAttack() => PressedWidget.Get() == null;
 
+	public override BaseEntity? FindUseEntity() {
+		BaseEntity? ent = base.FindUseEntity();
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.FindUseEntity)) {
+			LuaEntity.Push_Entity(this);
+			LuaEntity.Push_Entity(ent);
+			if (gGM.CallReturns(2, 1)) {
+				ILuaObject ret = g_Lua!.GetReturn(0);
+				if (ret.GetType() == LuaType.Entity)
+					return (BaseEntity?)ret.GetEntity();
+				return null;
+			}
+		}
+		return ent;
+	}
+
 	public override BaseEntity EntSelectSpawnPoint() {
 		BaseEntity? spot = null;
 		while ((spot = gEntList.FindEntityByClassname(spot, "info_player_start")) != null) {

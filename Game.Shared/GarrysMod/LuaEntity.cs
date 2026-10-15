@@ -3,6 +3,7 @@ using Game.Shared;
 
 using Source;
 using Source.Common;
+using Source.Common.Audio;
 using Source.Common.Engine;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.Mathematics;
@@ -1093,6 +1094,524 @@ public static partial class LuaEntity
 		lua.PushNumber(color.B);
 		lua.PushNumber(color.A);
 		return 4;
+	}
+
+	[LuaMethod]
+	static int Entity__AddCallback(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		string name = lua.CheckString(2);
+		if (!lua.IsType(3, LuaType.Function)) {
+			lua.TypeError("function", 3);
+			return 0;
+		}
+
+		int index = BaseEntity.LuaCallbackIndex(name);
+		if (index == -1)
+			return 0;
+
+#if CLIENT_DLL
+		if (ent.GetBaseAnimating() != null && index == 1)
+			ent.GetBaseAnimating()!.RemoveFromPreviousBoneSetups();
+#endif
+		BaseEntity.LuaCallbackList list = ent.LuaCallbacks[index];
+		list.Changes++;
+		BaseEntity.LuaCallback callback = new() { ID = list.NextID++ };
+		callback.Function.SetFromStack(3);
+		callback.Removed = false;
+		list.Callbacks.AddLast(callback);
+		lua.PushNumber(callback.ID);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__EmitSound(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		string soundName = new(lua.CheckString(2));
+		Bootil.String.Util.Trim(ref soundName);
+		if (soundName.Length == 0 || soundName[0] == ' ')
+			return 0;
+
+		double level = lua.CheckNumberOpt(3, 75.0);
+		double pitch = lua.CheckNumberOpt(4, 100.0);
+		double volume = lua.CheckNumberOpt(5, 1.0);
+
+		BaseEntity soundEnt = ent;
+		if (ent.IsWeapon())
+			soundEnt = ((BaseCombatWeapon)ent).GetOwner() ?? ent;
+
+#if CLIENT_DLL
+		PASAttenuationFilter filter = new(soundEnt);
+		if (ent.IsPlayer() && prediction.InPrediction())
+			filter.UsePredictionRules();
+#else
+		// if (lua.GetType(9) == LuaType.RecipientFilter) { filter = Get_CRecipientFilter(9) ... } // really important TODO
+		PASAttenuationFilter filter = new(soundEnt, ATTN_NORM);
+		if (ent.IsPlayer())
+			filter.UsePredictionRules();
+#endif
+
+		EmitSound_t ep = new() {
+			Channel = ent.IsWeapon() ? 1 : 0,
+			SoundName = soundName,
+			Volume = (float)volume,
+			SoundLevel = (SoundLevel)(int)level,
+			Pitch = (int)pitch
+		};
+		if (lua.GetType(6) != LuaType.Nil)
+			ep.Channel = (int)lua.CheckNumber(6);
+		if (lua.GetType(7) != LuaType.Nil)
+			ep.Flags = (SoundFlags)(int)lua.CheckNumber(7);
+		if (lua.GetType(8) != LuaType.Nil)
+			ep.SpecialDSP = (int)lua.CheckNumber(8);
+
+		if (!enginesound.IsSoundPrecached(soundName))
+			BaseEntity.PrecacheScriptSound(soundName);
+
+		BaseEntity.EmitSound(filter, soundEnt.EntIndex(), ep);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__ViewModelIndex(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (ent is not BaseViewModel viewModel)
+			return 0;
+		lua.PushNumber(viewModel.ViewModelIndex());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetSequenceName(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating != null && !ent.IsMarkedForDeletion()) {
+			lua.PushString(animating.GetSequenceName((int)lua.GetNumber(2)));
+			return 1;
+		}
+		lua.PushString("");
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SendViewModelMatchingSequence(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (ent is BaseViewModel viewModel)
+			viewModel.SendViewModelMatchingSequence((int)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetSaveValue(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		foreach (EHANDLE handle in RemoveList)
+			if (handle.Get() == ent)
+				return 0;
+		if (ent.IsMarkedForDeletion())
+			return 0;
+
+		string name = lua.CheckString(2);
+		if (stricmp(name, "classname") == 0) {
+			lua.PushBool(false);
+			return 1;
+		}
+
+		if (strnicmp(name, "m_ragdoll.", 10) == 0) {
+			if (stricmp(name, "m_ragdoll.allowStretch") != 0) {
+				if (name.Length < 17 || strcmp(name.AsSpan(name.Length - 17), "originParentSpace") != 0) {
+					lua.PushBool(false);
+					return 1;
+				}
+			}
+		}
+		else if (stricmp(name, "m_iEFlags") == 0) {
+			if (((int)lua.CheckNumber(3) & 1) != 0) {
+				lua.PushBool(false);
+				return 1;
+			}
+		}
+		else if (stricmp(name, "m_bActive") == 0) {
+			lua.PushBool(false);
+			return 1;
+		}
+
+		TypeDescription? td = null;
+		for (DataMap? map = ent.GetDataDescMap(); map != null && td == null; map = map.BaseMap) {
+			foreach (TypeDescription field in map.DataDesc) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+					td = field;
+					break;
+				}
+			}
+		}
+#if CLIENT_DLL
+		for (DataMap? map = ent.GetPredDescMap(); map != null && td == null; map = map.BaseMap) {
+			foreach (TypeDescription field in map.DataDesc) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+					td = field;
+					break;
+				}
+			}
+		}
+#endif
+		if (td == null || (td.FieldSize > 1 && lua.GetType(3) != LuaType.Table)) {
+			lua.PushBool(false);
+			return 1;
+		}
+
+		bool isArray = td.FieldSize > 1 && lua.GetType(3) == LuaType.Table;
+		Array? array = isArray ? (Array?)td.FieldInfo.GetValue(ent) : null;
+
+		object? Convert1(LuaObject elem) {
+			return td.FieldType switch {
+				FieldType.EHandle => elem.GetType() == LuaType.Entity ? elem.GetEntity() : null,
+				FieldType.String or FieldType.ModelName or FieldType.SoundName => (object?)(elem.isString() ? elem.GetString() : null),
+				FieldType.Integer => elem.isNumber() ? (int)elem.GetFloat() : null,
+				FieldType.Float => elem.isNumber() ? elem.GetFloat() : null,
+				FieldType.Double => elem.isNumber() ? elem.GetDouble() : null,
+				FieldType.Character => elem.isNumber() ? (byte)elem.GetFloat() : null,
+				FieldType.Boolean => elem.isBool() ? elem.GetBool() : null,
+				FieldType.Time => elem.isNumber() ? elem.GetDouble() + gpGlobals.CurTime : null,
+				FieldType.Vector or FieldType.PositionVector => elem.isVector() ? elem.GetVector() : null,
+				_ => null,
+			};
+		}
+
+		if (isArray) {
+			switch (td.FieldType) {
+				case FieldType.EHandle:
+				case FieldType.String:
+				case FieldType.ModelName:
+				case FieldType.SoundName:
+				case FieldType.Integer:
+				case FieldType.Float:
+				case FieldType.Double:
+				case FieldType.Character:
+				case FieldType.Boolean:
+				case FieldType.Time:
+				case FieldType.Vector:
+				case FieldType.PositionVector: {
+						if (td.FieldType == FieldType.EHandle && !IsSettableHandle(name))
+							break;
+						LuaObject table = new();
+						table.SetFromStack(3);
+						bool set = false;
+						LuaObject elem = new();
+						for (int i = 0; i < td.FieldSize; i++) {
+							table.GetMember(i + 1, elem);
+							object? v = Convert1(elem);
+							if (v != null) {
+								set = true;
+								if (td.FieldType == FieldType.EHandle) {
+									EHANDLE handle = (EHANDLE)array!.GetValue(i)!;
+									handle.Set((BaseEntity?)v);
+									array.SetValue(handle, i);
+								}
+								else
+									array!.SetValue(v, i);
+							}
+						}
+						elem.UnReference();
+						table.UnReference();
+						lua.PushBool(set);
+						return 1;
+					}
+			}
+		}
+
+		switch (td.FieldType) {
+			case FieldType.EHandle:
+				if (!IsSettableHandle(name))
+					break;
+				EHANDLE handle = (EHANDLE)td.FieldInfo.GetValue(ent)!;
+				handle.Set(Get_Entity(3, true));
+				td.FieldInfo.SetValue(ent, handle);
+				lua.PushBool(true);
+				return 1;
+			case FieldType.String:
+			case FieldType.ModelName:
+			case FieldType.SoundName:
+				td.FieldInfo.SetValue(ent, new string(lua.CheckString(3)));
+				lua.PushBool(true);
+				return 1;
+			case FieldType.Integer:
+				td.FieldInfo.SetValue(ent, (int)lua.CheckNumber(3));
+				lua.PushBool(true);
+				return 1;
+			case FieldType.Float:
+				td.FieldInfo.SetValue(ent, (float)lua.CheckNumber(3));
+				lua.PushBool(true);
+				return 1;
+			case FieldType.Double:
+				td.FieldInfo.SetValue(ent, lua.CheckNumber(3));
+				lua.PushBool(true);
+				return 1;
+			case FieldType.Short:
+				td.FieldInfo.SetValue(ent, (short)(int)lua.CheckNumber(3));
+				lua.PushBool(true);
+				return 1;
+			case FieldType.Character:
+				td.FieldInfo.SetValue(ent, (byte)(int)lua.CheckNumber(3));
+				lua.PushBool(true);
+				return 1;
+			case FieldType.Boolean:
+				td.FieldInfo.SetValue(ent, lua.GetBool(3));
+				lua.PushBool(true);
+				return 1;
+			case FieldType.ModelIndex:
+#if GAME_DLL
+				td.FieldInfo.SetValue(ent, BaseEntity.PrecacheModel(lua.CheckString(3), true));
+#endif
+				lua.PushBool(true);
+				return 1;
+			case FieldType.MaterialIndex: {
+					string material = lua.CheckString(3);
+#if CLIENT_DLL
+					td.FieldInfo.SetValue(ent, HLClient.GetMaterialIndex(material));
+#else
+					td.FieldInfo.SetValue(ent, GameInterface.GetMaterialIndex(material));
+					GameInterface.PrecacheMaterial(material);
+#endif
+					lua.PushBool(true);
+					return 1;
+				}
+			case FieldType.Time:
+				td.FieldInfo.SetValue(ent, lua.CheckNumber(3) + gpGlobals.CurTime);
+				lua.PushBool(true);
+				return 1;
+			case FieldType.Tick:
+				td.FieldInfo.SetValue(ent, gpGlobals.TickCount + (int)lua.CheckNumber(3));
+				lua.PushBool(true);
+				return 1;
+			case FieldType.Vector:
+			case FieldType.PositionVector: {
+					Vector3 vec;
+					if (lua.GetType(3) == LuaType.String) {
+						Span<float> f = stackalloc float[3];
+						UTIL_StringToVector(f, lua.CheckString(3));
+						vec = new(f[0], f[1], f[2]);
+					}
+					else
+						vec = LuaVector.Get_Vector(3);
+					td.FieldInfo.SetValue(ent, vec);
+					lua.PushBool(true);
+					return 1;
+				}
+			default:
+				lua.PushBool(ent.KeyValue(lua.CheckString(2), lua.CheckString(3)));
+				return 1;
+		}
+		lua.PushBool(false);
+		return 1;
+	}
+
+	static bool IsSettableHandle(ReadOnlySpan<char> name) =>
+		stricmp(name, "m_hThrower") == 0 || stricmp(name, "m_hOriginalThrower") == 0 || stricmp(name, "m_hFilter") == 0
+		|| stricmp(name, "m_hSpeechFilter") == 0 || stricmp(name, "m_hEnemyFilter") == 0 || stricmp(name, "m_hDamageFilter") == 0;
+
+	[LuaMethod]
+	static int Entity__IsWorld(ILuaInterface lua) {
+		LuaType type = lua.GetType(1);
+		if (type != LuaType.Entity && type != LuaType.Nil)
+			lua.TypeError("Entity", 1);
+		BaseEntity? ent = UserGet(1);
+		if (ent == null) {
+			lua.PushBool(false);
+			return 1;
+		}
+#if CLIENT_DLL
+		lua.PushBool(ent == cl_entitylist.GetBaseEntity(0));
+#else
+		Edict? edict = ent.Edict();
+		lua.PushBool(edict == null || edict.EdictIndex == 0);
+#endif
+		return 1;
+	}
+
+	static void PushInternalValue(TypeDescription td, object? value) {
+		switch (td.FieldType) {
+			case FieldType.Float:
+				g_Lua!.PushNumber(Convert.ToSingle(value));
+				break;
+			case FieldType.Double:
+				g_Lua!.PushNumber(Convert.ToDouble(value));
+				break;
+			case FieldType.String:
+			case FieldType.ModelName:
+			case FieldType.SoundName:
+				g_Lua!.PushString(value?.ToString() ?? "");
+				break;
+			case FieldType.Vector:
+			case FieldType.PositionVector:
+				g_Lua!.PushVector((Vector3)value!);
+				break;
+			case FieldType.Integer:
+			case FieldType.Short:
+			case FieldType.Character:
+				g_Lua!.PushNumber(Convert.ToInt32(value));
+				break;
+			case FieldType.Boolean:
+				g_Lua!.PushBool(Convert.ToBoolean(value));
+				break;
+			case FieldType.EHandle:
+				Push_Entity(((EHANDLE)value!).Get());
+				break;
+			case FieldType.Time:
+				g_Lua!.PushNumber(Convert.ToDouble(value) - gpGlobals.CurTime);
+				break;
+			case FieldType.Tick:
+				g_Lua!.PushNumber(Convert.ToInt32(value) - gpGlobals.TickCount);
+				break;
+			default:
+				g_Lua!.PushNil();
+				break;
+		}
+	}
+
+	[LuaMethod]
+	static int Entity__GetInternalVariable(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		string name = lua.CheckString(2);
+
+		TypeDescription? td = null;
+		for (DataMap? map = ent.GetDataDescMap(); map != null && td == null; map = map.BaseMap) {
+			foreach (TypeDescription field in map.DataDesc) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+					td = field;
+					break;
+				}
+			}
+		}
+#if CLIENT_DLL
+		for (DataMap? map = ent.GetPredDescMap(); map != null && td == null; map = map.BaseMap) {
+			foreach (TypeDescription field in map.DataDesc) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+					td = field;
+					break;
+				}
+			}
+		}
+#endif
+		if (td == null)
+			return 0;
+
+		object? value = td.FieldInfo.GetValue(ent);
+
+		switch (td.FieldType) {
+			case FieldType.Float:
+			case FieldType.Double:
+			case FieldType.String:
+			case FieldType.ModelName:
+			case FieldType.SoundName:
+			case FieldType.Vector:
+			case FieldType.PositionVector:
+			case FieldType.Integer:
+			case FieldType.Boolean:
+			case FieldType.Character:
+			case FieldType.EHandle:
+			case FieldType.Time:
+				if (td.FieldSize < 2 || value is not Array array) {
+					PushInternalValue(td, value);
+					return 1;
+				}
+				LuaTable table = new(null, td.FieldSize);
+				for (int i = 0; i < td.FieldSize; i++) {
+					PushInternalValue(td, array.GetValue(i));
+					table.SetMember(i + 1);
+				}
+				table.Push();
+				table.UnReference();
+				return 1;
+			case FieldType.Short:
+			case FieldType.Tick:
+				PushInternalValue(td, value);
+				return 1;
+			case FieldType.Color32: {
+					Color color = (Color)value!;
+					lua.PushString($"{color.R} {color.G} {color.B} {color.A}");
+					return 1;
+				}
+			case FieldType.ModelIndex: {
+					Model? model = modelinfo.GetModel(Convert.ToInt32(value));
+					if (model == null)
+						return 0;
+					lua.PushString(modelinfo.GetModelName(model));
+					return 1;
+				}
+			case FieldType.MaterialIndex: {
+#if CLIENT_DLL
+					ReadOnlySpan<char> material = HLClient.GetMaterialNameFromIndex(Convert.ToInt32(value));
+#else
+					ReadOnlySpan<char> material = GameInterface.GetMaterialNameFromIndex(Convert.ToInt32(value));
+#endif
+					if (material.IsEmpty)
+						return 0;
+					lua.PushString(material);
+					return 1;
+				}
+		}
+		return 0;
+	}
+
+
+	[LuaMethod]
+	static int Entity__GetGroundEntity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Push_Entity(ent.GetGroundEntity());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetPoseParameterRange(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsMarkedForDeletion())
+			return 0;
+
+		int index;
+		if (lua.GetType(2) == LuaType.Number)
+			index = (int)lua.GetNumber(2);
+		else
+#if CLIENT_DLL
+			index = animating.LookupPoseParameter(animating.GetModelPtr(), lua.CheckString(2));
+#else
+			index = animating.LookupPoseParameter(lua.CheckString(2));
+#endif
+
+		if (!animating.GetPoseParameterRange(index, out float minValue, out float maxValue))
+			return 0;
+
+		lua.PushNumber(minValue);
+		lua.PushNumber(maxValue);
+		return 2;
+	}
+
+	[LuaMethod]
+	static int Entity__LookupPoseParameter(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsMarkedForDeletion())
+			return 0;
+#if CLIENT_DLL
+		lua.PushNumber(animating.LookupPoseParameter(animating.GetModelPtr(), lua.CheckString(2)));
+#else
+		lua.PushNumber(animating.LookupPoseParameter(lua.CheckString(2)));
+#endif
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__LookupBone(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsMarkedForDeletion() || animating.GetModelPtr() == null)
+			return 0;
+
+		int bone = animating.LookupBone(lua.CheckString(2));
+		if (bone == -1)
+			return 0;
+
+		lua.PushNumber(bone);
+		return 1;
 	}
 
 	[LuaMethod]

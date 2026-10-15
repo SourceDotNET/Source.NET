@@ -149,11 +149,15 @@ public static class SourceDllMain
 	static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
 	[DllImport("user32.dll")]
+	static extern uint GetDlgItemInt(IntPtr hDlg, int nIDDlgItem, IntPtr lpTranslated, int bSigned);
+
+	[DllImport("user32.dll")]
 	static extern int SetBkMode(IntPtr hdc, int mode);
 	const nint HTCLIENT = 0x0001;
 	const nint HTCAPTION = 0x0002;
 	static AssertDialogOutgoing outgoing;
 
+	const int SS_PATHELLIPSIS = 32768;
 	const nint IGNORE_TIMES_INPUT = 280;
 	const nint IGNORE_NEARBY_INPUT = 281;
 	const nint VIEW_STACK_TRACE = 282;
@@ -200,6 +204,8 @@ public static class SourceDllMain
 				break;
 			writeHandledType:
 				outgoing.Type = result;
+				outgoing.IgnoreNumTimes = (int)GetDlgItemInt(hWnd, (int)IGNORE_TIMES_INPUT, 0, 0);
+				outgoing.LineRange = (int)GetDlgItemInt(hWnd, (int)IGNORE_NEARBY_INPUT, 0, 0);
 				handled = true;
 				DestroyWindow(hWnd);
 				return 1;
@@ -240,7 +246,7 @@ public static class SourceDllMain
 		int curLine = 0;
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		nint fileLabel = CreateWindowEx(0, "STATIC", $"File: {result.AssertInfo.FileName}",
-										WindowStyles.WS_VISIBLE | WindowStyles.WS_CHILD,
+										WindowStyles.WS_VISIBLE | WindowStyles.WS_CHILD | (WindowStyles)SS_PATHELLIPSIS,
 										padding, padding + (curLine * (lineHeight + linePadding)), w - (padding * 2), lineHeight, hwnd, 0, 0, 0);
 		curLine++;
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

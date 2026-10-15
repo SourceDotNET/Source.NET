@@ -524,6 +524,7 @@ public partial class Host
 		Cbuf = engineAPI.InitSubsystem<Cbuf>()!;
 		Cmd = engineAPI.InitSubsystem<Cmd>()!;
 		Cvar = engineAPI.InitSubsystem<Cvar>()!;
+		Cvar.Changed += CvarUtilities.ConVarNetworkChangeCallback; // TODO CvarQuery
 		soundServices = engineAPI.GetRequiredService<ISoundServices>();
 #if !SWDS
 		View = engineAPI.InitSubsystem<View>()!;
