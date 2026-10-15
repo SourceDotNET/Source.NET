@@ -1,4 +1,5 @@
 #if MENU_DLL
+using Source.Common.Formats.Keyvalues;
 using Source.Common.GUI;
 using Source.GUI.Controls;
 
@@ -12,6 +13,24 @@ public class MenuScreenPanel : EditablePanel
 public class GModLoadingPanel : EditablePanel
 {
 	public GModLoadingPanel() : base(null, "LoadingScreenBasePanel") { }
+
+	public override void OnActivate() {
+		if (GetChildCount() == 0)
+			return;
+
+		Panel? child = GetChild(0);
+		if (child != null)
+			PostMessage(child, new KeyValues("activate"));
+	}
+
+	public override void OnDeactivate() {
+		if (GetChildCount() == 0)
+			return;
+
+		Panel? child = GetChild(0);
+		if (child != null)
+			PostMessage(child, new KeyValues("deactivate"));
+	}
 }
 
 public class OverlayPanel : Panel

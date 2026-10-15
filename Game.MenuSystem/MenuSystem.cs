@@ -7,6 +7,10 @@ using Source.Common.GarrysMod.Lua;
 #if MENU_DLL
 using Game.MenuSystem.GarrysMod;
 
+using Source.Common.Steam;
+
+using Steamworks;
+
 using Source.GUI.Controls;
 #endif
 
@@ -42,7 +46,7 @@ public class MenuSystem : IMenuSystem
 
 	public void SetupNetworkString(INetworkStringTableContainer networkStringTableContainer) => networkstringtable = networkStringTableContainer;
 
-	static void CallHook(ReadOnlySpan<char> name) {
+	internal static void CallHook(ReadOnlySpan<char> name) {
 		if (g_Lua == null || g_Lua.Global() == null)
 			return;
 
@@ -76,6 +80,8 @@ public class MenuSystem : IMenuSystem
 		}
 
 		WasInGame = engine.IsInGame();
+
+		UGCDownloadManager.Think();
 	}
 
 	void CloseLua() {
@@ -123,6 +129,8 @@ public class MenuSystem : IMenuSystem
 		CreateLoadingPanel();
 
 		CallHook("MenuStart");
+
+		WorkshopFavoritesCache.Refresh();
 	}
 
 	static void DestroyLoadingPanel() {
@@ -202,14 +210,75 @@ public class MenuSystem : IMenuSystem
 #endif
 
 	public bool IsServerBlacklisted(ReadOnlySpan<char> address, ReadOnlySpan<char> hostname, ReadOnlySpan<char> description, ReadOnlySpan<char> gamemode, ReadOnlySpan<char> map) {
-		throw new NotImplementedException();
+#if MENU_DLL
+		if (g_Lua == null || g_Lua.Global() == null)
+			return false;
+
+		LuaObject func = new();
+		g_Lua.Global().GetMember("IsServerBlacklisted", func);
+		if (!func.isFunction()) {
+			func.UnReference();
+			return false;
+		}
+
+		func.Push();
+		g_Lua.PushString(address);
+		g_Lua.PushString(hostname);
+		g_Lua.PushString(map);
+		g_Lua.PushString(gamemode);
+		g_Lua.PushString(description);
+
+		LuaObject result = new();
+		g_Lua.CallInternalGet(5, result);
+		bool blacklisted = !result.isNil();
+		result.UnReference();
+		func.UnReference();
+		return blacklisted;
+#else
+		return false;
+#endif
 	}
 
 	public void SendProblemToMenu(ReadOnlySpan<char> id, int severity, ReadOnlySpan<char> parms) {
-		Msg($"SendProblemToMenu not implemented! ({id.SliceNullTerminatedString()}, {severity}, {parms.SliceNullTerminatedString()})\n");
+#if MENU_DLL
+		if (g_Lua == null || g_Lua.Global() == null)
+			return;
+
+		LuaObject func = new();
+		g_Lua.Global().GetMember("FireProblemFromEngine", func);
+		if (func.isFunction()) {
+			func.Push();
+			g_Lua.PushString(id);
+			g_Lua.PushNumber(severity);
+			g_Lua.PushString(parms);
+			g_Lua.CallInternalNoReturns(3);
+		}
+		func.UnReference();
+#endif
 	}
 
-	public void ServerDetails(ReadOnlySpan<char> unk1, ReadOnlySpan<char> unk2, ReadOnlySpan<char> unk3, int unk4, ReadOnlySpan<char> unk5) {
-		throw new NotImplementedException();
+	public void ServerDetails(ReadOnlySpan<char> serverName, ReadOnlySpan<char> loadingURL, ReadOnlySpan<char> mapName, byte maxPlayers, short playerSlots, ReadOnlySpan<char> gamemode) {
+#if MENU_DLL
+		filesystem.Gamemodes().OnJoinServer(gamemode);
+
+		if (g_Lua == null || g_Lua.Global() == null)
+			return;
+
+		LuaObject func = new();
+		g_Lua.Global().GetMember("GameDetails", func);
+		if (func.isFunction()) {
+			string steamID = (SteamworksExts.HasSteamClient() ? SteamUser.GetSteamID().m_SteamID : 0).ToString();
+			func.Push();
+			g_Lua.PushString(serverName);
+			g_Lua.PushString(loadingURL);
+			g_Lua.PushString(mapName);
+			g_Lua.PushNumber(maxPlayers);
+			g_Lua.PushNumber(playerSlots > 0 ? playerSlots : maxPlayers);
+			g_Lua.PushString(steamID);
+			g_Lua.PushString(gamemode);
+			g_Lua.CallInternalNoReturns(7);
+		}
+		func.UnReference();
+#endif
 	}
 }
