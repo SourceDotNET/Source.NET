@@ -381,7 +381,7 @@ public partial class
 #endif
 	}
 	public void VPhysicsInitShadow(bool allowPhysicsMovement, bool allowPhysicsRotation) => VPhysicsInitShadow(allowPhysicsMovement, allowPhysicsRotation, ref Unsafe.NullRef<Solid>());
-	public void VPhysicsDestroyObject() {
+	public virtual void VPhysicsDestroyObject() {
 		if (PhysicsObject != null) {
 #if !CLIENT_DLL
 			PhysRemoveShadow(this);

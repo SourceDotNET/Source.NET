@@ -1372,7 +1372,7 @@ public partial class BaseEntity : IServerEntity
 	public int GetTeamNumber() => TeamNum;
 
 	IPhysicsObject? PhysicsObject = null!;
-	public void VPhysicsUpdate(IPhysicsObject physics) {
+	public virtual void VPhysicsUpdate(IPhysicsObject physics) {
 		switch (GetMoveType()) {
 			case Source.MoveType.VPhysics: {
 					if (GetMoveParent() != null) {
@@ -1431,6 +1431,10 @@ public partial class BaseEntity : IServerEntity
 
 	public virtual void VPhysicsShadowCollision(int index, ref GameVCollisionEvent ev) { }
 
+	public virtual void VPhysicsShadowUpdate(IPhysicsObject physics) { }
+
+	public virtual BasePlayer? HasPhysicsAttacker(TimeUnit_t dt) => null;
+
 	public virtual void VPhysicsCollision(int index, ref GameVCollisionEvent ev) {
 		int otherIndex = index == 0 ? 1 : 0;
 		BaseEntity hitEntity = ev.Entities[otherIndex]!;
@@ -1472,6 +1476,16 @@ public partial class BaseEntity : IServerEntity
 		if (PhysicsObject != null && physics != null)
 			Warning($"Overwriting physics object for {GetClassname()}\n");
 		PhysicsObject = physics;
+	}
+
+	public void VPhysicsSwapObject(IPhysicsObject? swap) {
+		if (swap == null)
+			PhysRemoveShadow(this);
+
+		if (PhysicsObject == null)
+			Warning($"Bad vphysics swap for {GetClassname()}\n");
+
+		PhysicsObject = swap;
 	}
 
 	bool VPhysicsInitSetup() {
