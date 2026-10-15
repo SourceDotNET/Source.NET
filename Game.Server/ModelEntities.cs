@@ -27,6 +27,11 @@ public class FuncBrush : BaseEntity {
 		DEFINE.KEYFIELD(nameof(Disabled), FieldType.Integer, "StartDisabled"),
 		DEFINE.KEYFIELD(nameof(Solidity), FieldType.Integer, "Solidity"),
 		DEFINE.KEYFIELD(nameof(SolidBsp), FieldType.Boolean, "solidbsp"),
+		DEFINE.KEYFIELD(nameof(ExcludedClass), FieldType.String, "excludednpc"),
+		DEFINE.KEYFIELD(nameof(InvertExclusion), FieldType.Boolean, "invert_exclusion"),
+
+		DEFINE.INPUTFUNC(FieldType.String, "SetExcluded", nameof(InputSetExcluded), (INPUTFUNCPTR)((self, data) => ((FuncBrush)self).InputSetExcluded(data))),
+		DEFINE.INPUTFUNC(FieldType.Boolean, "SetInvert", nameof(InputSetInvert), (INPUTFUNCPTR)((self, data) => ((FuncBrush)self).InputSetInvert(data))),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
@@ -63,6 +68,10 @@ public class FuncBrush : BaseEntity {
 		VPhysicsInitShadow(false, false);
 		return true;
 	}
+
+	public void InputSetExcluded(InputData inputdata) => ExcludedClass = inputdata.Value.StringID();
+
+	public void InputSetInvert(InputData inputdata) => InvertExclusion = inputdata.Value.Bool();
 
 	public void TurnOff() {
 		if (!IsOn())
