@@ -189,7 +189,44 @@ public partial class BaseAnimating : BaseEntity
 		ResetSequenceInfo();
 	}
 
-	public bool ComputeHitboxSurroundingBox(out Vector3 vecWorldMins, out Vector3 vecWorldMaxs) => throw new NotImplementedException();
+	public bool ComputeHitboxSurroundingBox(out Vector3 vecWorldMins, out Vector3 vecWorldMaxs) {
+		vecWorldMins = default;
+		vecWorldMaxs = default;
+
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return false;
+
+		if (HitboxSet < 0 || HitboxSet >= studioHdr.NumHitboxSets()) {
+			Warning($"[UH-OH!] Invalid HitboxSet {HitboxSet} of {studioHdr.NumHitboxSets()} on model {studioHdr.Name()}.\n");
+			return false;
+		}
+
+		MStudioHitboxSet set = studioHdr.HitboxSet(HitboxSet);
+		if (set.NumHitboxes == 0)
+			return false;
+
+		BoneCache cache = GetBoneCache();
+		if (cache.IsNull())
+			return false;
+
+		vecWorldMins = new(float.MaxValue);
+		vecWorldMaxs = new(-float.MaxValue);
+
+		float modelScale = GetModelScale();
+		for (int i = 0; i < set.NumHitboxes; i++) {
+			MStudioBBox box = set.Hitbox(i);
+			ref Matrix3x4 matrix = ref cache.GetCachedBone(box.Bone);
+			if (Unsafe.IsNullRef(ref matrix))
+				continue;
+
+			MathLib.TransformAABB(in matrix, box.BBMin * modelScale, box.BBMax * modelScale, out Vector3 boxAbsMins, out Vector3 boxAbsMaxs);
+			vecWorldMins = Vector3.Min(vecWorldMins, boxAbsMins);
+			vecWorldMaxs = Vector3.Max(vecWorldMaxs, boxAbsMaxs);
+		}
+
+		return true;
+	}
 
 	public const int NUM_POSEPAREMETERS = 24;
 	public const int NUM_BONECTRLS = 4;
