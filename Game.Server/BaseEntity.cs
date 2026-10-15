@@ -1261,8 +1261,20 @@ public partial class BaseEntity : IServerEntity
 		if (attachment == -1)
 			attachment = ParentAttachment;
 
+		if (!IsPlayer() && Game.Client.GarrysMod.GarrysMod.IsSacredEntity(Classname ?? "")) {
+			Warning($"Refusing to set parent on {Classname}!\n");
+			return;
+		}
+
+		for (BaseEntity? ancestor = parentEntity; ancestor != null; ancestor = ancestor.GetParent()) {
+			if (ancestor.GetParent() == this)
+				ancestor.SetParent(null);
+		}
+
 		bool wasNotParented = GetParent() == null;
 		BaseEntity? oldParent = GetParent();
+
+		UnlinkFromParent(this);
 
 		Parent.Set(parentEntity);
 
