@@ -1,7 +1,9 @@
 #if MENU_DLL
 using Source;
+using Source.Common.Engine;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.Launcher;
+using Source.Common.Networking;
 
 namespace Game.MenuSystem.GarrysMod;
 
@@ -25,6 +27,23 @@ public static partial class LuaMenuGlobals
 	[LuaGlobal]
 	static int GetDefaultLoadingHTML(ILuaInterface lua) {
 		lua.PushString("asset://garrysmod/html/loading.html");
+		return 1;
+	}
+
+	[LuaGlobal]
+	static int GetDownloadables(ILuaInterface lua) {
+		INetworkStringTable? downloadables = networkstringtable!.FindTable(Protocol.DOWNLOADABLE_FILE_TABLENAME);
+		if (downloadables == null)
+			return 0;
+
+		int count = downloadables.GetNumStrings();
+		lua.PreCreateTable(count, 0);
+		for (int i = 0; i < count; i++) {
+			lua.PushNumber(i + 1);
+			lua.PushString(downloadables.GetString(i));
+			lua.SetTable(-3);
+		}
+
 		return 1;
 	}
 

@@ -1,4 +1,5 @@
 using Source;
+
 #if CLIENT_DLL || GAME_DLL
 using Game.Shared;
 
@@ -686,7 +687,7 @@ public static partial class LuaPlayer
 #if GAME_DLL
 			if (player.Connected != PlayerConnectedState.Disconnected)
 #endif
-				count++;
+			count++;
 		}
 		g_Lua!.PushNumber(count);
 		return 1;
