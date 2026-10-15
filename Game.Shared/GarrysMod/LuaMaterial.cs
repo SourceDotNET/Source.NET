@@ -561,6 +561,38 @@ public static partial class LuaMaterial
 		return false;
 	}
 
+#if MENU_DLL
+	[LuaGlobal]
+	static int AddonMaterial(ILuaInterface lua) {
+		string path = "../" + lua.CheckString(1);
+		if (!IsAllowedMaterialPath(path))
+			path = "";
+
+		IMaterial? material = get.Resources()!.FindMaterial(path, "010101", true, true, false);
+		if (material == null)
+			return 0;
+
+		material.GetMappingHeight();
+		Push(material);
+		return 1;
+	}
+
+	[LuaGlobal]
+	static int DynamicMaterial(ILuaInterface lua) {
+		string name = lua.CheckString(1);
+		if (string.IsNullOrEmpty(name))
+			return 0;
+
+		string parameters = lua.CheckStringOpt(2, "");
+		IMaterial? material = get.Resources()!.FindMaterial(name, parameters, true, false, true);
+		if (material == null)
+			return 0;
+
+		Push(material);
+		return 1;
+	}
+#endif
+
 	[LuaGlobal]
 	static int Material(ILuaInterface lua) {
 		string? name = lua.GetString(1);

@@ -29,6 +29,11 @@ public static class LuaGlobals
 {
 	public static ILuaInterface? g_Lua;
 	public static int g_LuaID;
+#if MENU_DLL
+	public static int g_LuaStarts => Game.MenuSystem.MenuSystem.g_MenuSystem.LuaStarts;
+#else
+	public static int g_LuaStarts => g_LuaID;
+#endif
 }
 
 public class LuaObject : ILuaObject
