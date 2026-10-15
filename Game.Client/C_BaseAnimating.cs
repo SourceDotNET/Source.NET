@@ -457,7 +457,45 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 			RemoveVar(this, DA_Cycle, false);
 	}
 
-	public bool ComputeHitboxSurroundingBox(out Vector3 vecWorldMins, out Vector3 vecWorldMaxs) => throw new NotImplementedException();
+	memhandle_t HitboxBoneCacheHandle;
+
+	public BoneCache GetBoneCache(StudioHdr? studioHdr) {
+		int boneMask = Studio.BONE_USED_BY_HITBOX;
+		BoneCache cache = Studio.GetBoneCache(HitboxBoneCacheHandle);
+		if (!cache.IsNull()) {
+			if (cache.IsValid(gpGlobals.CurTime, 0.0))
+				return cache;
+
+			if ((cache.BoneMask & boneMask) != boneMask) {
+				Studio.DestroyBoneCache(HitboxBoneCacheHandle);
+				HitboxBoneCacheHandle = 0;
+				cache = default;
+			}
+		}
+
+		studioHdr ??= GetModelPtr();
+		Assert(studioHdr != null);
+
+		PushAllowBoneAccess(true, false, (BoneAccessTag)"GetBoneCache");
+		SetupBones(null, -1, boneMask, gpGlobals.CurTime);
+		PopAllowBoneAccess((BoneAccessTag)"GetBoneCache");
+
+		if (!cache.IsNull())
+			cache.UpdateBones(CachedBoneData.AsSpan(), studioHdr!.NumBones(), gpGlobals.CurTime);
+		else {
+			BoneCacheParams parms = new();
+			parms.StudioHdr = studioHdr!;
+			parms.BoneToWorld = CachedBoneData.AsSpan();
+			parms.CurTime = gpGlobals.CurTime;
+			parms.BoneMask = boneMask;
+
+			HitboxBoneCacheHandle = Studio.CreateBoneCache(in parms);
+			cache = Studio.GetBoneCache(HitboxBoneCacheHandle);
+		}
+
+		Assert(!cache.IsNull());
+		return cache;
+	}
 
 	public override bool GetSoundSpatialization(ref SpatializationInfo info) {
 		using (AutoAllowBoneAccess boneaccess = new(true, false)) {
@@ -950,6 +988,9 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 		InvalidateBoneCache();
 		BoneMergeCache = null;
+
+		Studio.DestroyBoneCache(HitboxBoneCacheHandle);
+		HitboxBoneCacheHandle = 0;
 
 		if (CachedBoneData.Count != hdr.NumBones()) {
 			CachedBoneData.SetSize(hdr.NumBones());

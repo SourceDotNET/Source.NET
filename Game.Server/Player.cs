@@ -9,6 +9,7 @@ using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Formats.BSP;
 using Source.Common.Game.Server;
+using Source.Common.Hashing;
 using Source.Common.Mathematics;
 using Source.Common.Physics;
 using Source.Engine;
@@ -1468,11 +1469,48 @@ public partial class BasePlayer : BaseCombatCharacter
 				pi.NumCmds = commandsToRun;
 			}
 		}
-		else if (GetTimeSinceLastUserCommand() > 3.0f /*sv_player_usercommand_timeout.GetFloat()*/)
-			RunNullCommand();
 
 		gpGlobals.CurTime = savetime;
 		gpGlobals.FrameTime = saveframetime;
+
+		if (GetTimeSinceLastUserCommand() >= UserCommandTimeout)
+			RunLastCommand();
+	}
+
+	const float UserCommandTimeout = 0.5f;
+
+	private void RunLastCommand() {
+		UserCmd cmd = LastCmd;
+		cmd.CommandNumber++;
+		cmd.TickCount++;
+		cmd.Forced = true;
+		cmd.RandomSeed = (int)(MD5Value.PseudoRandom((uint)cmd.CommandNumber) & 0x7fffffff);
+		cmd.MouseDeltaX = 0;
+		cmd.MouseDeltaY = 0;
+		cmd.Impulse = 0;
+		cmd.WeaponSelect = 0;
+		cmd.ScrollWheelSpeed = 0;
+
+		TimeUnit_t oldFrameTime = gpGlobals.FrameTime;
+		TimeUnit_t oldCurTime = gpGlobals.CurTime;
+
+		MoveHelperServer.s_MoveHelperServer.SetHost(this);
+		PlayerRunCommand(cmd, MoveHelperServer.s_MoveHelperServer);
+
+		if (VecPlayerSimInfo.Count > 0) {
+			PlayerSimInfo pi = VecPlayerSimInfo[VecPlayerSimInfo.Count - 1];
+			pi.Time = Platform.Time;
+			pi.AbsOrigin = GetAbsOrigin();
+			pi.GameSimulationTime = gpGlobals.CurTime;
+			pi.NumCmds = 1;
+		}
+
+		MoveHelperServer.s_MoveHelperServer.SetHost(null);
+
+		LastCmd = cmd;
+
+		gpGlobals.FrameTime = oldFrameTime;
+		gpGlobals.CurTime = oldCurTime;
 	}
 
 	private void RunNullCommand() {
@@ -1553,7 +1591,7 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	public bool IsPredictingWeapons() => false; // todo
 
-	TimeUnit_t GetTimeSinceLastUserCommand() => /*(!IsConnected() || IsFakeClient() || IsBot()) ? 0.0f :*/ gpGlobals.CurTime - LastUserCommandTime;
+	TimeUnit_t GetTimeSinceLastUserCommand() => (!IsConnected() || IsFakeClient() || IsBot()) ? 0.0f : gpGlobals.CurTime - LastUserCommandTime;
 
 	public virtual void SetupVisibility(BaseEntity? viewEntity, byte[] pvs, int pvssize) {
 		if (viewEntity != null)

@@ -189,8 +189,6 @@ public partial class BaseAnimating : BaseEntity
 		ResetSequenceInfo();
 	}
 
-	public bool ComputeHitboxSurroundingBox(out Vector3 vecWorldMins, out Vector3 vecWorldMaxs) => throw new NotImplementedException();
-
 	public const int NUM_POSEPAREMETERS = 24;
 	public const int NUM_BONECTRLS = 4;
 

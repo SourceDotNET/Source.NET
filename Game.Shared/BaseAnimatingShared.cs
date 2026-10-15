@@ -9,6 +9,7 @@ using Source.Common.Formats.BSP;
 using Source.Common.Mathematics;
 
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 #if CLIENT_DLL
 namespace Game.Client
@@ -339,6 +340,60 @@ namespace Game.Server
 			partition.SuppressLists(curSuppressed, true);
 		}
 #endif
+
+		public bool ComputeHitboxSurroundingBox(out Vector3 vecWorldMins, out Vector3 vecWorldMaxs) {
+			vecWorldMins = default;
+			vecWorldMaxs = default;
+
+#if CLIENT_DLL
+			if (IsDynamicModelLoading())
+				return false;
+#endif
+
+			StudioHdr? studioHdr = GetModelPtr();
+			if (studioHdr == null)
+				return false;
+
+			if (HitboxSet < 0 || HitboxSet >= studioHdr.NumHitboxSets()) {
+				Warning($"[UH-OH!] Invalid HitboxSet {HitboxSet} of {studioHdr.NumHitboxSets()} on model {studioHdr.Name()}.\n");
+				return false;
+			}
+
+			MStudioHitboxSet set = studioHdr.HitboxSet(HitboxSet);
+			if (set.NumHitboxes == 0)
+				return false;
+
+#if CLIENT_DLL
+			BoneCache cache = GetBoneCache(studioHdr);
+#else
+			BoneCache cache = GetBoneCache();
+#endif
+			if (cache.IsNull())
+				return false;
+
+			vecWorldMins = new(float.MaxValue);
+			vecWorldMaxs = new(-float.MaxValue);
+
+#if !CLIENT_DLL
+			float modelScale = GetModelScale();
+#endif
+			for (int i = 0; i < set.NumHitboxes; i++) {
+				MStudioBBox box = set.Hitbox(i);
+				ref Matrix3x4 matrix = ref cache.GetCachedBone(box.Bone);
+				if (Unsafe.IsNullRef(ref matrix))
+					continue;
+
+#if CLIENT_DLL
+				MathLib.TransformAABB(in matrix, box.BBMin, box.BBMax, out Vector3 boxAbsMins, out Vector3 boxAbsMaxs);
+#else
+				MathLib.TransformAABB(in matrix, box.BBMin * modelScale, box.BBMax * modelScale, out Vector3 boxAbsMins, out Vector3 boxAbsMaxs);
+#endif
+				vecWorldMins = Vector3.Min(vecWorldMins, boxAbsMins);
+				vecWorldMaxs = Vector3.Max(vecWorldMaxs, boxAbsMaxs);
+			}
+
+			return true;
+		}
 	}
 }
 #endif
