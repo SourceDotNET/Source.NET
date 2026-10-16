@@ -183,6 +183,7 @@ public class PackStoreSearchPath : BaseSearchPath
 		int wildcardAsteriskAtDir = wildcardDir.IndexOf('*');
 		int wildcardAsteriskAtFile = wildcardFile.IndexOf('*');
 		int wildcardAsteriskAtExt = wildcardExt.IndexOf('*');
+		ReadOnlySpan<char> wildcardName = Path.GetFileName(wildcard.AsSpan());
 
 		foreach (var directory in vpkDirectoryLookups) {
 			VpkDirectory dir = directory.Value;
@@ -198,7 +199,7 @@ public class PackStoreSearchPath : BaseSearchPath
 					continue;
 			}
 
-			if (wildcard != null && !System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(Path.GetFileName(wildcard), baseName))
+			if (wildcard != null && !System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(wildcardName, baseName))
 				continue;
 
 			dirs.Add(new(baseName));

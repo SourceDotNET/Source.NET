@@ -21,7 +21,11 @@ public static partial class LuaAngle
 
 	public static void Push_Angle(in QAngle ang) => g_Lua!.PushAngle(in ang);
 
-	static char FirstChar(ReadOnlySpan<char> str) => str.IsEmpty ? '\0' : str[0];
+	static char FirstChar(int stackPos) {
+		g_Lua!.CheckType(stackPos, LuaType.String);
+		ReadOnlySpan<byte> str = g_Lua.GetStringBytes(stackPos);
+		return str.IsEmpty ? '\0' : (char)str[0];
+	}
 
 	[LuaMethod]
 	static int Angle____newindex(ILuaInterface lua) {
@@ -35,7 +39,7 @@ public static partial class LuaAngle
 				return 0;
 		}
 		else {
-			switch (FirstChar(g_Lua.CheckString(2))) {
+			switch (FirstChar(2)) {
 				case 'P': case 'X': case 'p': case 'x': index = 0; break;
 				case 'Y': case 'y': index = 1; break;
 				case 'R': case 'Z': case 'r': case 'z': index = 2; break;
@@ -63,7 +67,7 @@ public static partial class LuaAngle
 				return 0;
 		}
 		else {
-			switch (FirstChar(g_Lua.CheckString(2))) {
+			switch (FirstChar(2)) {
 				case 'P': case 'X': case 'p': case 'x': index = 0; break;
 				case 'Y': case 'y': index = 1; break;
 				case 'R': case 'Z': case 'r': case 'z': index = 2; break;
