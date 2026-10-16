@@ -170,6 +170,41 @@ public class ClientEntityList : BaseEntityList, IClientEntityList
 			cache.LinkedListNode = null;
 	}
 
+	protected override void OnRemoveEntity(IHandleEntity? ent, BaseHandle handle) {
+		int entnum = handle.GetEntryIndex();
+
+		if (entnum < 0 || entnum >= Constants.NUM_ENT_ENTRIES)
+			return;
+
+		ref EntityCacheInfo_t cache = ref EntityCacheInfo[entnum];
+
+		if (entnum < Constants.MAX_EDICTS) {
+			cache.Networkable = null!;
+			NumServerEnts--;
+
+			if (entnum >= MaxUsedServerIndex) {
+				while (MaxUsedServerIndex >= 0 && EntityCacheInfo[MaxUsedServerIndex].Networkable == null)
+					MaxUsedServerIndex--;
+			}
+		}
+
+		IClientUnknown? unknown = (IClientUnknown?)ent;
+		RemovePVSNotifier(unknown);
+
+		C_BaseEntity? baseEntity = unknown.GetBaseEntity();
+		if (baseEntity != null) {
+			if ((baseEntity.ObjectCaps() & EntityCapabilities.SaveNonNetworkable) != 0)
+				NumClientNonNetworkable--;
+
+			for (int i = EntityListeners.Count() - 1; i >= 0; i--)
+				EntityListeners[i].OnEntityDeleted(baseEntity);
+		}
+
+		if (cache.LinkedListNode?.List != null)
+			BaseEntities.Remove(cache.LinkedListNode);
+		cache.LinkedListNode = null;
+	}
+
 	int NumServerEnts;
 	int MaxServerEnts;
 	int NumClientNonNetworkable;
