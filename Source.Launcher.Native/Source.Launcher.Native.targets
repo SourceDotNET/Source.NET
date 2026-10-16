@@ -46,7 +46,7 @@
 			Inputs="@(SNNativeInput)" Outputs="$(SNNativeBuildDir)Source.Launcher.CEF">
 		<Error Condition="!Exists('$(SNCefLinuxRuntimeDir)libcef.so')" Text="Could not find libcef.so at $(SNCefLinuxRuntimeDir)" />
 		<Exec Command="&quot;$(SNCMake)&quot; -S &quot;$(SNNativeSourceDir)&quot; -B &quot;$(SNNativeBuildDir)&quot; -DCMAKE_BUILD_TYPE=Release &quot;-DCEF_ROOT=$(SNCefRoot)&quot; &quot;-DCEF_LIBCEF_SO=$(SNCefLinuxRuntimeDir)libcef.so&quot;" />
-		<Exec Command="&quot;$(SNCMake)&quot; --build &quot;$(SNNativeBuildDir)&quot; --parallel" />
+		<Exec Command="&quot;$(SNCMake)&quot; --build &quot;$(SNNativeBuildDir)&quot; --parallel $([System.Environment]::ProcessorCount)" />
 	</Target>
 
 	<Target Name="SNCopyNativeLinux" AfterTargets="SNBuildNativeLinux" Condition="'$(IsLinux)' == 'true'">
