@@ -41,7 +41,8 @@ elseif(OS_LINUX)
 	add_dependencies(Source.Launcher.CEF libcef_dll_wrapper)
 
 	ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIBCEF_SO}" "${CEF_LIBCEF_SO}")
-	target_link_libraries(Source.Launcher.CEF libcef_lib libcef_dll_wrapper ${CEF_STANDARD_LIBS})
+	# CEF_STANDARD_LIBS is just X11 on Linux, which only CEF's sample apps use. Skipping it avoids needing libx11-dev to build.
+	target_link_libraries(Source.Launcher.CEF libcef_lib libcef_dll_wrapper)
 	set_target_properties(Source.Launcher.CEF PROPERTIES BUILD_RPATH "\$ORIGIN" INSTALL_RPATH "\$ORIGIN")
 else()
 	message(FATAL_ERROR "Source.Launcher.Native supports Windows and Linux only")
