@@ -6,6 +6,7 @@ using Source.Common.DataCache;
 using Source.Common.Engine;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
+using Source.Common.Utilities;
 
 using System;
 using System.Collections.Generic;
@@ -58,12 +59,18 @@ public class StudioRenderContext(IMaterialSystem materialSystem, IStudioDataCach
 
 	public void UpdateConfig(in StudioRenderConfig config) => RC.Config = config;
 
-	public int GetMaterialListFromBodyAndSkin(MDLHandle_t studio, int skin, int body, Span<IMaterial> outputMaterials) {
-		int found = 0;
+	static bool ContainsMaterial(ReadOnlySpan<IMaterial> materials, IMaterial material) {
+		foreach (IMaterial existing in materials) {
+			if (existing == material)
+				return true;
+		}
+		return false;
+	}
 
+	public void GetMaterialListFromBodyAndSkin(MDLHandle_t studio, int skin, int body, ref SpanList<IMaterial> outputMaterials) {
 		StudioHWData? studioHWData = mdlcache.GetHardwareData(studio);
 		if (studioHWData == null)
-			return 0;
+			return;
 
 		for (int lodID = studioHWData.RootLOD; lodID < studioHWData.NumLODs; lodID++) {
 			StudioHeader studioHdr = mdlcache.GetStudioHdr(studio)!;
@@ -82,36 +89,28 @@ public class StudioRenderContext(IMaterialSystem materialSystem, IStudioDataCach
 					IMaterial material = inputMaterials[skinRef[mesh.Material]];
 					Assert(material != null);
 
-					int m;
-					for (m = 0; m < found; m++) {
-						if (outputMaterials[m] == material)
-							break;
-					}
-					if (m >= found) {
-						outputMaterials[found++] = material!;
+					if (!ContainsMaterial(outputMaterials.AsSpan(), material!)) {
+						outputMaterials.Add(material!);
 
-						if (found >= outputMaterials.Length)
-							return found;
+						if (outputMaterials.Count >= outputMaterials.Capacity)
+							return;
 					}
 				}
 			}
 		}
-
-		return found;
 	}
 
-	public int GetMaterialList(StudioHeader studioHDR, Span<IMaterial> materials) {
+	public void GetMaterialList(StudioHeader studioHDR, ref SpanList<IMaterial> materials) {
 		AssertMsg(studioHDR != null, "Don't ignore this assert! StudioRenderContext.GetMaterialList() has null studioHDR.");
 
 		if (studioHDR == null)
-			return 0;
+			return;
 
 		if (studioHDR.TextureIndex == 0)
-			return 0;
+			return;
 
 		int i;
 		int j;
-		int found = 0;
 		Span<char> path = stackalloc char[MAX_PATH];
 		for (i = 0; i < studioHDR.NumTextures; i++) {
 			path.Clear();
@@ -140,21 +139,13 @@ public class StudioRenderContext(IMaterialSystem materialSystem, IStudioDataCach
 			if (material == null)
 				continue;
 
-			if (found < materials.Length) {
-				int k;
-
-				for (k = 0; k < found; k++)
-					if (materials[k] == material)
-						break;
-
-				if (k >= found)
-					materials[found++] = material;
+			if (materials.Count < materials.Capacity) {
+				if (!ContainsMaterial(materials.AsSpan(), material))
+					materials.Add(material);
 			}
 			else
 				break;
 		}
-
-		return found;
 	}
 
 	public bool LoadModel(StudioHeader studioHdr, Memory<byte> vtxBuffer, StudioHWData studioHWData) {

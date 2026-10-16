@@ -12,8 +12,8 @@ using Source.Common.Formats.BSP;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 using Source.Common.ShaderAPI;
+using Source.Common.Utilities;
 
-using System.Buffers;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -219,10 +219,11 @@ public class MDLCacheNotify : IMDLCacheNotify
 		if ((studioHdr.Flags & StudioHdrFlags.DoNotCastShadows) != 0)
 			model.Flags |= ModelFlag.DoNotCastShadows;
 
-		Span<IMaterial> materials = new IMaterial[128];
-		int materialCount = modelLoader.Mod_GetModelMaterials(model, materials);
+		InlineArray128<IMaterial> materialBuffer = default;
+		SpanList<IMaterial> materials = new(materialBuffer);
+		modelLoader.Mod_GetModelMaterials(model, ref materials);
 
-		for (int i = 0; i < materialCount; ++i) {
+		for (int i = 0; i < materials.Count; ++i) {
 			IMaterial material = materials[i];
 			if (material == null)
 				continue;
@@ -525,14 +526,13 @@ public class ModelLoader(IFileSystem fileSystem, Host Host,
 			double t1 = Platform.Time;
 			model.Materials = default;
 
-			IMaterial[] materials = ArrayPool<IMaterial>.Shared.Rent(128);
-			int nMaterials = Mod_GetModelMaterials(model, materials);
+			InlineArray128<IMaterial> materialBuffer = default;
+			SpanList<IMaterial> materials = new(materialBuffer);
+			Mod_GetModelMaterials(model, ref materials);
+			int nMaterials = materials.Count;
 
-			if ((model.LoadFlags & ModelLoaderFlags.Dynamic) != 0) {
-				model.Materials = new Memory<IMaterial>(new IMaterial[nMaterials]);
-				for (int i = 0; i < nMaterials; i++)
-					model.Materials.Span[i] = materials[i];
-			}
+			if ((model.LoadFlags & ModelLoaderFlags.Dynamic) != 0)
+				model.Materials = materials.AsSpan().ToArray();
 
 			if (nMaterials != 0)
 				model.LoadFlags |= ModelLoaderFlags.TouchedMaterials;
@@ -542,8 +542,6 @@ public class ModelLoader(IFileSystem fileSystem, Host Host,
 
 			if (touchAllData || preloaded)
 				Mod_TouchAllData(model, Host.GetServerCount());
-
-			ArrayPool<IMaterial>.Shared.Return(materials, true);
 		}
 	}
 
@@ -576,34 +574,36 @@ public class ModelLoader(IFileSystem fileSystem, Host Host,
 					if ((studioHdr.Flags & StudioHdrFlags.ForceOpaque) != 0)
 						return;
 
-					IMaterial[] materialsArray = ArrayPool<IMaterial>.Shared.Rent(128);
-					try {
-						Span<IMaterial> materials = materialsArray.AsSpan(0, 128);
-						int materialCount = StudioRender.GetMaterialListFromBodyAndSkin(mod.Studio, skin, body, materials);
-						for (int i = 0; i < materialCount; i++) {
-							if (materials[i] != null) {
-								using MatRenderContextPtr renderContext = new(SourceDllMain.materials);
-								renderContext.Bind(materials[i], clientRenderable);
-								bool isTranslucent = materials[i].IsTranslucent();
+					InlineArray128<IMaterial> materialBuffer = default;
+					SpanList<IMaterial> materials = new(materialBuffer);
+					StudioRender.GetMaterialListFromBodyAndSkin(mod.Studio, skin, body, ref materials);
+					for (int i = 0; i < materials.Count; i++) {
+						if (materials[i] != null) {
+							using MatRenderContextPtr renderContext = new(SourceDllMain.materials);
+							renderContext.Bind(materials[i], clientRenderable);
+							bool isTranslucent = materials[i].IsTranslucent();
 
-								if (isTranslucent) {
-									mod.Flags |= ModelFlag.Translucent;
-									break;
-								}
+							if (isTranslucent) {
+								mod.Flags |= ModelFlag.Translucent;
+								break;
 							}
 						}
-					}
-					finally {
-						ArrayPool<IMaterial>.Shared.Return(materialsArray, true);
 					}
 				}
 				break;
 		}
 	}
 
-	internal int Mod_GetModelMaterials(Model model, Span<IMaterial> materials) {
+	static bool ContainsMaterial(ReadOnlySpan<IMaterial> materials, IMaterial? material) {
+		foreach (IMaterial existing in materials) {
+			if (existing == material)
+				return true;
+		}
+		return false;
+	}
+
+	internal void Mod_GetModelMaterials(Model model, ref SpanList<IMaterial> materials) {
 		StudioHeader studioHdr;
-		int found = 0;
 		int i;
 
 		switch (model.Type) {
@@ -615,27 +615,26 @@ public class ModelLoader(IFileSystem fileSystem, Host Host,
 
 						IMaterial? material = MSurf_TexInfo(ref surfID, model.Brush.Shared).Material;
 
-						int j = found;
-						while (--j >= 0) {
-							if (materials[j] == material)
-								break;
-						}
-						if (j < 0)
-							materials[found++] = material!;
+						if (!ContainsMaterial(materials.AsSpan(), material))
+							materials.Add(material!);
 
-						if (found >= materials.Length)
-							return found;
+						if (materials.Count >= materials.Capacity)
+							return;
 					}
 				}
 				break;
 
 			case ModelType.Studio:
 				if (!model.Materials.IsEmpty) {
-					model.Materials.Span.CopyTo(materials);
+					foreach (IMaterial material in model.Materials.Span) {
+						if (materials.Count >= materials.Capacity)
+							break;
+						materials.Add(material);
+					}
 				}
 				else {
 					studioHdr = MDLCache.GetStudioHdr(model.Studio);
-					found = StudioRender.GetMaterialList(studioHdr, materials);
+					StudioRender.GetMaterialList(studioHdr, ref materials);
 				}
 				break;
 
@@ -643,8 +642,6 @@ public class ModelLoader(IFileSystem fileSystem, Host Host,
 				Assert(false);
 				break;
 		}
-
-		return found;
 	}
 
 	private void Mod_TouchAllData(Model model, int serverCount) {
