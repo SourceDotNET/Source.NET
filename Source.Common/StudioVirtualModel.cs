@@ -426,7 +426,8 @@ public partial class VirtualModel
 	}
 	public void UpdateAutoplaySequences(StudioHeader studioHdr) {
 		int autoplayCount = studioHdr.CountAutoplaySequences();
-		AutoplaySequences.SetCount(autoplayCount);
-		studioHdr.CopyAutoplaySequences(AutoplaySequences.Base().AsSpan(), autoplayCount);
+		if (AutoplaySequences.Length != autoplayCount)
+			AutoplaySequences = new short[autoplayCount];
+		studioHdr.CopyAutoplaySequences(AutoplaySequences, autoplayCount);
 	}
 }

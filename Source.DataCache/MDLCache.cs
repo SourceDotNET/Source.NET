@@ -224,7 +224,7 @@ public class MDLCache : IMDLCache, IStudioDataCache
 
 		VirtualModel? virtualModel = GetVirtualModel(handle);
 		if (virtualModel != null)
-			return virtualModel.AutoplaySequences.Base();
+			return virtualModel.AutoplaySequences;
 
 		StudioData studioData = HandleToMDLDict[handle];
 		return studioData.AutoplaySequenceList;

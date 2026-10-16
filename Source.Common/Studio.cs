@@ -350,7 +350,7 @@ public partial class VirtualModel
 	public readonly List<VirtualGroup> Group = [];
 	public readonly List<VirtualGeneric> Node = [];
 	public readonly List<VirtualGeneric> IKLock = [];
-	public readonly List<short> AutoplaySequences = [];
+	public short[] AutoplaySequences = [];
 }
 
 public enum StudioMeshGroupFlags
