@@ -1,10 +1,10 @@
 #version 460
 
-in vec3 vs_T0;
-in vec3 vs_T1;
-in vec3 vs_T2;
-in float vs_T3;
-in vec4 vs_Color;
+layout(location = 0) in vec3 vs_T0;
+layout(location = 1) in vec3 vs_T1;
+layout(location = 2) in vec3 vs_T2;
+layout(location = 3) in float vs_T3;
+layout(location = 4) in vec4 vs_Color;
 
 layout(binding = 0) uniform sampler2D basetexture;
 

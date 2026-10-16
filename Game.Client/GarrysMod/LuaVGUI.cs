@@ -2,7 +2,11 @@ using Source.Common.GarrysMod.Lua;
 using Source.Common.GUI;
 using Source.GUI.Controls;
 
+#if MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
+#else
 namespace Game.Client.GarrysMod;
+#endif
 
 public static partial class LuaVGUI
 {
@@ -51,14 +55,22 @@ public static partial class LuaVGUI
 			lua.PushBool(false);
 			return 1;
 		}
+#if MENU_DLL
+		Panel? world = MenuPanels.GetMenuPanel();
+#else
 		Panel? world = GModBase.GetGModBasePanel(true);
+#endif
 		lua.PushBool(vguiInput.GetMouseOver() == world);
 		return 1;
 	}
 
 	[LuaFunction]
 	static int GetWorldPanel(ILuaInterface lua) {
+#if MENU_DLL
+		Push_Panel(MenuPanels.GetMenuPanel());
+#else
 		Push_Panel(GModBase.GetGModBasePanel(true));
+#endif
 		return 1;
 	}
 
@@ -127,9 +139,13 @@ public static partial class LuaVGUI
 	}
 
 	public static bool IsValidPanel(Panel? panel) {
+#if MENU_DLL
+		return MenuPanels.IsValidPanel(panel);
+#else
 		if (panel != null && panel != GModBase.GetGModBasePanel(true) && panel != HudGMod.g_HudGMod && panel != GModBase.GetGModParentToHUDPanel())
 			return panel.LuaPanel && !panel.IsMarkedForDeletion();
 		return true;
+#endif
 	}
 
 	public static Panel? CreateControl(ReadOnlySpan<char> className) {
@@ -175,11 +191,13 @@ public static partial class LuaVGUI
 		if (stricmp(className, "AchievementIcon") == 0)
 			return null; // AchievementIcon
 
+#if !MENU_DLL
 		if (stricmp(className, "ModelImage") == 0)
 			return new SpawnIcon(null, "ModelImage");
 
 		if (stricmp(className, "AvatarImage") == 0)
 			return null; // AvatarImage
+#endif
 
 		if (stricmp(className, "HTML") == 0)
 			return new HtmlPanel(null, "HtmlPanel");
@@ -207,7 +225,11 @@ public static partial class LuaVGUI
 		else {
 			if (lua.GetType(2) != LuaType.Nil)
 				lua.ErrorFromLua($"bad argument #2 to 'Create' (Panel expected, got {lua.GetActualTypeName(2)})");
+#if MENU_DLL
+			panel.SetParent(MenuPanels.GetMenuPanel());
+#else
 			panel.SetParent(GModBase.GetGModBasePanel(true));
+#endif
 		}
 
 		if (lua.GetType(3) == LuaType.String)

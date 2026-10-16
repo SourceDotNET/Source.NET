@@ -215,9 +215,56 @@ public partial class
 	public void CalcViewRoll(ref QAngle angles) {
 		// todo
 	}
+	static readonly ConVar smoothstairs = new("smoothstairs", "1", FCvar.Replicated, "Smooth player eye z coordinate when traversing stairs.");
+
+	public void SmoothViewOnStairs(ref Vector3 eyeOrigin) {
+		BaseEntity? groundEntity = GetGroundEntity();
+		float currentPlayerZ = GetLocalOrigin().Z;
+		float currentPlayerViewOffsetZ = GetViewOffset().Z;
+
+		if ((groundEntity != null && groundEntity.GetMoveType() == Source.MoveType.None) && (currentPlayerZ != OldPlayerZ) && smoothstairs.GetBool() &&
+			 OldPlayerViewOffsetZ == currentPlayerViewOffsetZ) {
+			int dir = (currentPlayerZ > OldPlayerZ) ? 1 : -1;
+
+			float steptime = (float)gpGlobals.FrameTime;
+			if (steptime < 0)
+				steptime = 0;
+
+			OldPlayerZ += steptime * 150 * dir;
+
+			float stepSize = GetStepSize();
+
+			if (dir > 0) {
+				if (OldPlayerZ > currentPlayerZ)
+					OldPlayerZ = currentPlayerZ;
+				if (currentPlayerZ - OldPlayerZ > stepSize)
+					OldPlayerZ = currentPlayerZ - stepSize;
+			}
+			else {
+				if (OldPlayerZ < currentPlayerZ)
+					OldPlayerZ = currentPlayerZ;
+				if (currentPlayerZ - OldPlayerZ < -stepSize)
+					OldPlayerZ = currentPlayerZ + stepSize;
+			}
+
+			eyeOrigin.Z += OldPlayerZ - currentPlayerZ;
+		}
+		else {
+			OldPlayerZ = currentPlayerZ;
+			OldPlayerViewOffsetZ = currentPlayerViewOffsetZ;
+		}
+	}
+
 	private void CalcPlayerView(ref Vector3 eyeOrigin, ref QAngle eyeAngles, ref float fov) {
 		eyeOrigin = EyePosition();
 		eyeAngles = EyeAngles();
+
+#if CLIENT_DLL
+		if (!prediction.InPrediction())
+#endif
+		{
+			SmoothViewOnStairs(ref eyeOrigin);
+		}
 
 		Vector3 vecBaseEyePosition = eyeOrigin;
 

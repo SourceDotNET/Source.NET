@@ -114,13 +114,18 @@ public partial class Host
 			return cl.MaxClients == 1;
 	}
 
+	const TimeUnit_t MAX_FRAMETIME = 0.1;
+
 	void AccumulateTime(TimeUnit_t dt) {
 		RealTime += dt;
 		FrameTime = dt;
 		FrameTimeUnbounded = FrameTime;
-		TimeUnit_t fullscale = 1; // TODO: host_timescale
-		FrameTime *= fullscale;
-		FrameTimeUnbounded = FrameTime;
+		if (host_timescale.GetFloat() > 0 && CanCheat()) {
+			TimeUnit_t fullscale = host_timescale.GetFloat();
+			FrameTime *= fullscale;
+			FrameTimeUnbounded = FrameTime;
+			FrameTime = Math.Min(FrameTime, MAX_FRAMETIME * fullscale);
+		}
 
 		soundServices.SetSoundFrametime(dt, FrameTime);
 	}
@@ -556,6 +561,9 @@ public partial class Host
 			Scr = engineAPI.InitSubsystem<Scr>()!;
 			Render = engineAPI.InitSubsystem<Render>()!;
 			// engineAPI.InitSubsystem<Decal>();
+#if GMOD_DLL
+			get.MenuSystem()?.StartLua();
+#endif
 		}
 		else {
 			cl.SignOnState = SignOnState.None;
@@ -862,6 +870,10 @@ public partial class Host
 		}
 	}
 
+#if GMOD_DLL
+	public bool HostingGame;
+#endif
+
 	public bool NewGame(ReadOnlySpan<char> mapName, bool loadGame, bool backgroundLevel, ReadOnlySpan<char> oldMap = default, ReadOnlySpan<char> landmark = default, bool oldSave = false) {
 		Common.TimestampedLog("Host_NewGame");
 		Span<char> previousMapName = stackalloc char[MAX_PATH];
@@ -880,10 +892,16 @@ public partial class Host
 #if !SWDS
 			Scr.EndLoadingPlaque();
 #endif
+#if GMOD_DLL
+			HostingGame = false;
+#endif
 			return false;
 		}
 
 		DevMsg("---- Host_NewGame ----\n");
+#if GMOD_DLL
+		HostingGame = true;
+#endif
 		host_map.SetValue(_mapName);
 		if (!loadGame) {
 			HostState.RunGameInit();
@@ -897,8 +915,12 @@ public partial class Host
 
 		g_DownloadListGenerator.OnLevelLoadStart(mapName);
 
-		if (!sv.SpawnServer(mapName, _mapFile, null))
+		if (!sv.SpawnServer(mapName, _mapFile, null)) {
+#if GMOD_DLL
+			HostingGame = false;
+#endif
 			return false;
+		}
 
 		sv.LevelMainMenuBackground = backgroundLevel;
 		serverGlobalVariables.CurTime = sv.GetTime();
@@ -916,8 +938,12 @@ public partial class Host
 			serverGlobalVariables.CurTime = sv.GetTime();
 		}
 
-		if (!SV.ActivateServer())
+		if (!SV.ActivateServer()) {
+#if GMOD_DLL
+			HostingGame = false;
+#endif
 			return false;
+		}
 
 		if (!sv.IsDedicated()) {
 			Common.TimestampedLog("Stuff 'connect localhost' to console");

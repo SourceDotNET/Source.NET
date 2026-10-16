@@ -72,6 +72,7 @@ public class Scr(IEngineAPI engineAPI)
 			CenterStringOff();
 
 			clientDll?.HudText(null);
+			EngineVGui!.EnabledProgressBarForNextLoad();
 			EngineVGui!.OnLevelLoadingStarted();
 
 			clientGlobalVariables.FrameTime = 0;

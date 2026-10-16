@@ -1,5 +1,6 @@
 ﻿using Source.Common.Formats.BSP;
 using Source.Common.Mathematics;
+using Source.Common.Physics;
 
 using System;
 using System.Collections.Generic;
@@ -809,6 +810,23 @@ public class DispCollTree
 		}
 
 		return (ushort)AddPlane(vecNormal);
+	}
+
+	public void GetVirtualMeshList(ref VirtualMeshList list) {
+		int i;
+		int triangleCount = GetTriSize();
+		list.IndexCount = triangleCount * 3;
+		list.TriangleCount = triangleCount;
+		list.VertexCount = Verts.Count;
+		list.Verts = Verts;
+		list.SurfacePropsIndex = GetSurfaceProps(0);
+		int index = 0;
+		for (i = 0; i < triangleCount; i++) {
+			list.Indices[index + 0] = (ushort)Tris[i].GetVert(0);
+			list.Indices[index + 1] = (ushort)Tris[i].GetVert(1);
+			list.Indices[index + 2] = (ushort)Tris[i].GetVert(2);
+			index += 3;
+		}
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public void SetPower(int power) => Power = power;

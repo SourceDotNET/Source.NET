@@ -1,10 +1,12 @@
-#if CLIENT_DLL || GAME_DLL
+#if CLIENT_DLL || GAME_DLL || MENU_DLL
 using Source.Common.Commands;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.Input;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
+#elif MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
 #else
 namespace Game.Server.GarrysMod;
 #endif
@@ -13,6 +15,7 @@ public static partial class LuaConCommands
 {
 
 	static readonly string[] s_BannedConvars = [
+#if CLIENT_DLL || GAME_DLL
 		"crosshair_setup",
 		"hud_fastswitch",
 		"hud_quickinfo",
@@ -345,6 +348,7 @@ public static partial class LuaConCommands
 		"test_loop",
 		"plugin_load",
 		"sv_allow_wait_command",
+#endif
 	];
 
 	static readonly bool[] g_bKeyState = new bool[(int)ButtonCode.KeyCount];
@@ -427,7 +431,7 @@ public static partial class LuaConCommands
 
 #if CLIENT_DLL
 		C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
-#else
+#elif !MENU_DLL
 		BasePlayer? player = Util.GetCommandClient();
 		if (player == null && Util.GetCommandClientIndex() > 0) {
 			Warning($"Warning: Player issued command but is now vanished (Command was \"{args.ArgS()}\")\n");
@@ -442,6 +446,7 @@ public static partial class LuaConCommands
 			concommand.GetMember("Run", run);
 			if (run.isFunction()) {
 				ReadOnlySpan<char> command = args.Arg(0);
+#if !MENU_DLL
 				if (command.Length > 0 && command[0] == '+') {
 					if (args.ArgC() > 1)
 						MarkButtonStatus((ButtonCode)atoi(args.Arg(1)), true);
@@ -450,9 +455,14 @@ public static partial class LuaConCommands
 					if (args.ArgC() > 1)
 						MarkButtonStatus((ButtonCode)atoi(args.Arg(1)), false);
 				}
+#endif
 
 				run.Push();
+#if MENU_DLL
+				g_Lua.PushNil();
+#else
 				LuaEntity.Push_Entity(player);
+#endif
 				g_Lua.PushString(command);
 
 				LuaTable arguments = new(null, (uint)args.ArgC());
@@ -554,6 +564,7 @@ public static partial class LuaConCommands
 		return 0;
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int AddCSLuaFile(ILuaInterface lua) {
 #if GAME_DLL
@@ -576,5 +587,6 @@ public static partial class LuaConCommands
 #endif
 		return 0;
 	}
+#endif
 }
 #endif

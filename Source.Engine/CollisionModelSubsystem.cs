@@ -94,7 +94,7 @@ public class CollisionBSPData
 			physcollision.VCollideUnload(MapCollisionModels[i].VCollisionData);
 
 		// DispCollTrees_FreeLeafList(this);
-		// CM.DestroyDispPhysCollide();
+		CM.DestroyDispPhysCollide();
 		// DispCollTrees_Free(CM.g_DispCollTrees);
 		// CM.g_DispCollTrees = null;
 		// CM.g_DispBounds = null;
@@ -171,7 +171,7 @@ public class CollisionBSPData
 				var = material.FindVar("$surfaceprop", out varFound, false);
 				if (varFound) {
 					ReadOnlySpan<char> props = var.GetStringValue();
-					// TODO: set surface properties.
+					MapSurfaces.AsSpan()[i].SurfaceProps = (ushort)physprop.GetSurfaceIndex(props);
 				}
 			}
 		}
@@ -564,6 +564,7 @@ public class CollisionBSPData
 		BSPDDispInfo[] dispInfos = new MapLoadHelper(LumpIndex.DispInfo).LoadLumpData<BSPDDispInfo>();
 		DispVert[] dispVerts = new MapLoadHelper(LumpIndex.DispVerts).LoadLumpData<DispVert>();
 		DispTri[] dispTris = new MapLoadHelper(LumpIndex.DispTris).LoadLumpData<DispTri>();
+		BSPTexInfo[] texinfos = new MapLoadHelper(LumpIndex.TexInfo).LoadLumpData<BSPTexInfo>();
 
 		if (faces.Length == 0)
 			return;
@@ -643,12 +644,30 @@ public class CollisionBSPData
 			tree.GetBounds(out Vector3 treeMins, out Vector3 treeMaxs);
 			g_DispBounds[i].Init(treeMins, treeMaxs, tree.Counter, tree.GetContents());
 
-			// NOTE: surface props are left at their defaults; physprops material lookup
-			// is not yet wired in the collision subsystem (see LoadTextures TODO).
+			ref BSPTexInfo tex = ref texinfos[face.TexInfo];
+			if (tex.TexData >= 0) {
+				IMaterial material = materials!.FindMaterial(MapSurfaces[tex.TexData].Name, MaterialDefines.TEXTURE_GROUP_WORLD, true);
+				if (!material.IsErrorMaterial()) {
+					IMaterialVar var = material.FindVar("$surfaceprop", out bool varFound, false);
+					if (varFound) {
+						ReadOnlySpan<char> props = var.GetStringValue();
+						tree.SetSurfaceProps(0, (short)physprop.GetSurfaceIndex(props));
+						tree.SetSurfaceProps(1, (short)physprop.GetSurfaceIndex(props));
+					}
+
+					var = material.FindVar("$surfaceprop2", out varFound, false);
+					if (varFound) {
+						ReadOnlySpan<char> props = var.GetStringValue();
+						tree.SetSurfaceProps(1, (short)physprop.GetSurfaceIndex(props));
+					}
+				}
+			}
 		}
 
 		// Link each displacement into the BSP leaves it touches.
 		CM_DispTreeLeafnum();
+
+		CM.CreateDispPhysCollide((int)MapLoadHelper.GetLumpSize(LumpIndex.PhysDisp));
 	}
 
 	// Port of CM_DispTreeLeafnum + CDispLeafBuilder: build the per-leaf displacement lists.
@@ -880,6 +899,36 @@ public static partial class CM
 			return null;
 
 		return (bspData.MapCollisionModels[index]);
+	}
+
+	static Contents BrushContents_r(CollisionBSPData bspData, int nodenum) {
+		Contents contents = 0;
+
+		while (true) {
+			if (nodenum < 0) {
+				int leafIndex = -1 - nodenum;
+				ref CollisionLeaf leaf = ref bspData.MapLeafs.AsSpan()[leafIndex];
+
+				for (int i = 0; i < leaf.NumLeafBrushes; i++) {
+					ushort brushIndex = bspData.MapLeafBrushes[leaf.FirstLeafBrush + i];
+					contents |= bspData.MapBrushes.AsSpan()[brushIndex].Contents;
+				}
+
+				return contents;
+			}
+
+			ref CollisionNode node = ref bspData.MapNodes.AsSpan()[bspData.MapRootNode + nodenum];
+			contents |= BrushContents_r(bspData, node.Children[0]);
+			nodenum = node.Children[1];
+		}
+	}
+
+	public static Contents InlineModelContents(int index) {
+		CollisionModel? model = InlineModelNumber(index);
+		if (model == null)
+			return 0;
+
+		return BrushContents_r(GetCollisionBSPData(), model.HeadNode);
 	}
 
 	internal static void ClearTrace(ref Trace trace) {

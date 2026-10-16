@@ -1,4 +1,6 @@
+#if !MENU_DLL
 using Game.Client.HUD;
+#endif
 
 using Source;
 using Source.Common.GarrysMod.Lua;
@@ -8,7 +10,11 @@ using Source.Common.SoundEmitterSystem;
 
 using System.Runtime.CompilerServices;
 
+#if MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
+#else
 namespace Game.Client.GarrysMod;
+#endif
 
 public static partial class LuaSurface
 {
@@ -240,7 +246,11 @@ public static partial class LuaSurface
 		string name = lua.CheckString(1);
 		CurrentFont = LuaFonts.GetFont(name);
 		if (CurrentFont == null) {
+#if MENU_DLL
+			CurrentFont = MenuPanels.GetMenuPanel()!.GetScheme()!.GetFont(name, false);
+#else
 			CurrentFont = GModBase.GetGModBasePanel(true)!.GetScheme()!.GetFont(name, false);
+#endif
 			if (CurrentFont == null) {
 				lua.ErrorFromLua($"'{name}' isn't a valid font\n");
 				return 0;
@@ -287,6 +297,7 @@ public static partial class LuaSurface
 		return (wide, tall);
 	}
 
+#if !MENU_DLL
 	[LuaFunction]
 	static int GetHUDTexture(ILuaInterface lua) {
 		HudTexture? icon = gHUD.GetIcon(lua.CheckString(1));
@@ -295,6 +306,7 @@ public static partial class LuaSurface
 		lua.PushNumber((int)icon.TextureID);
 		return 1;
 	}
+#endif
 
 	[LuaFunction]
 	static int DrawTexturedRect(ILuaInterface lua) {
@@ -336,6 +348,7 @@ public static partial class LuaSurface
 	[LuaFunction]
 	static int PlaySound(ILuaInterface lua) {
 		ReadOnlySpan<char> sound = lua.CheckString(1);
+#if !MENU_DLL
 		int index = soundemitterbase.GetSoundIndex(sound);
 		if (soundemitterbase.IsValidIndex(index)) {
 			ref SoundParametersInternal internalParams = ref soundemitterbase.InternalGetParametersForSound(index);
@@ -343,6 +356,7 @@ public static partial class LuaSurface
 			int pick = RandomInt(0, soundNames.Length - 1);
 			sound = soundemitterbase.GetWaveName(soundNames[pick].Symbol);
 		}
+#endif
 		surface.PlaySound(sound);
 		return 0;
 	}

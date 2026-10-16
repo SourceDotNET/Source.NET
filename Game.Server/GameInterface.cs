@@ -287,6 +287,8 @@ public class ServerGameDLL(IFileSystem filesystem, ICommandLine CommandLine) : I
 		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(AI_SystemHook).TypeHandle);
 		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(FlexSceneFileManager).TypeHandle);
 		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(LagCompensationGlobals).TypeHandle);
+		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(Templates).TypeHandle);
+		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(PointTemplatePrecacher).TypeHandle);
 
 #if GMOD_DLL
 		if (CommandLine.FindParm("-noaddons") == 0)
@@ -523,7 +525,7 @@ public class ServerGameDLL(IFileSystem filesystem, ICommandLine CommandLine) : I
 
 		// Now that all of the active entities have been loaded in, precache any entities who need point_template parameters
 		//  to be parsed (the above code has loaded all point_template entities)
-		// PrecachePointTemplates();
+		PointTemplatePrecacher.PrecachePointTemplates();
 
 		// load MOTD from file into stringtable
 		// LoadMessageOfTheDay();

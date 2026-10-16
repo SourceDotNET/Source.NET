@@ -1,7 +1,7 @@
 #version 460
 // DYNAMIC: "MODE"				"0..9"
 
-in vec2 vs_BaseTexCoord;
+layout(location = 0) in vec2 vs_BaseTexCoord;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];

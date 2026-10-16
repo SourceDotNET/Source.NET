@@ -135,6 +135,10 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 		return cl.IsActive();
 	}
 
+#if GMOD_DLL
+	public bool IsHostingGame() => Host.HostingGame;
+#endif
+
 	public double GetLastTimeStamp() {
 		return cl.LastServerTickTime;
 	}
@@ -523,7 +527,7 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 	public uint GetEngineBuildNumber() => Protocol.VERSION;
 
 	public ReadOnlySpan<char> GetProductVersionString() {
-		throw new NotImplementedException();
+		return GetSteamInfIDVersionInfo().PatchVersion;
 	}
 
 	public void GrabPreColorCorrectedFrame(int x, int y, int width, int height) {

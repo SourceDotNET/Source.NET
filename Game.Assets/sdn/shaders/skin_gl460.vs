@@ -39,12 +39,12 @@ const int SHADER_SPECIFIC_CONST_4 = 52;
 
 const bool g_bSkinning	= SKINNING != 0;
 
-out vec4 vs_BaseTexCoord;			// includes detail tex coord
-out vec3 vs_LightAtten;
-out vec3 vs_WorldVertToEyeVector;
-out mat3 vs_TangentSpaceTranspose;
-out vec4 vs_WorldPos_Atten3;
-out vec4 vs_ProjPos_WrinkleWeight;
+layout(location = 0) out vec4 vs_BaseTexCoord;			// includes detail tex coord
+layout(location = 1) out vec3 vs_LightAtten;
+layout(location = 2) out vec3 vs_WorldVertToEyeVector;
+layout(location = 3) out mat3 vs_TangentSpaceTranspose;
+layout(location = 6) out vec4 vs_WorldPos_Atten3;
+layout(location = 7) out vec4 vs_ProjPos_WrinkleWeight;
 
 //-----------------------------------------------------------------------------
 // Main shader entry point

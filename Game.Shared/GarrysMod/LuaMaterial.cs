@@ -1,4 +1,4 @@
-#if CLIENT_DLL || GAME_DLL
+#if CLIENT_DLL || GAME_DLL || MENU_DLL
 using Source;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.GarrysMod.Lua;
@@ -10,6 +10,8 @@ using System.Runtime.InteropServices;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
+#elif MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
 #else
 namespace Game.Server.GarrysMod;
 #endif
@@ -175,6 +177,7 @@ public static partial class LuaMaterial
 		return 0;
 	}
 
+#if !MENU_DLL
 	[LuaMethod]
 	static int IMaterial__GetMatrix(ILuaInterface lua) {
 		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
@@ -206,6 +209,7 @@ public static partial class LuaMaterial
 		var.SetMatrixValue(LuaVMatrix.Get_VMatrix(3));
 		return 0;
 	}
+#endif
 
 	[LuaMethod]
 	static int IMaterial__GetInt(ILuaInterface lua) {
@@ -405,6 +409,73 @@ public static partial class LuaMaterial
 	static int IMaterial__SetShader(ILuaInterface lua) => 0;
 
 	[LuaMethod]
+	static int IMaterial____gc(ILuaInterface lua) {
+		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
+		if (material == null)
+			return 0;
+		material.DecrementReferenceCount();
+		lua.SetUserType(1, 0);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int IMaterial____tostring(ILuaInterface lua) {
+		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
+		if (material == null)
+			lua.PushString("Material [NULL]");
+		else
+			lua.PushString($"Material [{material.GetName()}]");
+		return 1;
+	}
+
+	[LuaMethod]
+	static int IMaterial__GetColor4Part(ILuaInterface lua) {
+		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
+		if (material == null) {
+			lua.Error("Tried to use a NULL IMaterial!");
+			return 0;
+		}
+
+		IMaterialVar var = material.FindVar("$basetexture", out bool found, false);
+		if (var == null || !found)
+			return 0;
+
+		ITexture? texture = GetTextureValue(var);
+		if (texture == null)
+			return 0;
+
+		Color color = default;
+		if (get.Resources() != null)
+			color = get.Resources()!.GetTextureColour(texture, (int)lua.CheckNumber(2), (int)lua.CheckNumber(3));
+		lua.PushNumber(color.R);
+		lua.PushNumber(color.G);
+		lua.PushNumber(color.B);
+		lua.PushNumber(color.A);
+		return 4;
+	}
+
+#if MENU_DLL
+	[LuaMethod]
+	static int IMaterial__SetDynamicImage(ILuaInterface lua) {
+		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
+		if (material == null) {
+			lua.Error("Tried to use a NULL IMaterial!");
+			return 0;
+		}
+
+		ReadOnlySpan<char> url = lua.CheckString(2);
+		IMaterialVar var = material.FindVar("$basetexture", out _, true);
+		ITexture? texture = var?.GetTextureValue();
+		if (texture == null)
+			return 0;
+
+		get.Resources()!.SetImage(texture, url);
+		texture.Download();
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
 	static int IMaterial__Recompute(ILuaInterface lua) {
 		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
 		if (material == null) {
@@ -416,6 +487,7 @@ public static partial class LuaMaterial
 		return 0;
 	}
 
+#if !MENU_DLL
 	[LuaMethod]
 	static int IMaterial__GetKeyValues(ILuaInterface lua) {
 		IMaterial? material = (IMaterial?)LC_IMaterial.Get(1);
@@ -448,7 +520,7 @@ public static partial class LuaMaterial
 						if (texture == null)
 							lua.PushNil();
 						else
-							LuaTexture.LC_ITexture.Push(texture);
+							LuaTexture.Push(texture);
 						break;
 					}
 				case MaterialVarType.Int:
@@ -465,6 +537,7 @@ public static partial class LuaMaterial
 		}
 		return 1;
 	}
+#endif
 
 	static bool IsAllowedMaterialPath(ReadOnlySpan<char> name) {
 		Span<char> buffer = stackalloc char[MAX_PATH];
@@ -487,6 +560,38 @@ public static partial class LuaMaterial
 
 		return false;
 	}
+
+#if MENU_DLL
+	[LuaGlobal]
+	static int AddonMaterial(ILuaInterface lua) {
+		string path = "../" + lua.CheckString(1);
+		if (!IsAllowedMaterialPath(path))
+			path = "";
+
+		IMaterial? material = get.Resources()!.FindMaterial(path, "010101", true, true, false);
+		if (material == null)
+			return 0;
+
+		material.GetMappingHeight();
+		Push(material);
+		return 1;
+	}
+
+	[LuaGlobal]
+	static int DynamicMaterial(ILuaInterface lua) {
+		string name = lua.CheckString(1);
+		if (string.IsNullOrEmpty(name))
+			return 0;
+
+		string parameters = lua.CheckStringOpt(2, "");
+		IMaterial? material = get.Resources()!.FindMaterial(name, parameters, true, false, true);
+		if (material == null)
+			return 0;
+
+		Push(material);
+		return 1;
+	}
+#endif
 
 	[LuaGlobal]
 	static int Material(ILuaInterface lua) {
@@ -577,6 +682,7 @@ public static partial class LuaMaterial
 		g_Lua.Pop(1);
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int CreateMaterial(ILuaInterface lua) {
 		string name = lua.CheckString(1);
@@ -624,5 +730,6 @@ public static partial class LuaMaterial
 		visited.UnReference();
 		return 1;
 	}
+#endif
 }
 #endif

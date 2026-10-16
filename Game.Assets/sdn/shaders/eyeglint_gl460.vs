@@ -5,9 +5,9 @@ layout(location = 10) in vec2 v_TexCoord0;
 layout(location = 11) in vec2 v_TexCoord1;
 layout(location = 12) in vec3 v_TexCoord2;
 
-out vec2 vs_TexCoord;
-out vec2 vs_GlintCenter;
-out vec3 vs_GlintColor;
+layout(location = 0) out vec2 vs_TexCoord;
+layout(location = 1) out vec2 vs_GlintCenter;
+layout(location = 2) out vec3 vs_GlintColor;
 
 #include "common_clipplanes_gl460.vs"
 

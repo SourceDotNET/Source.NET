@@ -7,6 +7,9 @@
 		<Configurations>Debug;Release;Debug (Dedicated);Release (Dedicated)</Configurations>
 		<ApplicationIcon>SourceDotNET.ico</ApplicationIcon>
 	</PropertyGroup>
+	<PropertyGroup>
+		<SNClientBuild Condition="!$(Configuration.Contains('(Dedicated)'))">true</SNClientBuild>
+	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 	  <DefineConstants>$(DefineConstants);DBGFLAG_ASSERT</DefineConstants>
 	</PropertyGroup>
@@ -40,7 +43,19 @@
 		<ProjectReference Include="..\Source.StdShader.Gl46\Source.StdShader.Gl46.csproj" />
 		<ProjectReference Include="..\Source.StudioRender\Source.StudioRender.csproj" />
 		<ProjectReference Include="..\Source.VTF\Source.VTF.csproj" />
+		<ProjectReference Include="..\HTML.CEF\HTML.CEF.csproj" />
+		<ProjectReference Include="..\HTML.Stub\HTML.Stub.csproj" />
 	</ItemGroup>
+
+	<ItemGroup Condition="'$(SNClientBuild)'=='true'">
+		<PackageReference Include="cef.runtime.win-x64" Version="154.0.34" Condition="'$(IsWindows)'=='true'" />
+		<PackageReference Include="cef.runtime.linux-x64" Version="154.0.34" Condition="'$(IsLinux)'=='true'" />
+		<ProjectReference Include="..\HTML.CEF.Process\HTML.CEF.Process.csproj" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<Target Name="SNCopyCefLinux" AfterTargets="Build" Condition="'$(SNClientBuild)'=='true' And '$(IsLinux)'=='true' And '$(RuntimeIdentifier)'==''">
+		<Copy SourceFiles="@(CefRedistLinuxX64)" DestinationFiles="@(CefRedistLinuxX64->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+	</Target>
 
 	<!-- Copy LuaJIT (Game.Lua imports "lua51", which .NET resolves to liblua51.so on Linux) -->
 	<ItemGroup>

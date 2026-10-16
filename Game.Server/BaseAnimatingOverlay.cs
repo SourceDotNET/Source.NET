@@ -55,7 +55,7 @@ public class BaseAnimatingOverlay : BaseAnimating
 		BoneSetup boneSetup = new(studioHdr, boneMask, PoseParameter);
 		boneSetup.InitPose(pos, q);
 
-		boneSetup.AccumulatePose(pos, q, GetSequence(), GetCycle(), 1.0f, gpGlobals.CurTime, null);
+		boneSetup.AccumulatePose(pos, q, GetSequence(), GetCycle(), 1.0f, gpGlobals.CurTime, Ik);
 
 		Span<int> layer = stackalloc int[MAX_OVERLAYS];
 		int i;
@@ -71,11 +71,11 @@ public class BaseAnimatingOverlay : BaseAnimating
 		for (i = 0; i < AnimOverlay.Count; i++) {
 			if (layer[i] >= 0 && layer[i] < AnimOverlay.Count) {
 				AnimationLayerRef pLayer = AnimOverlay[layer[i]];
-				boneSetup.AccumulatePose(pos, q, pLayer.Sequence, pLayer.Cycle, pLayer.Weight, gpGlobals.CurTime, null);
+				boneSetup.AccumulatePose(pos, q, pLayer.Sequence, pLayer.Cycle, pLayer.Weight, gpGlobals.CurTime, Ik);
 			}
 		}
 
-		boneSetup.CalcAutoplaySequences(pos, q, gpGlobals.CurTime, null);
+		boneSetup.CalcAutoplaySequences(pos, q, gpGlobals.CurTime, CreateAutoplayIK(studioHdr, gpGlobals.CurTime, boneMask));
 	}
 
 	public void VerifyOrder() {

@@ -37,8 +37,9 @@ internal sealed unsafe class BoxPhysConvex : PhysConvex
 		ReadOnlySpan<Box3D.Plane> planes = Hull.Planes;
 
 		float inflate = SourceToBox.Distance(0.25f);
+		float tolerance = 0.01f * inflate;
 
-		Vector3[] verts = new Vector3[vertexCount];
+		List<Vector3> verts = new(vertexCount);
 		Span<int> faces = stackalloc int[32];
 		for (int v = 0; v < vertexCount; v++) {
 			Vector3 p = BoxToSource.Unitless(points[v]);
@@ -84,17 +85,28 @@ internal sealed unsafe class BoxPhysConvex : PhysConvex
 				float d2 = planes[faces[i2]].offset + inflate;
 				x = (d0 * Vector3.Cross(n1, n2) + d1 * Vector3.Cross(n2, n0) + d2 * Vector3.Cross(n0, n1)) * (1.0f / det);
 			}
-			if (i2 < 0 || (x - p).Length() > 20.0f * inflate) {
-				Vector3 sum = n0;
-				for (int i = 1; i < faceCount; i++)
-					sum += BoxToSource.Unitless(planes[faces[i]].normal);
-				float len = sum.Length();
-				x = p + inflate * (len > 1e-6f ? sum * (1.0f / len) : n0);
+			bool valid = i2 >= 0 && (x - p).Length() <= 2.0f * inflate;
+			for (int j = 0; valid && j < planes.Length; j++) {
+				if (Vector3.Dot(BoxToSource.Unitless(planes[j].normal), x) > planes[j].offset + inflate + tolerance)
+					valid = false;
 			}
-			verts[v] = SourceToBox.Unitless(x);
+
+			if (valid) {
+				verts.Add(SourceToBox.Unitless(x));
+				continue;
+			}
+
+			for (int i = 0; i < faceCount; i++) {
+				Vector3 normal = BoxToSource.Unitless(planes[faces[i]].normal);
+				bool duplicate = false;
+				for (int k = 0; k < i && !duplicate; k++)
+					duplicate = Vector3.Dot(normal, BoxToSource.Unitless(planes[faces[k]].normal)) > 0.999f;
+				if (!duplicate)
+					verts.Add(SourceToBox.Unitless(p + inflate * normal));
+			}
 		}
 
-		SimHull = BoxHullCooking.CreateHullSafe(verts, BoxHullCooking.MaxHullVertices);
+		SimHull = BoxHullCooking.CreateHullSafe(CollectionsMarshal.AsSpan(verts), BoxHullCooking.MaxHullVertices);
 		return !SimHull.IsNull ? SimHull : Hull;
 	}
 
@@ -112,6 +124,7 @@ internal sealed unsafe class BoxPhysCollide : PhysCollide
 {
 	public readonly List<BoxPhysConvex> Convexes = [];
 	public MeshData Mesh;
+	public int MeshMaterialIndex = -1;
 
 	public Vector3 MassCenter;
 	public Vector3 UnitInertia;
@@ -1112,9 +1125,39 @@ public unsafe class PhysicsCollide : IPhysicsCollision
 
 	public void ThreadContextDestroy(IPhysicsCollision threadContext) { }
 
-	public PhysCollide CreateVirtualMesh(in VirtualMeshParams meshParams) => throw new NotImplementedException();
+	public PhysCollide? CreateVirtualMesh(in VirtualMeshParams meshParams) {
+		if (meshParams.MeshEventHandler == null)
+			return null;
 
-	public bool SupportsVirtualMesh() => false;
+		VirtualMeshList list = default;
+		meshParams.MeshEventHandler.GetVirtualMesh(meshParams.UserData!, ref list);
+		if (list.TriangleCount <= 0 || list.VertexCount <= 0)
+			return null;
+
+		Vector3[] verts = new Vector3[list.VertexCount];
+		for (int i = 0; i < list.VertexCount; i++)
+			verts[i] = SourceToBox.Distance(list.Verts![i]);
+
+		int[] indices = new int[list.TriangleCount * 3];
+		for (int i = 0; i < list.TriangleCount; i++) {
+			indices[i * 3 + 0] = list.Indices[i * 3 + 0];
+			indices[i * 3 + 1] = list.Indices[i * 3 + 2];
+			indices[i * 3 + 2] = list.Indices[i * 3 + 1];
+		}
+
+		MeshDef def = default;
+		def.vertices = verts;
+		def.indices = indices;
+		def.useMedianSplit = true;
+		def.identifyEdges = true;
+		MeshData mesh = MeshData.Create(def, default);
+		if (mesh.IsNull)
+			return null;
+
+		return new BoxPhysCollide { Mesh = mesh, MeshMaterialIndex = list.SurfacePropsIndex };
+	}
+
+	public bool SupportsVirtualMesh() => true;
 
 	public bool GetBBoxCacheSize(out uint cachedSize, out nint cachedCount) {
 		cachedSize = 0;

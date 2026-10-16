@@ -993,16 +993,15 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	MeshGl46? RenderMesh;
 	IMaterialInternal? Material;
 	uint CombobulateShadersIfChanged() {
-		uint program;
 		if (pipelineChanged) {
-			program = ShaderCombobulator();
+			uint program = ShaderCombobulator();
 			if (lastShader != program) {
 				lastShader = program;
-				glUseProgram(program);
+				glBindProgramPipeline(program);
 			}
+			pipelineChanged = program == 0;
 		}
 
-		pipelineChanged = false;
 		return lastShader;
 	}
 
@@ -1010,7 +1009,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		if (IsDeactivated())
 			return;
 
-		CombobulateShadersIfChanged();
+		if (CombobulateShadersIfChanged() == 0)
+			return;
 
 		if (RenderMesh != null)
 			RenderMesh.RenderPass();
@@ -1018,35 +1018,10 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			MeshMgr.RenderPassWithVertexAndIndexBuffers();
 	}
 
-	Dictionary<ulong, uint> shaderCombinations = [];
-	private unsafe uint ShaderCombobulator() {
+	private uint ShaderCombobulator() {
 		// Determines the shader program used given the current shader handles.
 		// If one does not exist, it is created.
-		Span<nint> hashedData = [activeVertexShader.Handle, activePixelShader.Handle];
-		ulong hash;
-		fixed (nint* data = hashedData)
-			hash = XXH64.DigestOf(data, hashedData.Length * sizeof(nint), 0);
-
-		if (shaderCombinations.TryGetValue(hash, out var program))
-			return program; // We have already linked a program for this shader combination
-
-		// We need to create a program then
-		program = glCreateProgram();
-		glAttachShader(program, (uint)activeVertexShader.Handle);
-		glAttachShader(program, (uint)activePixelShader.Handle);
-		glLinkProgram(program);
-		// Even invalid program states should be hashed... for now.
-		// Maybe a time based thing for invalid programs, to try allowing for the shader developer to recover, etc...
-		shaderCombinations[hash] = program;
-
-		if (!ShaderSystem.IsValidProgram(program, out string? error)) {
-			Warning("WARNING: Shader combobulation linker error.\n");
-			Warning(error);
-			Warning("\n");
-			return 0;
-		}
-
-		return program;
+		return ((ShaderSystem)ShaderManager).GetProgram(activeVertexShader, activePixelShader);
 	}
 
 	private bool IsDeactivated() {
@@ -1536,6 +1511,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	nint TextureMemoryUsedLastFrame;
 
 	public void BeginFrame() {
+		ShaderManager.BeginFrame();
+
 		if (ResetRenderStateNeeded) {
 			ResetRenderState(false);
 			ResetRenderStateNeeded = false;
@@ -1819,7 +1796,32 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			name = name[1..];
 
 		// Combobulate
-		uint shader = CombobulateShadersIfChanged();
+		if (CombobulateShadersIfChanged() == 0)
+			return -1;
+
+		ShaderSystem shaders = (ShaderSystem)ShaderManager;
+		uint pixelProgram = shaders.GetShaderProgram(activePixelShader);
+		uint vertexProgram = shaders.GetShaderProgram(activeVertexShader);
+		StageUniform stage = new(pixelProgram, LocateStageUniform(pixelProgram, name), vertexProgram, LocateStageUniform(vertexProgram, name));
+		if (stage.PixelLocation == -1 && stage.VertexLocation == -1)
+			return -1;
+
+		if (!stageUniformHandles.TryGetValue(stage, out int handle)) {
+			handle = stageUniforms.Count;
+			stageUniforms.Add(stage);
+			stageUniformHandles[stage] = handle;
+		}
+
+		return handle;
+	}
+
+	readonly record struct StageUniform(uint PixelProgram, int PixelLocation, uint VertexProgram, int VertexLocation);
+	readonly List<StageUniform> stageUniforms = [];
+	readonly Dictionary<StageUniform, int> stageUniformHandles = [];
+
+	private unsafe int LocateStageUniform(uint shader, ReadOnlySpan<char> name) {
+		if (shader == 0)
+			return -1;
 
 		// Then get shader ID -> shader uniform lookup table
 		if (!locs.TryGetValue(shader, out var lookup))
@@ -1840,11 +1842,21 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public nint GetCurrentProgram() => (nint)CombobulateShadersIfChanged();
-	uint GetCurrentProgramInternal() => CombobulateShadersIfChanged();
 
 	readonly Dictionary<uint, Dictionary<int, float[]>> uniformValues = [];
-	bool UniformChanged(int uniform, ReadOnlySpan<float> values, out uint program) {
-		program = GetCurrentProgramInternal();
+	bool GetStageUniform(int uniform, out StageUniform stage) {
+		if ((uint)uniform >= (uint)stageUniforms.Count) {
+			stage = default;
+			return false;
+		}
+
+		stage = stageUniforms[uniform];
+		return true;
+	}
+
+	bool UniformChanged(uint program, int uniform, ReadOnlySpan<float> values) {
+		if (program == 0 || uniform < 0)
+			return false;
 
 		if (!uniformValues.TryGetValue(program, out var cache))
 			cache = uniformValues[program] = [];
@@ -1860,12 +1872,17 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public void SetShaderUniform(int uniform, int integer) {
-		if (!UniformChanged(uniform, [BitConverter.Int32BitsToSingle(integer)], out uint program))
+		if (!GetStageUniform(uniform, out StageUniform stage))
 			return;
+
+		ReadOnlySpan<float> values = [BitConverter.Int32BitsToSingle(integer)];
 #if GL_DEBUG
 		int i = glGetError();
 #endif
-		glProgramUniform1i(program, uniform, integer);
+		if (UniformChanged(stage.PixelProgram, stage.PixelLocation, values))
+			glProgramUniform1i(stage.PixelProgram, stage.PixelLocation, integer);
+		if (UniformChanged(stage.VertexProgram, stage.VertexLocation, values))
+			glProgramUniform1i(stage.VertexProgram, stage.VertexLocation, integer);
 #if GL_DEBUG
 		if ((i = glGetError()) != 0)
 			AssertMsg(false, $"GL error {i}");
@@ -1873,24 +1890,35 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public void SetShaderUniform(int uniform, uint integer) {
-		if (!UniformChanged(uniform, [BitConverter.UInt32BitsToSingle(integer)], out uint program))
+		if (!GetStageUniform(uniform, out StageUniform stage))
 			return;
 
-		glProgramUniform1ui(program, uniform, integer);
+		ReadOnlySpan<float> values = [BitConverter.UInt32BitsToSingle(integer)];
+		if (UniformChanged(stage.PixelProgram, stage.PixelLocation, values))
+			glProgramUniform1ui(stage.PixelProgram, stage.PixelLocation, integer);
+		if (UniformChanged(stage.VertexProgram, stage.VertexLocation, values))
+			glProgramUniform1ui(stage.VertexProgram, stage.VertexLocation, integer);
 	}
 
 	public void SetShaderUniform(int uniform, float fl) {
-		if (!UniformChanged(uniform, [fl], out uint program))
+		if (!GetStageUniform(uniform, out StageUniform stage))
 			return;
 
-		glProgramUniform1f(program, uniform, fl);
+		ReadOnlySpan<float> values = [fl];
+		if (UniformChanged(stage.PixelProgram, stage.PixelLocation, values))
+			glProgramUniform1f(stage.PixelProgram, stage.PixelLocation, fl);
+		if (UniformChanged(stage.VertexProgram, stage.VertexLocation, values))
+			glProgramUniform1f(stage.VertexProgram, stage.VertexLocation, fl);
 	}
 
 	public void SetShaderUniform(int uniform, ReadOnlySpan<float> flConsts) {
-		if (!UniformChanged(uniform, flConsts, out uint program))
+		if (!GetStageUniform(uniform, out StageUniform stage))
 			return;
 
-		glProgramUniform1fv(program, uniform, flConsts);
+		if (UniformChanged(stage.PixelProgram, stage.PixelLocation, flConsts))
+			glProgramUniform1fv(stage.PixelProgram, stage.PixelLocation, flConsts);
+		if (UniformChanged(stage.VertexProgram, stage.VertexLocation, flConsts))
+			glProgramUniform1fv(stage.VertexProgram, stage.VertexLocation, flConsts);
 	}
 
 	const int GL_TEXTURE_SRGB_DECODE_EXT = 0x8A48;
@@ -2074,7 +2102,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			}
 		}
 		else {
-			for (int i = 0; i < vtf.MipCount(); i++) {
+			int mipCount = Math.Min(vtf.MipCount(), Math.Max(tex.Levels, 1));
+			for (int i = 0; i < mipCount; i++) {
 				info.Level = i;
 				LoadTextureFromVTF(in info, vtf, vtfFrame);
 			}
@@ -2100,7 +2129,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-		int mipCount = vtf.MipCount();
+		int mipCount = Math.Min(vtf.MipCount(), Math.Max(GetTexture(info.TextureHandle).Levels, 1));
 		for (int mip = 0; mip < mipCount; ++mip) {
 			vtf.ComputeMipLevelDimensions(mip, out int w, out int h, out _);
 			for (int face = 0; face < 6; ++face) {
@@ -2189,6 +2218,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			texture.Width = width;
 			texture.Height = height;
 			texture.Depth = depth;
+			texture.Levels = mipCount;
 			texture.Count = count;
 			texture.CountIndex = i;
 
@@ -2530,7 +2560,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		var err = glGetError();
 		// System.Diagnostics.Debug.Assert(err == 0);
 		if (err != 0)
-			Warning($"glTextureSubImage2D error: {err}\n");
+			Warning($"glTextureSubImage2D error: {err} (blit tex {info.Texture} mip {mip} rect {xOffset},{yOffset} {width >> mip}x{height >> mip}, src {srcFormat} stride {srcStride})\n");
 	}
 
 	public void SetModifyTexture(uint textureID) {
@@ -2549,12 +2579,16 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, srcStride / srcFormat.SizeInBytes());
 		ConvertDataToAcceptableGLFormat(srcFormat, imageData, out srcFormat, out Span<byte> convertedData);
 		fixed (byte* data = convertedData)
-			glTextureSubImage2D(GetModifyTexture(), mip, x, y, width >> mip, height >> mip, ImageLoader.GetGLImageUploadFormat(srcFormat), ImageLoader.GetGLImageUploadType(srcFormat), data);
+			glTextureSubImage2D(GetModifyTexture(), mip, x, y, Math.Max(width >> mip, 1), Math.Max(height >> mip, 1), ImageLoader.GetGLImageUploadFormat(srcFormat), ImageLoader.GetGLImageUploadType(srcFormat), data);
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 		var err = glGetError();
 		// System.Diagnostics.Debug.Assert(err == 0);
-		if (err != 0)
-			Warning($"glTextureSubImage2D error: {err}\n");
+		if (err != 0) {
+			InternalTextureInfo tex = GetTexture(ModifyTextureHandle);
+			int levels = 0;
+			glGetTextureParameteriv(GetModifyTexture(), GL_TEXTURE_IMMUTABLE_LEVELS, &levels);
+			Warning($"glTextureSubImage2D error: {err} ('{tex.DebugName.String()}' {tex.Width}x{tex.Height} {tex.Format} levels {levels}, mip {mip} rect {x},{y} {width >> mip}x{height >> mip}, src {srcFormat} stride {srcStride})\n");
+		}
 	}
 
 	readonly ThreadLocal<byte[]> tempTransformBuffers = new ThreadLocal<byte[]>(() => new byte[1024 * 1024]);

@@ -2,6 +2,9 @@
 using Source.FileSystem;
 using Source.VPK;
 
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Source.Filesystem;
 
@@ -40,34 +43,32 @@ public class PackStoreSearchPath : BaseSearchPath
 			Key = key;
 			Vpk.Load(vpkPath);
 
-			int entryCount = 0;
-			foreach (var dir in Vpk.Directories)
-				entryCount += dir.Entries.Count;
-
 			DirectoryLookups.EnsureCapacity(Vpk.Directories.Count);
-			EntryLookups.EnsureCapacity(entryCount);
+			EntryLookups.EnsureCapacity(Vpk.EntryCount);
 
 			Span<char> buildPath = stackalloc char[260];
-			foreach (var dir in Vpk.Directories) {
-				DirectoryLookups[dir.Path.Hash()] = dir;
+			foreach (VpkDirectory dir in Vpk.Directories) {
+				int pathLength = Encoding.Latin1.GetChars(Vpk.GetPath(in dir), buildPath);
+				DirectoryLookups[((ReadOnlySpan<char>)buildPath[..pathLength]).Hash()] = dir;
+			}
 
-				foreach (var entry in dir.Entries) {
-					var path = entry.Path.Replace('\\', '/');
-					var filename = entry.Filename;
-					var ext = entry.Extension;
+			foreach (VpkEntry entry in Vpk.EnumerateEntries()) {
+				ReadOnlySpan<byte> path = Vpk.GetPath(in entry);
+				ReadOnlySpan<byte> filename = Vpk.GetFilename(in entry);
+				ReadOnlySpan<byte> ext = Vpk.GetExtension(in entry);
 
-					int strlen = 0;
-					if (path.Length > 0 && path[0] != ' ') {
-						path.CopyTo(buildPath[strlen..]); strlen += path.Length;
-						buildPath[strlen] = '/'; strlen += 1;
-					}
-					filename.CopyTo(buildPath[strlen..]); strlen += filename.Length;
-					buildPath[strlen] = '.'; strlen += 1;
-					ext.CopyTo(buildPath[strlen..]); strlen += ext.Length;
-
-					ReadOnlySpan<char> finalSpan = buildPath[..strlen];
-					EntryLookups[finalSpan.Hash()] = entry;
+				int strlen = 0;
+				if (path.Length > 0 && path[0] != ' ') {
+					strlen += Encoding.Latin1.GetChars(path, buildPath[strlen..]);
+					buildPath[..strlen].Replace('\\', '/');
+					buildPath[strlen] = '/'; strlen += 1;
 				}
+				strlen += Encoding.Latin1.GetChars(filename, buildPath[strlen..]);
+				buildPath[strlen] = '.'; strlen += 1;
+				strlen += Encoding.Latin1.GetChars(ext, buildPath[strlen..]);
+
+				ReadOnlySpan<char> finalSpan = buildPath[..strlen];
+				EntryLookups[finalSpan.Hash()] = entry;
 			}
 		}
 	}
@@ -141,8 +142,9 @@ public class PackStoreSearchPath : BaseSearchPath
 	}
 
 	public override IFileHandle? Open(ReadOnlySpan<char> path, FileOpenOptions options) {
-		if (vpkEntryLookups.TryGetValue(path.Hash(), out VpkEntry? entry))
-			return new VpkFileHandle(parent, parent.FindOrAddFileName(path), new MemoryStream(entry.Data));
+		ref VpkEntry entry = ref CollectionsMarshal.GetValueRefOrNullRef(vpkEntryLookups, path.Hash());
+		if (!Unsafe.IsNullRef(ref entry))
+			return new VpkFileHandle(parent, parent.FindOrAddFileName(path), new MemoryStream(store!.Vpk.ReadData(in entry)));
 
 		return null;
 	}
@@ -153,7 +155,8 @@ public class PackStoreSearchPath : BaseSearchPath
 	public override bool SetFileWritable(ReadOnlySpan<char> path, bool writable) => false;
 
 	public override long Size(ReadOnlySpan<char> path) {
-		if (vpkEntryLookups.TryGetValue(path.Hash(), out VpkEntry? entry))
+		ref VpkEntry entry = ref CollectionsMarshal.GetValueRefOrNullRef(vpkEntryLookups, path.Hash());
+		if (!Unsafe.IsNullRef(ref entry))
 			return entry.EntryLength;
 		return -1;
 	}
@@ -185,9 +188,14 @@ public class PackStoreSearchPath : BaseSearchPath
 		int wildcardAsteriskAtExt = wildcardExt.IndexOf('*');
 		ReadOnlySpan<char> wildcardName = Path.GetFileName(wildcard.AsSpan());
 
+		VpkArchive vpk = store!.Vpk;
+		Span<char> pathBuffer = stackalloc char[260];
+		Span<char> filenameBuffer = stackalloc char[260];
+		Span<char> extBuffer = stackalloc char[260];
+
 		foreach (var directory in vpkDirectoryLookups) {
 			VpkDirectory dir = directory.Value;
-			string path = dir.Path;
+			ReadOnlySpan<char> path = pathBuffer[..Encoding.Latin1.GetChars(vpk.GetPath(in dir), pathBuffer)];
 			path.FileInfo(null, out var baseDirectory, out var baseName, out _);
 
 			if (wildcardAsteriskAtDir == -1) {
@@ -207,35 +215,40 @@ public class PackStoreSearchPath : BaseSearchPath
 
 		foreach (var entryKVP in vpkEntryLookups) {
 			VpkEntry entry = entryKVP.Value;
+			ReadOnlySpan<char> entryPath = pathBuffer[..Encoding.Latin1.GetChars(vpk.GetPath(in entry), pathBuffer)];
 
 			if (wildcardAsteriskAtDir == -1) {
-				if (!entry.Path.PathEquals(wildcardDir))
+				if (!entryPath.PathEquals(wildcardDir))
 					continue;
 			}
 			else {
-				if (wildcardDir != "*" && !entry.Path.PathStartsWith(wildcardDir))
+				if (wildcardDir != "*" && !entryPath.PathStartsWith(wildcardDir))
 					continue;
 			}
+
+			ReadOnlySpan<char> entryFilename = filenameBuffer[..Encoding.Latin1.GetChars(vpk.GetFilename(in entry), filenameBuffer)];
 
 			if (wildcardAsteriskAtFile == -1) {
-				if (!entry.Filename.PathEquals(wildcardFile))
+				if (!entryFilename.PathEquals(wildcardFile))
 					continue;
 			}
 			else {
-				if (wildcardFile[0] != '*' && !entry.Filename.PathStartsWith(wildcardFile))
+				if (wildcardFile[0] != '*' && !entryFilename.PathStartsWith(wildcardFile))
 					continue;
 			}
+
+			ReadOnlySpan<char> entryExt = extBuffer[..Encoding.Latin1.GetChars(vpk.GetExtension(in entry), extBuffer)];
 
 			if (wildcardAsteriskAtExt == -1) {
-				if (!entry.Extension.PathEquals(wildcardExt))
+				if (!entryExt.PathEquals(wildcardExt))
 					continue;
 			}
 			else {
-				if (!wildcardExt.IsEmpty && wildcardExt[0] != '*' && !entry.Extension.PathStartsWith(wildcardExt))
+				if (!wildcardExt.IsEmpty && wildcardExt[0] != '*' && !entryExt.PathStartsWith(wildcardExt))
 					continue;
 			}
 
-			files.Add(entry.FilenameAndExtension);
+			files.Add(string.Concat(entryFilename, ".", entryExt));
 		}
 	}
 }

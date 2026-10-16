@@ -18,14 +18,14 @@
 // DYNAMIC: "FLASHLIGHTSHADOWS"			"0..1"
 // DYNAMIC: "PIXELFOGTYPE"				"0..2"
 
-in vec4 vs_BaseTexCoord2_TangentSpaceVertToEyeVectorXY;
-in vec3 vs_LightAtten;
-in vec4 vs_WorldVertToEyeVectorXYZ_TangentSpaceVertToEyeVectorZ;
-in vec3 vs_WorldNormal;		// World-space normal
-in vec4 vs_WorldTangent;
-in vec4 vs_ProjPos;
-in vec4 vs_WorldPos_ProjPosZ;
-in vec3 vs_DetailTexCoord_Atten3;
+layout(location = 0) in vec4 vs_BaseTexCoord2_TangentSpaceVertToEyeVectorXY;
+layout(location = 1) in vec3 vs_LightAtten;
+layout(location = 2) in vec4 vs_WorldVertToEyeVectorXYZ_TangentSpaceVertToEyeVectorZ;
+layout(location = 3) in vec3 vs_WorldNormal;		// World-space normal
+layout(location = 4) in vec4 vs_WorldTangent;
+layout(location = 5) in vec4 vs_ProjPos;
+layout(location = 6) in vec4 vs_WorldPos_ProjPosZ;
+layout(location = 7) in vec3 vs_DetailTexCoord_Atten3;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];

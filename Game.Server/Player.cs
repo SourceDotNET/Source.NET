@@ -1,4 +1,4 @@
-﻿global using static Game.Server.PlayerConvars;
+global using static Game.Server.PlayerConvars;
 
 using Game.Shared;
 
@@ -9,6 +9,7 @@ using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Formats.BSP;
 using Source.Common.Game.Server;
+using Source.Common.Hashing;
 using Source.Common.Mathematics;
 using Source.Common.Physics;
 using Source.Engine;
@@ -235,6 +236,13 @@ public class GamePlayerInfo : IBotController, IPlayerInfo
 }
 
 [Flags]
+public enum VPhysicsCollisionState
+{
+	Walk,
+	Crouch,
+	Noclip,
+}
+
 public enum PlayerPhysFlag
 {
 	DirOverride = 1 << 0,
@@ -393,6 +401,8 @@ public partial class BasePlayer : BaseCombatCharacter
 	int LastDmageAmount;
 	Vector3 DmgOrigin;
 	Vector3 OldOrigin;
+	float OldPlayerZ;
+	float OldPlayerViewOffsetZ;
 	bool ForceOrigin;
 	Vector3 ForcedOrigin;
 	Vector3 SmoothedVelocity;
@@ -1450,10 +1460,10 @@ public partial class BasePlayer : BaseCombatCharacter
 			for (int i = 0; i < commandsToRun; ++i) {
 				PlayerRunCommand(vecAvailCommands[i], MoveHelperServer.s_MoveHelperServer);
 
-				// if (PhysicsController != null) { // todo
-				// 	// UpdateVPhysicsPosition(vNewVPhysicsPosition, vNewVPhysicsVelocity, vphysicsArrivalTime);
-				// 	vphysicsArrivalTime += TICK_INTERVAL;
-				// }
+				if (PhysicsController != null) {
+					UpdateVPhysicsPosition(NewVPhysicsPosition, NewVPhysicsVelocity, (float)vphysicsArrivalTime);
+					vphysicsArrivalTime += TICK_INTERVAL;
+				}
 			}
 
 			IPredictionSystem.SuppressHostEvents(null);
@@ -1468,11 +1478,51 @@ public partial class BasePlayer : BaseCombatCharacter
 				pi.NumCmds = commandsToRun;
 			}
 		}
-		else if (GetTimeSinceLastUserCommand() > 3.0f /*sv_player_usercommand_timeout.GetFloat()*/)
-			RunNullCommand();
 
 		gpGlobals.CurTime = savetime;
 		gpGlobals.FrameTime = saveframetime;
+
+		if (GetTimeSinceLastUserCommand() >= UserCommandTimeout)
+			RunLastCommand();
+	}
+
+	const float UserCommandTimeout = 0.5f;
+
+	private void RunLastCommand() {
+		UserCmd cmd = LastCmd;
+		cmd.CommandNumber++;
+		cmd.TickCount++;
+		cmd.Forced = true;
+		cmd.RandomSeed = (int)(MD5Value.PseudoRandom((uint)cmd.CommandNumber) & 0x7fffffff);
+		cmd.MouseDeltaX = 0;
+		cmd.MouseDeltaY = 0;
+		cmd.Impulse = 0;
+		cmd.WeaponSelect = 0;
+		cmd.ScrollWheelSpeed = 0;
+
+		TimeUnit_t oldFrameTime = gpGlobals.FrameTime;
+		TimeUnit_t oldCurTime = gpGlobals.CurTime;
+
+		MoveHelperServer.s_MoveHelperServer.SetHost(this);
+		PlayerRunCommand(cmd, MoveHelperServer.s_MoveHelperServer);
+
+		if (PhysicsController != null)
+			UpdateVPhysicsPosition(NewVPhysicsPosition, NewVPhysicsVelocity, (float)TICK_INTERVAL);
+
+		if (VecPlayerSimInfo.Count > 0) {
+			PlayerSimInfo pi = VecPlayerSimInfo[VecPlayerSimInfo.Count - 1];
+			pi.Time = Platform.Time;
+			pi.AbsOrigin = GetAbsOrigin();
+			pi.GameSimulationTime = gpGlobals.CurTime;
+			pi.NumCmds = 1;
+		}
+
+		MoveHelperServer.s_MoveHelperServer.SetHost(null);
+
+		LastCmd = cmd;
+
+		gpGlobals.FrameTime = oldFrameTime;
+		gpGlobals.CurTime = oldCurTime;
 	}
 
 	private void RunNullCommand() {
@@ -1553,7 +1603,7 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	public bool IsPredictingWeapons() => false; // todo
 
-	TimeUnit_t GetTimeSinceLastUserCommand() => /*(!IsConnected() || IsFakeClient() || IsBot()) ? 0.0f :*/ gpGlobals.CurTime - LastUserCommandTime;
+	TimeUnit_t GetTimeSinceLastUserCommand() => (!IsConnected() || IsFakeClient() || IsBot()) ? 0.0f : gpGlobals.CurTime - LastUserCommandTime;
 
 	public virtual void SetupVisibility(BaseEntity? viewEntity, byte[] pvs, int pvssize) {
 		if (viewEntity != null)
@@ -1702,58 +1752,381 @@ public partial class BasePlayer : BaseCombatCharacter
 	}
 
 	IPhysicsPlayerController? PhysicsController;
+	IPhysicsObject? ShadowStand;
+	IPhysicsObject? ShadowCrouch;
+	VPhysicsCollisionState CollisionState;
+	Vector3 NewVPhysicsPosition;
+	Vector3 NewVPhysicsVelocity;
+
+	public IPhysicsPlayerController? GetPhysicsController() => PhysicsController;
 
 	public void InitVCollision(in Vector3 vecAbsOrigin, in Vector3 vecAbsVelocity) {
 		VPhysicsDestroyObject();
 
-		PhysCollide model = physcollision.BBoxToCollide(GetPlayerMins(), GetPlayerMaxs());
+		PhysCollide? model = PhysCreateBbox(VEC_HULL_MIN_SCALED(this), VEC_HULL_MAX_SCALED(this));
+		PhysCollide? crouchModel = PhysCreateBbox(VEC_DUCK_HULL_MIN_SCALED(this), VEC_DUCK_HULL_MAX_SCALED(this));
 
-		ObjectParams solid = g_PhysDefaultObjectParams;
-		solid.GameData = this;
-		solid.Name = "player";
-		solid.Mass = 85.0f;
-		solid.Inertia = 1e24f;
-		solid.EnableCollisions = true;
-		solid.DragCoefficient = 0;
+		SetupVPhysicsShadow(vecAbsOrigin, vecAbsVelocity, model, "player_stand", crouchModel, "player_crouch");
+	}
 
-		IPhysicsObject? shadow = physenv.CreatePolyObject(model, (int)physprops.GetSurfaceIndex("player"), vecAbsOrigin, vec3_angle, ref solid);
-		if (shadow == null)
+	public void SetupVPhysicsShadow(in Vector3 vecAbsOrigin, in Vector3 vecAbsVelocity, PhysCollide? standModel, ReadOnlySpan<char> standHullName, PhysCollide? crouchModel, ReadOnlySpan<char> crouchHullName) {
+		if (standModel == null || crouchModel == null) {
+			Warning("Failed to create player physics shadow due to invalid collision model! Are player hull values valid?\n");
 			return;
+		}
 
-		VPhysicsSetObject(shadow);
+		if (ShadowStand != null)
+			Error("CBasePlayer m_pShadowStand already exists?\n");
+		if (ShadowCrouch != null)
+			Error("CBasePlayer m_pShadowCrouch already exists?\n");
+		if (PhysicsController != null)
+			Error("CBasePlayer m_pPhysicsController already exists?\n");
+
+		Solid solid = default;
+		strcpy(solid.SurfaceProp, "player");
+		solid.Params = g_PhysDefaultObjectParams;
+		solid.Params.Mass = 85.0f;
+		solid.Params.Inertia = 1e24f;
+		solid.Params.EnableCollisions = false;
+		solid.Params.DragCoefficient = 0;
+
+		ShadowStand = PhysModelCreateCustom(this, standModel, GetLocalOrigin(), GetLocalAngles(), standHullName, false, ref solid);
+		ShadowStand!.SetCallbackFlags(CallbackFlags.GlobalCollision | CallbackFlags.ShadowCollision);
+
+		ShadowCrouch = PhysModelCreateCustom(this, crouchModel, GetLocalOrigin(), GetLocalAngles(), crouchHullName, false, ref solid);
+		ShadowCrouch!.SetCallbackFlags(CallbackFlags.GlobalCollision | CallbackFlags.ShadowCollision);
+
+		VPhysicsSetObject(ShadowStand);
+
 		PhysAddShadow(this);
-
-		PhysicsController = physenv.CreatePlayerController(shadow);
+		PhysicsController = physenv.CreatePlayerController(ShadowStand);
 		PhysicsController.SetPushMassLimit(350.0f);
 		PhysicsController.SetPushSpeedLimit(50.0f);
 
-		shadow.SetPosition(vecAbsOrigin, vec3_angle, true);
+		UpdatePhysicsShadowToPosition(vecAbsOrigin);
+
+		SetVCollisionState(vecAbsOrigin, vecAbsVelocity, (GetFlags() & EntityFlags.Ducking) != 0 ? VPhysicsCollisionState.Crouch : VPhysicsCollisionState.Walk);
 	}
 
-	bool ShadowCollisionsDisabled;
+	public override void VPhysicsDestroyObject() {
+		IPhysicsObject? physics = VPhysicsGetObject();
+		if (physics == ShadowStand || physics == ShadowCrouch)
+			VPhysicsSetObject(null);
 
-	void UpdateVPhysicsShadowState() {
-		IPhysicsObject? shadow = VPhysicsGetObject();
-		if (shadow == null)
+		PhysRemoveShadow(this);
+
+		if (PhysicsController != null) {
+			physenv.DestroyPlayerController(PhysicsController);
+			PhysicsController = null;
+		}
+
+		if (ShadowStand != null) {
+			ShadowStand.EnableCollisions(false);
+			PhysDestroyObject(ShadowStand, null!);
+			ShadowStand = null;
+		}
+
+		if (ShadowCrouch != null) {
+			ShadowCrouch.EnableCollisions(false);
+			PhysDestroyObject(ShadowCrouch, null!);
+			ShadowCrouch = null;
+		}
+
+		base.VPhysicsDestroyObject();
+	}
+
+	public void SetVCollisionState(in Vector3 vecAbsOrigin, in Vector3 vecAbsVelocity, VPhysicsCollisionState collisionState) {
+		CollisionState = collisionState;
+		switch (collisionState) {
+			case VPhysicsCollisionState.Walk:
+				ShadowStand!.SetPosition(vecAbsOrigin, vec3_angle, true);
+				ShadowStand.SetVelocity(vecAbsVelocity, new Vector3(float.NaN));
+				ShadowCrouch!.EnableCollisions(false);
+				PhysicsController!.SetObject(ShadowStand);
+				VPhysicsSwapObject(ShadowStand);
+				ShadowStand.EnableCollisions(true);
+				break;
+
+			case VPhysicsCollisionState.Crouch:
+				ShadowCrouch!.SetPosition(vecAbsOrigin, vec3_angle, true);
+				ShadowCrouch.SetVelocity(vecAbsVelocity, new Vector3(float.NaN));
+				ShadowStand!.EnableCollisions(false);
+				PhysicsController!.SetObject(ShadowCrouch);
+				VPhysicsSwapObject(ShadowCrouch);
+				ShadowCrouch.EnableCollisions(true);
+				break;
+
+			case VPhysicsCollisionState.Noclip:
+				ShadowCrouch!.EnableCollisions(false);
+				ShadowStand!.EnableCollisions(false);
+				break;
+		}
+	}
+
+	public bool IsRideablePhysics(IPhysicsObject? physics) {
+		if (physics != null) {
+			if (physics.GetMass() > (VPhysicsGetObject()!.GetMass() * 2))
+				return true;
+		}
+
+		return false;
+	}
+
+	public IPhysicsObject? GetGroundVPhysics() {
+		BaseEntity? groundEntity = GetGroundEntity();
+		if (groundEntity != null && groundEntity.GetMoveType() == Source.MoveType.VPhysics) {
+			IPhysicsObject? physGround = groundEntity.VPhysicsGetObject();
+			if (physGround != null && physGround.IsMoveable())
+				return physGround;
+		}
+
+		return null;
+	}
+
+	public void SetTouchedPhysics(bool touch) => TouchedPhysObject = touch;
+	public bool TouchedPhysics() => TouchedPhysObject;
+
+	public override void Touch(BaseEntity? other) {
+		if (other == GetGroundEntity())
 			return;
 
-		MoveType mt = (MoveType)GetMoveType();
-		bool noclip = mt == Source.MoveType.Noclip || mt == Source.MoveType.Observer;
-		if (noclip != ShadowCollisionsDisabled) {
-			ShadowCollisionsDisabled = noclip;
-			shadow.EnableCollisions(!noclip);
-		}
+		if (other!.GetMoveType() != Source.MoveType.VPhysics || other.GetSolid() != SolidType.VPhysics || (other.GetSolidFlags() & SolidFlags.Trigger) != 0)
+			return;
+
+		IPhysicsObject? phys = other.VPhysicsGetObject();
+		if (phys == null || !phys.IsMoveable())
+			return;
+
+		SetTouchedPhysics(true);
 	}
 
 	public void PostThinkVPhysics() {
 		if (PhysicsController == null)
 			return;
 
-		UpdateVPhysicsShadowState();
+		Vector3 newPosition = GetAbsOrigin();
+		float frametime = (float)gpGlobals.FrameTime;
+		if (frametime <= 0 || frametime > 0.1f)
+			frametime = 0.1f;
 
+		IPhysicsObject? physGround = GetGroundVPhysics();
+
+		if (physGround == null && TouchedPhysObject && g_MoveData.StepHeight <= 0.0f && (GetFlags() & EntityFlags.OnGround) != 0) {
+			newPosition = OldOrigin + frametime * g_MoveData.WishVel;
+			newPosition = (GetAbsOrigin() * 0.5f) + (newPosition * 0.5f);
+		}
+
+		VPhysicsCollisionState collisionState = VPhysicsCollisionState.Walk;
+		if (GetMoveType() == Source.MoveType.Noclip || GetMoveType() == Source.MoveType.Observer)
+			collisionState = VPhysicsCollisionState.Noclip;
+		else if ((GetFlags() & EntityFlags.Ducking) != 0)
+			collisionState = VPhysicsCollisionState.Crouch;
+
+		if (collisionState != CollisionState)
+			SetVCollisionState(GetAbsOrigin(), GetAbsVelocity(), collisionState);
+
+		if (!(TouchedPhysics() || physGround != null)) {
+			float maxSpeed = Maxspeed > 0.0f ? Maxspeed : sv_maxspeed.GetFloat();
+			g_MoveData.WishVel = new(maxSpeed, maxSpeed, maxSpeed);
+		}
+
+		if (g_MoveData.StepHeight > 0.1f) {
+			if (g_MoveData.StepHeight > 4.0f)
+				VPhysicsGetObject()!.SetPosition(GetAbsOrigin(), vec3_angle, true);
+			else {
+				VPhysicsGetObject()!.GetPosition(out Vector3 position, out _);
+				Vector3 end = position;
+				end.Z += g_MoveData.StepHeight;
+				Util.TraceEntity(this, position, end, Mask.PlayerSolid, this, Source.CollisionGroup.PlayerMovement, out Trace trace);
+				if (trace.DidHit())
+					g_MoveData.StepHeight = trace.EndPos.Z - position.Z;
+
+				PhysicsController.StepUp(g_MoveData.StepHeight);
+			}
+			PhysicsController.Jump();
+		}
+		g_MoveData.StepHeight = 0.0f;
+
+		NewVPhysicsPosition = newPosition;
+		NewVPhysicsVelocity = g_MoveData.WishVel;
+
+		OldOrigin = GetAbsOrigin();
+	}
+
+	public void UpdateVPhysicsPosition(in Vector3 position, in Vector3 velocity, float secondsToArrival) {
 		bool onground = (GetFlags() & EntityFlags.OnGround) != 0;
-		IPhysicsObject? ground = GetGroundEntity()?.VPhysicsGetObject();
-		PhysicsController.Update(GetAbsOrigin(), GetAbsVelocity(), (float)gpGlobals.FrameTime, onground, ground!);
+		IPhysicsObject? physGround = GetGroundVPhysics();
+
+		if (!IsRideablePhysics(physGround))
+			physGround = null;
+
+		PhysicsController?.Update(position, velocity, secondsToArrival, onground, physGround!);
+	}
+
+	public void UpdatePhysicsShadowToPosition(in Vector3 vecAbsOrigin) => UpdateVPhysicsPosition(vecAbsOrigin, vec3_origin, (float)gpGlobals.FrameTime);
+
+	public virtual bool IsFollowingPhysics() => false;
+
+	public override void VPhysicsUpdate(IPhysicsObject physics) {
+		float savedImpact = ImpactEnergyScale;
+
+		ImpactEnergyScale *= 0.125f;
+		ApplyStressDamage(physics, true);
+		ImpactEnergyScale = savedImpact;
+	}
+
+	static readonly ConVar physicsshadowupdate_render = new("physicsshadowupdate_render", "0");
+
+	const float VPHYS_MAX_DISTANCE = 2.0f;
+	const float VPHYS_MAX_VELOCITY = 10.0f;
+	const float VPHYS_MAX_DISTSQR = VPHYS_MAX_DISTANCE * VPHYS_MAX_DISTANCE;
+	const float VPHYS_MAX_VELSQR = VPHYS_MAX_VELOCITY * VPHYS_MAX_VELOCITY;
+
+	const double ShadowAngleResetTolerance = 0.05;
+
+	static void ResetShadowAngles(IPhysicsObject shadow) {
+		shadow.GetPosition(out Vector3 position, out QAngle angles);
+		float angleLength = MathF.Sqrt(angles.X * angles.X + angles.Y * angles.Y + angles.Z * angles.Z);
+		if (Math.Abs(angleLength % 360.0) > ShadowAngleResetTolerance)
+			shadow.SetPosition(position, vec3_angle, false);
+	}
+
+	public override void VPhysicsShadowUpdate(IPhysicsObject physics) {
+		bool physicsUpdated = PhysicsController!.GetShadowPosition(out Vector3 newPosition, out _) > 0;
+
+		if ((physics.GetGameFlags() & Source.Common.Physics.PhysicsFlags.Penetrating) != 0) {
+			List<BaseEntity> list = [];
+			PhysGetListOfPenetratingEntities(this, list);
+			for (int i = list.Count - 1; i >= 0; --i) {
+				if (list[i].GetMoveType() == Source.MoveType.VPhysics)
+					TouchedPhysObject = true;
+
+				AI_BaseNPC? npc = list[i].MyNPCPointer();
+				npc?.PlayerPenetratingVPhysics();
+			}
+		}
+
+		bool checkStuck = false;
+		if ((PhysicsFlags & PlayerPhysFlag.GamePhysicsRotPush) != 0) {
+			checkStuck = true;
+			PhysicsFlags &= ~PlayerPhysFlag.GamePhysicsRotPush;
+		}
+
+		if (PhysicsController.IsInContact() || (PhysicsFlags & PlayerPhysFlag.VPhysicsMotionController) != 0)
+			TouchedPhysObject = true;
+
+		if (IsFollowingPhysics())
+			TouchedPhysObject = true;
+
+		if (GetMoveType() == Source.MoveType.Noclip || pl.DeadFlag) {
+			OldOrigin = GetAbsOrigin();
+			return;
+		}
+
+		if (GMOD_PhysicsGetTotalTimeScale() == 0.0f)
+			return;
+
+		if (!physicsUpdated)
+			return;
+
+		ResetShadowAngles(ShadowStand!);
+		ResetShadowAngles(ShadowCrouch!);
+
+		IPhysicsObject? physGround = GetGroundVPhysics();
+
+		physics.GetPosition(out newPosition, out _);
+		PhysicsController.GetShadowVelocity(out Vector3 newVelocity);
+		Vector3 lastValidPosition = newPosition;
+
+		if (physicsshadowupdate_render.GetBool()) {
+			Game.Shared.DebugOverlay.Box(GetAbsOrigin(), WorldAlignMins(), WorldAlignMaxs(), 255, 0, 0, 24, 15.0f);
+			Game.Shared.DebugOverlay.Box(newPosition, WorldAlignMins(), WorldAlignMaxs(), 0, 0, 255, 24, 15.0f);
+		}
+
+		Vector3 tmp = GetAbsOrigin() - newPosition;
+		if (!TouchedPhysObject && (GetFlags() & EntityFlags.OnGround) == 0)
+			tmp.Z *= 0.5f;
+
+		float dist = tmp.LengthSquared();
+		float deltaV = (newVelocity - GetAbsVelocity()).LengthSquared();
+
+		float maxDistErrorSqr = VPHYS_MAX_DISTSQR;
+		float maxVelErrorSqr = VPHYS_MAX_VELSQR;
+		if (IsRideablePhysics(physGround)) {
+			maxDistErrorSqr *= 0.25f;
+			maxVelErrorSqr *= 0.25f;
+		}
+
+		Trace trace;
+		if (PhysicsController.WasFrozen()) {
+			PhysicsWasFrozen = true;
+
+			Util.TraceEntity(this, GetAbsOrigin(), GetAbsOrigin(), Mask.PlayerSolid, this, Source.CollisionGroup.PlayerMovement, out trace);
+			if (!trace.StartSolid)
+				return;
+
+			Util.TraceEntity(this, newPosition, GetAbsOrigin(), Mask.PlayerSolid, this, Source.CollisionGroup.PlayerMovement, out trace);
+			if (!trace.StartSolid) {
+				SetAbsOrigin(trace.EndPos);
+				UpdateVPhysicsPosition(trace.EndPos, vec3_origin, 0);
+				return;
+			}
+		}
+
+		if (dist >= maxDistErrorSqr || deltaV >= maxVelErrorSqr || (physGround != null && !TouchedPhysObject)) {
+			if (TouchedPhysObject || physGround != null) {
+				if (deltaV >= maxVelErrorSqr && !PhysicsWasFrozen) {
+					Vector3 dir = GetAbsVelocity();
+					float len = MathLib.VectorNormalize(ref dir);
+					float dot = Vector3.Dot(newVelocity, dir);
+					if (dot > len)
+						dot = len;
+					else if (dot < -len)
+						dot = -len;
+
+					newVelocity += -dot * dir;
+
+					if ((PhysicsFlags & PlayerPhysFlag.VPhysicsMotionController) != 0) {
+						float val = MathLib.Lerp(0.1f, len, dot);
+						newVelocity += (val - len) * dir;
+					}
+
+					if (!IsRideablePhysics(physGround)) {
+						if ((PhysicsFlags & PlayerPhysFlag.VPhysicsMotionController) == 0 && IsSimulatingOnAlternateTicks())
+							newVelocity *= 0.5f;
+
+						ApplyAbsVelocityImpulse(newVelocity);
+					}
+				}
+
+				Util.TraceEntity(this, newPosition, newPosition, Mask.PlayerSolid, this, Source.CollisionGroup.PlayerMovement, out trace);
+				if (!trace.AllSolid && !trace.StartSolid)
+					SetAbsOrigin(newPosition);
+			}
+			else
+				checkStuck = true;
+		}
+		else {
+			if (TouchedPhysObject) {
+				Util.TraceEntity(this, GetAbsOrigin(), GetAbsOrigin(), Mask.PlayerSolid, this, Source.CollisionGroup.PlayerMovement, out trace);
+
+				if (trace.AllSolid || trace.StartSolid) {
+					checkStuck = true;
+					lastValidPosition = OldOrigin;
+					SetAbsOrigin(newPosition);
+				}
+			}
+		}
+
+		if (checkStuck) {
+			Util.TraceEntity(this, GetAbsOrigin(), GetAbsOrigin(), Mask.PlayerSolid, this, Source.CollisionGroup.PlayerMovement, out trace);
+
+			if (trace.AllSolid || trace.StartSolid)
+				SetAbsOrigin(lastValidPosition);
+		}
+
+		OldOrigin = GetAbsOrigin();
+		PhysicsWasFrozen = false;
 	}
 
 	public float GeigerRange = 1000;     // range to nearest radiation source

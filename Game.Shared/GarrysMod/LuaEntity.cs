@@ -1686,7 +1686,25 @@ public static partial class LuaEntity
 		return 0;
 	}
 #else
-	// todo: Entity:SetIK
+	[LuaMethod]
+	static int Entity__SetIK(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null)
+			return 0;
+
+		if (IsQueuedForRemoval(ent))
+			return 0;
+
+		if (ent.IsMarkedForDeletion())
+			return 0;
+
+		if (lua.GetBool(2))
+			animating.EnableServerIK();
+		else
+			animating.DisableServerIK();
+		return 0;
+	}
 #endif
 
 	[LuaMethod]

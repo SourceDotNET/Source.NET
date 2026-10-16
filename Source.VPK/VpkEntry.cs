@@ -1,90 +1,24 @@
 ﻿namespace Source.VPK
 {
-	public class VpkEntry
+	public readonly struct VpkEntry(int pathOffset, ushort pathLength, int filenameOffset, ushort filenameLength, int extensionOffset, ushort extensionLength,
+		uint crc, ushort preloadBytes, int preloadTreeOffset, ushort archiveIndex, uint entryOffset, uint entryLength)
 	{
-		public string Extension { get; set; }
-		public string Path { get; set; }
-		public string Filename { get; set; }
-		public string FilenameAndExtension { get => field ??= Filename + "." + Extension; set; }
-		public byte[] PreloadData { get { return ReadPreloadData(); } }
-		public byte[] Data { get { return ReadData(); } }
-		public bool HasPreloadData { get; set; }
+		public readonly int PathOffset = pathOffset;
+		public readonly int FilenameOffset = filenameOffset;
+		public readonly int ExtensionOffset = extensionOffset;
+		public readonly ushort PathLength = pathLength;
+		public readonly ushort FilenameLength = filenameLength;
+		public readonly ushort ExtensionLength = extensionLength;
 
-		public readonly uint CRC;
-		public readonly ushort PreloadBytes;
-		public readonly nuint PreloadDataOffset;
-		public readonly ushort ArchiveIndex;
-		public readonly uint EntryOffset;
-		public readonly uint EntryLength;
-		public readonly VpkArchive ParentArchive;
+		public readonly uint CRC = crc;
+		public readonly ushort PreloadBytes = preloadBytes;
+		public readonly ushort ArchiveIndex = archiveIndex;
+		public readonly int PreloadTreeOffset = preloadTreeOffset;
+		public readonly uint EntryOffset = entryOffset;
+		public readonly uint EntryLength = entryLength;
 
-		public override string ToString() => $"VpkEntry '{Path}/{Filename}.{Extension}' [crc {CRC}, entry<{EntryOffset}-{EntryLength}>]";
+		public bool HasPreloadData => PreloadBytes > 0;
 
-		internal VpkEntry(VpkArchive parentArchive, uint crc, ushort preloadBytes, nuint preloadDataOffset, ushort archiveIndex, uint entryOffset,
-			uint entryLength, string extension, string path, string filename) {
-			ParentArchive = parentArchive;
-			CRC = crc;
-			PreloadBytes = preloadBytes;
-			PreloadDataOffset = preloadDataOffset;
-			ArchiveIndex = archiveIndex;
-			EntryOffset = entryOffset;
-			EntryLength = entryLength;
-			Extension = extension;
-			Path = path;
-			Filename = filename;
-			HasPreloadData = preloadBytes > 0;
-
-		}
-
-		private byte[] ReadPreloadData() {
-			if (PreloadBytes > 0) {
-				var buff = new byte[PreloadBytes];
-				using (var fs = new FileStream(ParentArchive.ArchivePath, FileMode.Open, FileAccess.Read)) {
-					buff = new byte[PreloadBytes];
-					fs.Seek((long)PreloadDataOffset, SeekOrigin.Begin);
-					fs.Read(buff, 0, buff.Length);
-				}
-				return buff;
-			}
-			return null;
-		}
-
-		private byte[]? dataCache;
-		ArchivePart? partFile;
-
-		private byte[] ReadData() {
-			if (dataCache != null)
-				return dataCache;
-
-			if (partFile == null) {
-				List<ArchivePart> parentParts = ParentArchive.Parts;
-				for (int i = 0, c = parentParts.Count; i < c; i++) {
-					ArchivePart part = parentParts[i];
-					if (part.Index == ArchiveIndex) {
-						partFile = part;
-						break;
-					}
-				}
-			}
-
-			if (partFile == null)
-				return [];
-			//throw new Exception("Part file was null!");
-
-			if (HasPreloadData) {
-				dataCache = new byte[PreloadBytes + EntryLength];
-
-				RandomAccess.Read(ParentArchive.FileHandle, dataCache.AsSpan()[..PreloadBytes], (long)PreloadDataOffset);
-				RandomAccess.Read(ParentArchive.FileHandle, dataCache.AsSpan()[PreloadBytes..][..(int)EntryLength], (long)EntryOffset);
-			}
-			else {
-				dataCache = new byte[EntryLength];
-				RandomAccess.Read(partFile.FileHandle, dataCache.AsSpan(), (long)EntryOffset);
-			}
-
-			return dataCache;
-		}
-
-		public byte[] AnyData { get { if (this.HasPreloadData) return this.ReadPreloadData(); else return this.ReadData(); } }
+		public override string ToString() => $"VpkEntry [crc {CRC}, entry<{EntryOffset}-{EntryLength}>]";
 	}
 }

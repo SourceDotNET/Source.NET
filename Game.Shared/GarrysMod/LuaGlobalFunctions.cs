@@ -1,4 +1,4 @@
-#if CLIENT_DLL || GAME_DLL
+﻿#if CLIENT_DLL || GAME_DLL || MENU_DLL
 using Source;
 using Source.Common.Commands;
 using Source.Common.Mathematics;
@@ -14,6 +14,8 @@ using System.Text;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
+#elif MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
 #else
 namespace Game.Server.GarrysMod;
 #endif
@@ -101,6 +103,7 @@ public static partial class LuaGlobalFunctions
 		v = maxInt / 255.0f;
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int LocalToWorld(ILuaInterface lua) {
 		Vector3 localPos = LuaVector.Get_Vector(1);
@@ -116,6 +119,7 @@ public static partial class LuaGlobalFunctions
 		LuaAngle.Push_Angle(worldAng);
 		return 2;
 	}
+#endif
 
 	[LuaGlobal]
 	static int WorldToLocal(ILuaInterface lua) {
@@ -198,6 +202,7 @@ public static partial class LuaGlobalFunctions
 		return g_Lua.Top() - top;
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int CompileString(ILuaInterface lua) {
 		string code = g_Lua!.CheckString(1);
@@ -246,6 +251,7 @@ public static partial class LuaGlobalFunctions
 		gGM!.DeriveGamemode(name);
 		return 0;
 	}
+#endif
 
 	[LuaGlobal]
 	static void require(string name) {
@@ -258,6 +264,7 @@ public static partial class LuaGlobalFunctions
 	static ConVar? hostnameCvar;
 #endif
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int GetHostName(ILuaInterface lua) {
 #if CLIENT_DLL
@@ -271,13 +278,16 @@ public static partial class LuaGlobalFunctions
 		return 1;
 #endif
 	}
+#endif
 
 #if CLIENT_DLL
+#if !MENU_DLL
 	[LuaGlobal]
 	static int LocalPlayer(ILuaInterface lua) {
 		LuaEntity.Push_Entity(C_BasePlayer.GetLocalPlayer());
 		return 1;
 	}
+#endif
 #endif
 
 	static string ToStringArgs(LuaObject tostring, int top, string error) {
@@ -386,7 +396,14 @@ public static partial class LuaGlobalFunctions
 	}
 
 	[LuaGlobal]
-	static int ErrorNoHalt(ILuaInterface lua) {
+	static int ErrorNoHalt(ILuaInterface lua) => ErrorNoHalt("ErrorNoHalt tostring ERROR");
+
+#if CLIENT_DLL || MENU_DLL
+	[LuaGlobal]
+	static int Error(ILuaInterface lua) => ErrorNoHalt("Error() tostring ERROR");
+
+	[LuaGlobal]
+	static int ErrorNoHaltWithStack(ILuaInterface lua) {
 		int top = g_Lua!.Top();
 		LuaObject tostring = new();
 		g_Lua.Global().GetMember("tostring", tostring);
@@ -396,7 +413,198 @@ public static partial class LuaGlobalFunctions
 			LuaObject obj = new(i, LuaType.None);
 			tostring.Push();
 			obj.Push();
-			string str = g_Lua.CallInternalGetString(1) ?? "ErrorNoHalt tostring ERROR";
+			string str = g_Lua.CallInternalGetString(1) ?? "ErrorNoHaltWithStack tostring ERROR";
+			buffer.Append(str.AsSpan(0, Math.Min(str.Length, Math.Max(0, 0x1000 - 1 - buffer.Length))));
+			obj.UnReference();
+		}
+
+		g_Lua.ErrorFromLua(buffer.ToString());
+		tostring.UnReference();
+		return 0;
+	}
+
+	[LuaGlobal]
+	static int DebugInfo(ILuaInterface lua) {
+		int pos = (int)lua.CheckNumber(1);
+		engine.Con_NPrintf(pos, lua.CheckString(2));
+		return 0;
+	}
+
+	[LuaGlobal]
+	static int IsConCommandBlocked(ILuaInterface lua) {
+		lua.PushBool(LuaConCommands.ConCommand_IsBlocked(lua.CheckString(1)) != null);
+		return 1;
+	}
+
+	[LuaGlobal]
+	static int Localize(ILuaInterface lua) {
+		string token = "#" + lua.CheckString(1);
+		if (token.Length > 127)
+			token = token[..127];
+		ReadOnlySpan<char> localized = localize.Find(token);
+		if (!localized.IsEmpty) {
+			lua.PushString(localized);
+			return 1;
+		}
+
+		lua.PushString(lua.CheckString(lua.GetType(2) == LuaType.String ? 2 : 1));
+		return 1;
+	}
+
+	[LuaGlobal]
+	[LuaGlobal("RunStringEx")]
+	static int RunString(ILuaInterface lua) {
+		string code = lua.CheckString(1);
+		string identifier = lua.CheckStringOpt(2, "RunString(Ex)");
+		bool handleError = lua.GetType(3) == LuaType.Nil || lua.GetBool(3);
+		if (lua.RunStringEx(identifier, "", code, true, handleError, handleError, true))
+			return 0;
+		return handleError ? 0 : 1;
+	}
+
+	[LuaGlobal]
+	static int SetClipboardText(ILuaInterface lua) {
+		string text = lua.CheckString(1);
+		if (System.Text.Encoding.UTF8.GetByteCount(text) + 1 >= 0x100000)
+			return 0;
+		Singleton<Source.Common.Launcher.ISystem>().SetClipboardText(text);
+		return 0;
+	}
+
+	public static void RGBToHSL(int r, int g, int b, out float h, out float s, out float l) {
+		int max = b, min = b;
+		if (r > g) {
+			if (r > b)
+				max = r;
+			if (g < b)
+				min = g;
+		}
+		else {
+			if (g > b)
+				max = g;
+			if (r < b)
+				min = r;
+		}
+
+		int sum = min + max;
+		l = (float)(sum * 0.5);
+		if (max == min) {
+			h = 0.0f;
+			s = 0.0f;
+		}
+		else {
+			float delta = max - min;
+			s = delta * 255.0f;
+			if (l >= 128.0f)
+				s /= 511 - min - max;
+			else
+				s /= sum;
+
+			if (r == max)
+				h = (g - b) / delta;
+			else {
+				float inv = 1.0f / delta;
+				if (g == max)
+					h = (b - r) * inv + 2.0f;
+				else
+					h = (r - g) * inv + 4.0f;
+			}
+
+			h *= 42.5f;
+			if (h < 0.0f)
+				h += 255.0f;
+			else if (h > 255.0f)
+				h += -255.0f;
+		}
+
+		h *= 1.4117647f;
+		s *= 0.003921569f;
+		l *= 0.003921569f;
+	}
+
+	public static Color HSLToColor(float hue, float saturation, float lightness) {
+		float hh = (float)(hue % 360.0);
+		float r, g, b;
+		if (hh < 120.0f) {
+			r = (120.0f - hh) * 0.016666668f;
+			g = hh * 0.016666668f;
+			b = 0.0f;
+		}
+		else if (hh < 240.0f) {
+			r = 0.0f;
+			g = (240.0f - hh) * 0.016666668f;
+			b = (hh - 120.0f) * 0.016666668f;
+		}
+		else {
+			r = (hh - 240.0f) * 0.016666668f;
+			g = 0.0f;
+			b = (360.0f - hh) * 0.016666668f;
+		}
+
+		float twoS = saturation + saturation;
+		float oneMinusS = 1.0f - saturation;
+		r = Math.Min(r, 1.0f) * twoS + oneMinusS;
+		g = Math.Min(g, 1.0f) * twoS + oneMinusS;
+		b = Math.Min(b, 1.0f) * twoS + oneMinusS;
+
+		if (lightness < 0.5f) {
+			float scale = lightness * 255.0f;
+			r *= scale;
+			g *= scale;
+			b *= scale;
+		}
+		else {
+			float oneMinusL = 1.0f - lightness;
+			float twoL = lightness + lightness;
+			r = (r * oneMinusL + twoL - 1.0f) * 255.0f;
+			g = (g * oneMinusL + twoL - 1.0f) * 255.0f;
+			b = (b * oneMinusL + twoL - 1.0f) * 255.0f;
+		}
+
+		return new Color((byte)(int)r, (byte)(int)g, (byte)(int)b, 255);
+	}
+
+	[LuaGlobal]
+	static int HSLToColor(ILuaInterface lua) {
+		float lightness = (float)lua.CheckNumber(3);
+		float saturation = (float)lua.CheckNumber(2);
+		float hue = (float)lua.CheckNumber(1);
+		lua.PushColor(HSLToColor(hue, saturation, lightness));
+		return 1;
+	}
+
+	[LuaGlobal]
+	static int ColorToHSL(ILuaInterface lua) {
+		LuaTable color = new(null, 0);
+		color.SetFromStack(1);
+		if (!color.isTable()) {
+			lua.TypeError("table", 1);
+			color.UnReference();
+			return 0;
+		}
+		int b = (int)color.GetMemberFloat("b", 255.0f);
+		int g = (int)color.GetMemberFloat("g", 255.0f);
+		int r = (int)color.GetMemberFloat("r", 255.0f);
+		RGBToHSL(r, g, b, out float h, out float s, out float l);
+		lua.PushNumber(h);
+		lua.PushNumber(s);
+		lua.PushNumber(l);
+		color.UnReference();
+		return 3;
+	}
+#endif
+
+	static int ErrorNoHalt(string toStringError) {
+		int top = g_Lua!.Top();
+		LuaObject tostring = new();
+		g_Lua.Global().GetMember("tostring", tostring);
+
+		StringBuilder buffer = new();
+		for (int i = 1; i <= top; i++) {
+			LuaObject obj = new(i, LuaType.None);
+			tostring.Push();
+			obj.Push();
+			string str = g_Lua.CallInternalGetString(1) ?? toStringError;
 			buffer.Append(str.AsSpan(0, Math.Min(str.Length, Math.Max(0, 0x1000 - 1 - buffer.Length))));
 			obj.UnReference();
 		}
@@ -408,7 +616,7 @@ public static partial class LuaGlobalFunctions
 		};
 		ReadStackFrom(ref error, g_Lua);
 
-		bool isAddon = LuaGameCallback.GetAddonFromError(in error, out IAddonSystem.Information addon, out _);
+		bool isAddon = LuaHelper.GetAddonFromError(in error, out IAddonSystem.Information addon, out _);
 		get.MenuSystem()?.OnLuaError(in error, isAddon ? addon : null);
 		LuaHelper.CallOnLuaErrorHook(in error, isAddon ? addon.Title : null, isAddon ? addon.WorkshopID : 0);
 
@@ -437,11 +645,13 @@ public static partial class LuaGlobalFunctions
 		return 1;
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int TypeID(ILuaInterface lua) {
 		g_Lua!.PushNumber((int)g_Lua.GetType(1));
 		return 1;
 	}
+#endif
 
 	static int IsType(LuaType type) {
 		g_Lua!.PushBool(g_Lua.IsType(1, type));
@@ -453,7 +663,7 @@ public static partial class LuaGlobalFunctions
 	[LuaGlobal] static int isstring(ILuaInterface lua) => IsType(LuaType.String);
 	[LuaGlobal] static int istable(ILuaInterface lua) => IsType(LuaType.Table);
 	[LuaGlobal] static int isfunction(ILuaInterface lua) => IsType(LuaType.Function);
-	[LuaGlobal] static int isentity(ILuaInterface lua) => IsType(LuaType.Entity);
+	[LuaGlobal("IsEntity")][LuaGlobal] static int isentity(ILuaInterface lua) => IsType(LuaType.Entity);
 	[LuaGlobal] static int isvector(ILuaInterface lua) => IsType(LuaType.Vector);
 	[LuaGlobal] static int isangle(ILuaInterface lua) => IsType(LuaType.Angle);
 	[LuaGlobal] static int ispanel(ILuaInterface lua) => IsType(LuaType.Panel);
@@ -471,14 +681,18 @@ public static partial class LuaGlobalFunctions
 		return gpGlobals.CurTime;
 	}
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static float RealTime() => (float)gpGlobals.RealTime;
+#endif
 
 	[LuaGlobal]
 	static float FrameTime() => (float)gpGlobals.FrameTime;
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static long FrameNumber() => gpGlobals.FrameCount;
+#endif
 
 	[LuaGlobal]
 	static double SysTime() {
@@ -498,7 +712,7 @@ public static partial class LuaGlobalFunctions
 #endif
 	}
 
-#if CLIENT_DLL
+#if CLIENT_DLL || MENU_DLL
 	[LuaGlobal]
 	static int DisableClipping(ILuaInterface lua) {
 		surface.GetClippingRect(out _, out _, out _, out _, out bool clippingDisabled);
@@ -567,7 +781,7 @@ public static partial class LuaGlobalFunctions
 		string result = buffer.ToString();
 		if (result.Length > 1023)
 			result = result[..1023];
-#if CLIENT_DLL
+#if CLIENT_DLL || MENU_DLL
 		engine.ClientCmd(result);
 #else
 		engine.ServerCommand(result);
@@ -578,6 +792,7 @@ public static partial class LuaGlobalFunctions
 #if CLIENT_DLL
 	static Vector3 EyePosition;
 
+#if !MENU_DLL
 	[LuaGlobal]
 	static int EyePos(ILuaInterface lua) {
 		if (IsCurrentViewAccessAllowed())
@@ -585,6 +800,7 @@ public static partial class LuaGlobalFunctions
 		LuaVector.Push_Vector(EyePosition);
 		return 1;
 	}
+#endif
 #endif
 
 	public static void ReadStackFrom(ref LuaError error, ILuaInterface lua) {

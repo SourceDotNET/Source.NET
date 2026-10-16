@@ -53,11 +53,11 @@ const bool g_bHalfLambert	= HALFLAMBERT != 0;
 #define modelOrigin			const4.xyz
 #endif
 
-out vec2 vs_BaseTexCoord;
-out vec2 vs_IrisTexCoord;
-out vec2 vs_GlintTexCoord;
-out vec3 vs_Color;
-out vec4 vs_WorldPos_ProjPosZ;
+layout(location = 0) out vec2 vs_BaseTexCoord;
+layout(location = 1) out vec2 vs_IrisTexCoord;
+layout(location = 2) out vec2 vs_GlintTexCoord;
+layout(location = 3) out vec3 vs_Color;
+layout(location = 4) out vec4 vs_WorldPos_ProjPosZ;
 
 #include "common_clipplanes_gl460.vs"
 

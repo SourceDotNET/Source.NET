@@ -1,6 +1,6 @@
 #version 460
 
-in vec2 vs_BaseTexCoord;
+layout(location = 0) in vec2 vs_BaseTexCoord;
 
 layout(std140, binding = 3) uniform source_pixel_sharedUBO {
     bool isAlphaTesting;

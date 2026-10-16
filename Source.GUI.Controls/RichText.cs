@@ -717,7 +717,7 @@ public class RichText : Panel
 	//{
 	//}
 
-	private bool GetSelectedRange(out int start, out int end) {
+	public bool GetSelectedRange(out int start, out int end) {
 		if (Select[0] == -1) {
 			start = end = -1;
 			return false;
@@ -823,6 +823,92 @@ public class RichText : Panel
 	public int GetLineHeight() => Surface.GetFontTall(Font);
 #endif
 	public int GetNumLines() => LineBreaks.Count;
+	public int GetMaximumCharCount() => MaxCharCount;
+	public IFont? GetFont() => Font;
+
+	public void SelectAllText() {
+		CursorPos = 0;
+		Select[0] = 0;
+		Select[1] = TextStream.Count;
+	}
+
+	public void InsertPossibleURLString(ReadOnlySpan<char> text, Color urlTextColor, Color normalTextColor) {
+		InsertColorChange(normalTextColor);
+
+		string str = text.ToString();
+		int pos = 0;
+		while (pos < str.Length) {
+			pos = ParseTextStringForUrls(str, pos, out string urlText, out string url, out bool clickable);
+
+			if (clickable) {
+				InsertClickableTextStart(url);
+				InsertColorChange(urlTextColor);
+			}
+
+			InsertString(urlText);
+
+			if (clickable) {
+				InsertColorChange(normalTextColor);
+				InsertClickableTextEnd();
+			}
+		}
+	}
+
+	static int ParseTextStringForUrls(string text, int startPos, out string urlText, out string url, out bool clickable) {
+		int i = startPos;
+		while (i < text.Length) {
+			bool urlFound = false;
+			ReadOnlySpan<char> rest = text.AsSpan(i);
+
+			if (rest.StartsWith("<a href=", StringComparison.OrdinalIgnoreCase)) {
+				if (i > startPos)
+					break;
+
+				clickable = true;
+				i += "<a href=".Length;
+				int urlEnd = text.IndexOf('>', i);
+				if (urlEnd < 0)
+					urlEnd = text.Length;
+				url = text[i..urlEnd];
+				i = Math.Min(urlEnd + 1, text.Length);
+
+				int textEnd = text.IndexOf("</a>", StringComparison.Ordinal);
+				if (textEnd < i)
+					textEnd = text.Length;
+				urlText = text[i..textEnd];
+				i = Math.Min(textEnd + "</a>".Length, text.Length);
+				return i;
+			}
+			else if (rest.StartsWith("www.", StringComparison.OrdinalIgnoreCase)) {
+				if (text.IndexOf('.', Math.Min(i + 5, text.Length)) >= 0)
+					urlFound = true;
+			}
+			else if (rest.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || rest.StartsWith("ftp://", StringComparison.OrdinalIgnoreCase)
+				|| rest.StartsWith("steam://", StringComparison.OrdinalIgnoreCase) || rest.StartsWith("steambeta://", StringComparison.OrdinalIgnoreCase)
+				|| rest.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase) || rest.StartsWith("\\\\", StringComparison.OrdinalIgnoreCase))
+				urlFound = true;
+
+			if (urlFound) {
+				if (i == startPos) {
+					clickable = true;
+					int end = i;
+					while (end < text.Length && !char.IsWhiteSpace(text[end]))
+						end++;
+					urlText = text[i..end];
+					url = urlText;
+					return end;
+				}
+				break;
+			}
+
+			i++;
+		}
+
+		clickable = false;
+		urlText = text[startPos..i];
+		url = urlText;
+		return i;
+	}
 	public void SetUnderlineFont(IFont? font) => FontUnderline = font;
 
 	public void SetToFullHeight() {
@@ -902,7 +988,7 @@ public class RichText : Panel
 		RequestFocus();
 	}
 
-	private void SelectNone() {
+	public void SelectNone() {
 		Select[0] = -1;
 		Repaint();
 	}

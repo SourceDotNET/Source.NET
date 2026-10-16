@@ -1,12 +1,12 @@
 #version 460
 
-in vec2 vs_CoordTap0;
-in vec2 vs_CoordTap1;
-in vec2 vs_CoordTap2;
-in vec2 vs_CoordTap3;
-in vec2 vs_CoordTap1Neg;
-in vec2 vs_CoordTap2Neg;
-in vec2 vs_CoordTap3Neg;
+layout(location = 0) in vec2 vs_CoordTap0;
+layout(location = 1) in vec2 vs_CoordTap1;
+layout(location = 2) in vec2 vs_CoordTap2;
+layout(location = 3) in vec2 vs_CoordTap3;
+layout(location = 4) in vec2 vs_CoordTap1Neg;
+layout(location = 5) in vec2 vs_CoordTap2Neg;
+layout(location = 6) in vec2 vs_CoordTap3Neg;
 
 layout(std140, binding = 6) uniform source_ps_constants {
     vec4 ps_const[256];

@@ -56,27 +56,27 @@ const bool g_bVertexColor	= VERTEXCOLOR != 0;
 const bool g_bHalfLambert	= HALFLAMBERT != 0;
 
 #if SEAMLESS_BASE
-out vec3 vs_SeamlessTexCoord;		// Base texture x/y/z (indexed by swizzle)
+layout(location = 0) out vec3 vs_SeamlessTexCoord;		// Base texture x/y/z (indexed by swizzle)
 #else
-out vec2 vs_BaseTexCoord;			// Base texture coordinate
+layout(location = 1) out vec2 vs_BaseTexCoord;			// Base texture coordinate
 #endif
 #if SEAMLESS_DETAIL
-out vec3 vs_SeamlessDetailTexCoord;	// Detail texture coordinate
+layout(location = 2) out vec3 vs_SeamlessDetailTexCoord;	// Detail texture coordinate
 #else
-out vec2 vs_DetailTexCoord;			// Detail texture coordinate
+layout(location = 3) out vec2 vs_DetailTexCoord;			// Detail texture coordinate
 #endif
-out vec4 vs_Color;					// Vertex color (from lighting or unlit)
+layout(location = 4) out vec4 vs_Color;					// Vertex color (from lighting or unlit)
 
 #if CUBEMAP
-out vec3 vs_WorldVertToEyeVector;	// Necessary for cubemaps
+layout(location = 5) out vec3 vs_WorldVertToEyeVector;	// Necessary for cubemaps
 #endif
 
-out vec3 vs_WorldSpaceNormal;		// Necessary for cubemaps and flashlight
+layout(location = 6) out vec3 vs_WorldSpaceNormal;		// Necessary for cubemaps and flashlight
 
-out vec4 vs_ProjPos;
-out vec4 vs_WorldPos_ProjPosZ;
+layout(location = 7) out vec4 vs_ProjPos;
+layout(location = 8) out vec4 vs_WorldPos_ProjPosZ;
 #if SEAMLESS_DETAIL || SEAMLESS_BASE
-out vec3 vs_SeamlessWeights;		// x y z projection weights
+layout(location = 9) out vec3 vs_SeamlessWeights;		// x y z projection weights
 #endif
 
 #include "common_clipplanes_gl460.vs"

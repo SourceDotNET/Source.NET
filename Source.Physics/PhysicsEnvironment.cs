@@ -28,7 +28,6 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 	static readonly ConVar vbox_contact_damping = new("vbox_contact_damping", "10", 0, "Contact damping ratio. Higher settles overlap with less bounce.", 0.0, 100.0);
 	static readonly ConVar vbox_contact_speed = new("vbox_contact_speed", "400", 0, "Overlap push-out speed cap in in/s.", 0.0, 1000.0);
 
-	const float CollisionEventInterval = 0.2f;
 	const float PenetrationDepth = 2.0f;
 	const int MaxWorkers = 64;
 
@@ -87,13 +86,13 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 		PerformanceParams.Defaults();
 
 		WorldDef def = WorldDef.Default;
-		def.hitEventThreshold = SourceToBox.Distance(70.0f);
+		def.hitEventThreshold = SourceToBox.Distance(2.0f);
 		def.maximumLinearSpeed = SourceToBox.Distance(3500.0f);
 		def.enableContinuous = true;
 		def.contactSpeed = SourceToBox.Distance(100.0f);
 		def.workerCount = (uint)Math.Clamp(Environment.ProcessorCount / 2, 1, MaxWorkers);
 		def.frictionMixingRule = MixingRule.Multiply;
-		def.restitutionMixingRule = MixingRule.GeometricMean;
+		def.restitutionMixingRule = MixingRule.MultiplyClamp;
 		WorldId = World.Create(def);
 
 		WorldId.SetCustomFilterHandler(this);
@@ -212,27 +211,23 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 		return bodyDef;
 	}
 
-	static void ApplyMassProperties(Body body, float mass, in Vector3 massCenter, Vector3 unitInertia, float inertiaFactor) {
+	static void ApplyMassProperties(Body body, float mass, in Vector3 massCenter, float inertiaFactor) {
 		if (inertiaFactor <= 0)
 			inertiaFactor = 1.0f;
 
 		if (inertiaFactor > 1e14f)
 			inertiaFactor = 1e14f;
 
-		const float minInertia = BoxUnits.InchesToMetres * BoxUnits.InchesToMetres;
-		Vector3 inertia = unitInertia * (mass * inertiaFactor);
-		inertia.X = inertia.X > 0.0f ? inertia.X : minInertia;
-		inertia.Y = inertia.Y > 0.0f ? inertia.Y : minInertia;
-		inertia.Z = inertia.Z > 0.0f ? inertia.Z : minInertia;
-
 		body.ApplyMassFromShapes();
 
-		MassData massData = default;
+		MassData massData = body.MassData;
+		float scale = (massData.mass > 0.0f ? mass / massData.mass : 1.0f) * inertiaFactor;
 		massData.mass = mass;
-		massData.center = SourceToBox.Distance(massCenter);
-		massData.inertia.cx.X = inertia.X;
-		massData.inertia.cy.Y = inertia.Y;
-		massData.inertia.cz.Z = inertia.Z;
+		massData.inertia.cx *= scale;
+		massData.inertia.cy *= scale;
+		massData.inertia.cz *= scale;
+		if (massCenter != Vector3.Zero)
+			massData.center = SourceToBox.Distance(massCenter);
 		body.MassData = massData;
 	}
 
@@ -242,15 +237,16 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 
 		BoxPhysCollide? collide = collisionModel as BoxPhysCollide;
 		if (collide != null) {
-			ShapeDef shapeDef = PhysicsObject.MakeShapeDef(materialIndex, false);
+			Span<SurfaceMaterial> faceMaterials = stackalloc SurfaceMaterial[Box3D.Constants.MaxHullFaces];
 			foreach (BoxPhysConvex convex in collide.Convexes) {
 				if (convex.Hull.IsNull)
 					continue;
-				Shape.CreateHull(bodyId, shapeDef, isStatic ? convex.Hull : convex.GetSimHull());
+				HullData hull = isStatic ? convex.Hull : convex.GetSimHull();
+				Shape.CreateHull(bodyId, PhysicsObject.MakeConvexShapeDef(convex, hull, materialIndex, false, faceMaterials), hull);
 			}
 
 			if (!collide.Mesh.IsNull)
-				Shape.CreateMesh(bodyId, shapeDef, collide.Mesh, Vector3.One);
+				Shape.CreateMesh(bodyId, PhysicsObject.MakeMeshShapeDef(collide, materialIndex, false), collide.Mesh, Vector3.One);
 		}
 
 		Vector3 massCenter = collide?.MassCenter ?? default;
@@ -259,7 +255,7 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 
 		if (!isStatic) {
 			float mass = Math.Clamp(objParams.Mass, PhysicsConstants.VPHYSICS_MIN_MASS, PhysicsConstants.VPHYSICS_MAX_MASS);
-			ApplyMassProperties(bodyId, mass, massCenter, collide?.UnitInertia ?? default, objParams.Inertia);
+			ApplyMassProperties(bodyId, mass, massCenter, objParams.Inertia);
 		}
 
 		PhysicsObject obj = new(bodyId, this, isStatic, materialIndex, collisionModel, objParams, hasParams);
@@ -283,9 +279,8 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 		Shape.CreateSphere(bodyId, shapeDef, sphere);
 
 		if (!isStatic) {
-			float r = sphere.radius;
 			float mass = Math.Clamp(objParams.Mass, PhysicsConstants.VPHYSICS_MIN_MASS, PhysicsConstants.VPHYSICS_MAX_MASS);
-			ApplyMassProperties(bodyId, mass, default, new Vector3(0.4f * r * r), objParams.Inertia);
+			ApplyMassProperties(bodyId, mass, default, objParams.Inertia);
 		}
 
 		PhysicsObject obj = new(bodyId, this, isStatic, materialIndex, null, objParams, true);
@@ -555,8 +550,8 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 			float delta1 = p1.LastCollisionPartnerId == p2.UniqueId ? (float)SimulationClock - p1.LastCollisionTime : 1000.0f;
 			float delta2 = p2.LastCollisionPartnerId == p1.UniqueId ? (float)SimulationClock - p2.LastCollisionTime : 1000.0f;
 			float deltaCollisionTime = MathF.Min(delta1, delta2);
-			if (deltaCollisionTime < CollisionEventInterval)
-				continue;
+			if (deltaCollisionTime > 999.0f)
+				deltaCollisionTime = 1.0f;
 
 			p1.LastCollisionTime = (float)SimulationClock;
 			p1.LastCollisionPartnerId = p2.UniqueId;
@@ -568,8 +563,8 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 			VCollisionEvent ev = default;
 			ev.Objects[0] = p1;
 			ev.Objects[1] = p2;
-			ev.SurfaceProps[0] = p1.GetMaterialIndex();
-			ev.SurfaceProps[1] = p2.GetMaterialIndex();
+			ev.SurfaceProps[0] = hit.userMaterialIdA != 0 ? (int)(hit.userMaterialIdA - 1) : p1.GetMaterialIndex();
+			ev.SurfaceProps[1] = hit.userMaterialIdB != 0 ? (int)(hit.userMaterialIdB - 1) : p2.GetMaterialIndex();
 			ev.IsCollision = isCollision;
 			ev.IsShadowCollision = isShadowCollision;
 			ev.DeltaCollisionTime = deltaCollisionTime;
@@ -644,6 +639,13 @@ internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomF
 
 				CollisionSolver.ShouldSolvePenetration(a, b, a.GetGameData()!, b.GetGameData()!, dt);
 			}
+		}
+	}
+
+	internal void DumpCollide(int environmentIndex, ReadOnlySpan<char> filter) {
+		foreach (PhysicsObject obj in Objects) {
+			if (obj.GetName().Contains(filter, StringComparison.OrdinalIgnoreCase))
+				obj.DumpCollide(environmentIndex);
 		}
 	}
 

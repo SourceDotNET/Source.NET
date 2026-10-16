@@ -25,6 +25,10 @@ public interface IVideoWriter
 	bool ManualFiling();
 
 	ReadOnlySpan<char> FileExtension();
+
+	int Width { get; }
+	int Height { get; }
+	bool RecordSound { get; set; }
 }
 
 public interface IVideoHolly
@@ -50,5 +54,5 @@ public interface IResources
 	void AudioSamples(Span<byte> unk1, uint unk2 /* probably size of unk1*/, byte unk3, byte unk4);
 	void SavePNGToBuffer(int unk1, int unk2, Span<byte> unk3, Stream unk4, int unk5, int unk6);
 	void SaveJPGToBuffer(int unk1, int unk2, Span<byte> unk3, Stream unk4, int unk5, int unk6, int unk7);
-	void SetImage(ITexture unk1, ReadOnlySpan<char> unk2);
+	void SetImage(ITexture texture, ReadOnlySpan<char> name);
 }

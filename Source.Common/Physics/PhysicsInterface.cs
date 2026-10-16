@@ -190,7 +190,7 @@ public interface IPhysicsCollision
 	IPhysicsCollision ThreadContextCreate();
 	void ThreadContextDestroy(IPhysicsCollision threadContext);
 
-	PhysCollide CreateVirtualMesh(in VirtualMeshParams meshParams);
+	PhysCollide? CreateVirtualMesh(in VirtualMeshParams meshParams);
 	bool SupportsVirtualMesh();
 
 	bool GetBBoxCacheSize(out uint cachedSize, out nint cachedCount);

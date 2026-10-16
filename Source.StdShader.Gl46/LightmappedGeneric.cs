@@ -10,7 +10,7 @@ public class LightmappedGeneric : BaseVSShader
 {
 
 	public static string HelpString = "Help for LightmappedGeneric";
-	public static int Flags = 0;
+	public static ShaderFlags Flags = ShaderFlags.None;
 	public static List<ShaderParam> ShaderParams = [];
 	public static ShaderParam[] ShaderParamOverrides = new ShaderParam[(int)ShaderMaterialVars.Count];
 
@@ -18,22 +18,22 @@ public class LightmappedGeneric : BaseVSShader
 	{
 		public readonly ShaderParamInfo Info;
 		public readonly int Index;
-		public ShaderParam(ShaderMaterialVars var, ShaderParamType type, ReadOnlySpan<char> defaultParam, ReadOnlySpan<char> help, int flags) {
+		public ShaderParam(ShaderMaterialVars var, ShaderParamType type, ReadOnlySpan<char> defaultParam, ReadOnlySpan<char> help, ShaderParamFlags flags) {
 			Info.Name = "override";
 			Info.Type = type;
 			Info.DefaultValue = new(defaultParam);
 			Info.Help = new(help);
-			Info.Flags = (ShaderParamFlags)flags;
+			Info.Flags = flags;
 			AssertMsg(ShaderParamOverrides[(int)var] == null, "Shader parameter override duplicately defined!");
 			ShaderParamOverrides[(int)var] = this;
 			Index = (int)var;
 		}
-		public ShaderParam(string name, ShaderParamType type, ReadOnlySpan<char> defaultParam, ReadOnlySpan<char> help, int flags = 0) {
+		public ShaderParam(string name, ShaderParamType type, ReadOnlySpan<char> defaultParam, ReadOnlySpan<char> help, ShaderParamFlags flags = 0) {
 			Info.Name = name;
 			Info.Type = type;
 			Info.DefaultValue = new(defaultParam);
 			Info.Help = new(help);
-			Info.Flags = (ShaderParamFlags)flags;
+			Info.Flags = flags;
 			Index = (int)ShaderMaterialVars.Count + ShaderParams.Count;
 			ShaderParams.Add(this);
 		}
@@ -41,7 +41,7 @@ public class LightmappedGeneric : BaseVSShader
 		public ReadOnlySpan<char> GetName() => Info.Name;
 		public ShaderParamType GetType() => Info.Type;
 		public ReadOnlySpan<char> GetDefaultValue() => Info.DefaultValue;
-		public int GetFlags() => (int)Info.Flags;
+		public ShaderParamFlags GetFlags() => Info.Flags;
 		public ReadOnlySpan<char> GetHelp() => Info.Help;
 	}
 
@@ -95,7 +95,7 @@ public class LightmappedGeneric : BaseVSShader
 	public static readonly ShaderParam OUTLINEEND1 = new($"${nameof(OUTLINEEND1)}", ShaderParamType.Float, "0.0", "outer end value for outline");
 
 	public override string? GetFallbackShader(IMaterialVar[] vars) => null;
-	public override int GetFlags() => Flags;
+	public override ShaderFlags GetFlags() => Flags;
 	public override int GetNumParams() => base.GetNumParams() + ShaderParams.Count;
 	public override ReadOnlySpan<char> GetParamName(int paramIndex) {
 		int baseClassParamCount = base.GetNumParams();

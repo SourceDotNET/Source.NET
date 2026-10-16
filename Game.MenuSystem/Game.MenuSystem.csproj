@@ -1,18 +1,37 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <Configurations>Debug;Release;Debug (Dedicated);Release (Dedicated)</Configurations>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<Configurations>Debug;Release;Debug (Dedicated);Release (Dedicated)</Configurations>
+	</PropertyGroup>
 
 	<ItemGroup>
 		<Compile Include="..\Usings\GlobalUsings.cs" Link="Usings/GlobalUsings.cs" />
 	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Source.Common\Source.Common.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Source.Engine\Source.Engine.csproj" />
+	</ItemGroup>
+
+	<ItemGroup Condition="!$(DefineConstants.Contains('SWDS'))">
+		<Compile Include="..\Game.Shared\GarrysMod\LuaLibrary.cs;..\Game.Shared\GarrysMod\LuaClass.cs;..\Game.Shared\GarrysMod\LuaUser.cs;..\Game.Shared\GarrysMod\LuaObject.cs;..\Game.Shared\GarrysMod\LuaHelper.cs;..\Game.Shared\GarrysMod\LuaGlobalFunctions.cs;..\Game.Shared\GarrysMod\LuaConVar.cs;..\Game.Shared\GarrysMod\LuaConCommand.cs;..\Game.Shared\GarrysMod\LuaVector.cs;..\Game.Shared\GarrysMod\LuaAngle.cs;..\Game.Shared\GarrysMod\LuaMaterial.cs;..\Game.Shared\GarrysMod\LuaTexture.cs;..\Game.Shared\GarrysMod\LuaTimer.cs;..\Game.Shared\GarrysMod\LuaUtil.cs;..\Game.Shared\GarrysMod\LuaFileLibrary.cs;..\Game.Shared\GarrysMod\LuaSql.cs;..\Game.Shared\GarrysMod\LuaSystem.cs;..\Game.Shared\GarrysMod\LuaEngine.cs;..\Game.Shared\GarrysMod\LuaEnums.cs;..\Game.Shared\GarrysMod\LuaHTTPRequest.cs;..\Game.Shared\GarrysMod\LuaMotionSensor.cs;..\Game.Shared\GarrysMod\LuaPermissions.cs;..\Game.Shared\GarrysMod\LuaSteamworks.cs;..\Game.Shared\GarrysMod\LuaVideoWriter.cs" LinkBase="Shared\GarrysMod" />
+		<Compile Include="..\Game.Client\GarrysMod\LuaVGUI.cs;..\Game.Client\GarrysMod\LuaPanel.cs;..\Game.Client\GarrysMod\LuaSurface.cs;..\Game.Client\GarrysMod\LuaGui.cs;..\Game.Client\GarrysMod\LuaInput.cs;..\Game.Client\GarrysMod\LuaRender.cs;..\Game.Client\GarrysMod\LuaLanguage.cs;..\Game.Client\GarrysMod\LuaAchievements.cs;..\Game.Client\GarrysMod\HtmlPanel.cs;..\Game.Client\GarrysMod\LuaFonts.cs" LinkBase="Client\GarrysMod" />
+	</ItemGroup>
+
+	<PropertyGroup Condition="!$(DefineConstants.Contains('SWDS'))">
+		<DefineConstants>$(DefineConstants);MENU_DLL</DefineConstants>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../Source.CodeAnalysis/Source.CodeAnalysis/Source.CodeAnalysis.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+		<ProjectReference Include="../Source.CodeAnalysis.Lua/Source.CodeAnalysis.Lua.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+	</ItemGroup>
 
 </Project>

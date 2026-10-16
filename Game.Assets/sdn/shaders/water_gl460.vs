@@ -29,17 +29,17 @@ const int SHADER_SPECIFIC_CONST_3 = 51;
 #define cBumpTexCoordTransform1		vs_const[SHADER_SPECIFIC_CONST_1 + 1]
 #define TexOffsets					vs_const[SHADER_SPECIFIC_CONST_3]
 
-out vec2 vs_BumpTexCoord;
-out vec3 vs_TangentEyeVect;
-out vec4 vs_ReflectXY_RefractYX;
-out float vs_W;
-out vec4 vs_ProjPos;
+layout(location = 0) out vec2 vs_BumpTexCoord;
+layout(location = 1) out vec3 vs_TangentEyeVect;
+layout(location = 2) out vec4 vs_ReflectXY_RefractYX;
+layout(location = 3) out float vs_W;
+layout(location = 4) out vec4 vs_ProjPos;
 #if MULTITEXTURE
-out vec4 vs_ExtraBumpTexCoord;
+layout(location = 5) out vec4 vs_ExtraBumpTexCoord;
 #endif
 #if BASETEXTURE
-centroid out vec4 vs_LightmapTexCoord1And2;
-centroid out vec4 vs_LightmapTexCoord3;
+layout(location = 6) centroid out vec4 vs_LightmapTexCoord1And2;
+layout(location = 7) centroid out vec4 vs_LightmapTexCoord3;
 #endif
 
 #include "common_clipplanes_gl460.vs"

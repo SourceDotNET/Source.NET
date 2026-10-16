@@ -344,7 +344,31 @@ public partial class VirtualModel
 	}
 
 	public void AppendIKLocks(int group, StudioHeader studioHDR) {
-		// todo: IK studiomodel
+		lock (Lock) {
+			int numCheck = IKLock.Count;
+
+			BeginTemporaryCopyList(IKLock, out var iklock);
+
+			int j, k;
+
+			for (j = 0; j < studioHDR.NumLocalIKAutoplayLocks; j++) {
+				int chain1 = studioHDR.LocalIKAutoplayLock(j).Chain;
+				for (k = 0; k < numCheck; k++) {
+					int chain2 = Group[iklock[k].Group].GetStudioHdr()!.LocalIKAutoplayLock(iklock[k].Index).Chain;
+
+					if (chain1 == chain2)
+						break;
+				}
+				if (k == numCheck) {
+					VirtualGeneric tmp;
+					tmp.Group = group;
+					tmp.Index = j;
+					k = iklock.Count; iklock.Add(tmp);
+				}
+			}
+
+			EndTemporaryCopyList(IKLock, iklock);
+		}
 	}
 
 	struct HandleAndHeader_t

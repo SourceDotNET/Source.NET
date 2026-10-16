@@ -387,6 +387,8 @@ namespace Game.Server
 				link.TouchStamp = TouchLink.TOUCHSTAMP_EVENT_DRIVEN;
 		}
 
+		public virtual Mask PhysicsSolidMaskForEntity() => Mask.Solid;
+
 		//-----------------------------------------------------------------------------
 		// Purpose:
 		// Input  : *other -
@@ -826,9 +828,9 @@ namespace Game.Shared
 			//PositionWatcher
 			new EntityDataInstantiator<WatcherList>(),
 			//PhysicsPushList
-			null!,
+			new EntityDataInstantiator<PhysicsPushList>(),
 			//VPhysicsUpdateAI
-			null!,
+			new EntityDataInstantiator<VPhysicsUpdateAI>(),
 			//VPhysicsWatcher
 			new EntityDataInstantiator<WatcherList>(),
 		];

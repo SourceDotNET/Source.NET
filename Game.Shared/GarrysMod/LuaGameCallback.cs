@@ -136,7 +136,7 @@ public class LuaGameCallback : ILuaGameCallback
 	public void MsgColour(ReadOnlySpan<char> msg, in Color color) => Dbg._ColorSpewMessage(SpewType.Message, in color, msg.ToString());
 
 	public void LuaError(in LuaError error) {
-		bool isAddon = GetAddonFromError(in error, out IAddonSystem.Information addon, out bool overriding);
+		bool isAddon = LuaHelper.GetAddonFromError(in error, out IAddonSystem.Information addon, out bool overriding);
 
 		string stack = "";
 		string indent = "";
@@ -203,82 +203,6 @@ public class LuaGameCallback : ILuaGameCallback
 			return;
 
 		throw new NotImplementedException();
-	}
-
-	static bool GetLegacyAddon(string path, ref IAddonSystem.Information local) {
-		int start = path.IndexOf("addons/", StringComparison.Ordinal);
-		if (start == -1)
-			return false;
-
-		start += 7;
-		int end = path.IndexOf('/', start);
-		if (end == -1)
-			return false;
-
-		local.Title = path[start..end];
-		return true;
-	}
-
-	internal static bool GetAddonFromError(in LuaError error, out IAddonSystem.Information info, out bool overriding) {
-		IAddonSystem.Information local = new() { Title = "", File = "", Tags = "", Failure = "" };
-		IAddonSystem.Information owner = default;
-		bool found = false;
-		bool overridingFile = false;
-
-		int colon = error.Message.IndexOf(':');
-		if (colon != -1) {
-			string file = error.Message[..colon];
-			if (Bootil.String.Test.EndsWith(file, ".lua")) {
-				if (filesystem != null && filesystem.Addons() != null && filesystem.Addons().FindFileOwner(file, out owner))
-					found = true;
-				else if (GetLegacyAddon(file, ref local)) {
-					owner = local;
-					found = true;
-				}
-			}
-		}
-
-		foreach (LuaError.StackEntry entry in error.Stack) {
-			if (entry.Source.Length == 0)
-				continue;
-
-			if (found || overridingFile)
-				break;
-
-			if (filesystem != null && filesystem.Addons() != null) {
-				found = filesystem.Addons().FindFileOwner(entry.Source, out owner);
-
-				LuaFile? cache = get.LuaShared()!.GetCache(entry.Source);
-				if (cache != null && cache.Time > 1) {
-					if (found) {
-						Warning($"Local file is overriding addon's file! {entry.Source} ({owner.Title})\n");
-						found = false;
-						overridingFile = true;
-						continue;
-					}
-				}
-				else if (found) {
-					overridingFile = false;
-					continue;
-				}
-			}
-
-			overridingFile = false;
-			found = GetLegacyAddon(entry.Source, ref local);
-			if (found)
-				owner = local;
-		}
-
-		overriding = overridingFile;
-
-		if (!found) {
-			info = default;
-			return false;
-		}
-
-		info = owner;
-		info.Title ??= "";
-		return true;
 	}
 }
 #endif

@@ -1032,7 +1032,7 @@ public class TextEntry : Panel
 		LayoutVerticalScrollBarSlider();
 	}
 
-	private void Undo() {
+	public void Undo() {
 		CursorPos = UndoCursorPos;
 
 		// I have a bad feeling about this...
@@ -1370,7 +1370,7 @@ public class TextEntry : Panel
 		LayoutVerticalScrollBarSlider();
 	}
 
-	private void SaveUndoState() {
+	public void SaveUndoState() {
 		UndoCursorPos = CursorPos;
 		UndoTextStream.Clear();
 		UndoTextStream.AddRange(TextStream);
@@ -1618,7 +1618,7 @@ public class TextEntry : Panel
 		LayoutVerticalScrollBarSlider();
 	}
 
-	private void CopySelected() {
+	public void CopySelected() {
 		if (HideText)
 			return;
 
@@ -1649,7 +1649,7 @@ public class TextEntry : Panel
 			FireActionSignal();
 	}
 
-	private void Paste() {
+	public void Paste() {
 		if (!IsEditable())
 			return;
 
@@ -1954,6 +1954,9 @@ public class TextEntry : Panel
 		return ret;
 	}
 
+	public int GetNumLines() => LineBreaks.Count;
+	public IFont? GetFont() => Font;
+
 	public void SelectNone() {
 		Select[0] = -1;
 		Repaint();
@@ -2006,6 +2009,10 @@ public class TextEntry : Panel
 	public void SetAllowNonAsciiCharacters(bool state) => AllowNonAsciiCharacters = state;
 	public void SetAllowNumericInputOnly(bool state) => AllowNumericInputOnly = state;
 	public void SelectAllOnFirstFocus(bool state) => ShouldSelectAllOnFirstFocus = state;
+	public bool IsMultiline() => Multiline;
+	public int GetCurrentStartIndex() => CurrentStartIndex;
+	public int GetCurrentStartLine() => CurrentStartLine;
+
 	public void SelectAllOnFocusAlways(bool state) {
 		ShouldSelectAllOnFirstFocus = state;
 		ShouldSelectAllOnFocusAlways = state;

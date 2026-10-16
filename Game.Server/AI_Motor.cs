@@ -269,6 +269,8 @@ public class AI_Motor : AI_Component, IAI_MovementSink
 
 	public virtual void MovePaused() { }
 
+	public static float DeltaV(float v0, float v1, float d) => (float)(0.5 * (v1 * v1 - v0 * v0) / d);
+
 	public float CalcIntervalMove() => 0.5f * (GetCurSpeed() + GetIdealSpeed()) * GetMoveInterval();
 
 	protected virtual AIMotorMoveResult MoveGroundExecute(in AILocalMoveGoal move, out AIMoveTrace traceResult) {

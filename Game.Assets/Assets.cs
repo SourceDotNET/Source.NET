@@ -36,7 +36,9 @@ static class AssetUtils
 			new("sdn/resource", "garrysmod/resource", IsDirectory: true),
 			new("sdn/scenes", "garrysmod/scenes", IsDirectory: true),
 			#if GMOD_DLL
+			new("sdn/backgrounds", "garrysmod/backgrounds", IsDirectory: true),
 			new("sdn/gamemodes", "garrysmod/gamemodes", IsDirectory: true),
+			new("sdn/html", "garrysmod/html", IsDirectory: true),
 			new("sdn/lua", "garrysmod/lua", IsDirectory: true),
 			#endif
 			new("sdn/cache/workshop", "garrysmod/cache/workshop", IsDirectory: true, Optional: false),

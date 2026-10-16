@@ -1494,6 +1494,11 @@ public class Panel : IPanel
 			ClearLuaReferences();
 		}
 
+		if (LuaObject != null && Lua != lua) {
+			lua.PushNil();
+			return;
+		}
+
 		if (LuaObject != null) {
 			if (LuaObject.GetType() == LuaType.Panel) {
 				LuaObject.Push();
@@ -1524,6 +1529,22 @@ public class Panel : IPanel
 
 		Lua.Pop(1);
 		return false;
+	}
+
+	public virtual void OnActivate() {
+		if (!PushLuaHook(LUA_POOLEDSTRING.OnActivate))
+			return;
+
+		PushLua(Lua!, LuaType.Panel);
+		Lua!.CallInternalNoReturns(1);
+	}
+
+	public virtual void OnDeactivate() {
+		if (!PushLuaHook(LUA_POOLEDSTRING.OnDeactivate))
+			return;
+
+		PushLua(Lua!, LuaType.Panel);
+		Lua!.CallInternalNoReturns(1);
 	}
 
 	bool CanCallLuaHook([NotNullWhen(true)] ILuaObject? hook) => Lua != null && LuaTable != null && !LuaTable.isNil() && !IsMarkedForDeletion() && hook != null && hook.isFunction();
@@ -3072,6 +3093,10 @@ public class Panel : IPanel
 			case "OnScreenSizeChanged": OnScreenSizeChanged(message.GetInt("oldwide"), message.GetInt("oldtall")); break;
 			case "Command": OnCommand(message.GetString("command")); break;
 			case "DialogVariables": OnDialogVariablesChanged(message); break;
+#if GMOD_DLL
+			case "activate": OnActivate(); break;
+			case "deactivate": OnDeactivate(); break;
+#endif
 #if DEBUG
 			default:
 				DevMsg(3, $"Unhandled message '{message.Name}' from {from}");
