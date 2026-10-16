@@ -2038,7 +2038,7 @@ public class StudioHdr
 	public Span<MStudioBone> Bones() => studioHdr.Bones();
 
 
-	readonly List<StudioHeader?> StudioHdrCache = [];
+	StudioHeader?[] StudioHdrCache = [];
 
 	public StudioHdrFlags Flags() => studioHdr!.Flags;
 	public AnonymousSafeFieldPointer<int> FrameUnlockCounterPtr;
@@ -2048,7 +2048,7 @@ public class StudioHdr
 		this.studioHdr = studioHdr;
 
 		this.vModel = null;
-		StudioHdrCache.Clear();
+		StudioHdrCache = [];
 
 		if (this.studioHdr == null)
 			return;
@@ -2088,10 +2088,7 @@ public class StudioHdr
 	private VirtualModel? ResetVModel(VirtualModel? virtualModel) {
 		if (virtualModel != null) {
 			vModel = virtualModel;
-			StudioHdrCache!.EnsureCountDefault(vModel.Group.Count());
-
-			for (int i = 0; i < StudioHdrCache.Count; i++)
-				StudioHdrCache[i] = null!;
+			StudioHdrCache = new StudioHeader?[vModel.Group.Count()];
 
 			return vModel;
 		}
@@ -2120,13 +2117,13 @@ public class StudioHdr
 			lock (FrameUnlockCounterMutex) {
 				if (FrameUnlockCounterPtr.Get() != FrameUnlockCounter) // i.e., this thread got the mutex
 				{
-					memcreset(StudioHdrCache.Base());
+					memcreset<StudioHeader>(StudioHdrCache);
 					FrameUnlockCounter = FrameUnlockCounterPtr.Get();
 				}
 			}
 		}
 
-		if (!StudioHdrCache.IsValidIndex(i)) {
+		if ((uint)i >= (uint)StudioHdrCache.Length) {
 			ReadOnlySpan<char> name = (this.studioHdr != null) ? this.studioHdr.GetName() : "<<null>>";
 			Debugger.Break();
 			return this.studioHdr; // return something known to probably exist, certainly things will be messed up, but hopefully not crash before the warning is noticed
