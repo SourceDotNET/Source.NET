@@ -1,7 +1,5 @@
 using Source.Common.GarrysMod;
 
-using System.Globalization;
-
 using Xilium.CefGlue;
 
 namespace HTML.CEF;
@@ -11,9 +9,6 @@ public class CefSystem : IHtmlSystem
 	public static readonly CefSystem g_CefSystem = new();
 	public static readonly IHtmlSystem g_pHtmlSystem = g_CefSystem;
 
-	const string SandboxInfoProperty = "SN_CEF_SANDBOX_INFO";
-	const string NoSandboxParm = "-nochromiumsandbox";
-
 	readonly IHtmlSystem Fallback = HTML.Stub.StubSystem.g_pHtmlSystem;
 	bool Initialized;
 
@@ -22,39 +17,15 @@ public class CefSystem : IHtmlSystem
 	readonly Lock RequestsLock = new();
 	List<ResourceHandler> Requests = [];
 
-	static bool HasParm(string parm) {
-		foreach (string arg in Environment.GetCommandLineArgs())
-			if (string.Equals(arg, parm, StringComparison.OrdinalIgnoreCase))
-				return true;
-		return false;
-	}
-
-	static nint GetSandboxInfo() {
-		if (AppContext.GetData(SandboxInfoProperty) is not string hex)
-			return 0;
-		return long.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long value) ? (nint)value : 0;
-	}
-
 	public bool Init(ReadOnlySpan<char> pBaseDir, IHtmlResourceHandler resourceHandler) {
 		ResourceHandler.g_pHtmlResourceHandler = resourceHandler;
 
 		string baseDir = new(pBaseDir);
 		string chromiumDir = AppContext.BaseDirectory;
+		string rootCachePath = Path.Combine(baseDir, "cache", "chromium");
 
-		nint sandboxInfo = 0;
-		bool noSandbox = false;
-		if (OperatingSystem.IsWindows()) {
-			sandboxInfo = GetSandboxInfo();
-			if (sandboxInfo == 0) {
-				if (!HasParm(NoSandboxParm)) {
-					resourceHandler.Message("Chromium: not started through Source.Launcher.exe, so there is no sandbox. Refusing to start Chromium unsandboxed (use -nochromiumsandbox to override for debugging).\n");
-					return false;
-				}
-
-				resourceHandler.Message("Chromium: WARNING - running WITHOUT the Chromium sandbox (-nochromiumsandbox). Web content runs with full user privileges!\n");
-				noSandbox = true;
-			}
-		}
+		if (OperatingSystem.IsWindows() && !LowIntegrityLabel.Apply(rootCachePath))
+			resourceHandler.Message($"Chromium: failed to set a low integrity label on {rootCachePath}, cookies and storage will not persist.\n");
 
 		try {
 			if (OperatingSystem.IsWindows())
@@ -69,26 +40,22 @@ public class CefSystem : IHtmlSystem
 
 		CefSettings settings = new() {
 			WindowlessRenderingEnabled = true,
-			NoSandbox = noSandbox,
+			NoSandbox = true,
 			MultiThreadedMessageLoop = OperatingSystem.IsWindows(),
 			ExternalMessagePump = false,
 			CommandLineArgsDisabled = true,
 			RemoteDebuggingPort = 0,
 			LogSeverity = CefLogSeverity.Default,
 			LogFile = Path.Combine(baseDir, "chromium.log"),
-			RootCachePath = Path.Combine(baseDir, "cache", "chromium"),
+			RootCachePath = rootCachePath,
 			UserAgent = "Mozilla/5.0 (Windows NT; Valve Source Client) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36 GMod/13",
 			ResourcesDirPath = chromiumDir,
 			LocalesDirPath = Path.Combine(chromiumDir, "locales"),
+			BrowserSubprocessPath = Path.Combine(chromiumDir, OperatingSystem.IsWindows() ? "HTML.CEF.Process.exe" : "HTML.CEF.Process"),
 		};
 
-		if (!OperatingSystem.IsWindows())
-			settings.BrowserSubprocessPath = Path.Combine(chromiumDir, "Source.Launcher.CEF");
-		else if (noSandbox)
-			settings.BrowserSubprocessPath = Path.Combine(chromiumDir, "Source.Launcher.exe");
-
 		try {
-			CefRuntime.Initialize(new CefMainArgs([]), settings, new CefApplication(), sandboxInfo);
+			CefRuntime.Initialize(new CefMainArgs([]), settings, new CefApplication(), 0);
 		}
 		catch (Exception e) {
 			resourceHandler.Message($"Chromium failed to initialize: {e.Message}\n");
@@ -99,7 +66,7 @@ public class CefSystem : IHtmlSystem
 		RegisterScheme("mapimage", new ResourceHandlerFactory());
 		RegisterScheme("html", new HtmlResourceHandlerFactory());
 
-		resourceHandler.Message($"Chromium {CefRuntime.ChromeVersion} initialized ({(noSandbox ? "UNSANDBOXED" : "sandboxed")}).\n");
+		resourceHandler.Message($"Chromium {CefRuntime.ChromeVersion} initialized.\n");
 		Initialized = true;
 		return true;
 	}

@@ -116,6 +116,9 @@
     <Project Path="HTML.CEF/HTML.CEF.csproj">
       <Platform Project="x64" />
     </Project>
+    <Project Path="HTML.CEF.Process/HTML.CEF.Process.csproj">
+      <Platform Project="x64" />
+    </Project>
     <Project Path="HTML.Stub/HTML.Stub.csproj">
       <Platform Project="x64" />
     </Project>

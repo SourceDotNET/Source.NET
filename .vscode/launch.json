@@ -6,8 +6,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build Source.Launcher",
-      "program": "${workspaceFolder}/Build/Debug/Source.Launcher.exe",
-      "linux": { "program": "${workspaceFolder}/Build/Debug/Source.Launcher" },
+      "program": "${workspaceFolder}/Build/Debug/Source.Launcher.dll",
       "cwd": "${workspaceFolder}/Build/Debug",
       // "args": ["-noworkshop", "-noaddons"],
       "stopAtEntry": false
@@ -17,22 +16,10 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build Source.Launcher",
-      "program": "${workspaceFolder}/Build/Debug/Source.Launcher.exe",
-      "linux": { "program": "${workspaceFolder}/Build/Debug/Source.Launcher" },
+      "program": "${workspaceFolder}/Build/Debug/Source.Launcher.dll",
       "cwd": "${workspaceFolder}/Build/Debug",
       "stopAtEntry": false,
       "console": "externalTerminal"
-    },
-    {
-      "name": "Source.LauncherMain (no sandbox)",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build Source.Launcher",
-      "program": "${workspaceFolder}/Build/Debug/Source.LauncherMain.dll",
-      "linux": { "program": "${workspaceFolder}/Build/Debug/Source.Launcher.dll" },
-      "cwd": "${workspaceFolder}/Build/Debug",
-      "args": ["-nochromiumsandbox"],
-      "stopAtEntry": false
     },
     {
       "name": "Source.Dedicated",
