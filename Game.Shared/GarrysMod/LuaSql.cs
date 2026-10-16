@@ -3,6 +3,8 @@ using Source.Common.GarrysMod.Lua;
 
 using SQLitePCL;
 
+using System.Runtime.InteropServices;
+
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
 #elif MENU_DLL
@@ -31,7 +33,26 @@ public static partial class LuaSql
 		return 0;
 	}
 
+	const int RTLD_NOW = 0x2;
+	const int RTLD_DEEPBIND = 0x8;
+
+	[LibraryImport("libc", EntryPoint = "dlopen", StringMarshalling = StringMarshalling.Utf8)]
+	private static partial nint dlopen(string fileName, int flags);
+
+	// libcef dlopens GTK into the global scope, which drags in the system libsqlite3. e_sqlite3 calls its own exported
+	// API through the PLT, so without deep binding those calls resolve to the system copy, e_sqlite3 never initializes
+	// and its first allocation jumps to a null function pointer. Load it ourselves first so .NET reuses this handle.
+	static void PreloadSQLite() {
+		if (!OperatingSystem.IsLinux())
+			return;
+
+		string path = Path.Combine(AppContext.BaseDirectory, "runtimes", $"linux-{RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant()}", "native", "libe_sqlite3.so");
+		if (File.Exists(path))
+			dlopen(path, RTLD_NOW | RTLD_DEEPBIND);
+	}
+
 	static void CreateDatabase() {
+		PreloadSQLite();
 		Batteries_V2.Init();
 
 #if CLIENT_DLL
