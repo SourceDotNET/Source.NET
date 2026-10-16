@@ -650,30 +650,7 @@ public static class BitVecExts
 	public static void Clear(this bool[] bools, int bit) => bools[bit] = false;
 }
 public static class ListExtensions
-{ // Thanks JamesHoux: https://stackoverflow.com/questions/4972951/listt-to-t-without-copying
-	delegate ref TField RefAccessor<TObj, TField>(TObj obj);
-	static class ArrayAccessor<T>
-	{
-		public static Func<List<T>, T[]> Getter;
-		public static RefAccessor<List<T>, int> GetCount;
-
-		static ArrayAccessor() {
-			var dm = new DynamicMethod("get", MethodAttributes.Static | MethodAttributes.Public, CallingConventions.Standard, typeof(T[]), [typeof(List<T>)], typeof(ArrayAccessor<T>), true);
-			var il = dm.GetILGenerator();
-			il.Emit(OpCodes.Ldarg_0); // Load List<T> argument
-			il.Emit(OpCodes.Ldfld, typeof(List<T>).GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance)!); // Replace argument by field
-			il.Emit(OpCodes.Ret); // Return field
-			Getter = (Func<List<T>, T[]>)dm.CreateDelegate(typeof(Func<List<T>, T[]>));
-
-			dm = new DynamicMethod("getSize", MethodAttributes.Static | MethodAttributes.Public, CallingConventions.Standard, typeof(int).MakeByRefType(), [typeof(List<T>)], typeof(ArrayAccessor<T>), true);
-			il = dm.GetILGenerator();
-			il.Emit(OpCodes.Ldarg_0);
-			il.Emit(OpCodes.Ldflda, typeof(List<T>).GetField("_size", BindingFlags.NonPublic | BindingFlags.Instance)!);
-			il.Emit(OpCodes.Ret);
-			GetCount = (RefAccessor<List<T>, int>)dm.CreateDelegate(typeof(RefAccessor<List<T>, int>));
-		}
-	}
-
+{
 	public static nint Find<T>(this List<T> list, T? value) {
 		for (int i = 0, c = list.Count; i < c; i++) {
 			T? at = list[i];
@@ -688,14 +665,6 @@ public static class ListExtensions
 				return i;
 		}
 		return -1;
-	}
-
-	public static T[] Base<T>(this List<T> list) {
-		return ArrayAccessor<T>.Getter(list);
-	}
-
-	public static ref int CountForEdit<T>(this List<T> list) {
-		return ref ArrayAccessor<T>.GetCount(list);
 	}
 }
 public static class ClassUtils
