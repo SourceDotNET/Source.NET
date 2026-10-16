@@ -22,6 +22,10 @@ public class CefSystem : IHtmlSystem
 
 		string baseDir = new(pBaseDir);
 		string chromiumDir = AppContext.BaseDirectory;
+		string rootCachePath = Path.Combine(baseDir, "cache", "chromium");
+
+		if (OperatingSystem.IsWindows() && !LowIntegrityLabel.Apply(rootCachePath))
+			resourceHandler.Message($"Chromium: failed to set a low integrity label on {rootCachePath}, cookies and storage will not persist.\n");
 
 		try {
 			if (OperatingSystem.IsWindows())
@@ -43,7 +47,7 @@ public class CefSystem : IHtmlSystem
 			RemoteDebuggingPort = 0,
 			LogSeverity = CefLogSeverity.Default,
 			LogFile = Path.Combine(baseDir, "chromium.log"),
-			RootCachePath = Path.Combine(baseDir, "cache", "chromium"),
+			RootCachePath = rootCachePath,
 			UserAgent = "Mozilla/5.0 (Windows NT; Valve Source Client) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36 GMod/13",
 			ResourcesDirPath = chromiumDir,
 			LocalesDirPath = Path.Combine(chromiumDir, "locales"),
