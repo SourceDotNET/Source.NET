@@ -2674,7 +2674,7 @@ public class StudioHdr
 		return group.MasterSeq[relseq];
 	}
 
-	public int GetAutoplayList(out Span<short> pList) {
+	public int GetAutoplayList(out ReadOnlySpan<short> pList) {
 		return studioHdr!.GetAutoplayList(out pList);
 	}
 
@@ -3181,7 +3181,7 @@ public class StudioHeader
 	}
 
 
-	public int GetAutoplayList(out Span<short> pList) {
+	public int GetAutoplayList(out ReadOnlySpan<short> pList) {
 		return modelinfo.GetAutoplayList(this, out pList);
 	}
 
@@ -3219,18 +3219,6 @@ public class StudioHeader
 				count++;
 		}
 		return count;
-	}
-
-	public void CopyAutoplaySequences(ref Memory<short> autoplaySequenceList, int outCount) {
-		int outIndex = 0;
-		for (int i = 0; i < GetNumSeq() && outIndex < outCount; i++) {
-			MStudioSeqDesc seqdesc = Seqdesc(i);
-			if ((seqdesc.Flags & StudioAnimSeqFlags.Autoplay) != 0) {
-				autoplaySequenceList.Span[outIndex] = (short)i;
-				outIndex++;
-			}
-		}
-		autoplaySequenceList = autoplaySequenceList[..outIndex];
 	}
 
 	public int CopyAutoplaySequences(Span<short> autoplaySequenceList, int outCount) {

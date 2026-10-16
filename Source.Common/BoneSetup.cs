@@ -1545,7 +1545,7 @@ public ref partial struct BoneSetup
 
 		ikContext?.AddAutoplayLocks(pos, q);
 
-		int count = studioHdr.GetAutoplayList(out Span<short> pList);
+		int count = studioHdr.GetAutoplayList(out ReadOnlySpan<short> pList);
 		for (int i = 0; i < count; i++) {
 			int sequenceIndex = pList[i];
 			MStudioSeqDesc seqdesc = studioHdr.Seqdesc(sequenceIndex);
