@@ -1,7 +1,7 @@
 namespace Source.Common.Utilities;
 
 /// <summary>
-/// List<T> style of operations on fixed/pre-allocated arrays.
+/// List{T} style of operations on fixed/pre-allocated arrays.
 /// </summary>
 public ref struct SpanList<T>(Span<T> items)
 {
