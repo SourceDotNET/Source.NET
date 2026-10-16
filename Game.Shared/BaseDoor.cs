@@ -21,7 +21,7 @@ public partial class BaseDoor : BaseToggle
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_BaseDoor);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseDoor);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseDoor);
 #endif

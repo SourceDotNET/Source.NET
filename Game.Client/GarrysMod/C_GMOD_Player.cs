@@ -41,7 +41,7 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 		RecvPropFloat(FIELD.OF(nameof(Gravity))),
 		RecvPropBool(FIELD.OF(nameof(SprintEnabled))),
 	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_GMOD_Player);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_GMOD_Player);
 
 	[NetworkName("m_iGModPlayerFlags")]
 	public int GModPlayerFlags;

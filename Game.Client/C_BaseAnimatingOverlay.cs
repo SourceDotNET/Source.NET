@@ -74,7 +74,7 @@ public partial class C_BaseAnimatingOverlay : C_BaseAnimating
 
 	public static readonly RecvTable DT_BaseAnimatingOverlay = new(DT_BaseAnimating, [
 		RecvPropDataTable("overlay_vars", DT_OverlayVars)
-	]); public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_BaseAnimatingOverlay);
+	]); public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseAnimatingOverlay);
 
 	[NetworkName("m_AnimOverlay")]
 	readonly List<AnimationLayerRef> AnimOverlay = [];

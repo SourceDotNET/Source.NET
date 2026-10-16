@@ -29,7 +29,7 @@ public class C_PlayerResource : C_BaseEntity
 		RecvPropArray3(FIELD.OF_ARRAY(nameof(Health)), RecvPropInt(FIELD.OF_ARRAYINDEX(nameof(Health), 0))),
 		RecvPropArray3(FIELD.OF_ARRAY(nameof(Armor)), RecvPropInt(FIELD.OF_ARRAYINDEX(nameof(Armor)))),
 	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_PlayerResource);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_PlayerResource);
 
 	[NetworkName("m_iPing")]
 	InlineArrayMaxPlayersPlusOne<int> Ping = new();

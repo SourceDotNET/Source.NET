@@ -68,7 +68,7 @@ public class C_Team : C_BaseEntity
 		team.Players[data.Element] = data.Value.Int;
 	}
 
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_Team);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_Team);
 
 	public readonly List<int> Players = [];
 	[NetworkName("m_szTeamname")]

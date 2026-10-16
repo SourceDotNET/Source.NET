@@ -28,6 +28,9 @@
     <Project Path="Source.CodeAnalysis.Lua/Source.CodeAnalysis.Lua.csproj">
       <Platform Project="x64" />
     </Project>
+    <Project Path="Source.CodeAnalysis.NetworkClasses/Source.CodeAnalysis.NetworkClasses.csproj">
+      <Platform Project="x64" />
+    </Project>
     <Project Path="Source.CodeAnalysis.NetworkVars/Source.CodeAnalysis.NetworkVars.csproj">
       <Platform Project="x64" />
     </Project>

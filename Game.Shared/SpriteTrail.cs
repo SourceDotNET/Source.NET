@@ -36,7 +36,7 @@ public class SpriteTrail : Sprite
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_SpriteTrail);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_SpriteTrail);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_SpriteTrail);
 #endif

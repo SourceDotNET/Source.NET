@@ -20,7 +20,7 @@ public class WeaponSnark : BaseHL1MPCombatWeapon
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_WeaponSnark);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponSnark);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponSnark);
 #endif

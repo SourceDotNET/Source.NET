@@ -28,7 +28,7 @@ public class WeaponSatchel : BaseHL1MPCombatWeapon
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_WeaponSatchel);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponSatchel);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponSatchel);
 #endif

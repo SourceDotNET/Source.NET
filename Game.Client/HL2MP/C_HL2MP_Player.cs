@@ -48,7 +48,7 @@ public partial class C_HL2MP_Player : C_BaseHLPlayer
 		RecvPropInt(FIELD.OF(nameof(SpawnInterpCounter))),
 		RecvPropBool(FIELD.OF(nameof(IsWalking)))
 	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_HL2MP_Player);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_HL2MP_Player);
 
 	public readonly HL2MPPlayerAnimState PlayerAnimState;
 	[NetworkName("m_angEyeAngles")]
@@ -136,7 +136,7 @@ public class C_HL2MPRagdoll : C_BaseAnimatingOverlay
 		RecvPropVector(FIELD_RD.OF(nameof(Force))),
 		RecvPropVector(FIELD_RD.OF(nameof(RagdollVelocity)))
 	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_HL2MPRagdoll);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_HL2MPRagdoll);
 
 	[NetworkName("m_vecRagdollOrigin")]
 	public Vector3 RagdollOrigin;

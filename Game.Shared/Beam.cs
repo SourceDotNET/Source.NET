@@ -141,7 +141,7 @@ public class
 		beam.Speed = val;
 	}
 
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_Beam);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_Beam);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_Beam);
 #endif
