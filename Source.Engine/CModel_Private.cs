@@ -1269,15 +1269,15 @@ public static partial class CM
 		// trace ray/box sweep against all brushes in this leaf
 		int numleafbrushes = leaf.NumLeafBrushes;
 		int lastleafbrush = leaf.FirstLeafBrush + numleafbrushes;
-		List<ushort> map_leafbrushes = traceInfo.BSPData!.MapLeafBrushes;
-		List<CollisionBrush> map_brushes = traceInfo.BSPData!.MapBrushes;
+		ushort[] map_leafbrushes = traceInfo.BSPData!.MapLeafBrushes;
+		CollisionBrush[] map_brushes = traceInfo.BSPData!.MapBrushes;
 		Span<TraceCounter_t> counters = traceInfo.GetBrushCounters();
 		TraceCounter_t count = traceInfo.GetCount();
 		for (int ndxLeafBrush = leaf.FirstLeafBrush; ndxLeafBrush < lastleafbrush; ndxLeafBrush++) {
 			// get the current brush
-			int ndxBrush = map_leafbrushes.AsSpan()[ndxLeafBrush];
+			int ndxBrush = map_leafbrushes[ndxLeafBrush];
 
-			ref CollisionBrush brush = ref map_brushes.AsSpan()[ndxBrush];
+			ref CollisionBrush brush = ref map_brushes[ndxBrush];
 
 			// make sure we only check this brush once per trace/stab
 			if (!traceInfo.Visit(ref brush, ndxBrush, count, counters))

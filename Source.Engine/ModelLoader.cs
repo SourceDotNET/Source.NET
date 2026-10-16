@@ -1604,8 +1604,8 @@ public class ModelLoader(IFileSystem fileSystem, Host Host,
 			pMap.Leafs[i].DispCount = pCLeaf[i].DispCount;
 			pMap.Leafs[i].DispListStart = pCLeaf[i].DispListStart;
 		}
-		pMap.DispInfoReferences = GetCollisionBSPData().MapDispList.Base();
-		pMap.NumDispInfoReferences = GetCollisionBSPData().MapDispList.Count;
+		pMap.DispInfoReferences = GetCollisionBSPData().MapDispList;
+		pMap.NumDispInfoReferences = GetCollisionBSPData().MapDispList.Length;
 	}
 
 	private void Mod_LoadMarksurfaces() {
@@ -2120,7 +2120,7 @@ public class ModelLoader(IFileSystem fileSystem, Host Host,
 	}
 	private void Mod_LoadTexdata() {
 		MapLoadHelper.Map!.NumTexData = GetCollisionBSPData().NumSurfaces;
-		MapLoadHelper.Map!.TexData = GetCollisionBSPData().MapSurfaces.Base();
+		MapLoadHelper.Map!.TexData = GetCollisionBSPData().MapSurfaces;
 	}
 
 	private void Mod_LoadTexinfo() {
@@ -2166,7 +2166,7 @@ public class ModelLoader(IFileSystem fileSystem, Host Host,
 	}
 
 	private void Mod_LoadPlanes() {
-		MapLoadHelper.Map!.Planes = GetCollisionBSPData().MapPlanes.Base();
+		MapLoadHelper.Map!.Planes = GetCollisionBSPData().MapPlanes;
 		MapLoadHelper.Map!.NumPlanes = GetCollisionBSPData().NumPlanes;
 	}
 

@@ -391,10 +391,10 @@ public static class DispMapload
 		int curVert = 0;
 		int curTri = 0;
 
-		List<CoreDispInfo> coreDisps = [];
+		CoreDispInfo[] coreDisps = new CoreDispInfo[numDisplacements];
 		int disp = 0;
 		for (disp = 0; disp < numDisplacements; disp++)
-			coreDisps.Add(new());
+			coreDisps[disp] = new();
 
 		for (disp = 0; disp < numDisplacements; ++disp) {
 			ref BSPDDispInfo mapDisp = ref tempDisps[disp];
@@ -413,7 +413,7 @@ public static class DispMapload
 				return false;
 		}
 
-		SmoothDispSurfNormals(coreDisps.Base(), numDisplacements);
+		SmoothDispSurfNormals(coreDisps, numDisplacements);
 
 		for (disp = 0; disp < numDisplacements; ++disp) {
 			DispInfo_CreateStaticBuffersAndTags(world, disp, coreDisps[disp], tempVerts);
