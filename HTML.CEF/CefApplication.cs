@@ -8,6 +8,9 @@ sealed class CefApplication : CefApp
 		if (!string.IsNullOrEmpty(processType))
 			return;
 
+		if (OperatingSystem.IsLinux())
+			commandLine.AppendSwitch("no-zygote");
+
 		commandLine.AppendSwitch("disable-gpu");
 		commandLine.AppendSwitch("disable-gpu-compositing");
 		commandLine.AppendSwitch("disable-smooth-scrolling");
