@@ -1356,7 +1356,7 @@ public class Rendering3dView : Base3dView
 
 		C_BasePlayer? pbp = C_BasePlayer.GetLocalPlayer();
 
-		if (gGM != null && gGM.Call((int)LUA_POOLEDSTRING.SetupWorldFog))
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.SetupWorldFog) && gGM.CallFinish(0))
 			return;
 
 		if (GetFogEnable(pbp)) {
