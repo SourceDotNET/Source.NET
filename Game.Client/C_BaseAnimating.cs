@@ -965,7 +965,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	public virtual void DoMuzzleFlash() => MuzzleFlashParity = unchecked((byte)((MuzzleFlashParity + 1) & ((1 << (int)EntityEffects.MuzzleflashBits) - 1)));
 
 
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_BaseAnimating);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseAnimating);
 	protected override StudioHdr? OnNewModel() {
 		InvalidateMdlCache();
 		int i;

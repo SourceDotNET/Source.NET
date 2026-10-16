@@ -1444,21 +1444,6 @@ public static class GlobalReflectionUtils
 		}
 		return arr;
 	}
-	/// <summary>
-	/// Try to get the type that called this method, taking account of skip frames if necessary
-	/// </summary>
-	/// <param name="skipFrames"></param>
-	/// <returns></returns>
-	public static Type? WhoCalledMe(int skipFrames = 1) {
-		var stack = new StackTrace(skipFrames: skipFrames, fNeedFileInfo: false);
-		for (int i = 0; i < stack.FrameCount; i++) {
-			var method = stack.GetFrame(i)!.GetMethod()!;
-			var declaringType = method.DeclaringType;
-			if (declaringType != null && declaringType != typeof(GlobalReflectionUtils))
-				return declaringType;
-		}
-		return null;
-	}
 }
 public static class ReflectionUtils
 {

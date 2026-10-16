@@ -32,7 +32,7 @@ public class WeaponShotgun : BaseHL2MPCombatWeapon
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_WeaponShotgun);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponShotgun);
 	public static readonly new DataMap PredMap = new([], typeof(WeaponShotgun), BaseHL2MPCombatWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponShotgun);

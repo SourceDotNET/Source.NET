@@ -29,7 +29,7 @@ public class
 #endif
 		DT_PredictedViewModel = new(DT_BaseViewModel, []);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_PredictedViewModel);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_PredictedViewModel);
 #else
 #pragma warning disable CS0109 // Member does not hide an inherited member; new keyword is not required
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_PredictedViewModel);

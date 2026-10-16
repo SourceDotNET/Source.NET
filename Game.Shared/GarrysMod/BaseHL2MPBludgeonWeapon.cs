@@ -24,7 +24,7 @@ public class BaseHL2MPBludgeonWeapon : BaseHL2MPCombatWeapon
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_BaseHL2MPBludgeonWeapon);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseHL2MPBludgeonWeapon);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseHL2MPBludgeonWeapon);
 #endif

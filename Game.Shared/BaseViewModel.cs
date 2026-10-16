@@ -111,7 +111,7 @@ public partial class
 			model.SetCycle(0);
 		}
 	}
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_BaseViewModel);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseViewModel);
 #else
 #pragma warning disable CS0109 // Member does not hide an inherited member; new keyword is not required
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseViewModel);

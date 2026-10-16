@@ -34,7 +34,7 @@ public class WeaponRPG : BaseHL2MPCombatWeapon
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_WeaponRPG);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponRPG);
 	public static readonly new DataMap PredMap = new([], typeof(WeaponRPG), BaseHL2MPCombatWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponRPG);
@@ -67,7 +67,7 @@ public class LaserDot : BaseEntity
 #endif
 		DT_LaserDot = new(DT_BaseEntity, []);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_LaserDot);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_LaserDot);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_LaserDot);
 #endif

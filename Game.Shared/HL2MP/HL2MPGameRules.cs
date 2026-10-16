@@ -69,7 +69,7 @@ public class
 	}
 #endif
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_HL2MPGameRulesProxy);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_HL2MPGameRulesProxy);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_HL2MPGameRulesProxy);
 #endif

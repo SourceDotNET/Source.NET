@@ -47,7 +47,7 @@ public class Sprite : BaseEntity
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_Sprite);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_Sprite);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_Sprite);
 #endif
@@ -92,7 +92,7 @@ public class SpriteOriented : Sprite
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_SpriteOriented);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_SpriteOriented);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_SpriteOriented);
 #endif

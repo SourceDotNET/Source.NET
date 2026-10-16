@@ -30,7 +30,7 @@ public class BaseHLCombatWeapon : BaseCombatWeapon
 #endif
 		DT_BaseHLCombatWeapon = new(DT_BaseCombatWeapon, []);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_BaseHLCombatWeapon);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseHLCombatWeapon);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseHLCombatWeapon);
 #endif

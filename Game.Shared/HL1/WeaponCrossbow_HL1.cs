@@ -20,7 +20,7 @@ public class WeaponCrossbow_HL1 : BaseHL1MPCombatWeapon
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_WeaponCrossbow_HL1);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponCrossbow_HL1);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponCrossbow_HL1);
 #endif

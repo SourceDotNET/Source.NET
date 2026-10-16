@@ -29,7 +29,7 @@ public partial class WeaponStunStick : BaseHL2MPBludgeonWeapon
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_WeaponStunStick);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponStunStick);
 	public static readonly new DataMap PredMap = new([], typeof(WeaponStunStick), BaseHL2MPBludgeonWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponStunStick);

@@ -53,7 +53,7 @@ public partial class FuncLadder : BaseEntity
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_FuncLadder);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_FuncLadder);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_FuncLadder);
 #endif

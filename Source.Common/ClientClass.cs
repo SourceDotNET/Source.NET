@@ -71,22 +71,6 @@ public class ClientClass
 		Head = this;
 		ClassID = -1;
 	}
-	public ClientClass(CreateClientClassFn? createFn, CreateEventFn? createEventFn, RecvTable recvTable, [CallerArgumentExpression(nameof(recvTable))] string? nameOfTable = null, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0) {
-		Site site = TakeSite(callerFile, callerLine);
-		createFn ??= GetCreateFn(in site);
-
-		CreateFn = createFn;
-		CreateEventFn = createEventFn;
-		NetworkName = GetNetworkName(in site);
-		RecvTable = recvTable;
-
-		if (nameOfTable != null)
-			recvTable.NetTableName = nameOfTable;
-
-		Next = Head;
-		Head = this;
-		ClassID = -1;
-	}
 
 	public ClientClass AsEvent<T>() where T : IClientNetworkable, new() {
 		T instance = new();

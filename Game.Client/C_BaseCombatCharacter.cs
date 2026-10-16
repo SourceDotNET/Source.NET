@@ -31,7 +31,7 @@ public partial class C_BaseCombatCharacter : C_BaseFlex
 		RecvPropArray3(FIELD.OF_ARRAY(nameof(MyWeapons)), RecvPropEHandle( FIELD.OF_ARRAY(nameof(MyWeapons)))),
 		RecvPropInt(FIELD.OF(nameof(BloodColor)))
 	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_BaseCombatCharacter);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseCombatCharacter);
 
 	public C_BaseCombatWeapon? GetWeapon(int i) => MyWeapons[i].Get();
 

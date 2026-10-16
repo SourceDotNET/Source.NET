@@ -675,7 +675,7 @@ public partial class C_BaseEntity : IClientEntity
 
 	public void SetCollisionBounds(in Vector3 mins, in Vector3 maxs) => CollisionProp().SetCollisionBounds(in mins, in maxs);
 
-	public static readonly ClientClass ClientClass = new ClientClass(null, null, DT_BaseEntity);
+	public static readonly ClientClass ClientClass = new ClientClass(DT_BaseEntity);
 	const float coordTolerance = 2.0f / (float)(1 << (int)COORD_FRACTIONAL_BITS);
 
 	public float GetGravity() => Gravity;

@@ -475,7 +475,7 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 
 		RecvPropBool(FIELD.OF(nameof(UseWeaponsInVehicle))),
 		RecvPropDataTable("localdata", DT_LocalPlayerExclusive),
-	]); public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_BasePlayer);
+	]); public static readonly new ClientClass ClientClass = new ClientClass(DT_BasePlayer);
 
 
 	static C_BasePlayer? localPlayer;

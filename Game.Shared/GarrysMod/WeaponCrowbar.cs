@@ -31,7 +31,7 @@ public class WeaponCrowbar : BaseHL2MPBludgeonWeapon
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_WeaponCrowbar);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponCrowbar);
 	public static readonly new DataMap PredMap = new([], typeof(WeaponCrowbar), BaseHL2MPBludgeonWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
 
 #else

@@ -26,8 +26,6 @@ public static class ServerClassRetriever
 public class NetworkNameAttribute(string name) : Attribute
 {
 	public readonly string Name = name;
-
-	public static string Get(Type t) => t.GetCustomAttribute<NetworkNameAttribute>(false)?.Name ?? throw new NullReferenceException($"{t.Name} is missing a {nameof(NetworkNameAttribute)}");
 }
 
 static class NetworkClassSite

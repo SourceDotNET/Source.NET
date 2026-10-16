@@ -14,7 +14,7 @@ public class WeaponEgon : BaseHL1MPCombatWeapon
 #endif
 		DT_WeaponEgon = new(DT_BaseHL1MPCombatWeapon, []);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_WeaponEgon);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponEgon);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponEgon);
 #endif
