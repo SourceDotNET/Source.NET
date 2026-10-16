@@ -38,6 +38,7 @@
 		<ProjectReference Include="../Source.CodeAnalysis.Lua/Source.CodeAnalysis.Lua.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
 		<ProjectReference Include="../Source.CodeAnalysis.NetworkVars/Source.CodeAnalysis.NetworkVars.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
 		<ProjectReference Include="../Source.CodeAnalysis.BitVec/Source.CodeAnalysis.BitVec.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+		<ProjectReference Include="../Source.CodeAnalysis.NetworkClasses/Source.CodeAnalysis.NetworkClasses.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />

@@ -1595,13 +1595,6 @@ public static class ReflectionUtils
 				yield return new(field, attr);
 		}
 	}
-	public static IEnumerable<KeyValuePair<MethodInfo, T>> GetMethodsWithAttribute<T>(this Type type) where T : Attribute {
-		foreach (var method in type.GetMethods()) {
-			T? attr = type.GetCustomAttribute<T>();
-			if (attr != null)
-				yield return new(method, attr);
-		}
-	}
 }
 
 /// <summary>

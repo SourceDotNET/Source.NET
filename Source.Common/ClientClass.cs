@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
-using System.Reflection.Emit;
+﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace Source.Common;
@@ -41,56 +39,29 @@ public class ClientClass
 	public ClientClass? Next;
 	public int ClassID;
 
-	void AssembleDynamicCreateFn(Type t, [NotNull] ref CreateClientClassFn? createFn) {
-		if (t.IsAssignableTo(typeof(IClientEntity))) {
-			// Lets see if there's a good ImplementClientClassFactoryAttribute method...
-			var factoryMethod = t.GetMethodsWithAttribute<ImplementClientClassFactoryAttribute>().FirstOrDefault().Key;
-			if (factoryMethod != null) {
-				createFn = factoryMethod.CreateDelegate<CreateClientClassFn>();
-				return;
-			}
+	readonly record struct Site(string TypeName, string? NetworkName, CreateClientClassFn? CreateFn);
+	static readonly Dictionary<(string File, int Line), Site> Sites = [];
 
-			DynamicMethod method = new DynamicMethod($"CreateObjectDynImpl_{t.Name}", typeof(IClientNetworkable), [typeof(int), typeof(int)]);
-			ILGenerator il = method.GetILGenerator();
+	public static void RegisterSite(string file, int line, string typeName, string? networkName, CreateClientClassFn? createFn) => Sites[(file, line)] = new(typeName, networkName, createFn);
 
-			LocalBuilder ret = il.DeclareLocal(t);
-			LocalBuilder success = il.DeclareLocal(typeof(bool));
-
-			Label returnNull = il.DefineLabel();
-			Label returnObj = il.DefineLabel();
-
-			il.Emit(OpCodes.Newobj, t.GetConstructor(Type.EmptyTypes)!);
-			il.Emit(OpCodes.Stloc, ret);
-
-			il.Emit(OpCodes.Ldloc, ret);
-			il.Emit(OpCodes.Ldarg_0); // entNum
-			il.Emit(OpCodes.Ldarg_1); // serialNum
-			il.Emit(OpCodes.Callvirt, t.GetMethod("Init", new[] { typeof(int), typeof(int) })!);
-			il.Emit(OpCodes.Stloc, success);
-
-			il.Emit(OpCodes.Ldloc, success);
-			il.Emit(OpCodes.Brfalse_S, returnNull);
-
-			il.Emit(OpCodes.Ldloc, ret);
-			il.Emit(OpCodes.Br_S, returnObj);
-
-			il.MarkLabel(returnNull);
-			il.Emit(OpCodes.Ldnull);
-
-			il.MarkLabel(returnObj);
-			il.Emit(OpCodes.Ret);
-
-			createFn = method.CreateDelegate<CreateClientClassFn>();
-		}
-		else
-			createFn = (_, _) => throw new NotImplementedException($"ClientClass did not define how to create type '{t.Name}'");
+	static Site TakeSite(string callerFile, int callerLine) {
+		if (!Sites.Remove((NetworkClassSite.FileName(callerFile), callerLine), out Site site))
+			throw new NullReferenceException($"No generated ClientClass registration for {callerFile}:{callerLine}");
+		return site;
 	}
 
-	public ClientClass(RecvTable recvTable, [CallerArgumentExpression(nameof(recvTable))] string? nameOfTable = null) {
-		Type t = WhoCalledMe(skipFrames: 2) ?? throw new NullReferenceException("This doesnt work as well as we hoped!");
-		AssembleDynamicCreateFn(t, ref CreateFn);
+	static CreateClientClassFn GetCreateFn(in Site site) {
+		string typeName = site.TypeName;
+		return site.CreateFn ?? ((_, _) => throw new NotImplementedException($"ClientClass did not define how to create type '{typeName}'"));
+	}
 
-		NetworkName = NetworkNameAttribute.Get(t);
+	static string GetNetworkName(in Site site) => site.NetworkName ?? throw new NullReferenceException($"{site.TypeName} is missing a {nameof(NetworkNameAttribute)}");
+
+	public ClientClass(RecvTable recvTable, [CallerArgumentExpression(nameof(recvTable))] string? nameOfTable = null, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0) {
+		Site site = TakeSite(callerFile, callerLine);
+		CreateFn = GetCreateFn(in site);
+
+		NetworkName = GetNetworkName(in site);
 		RecvTable = recvTable;
 
 		if (nameOfTable != null)
@@ -100,14 +71,13 @@ public class ClientClass
 		Head = this;
 		ClassID = -1;
 	}
-	public ClientClass(CreateClientClassFn? createFn, CreateEventFn? createEventFn, RecvTable recvTable, [CallerArgumentExpression(nameof(recvTable))] string? nameOfTable = null) {
-		Type t = WhoCalledMe(skipFrames: 2) ?? throw new NullReferenceException("This doesnt work as well as we hoped!");
-		if (createFn == null)
-			AssembleDynamicCreateFn(t, ref createFn);
+	public ClientClass(CreateClientClassFn? createFn, CreateEventFn? createEventFn, RecvTable recvTable, [CallerArgumentExpression(nameof(recvTable))] string? nameOfTable = null, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0) {
+		Site site = TakeSite(callerFile, callerLine);
+		createFn ??= GetCreateFn(in site);
 
 		CreateFn = createFn;
 		CreateEventFn = createEventFn;
-		NetworkName = NetworkNameAttribute.Get(t);
+		NetworkName = GetNetworkName(in site);
 		RecvTable = recvTable;
 
 		if (nameOfTable != null)
