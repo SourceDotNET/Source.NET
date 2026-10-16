@@ -13,7 +13,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 
 using TraceCounter_t = uint;
-using TraceCounterVec = System.Collections.Generic.List<uint>;
+using TraceCounterVec = uint[];
 
 namespace Source.Engine;
 
@@ -54,8 +54,14 @@ internal class TraceInfo : IPoolableObject
 	public bool CheckPrimary;
 	public int CheckDepth = -1;
 	public readonly TraceCounter_t[] Count = new TraceCounter_t[MAX_CHECK_COUNT_DEPTH];
-	public readonly TraceCounterVec[] BrushCounters = new TraceCounterVec[MAX_CHECK_COUNT_DEPTH].InstantiateArray();
-	public readonly TraceCounterVec[] DispCounters = new TraceCounterVec[MAX_CHECK_COUNT_DEPTH].InstantiateArray();
+	public readonly TraceCounterVec[] BrushCounters = NewCounters();
+	public readonly TraceCounterVec[] DispCounters = NewCounters();
+
+	static TraceCounterVec[] NewCounters() {
+		TraceCounterVec[] counters = new TraceCounterVec[MAX_CHECK_COUNT_DEPTH];
+		Array.Fill(counters, []);
+		return counters;
+	}
 
 	public TraceCounter_t GetCount() => Count[CheckDepth];
 	public Span<TraceCounter_t> GetBrushCounters() => BrushCounters[CheckDepth].AsSpan();
@@ -368,16 +374,13 @@ public static partial class CM
 	internal static TraceInfo BeginTrace() {
 		TraceInfo traceInfo = g_TraceInfoPool.Alloc();
 
-		if (traceInfo.BrushCounters[0].Count != GetCollisionBSPData().NumBrushes + 1) {
+		if (traceInfo.BrushCounters[0].Length != GetCollisionBSPData().NumBrushes + 1) {
 			memreset(traceInfo.Count);
 			traceInfo.CheckDepth = -1;
 
 			for (int i = 0; i < MAX_CHECK_COUNT_DEPTH; i++) {
-				traceInfo.BrushCounters[i].SetCount(GetCollisionBSPData().NumBrushes + 1);
-				traceInfo.DispCounters[i].SetCount((int)g_DispCollTreeCount);
-
-				memreset(traceInfo.BrushCounters[i].AsSpan());
-				memreset(traceInfo.DispCounters[i].AsSpan());
+				traceInfo.BrushCounters[i] = new TraceCounter_t[GetCollisionBSPData().NumBrushes + 1];
+				traceInfo.DispCounters[i] = new TraceCounter_t[g_DispCollTreeCount];
 			}
 		}
 
@@ -673,8 +676,8 @@ public static partial class CM
 		traceInfo.Count[i]++;
 		if (traceInfo.Count[i] == 0) {
 			traceInfo.Count[i]++;
-			memreset(traceInfo.BrushCounters[i].Base());
-			memreset(traceInfo.DispCounters[i].Base());
+			memreset(traceInfo.BrushCounters[i]);
+			memreset(traceInfo.DispCounters[i]);
 		}
 	}
 
@@ -1269,15 +1272,15 @@ public static partial class CM
 		// trace ray/box sweep against all brushes in this leaf
 		int numleafbrushes = leaf.NumLeafBrushes;
 		int lastleafbrush = leaf.FirstLeafBrush + numleafbrushes;
-		List<ushort> map_leafbrushes = traceInfo.BSPData!.MapLeafBrushes;
-		List<CollisionBrush> map_brushes = traceInfo.BSPData!.MapBrushes;
+		ushort[] map_leafbrushes = traceInfo.BSPData!.MapLeafBrushes;
+		CollisionBrush[] map_brushes = traceInfo.BSPData!.MapBrushes;
 		Span<TraceCounter_t> counters = traceInfo.GetBrushCounters();
 		TraceCounter_t count = traceInfo.GetCount();
 		for (int ndxLeafBrush = leaf.FirstLeafBrush; ndxLeafBrush < lastleafbrush; ndxLeafBrush++) {
 			// get the current brush
-			int ndxBrush = map_leafbrushes.AsSpan()[ndxLeafBrush];
+			int ndxBrush = map_leafbrushes[ndxLeafBrush];
 
-			ref CollisionBrush brush = ref map_brushes.AsSpan()[ndxBrush];
+			ref CollisionBrush brush = ref map_brushes[ndxBrush];
 
 			// make sure we only check this brush once per trace/stab
 			if (!traceInfo.Visit(ref brush, ndxBrush, count, counters))

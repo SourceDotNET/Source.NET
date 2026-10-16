@@ -45,7 +45,7 @@ public class StudioData
 
 	public object? UserData;
 
-	public Memory<short> AutoplaySequenceList;
+	public short[] AutoplaySequenceList = [];
 
 	public int AnimBlockCount;
 	public object?[]? AnimBlock; // todo: research what this is
@@ -218,13 +218,13 @@ public class MDLCache : IMDLCache, IStudioDataCache
 		throw new NotImplementedException();
 	}
 
-	public Memory<short> GetAutoplayList(MDLHandle_t handle) {
+	public ReadOnlySpan<short> GetAutoplayList(MDLHandle_t handle) {
 		if (handle == MDLHANDLE_INVALID)
-			return Array.Empty<short>();
+			return [];
 
 		VirtualModel? virtualModel = GetVirtualModel(handle);
 		if (virtualModel != null)
-			return virtualModel.AutoplaySequences.Base();
+			return virtualModel.AutoplaySequences;
 
 		StudioData studioData = HandleToMDLDict[handle];
 		return studioData.AutoplaySequenceList;
@@ -415,7 +415,7 @@ public class MDLCache : IMDLCache, IStudioDataCache
 			int count = studioHdr.CountAutoplaySequences();
 			if (count != 0) {
 				AllocateAutoplaySequences(HandleToMDLDict[handle], count);
-				studioHdr.CopyAutoplaySequences(ref HandleToMDLDict[handle].AutoplaySequenceList, count);
+				studioHdr.CopyAutoplaySequences(HandleToMDLDict[handle].AutoplaySequenceList, count);
 			}
 		}
 

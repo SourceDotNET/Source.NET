@@ -322,7 +322,7 @@ public static partial class DebugLeafVis
 
 			int lastBrush = pBSP.NumBrushes;
 
-			if (pBSP.MapCollisionModels.Count > 1)
+			if (pBSP.MapCollisionModels.Length > 1)
 				lastBrush = FindMinBrush(pBSP, pBSP.MapCollisionModels[1].HeadNode, lastBrush);
 
 			for (int i = 0; i < lastBrush; i++) {

@@ -61,7 +61,7 @@ public interface IVModelInfo
 	byte ComputeViewScreenFade(in Vector3 absOrigin, float radius, float fadeScale);
 
 	// both client and server
-	int GetAutoplayList(StudioHeader studioHdr, out Span<short> autoplayList);
+	int GetAutoplayList(StudioHeader studioHdr, out ReadOnlySpan<short> autoplayList);
 
 	// Gets a  terrain collision model (creates if necessary)
 	// NOTE: This may return NULL if the terrain model cannot be ized

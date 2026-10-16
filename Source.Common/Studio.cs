@@ -343,14 +343,14 @@ public partial class VirtualModel
 
 	public readonly object Lock = new();
 
-	public readonly List<VirtualSequence> Seq = [];
-	public readonly List<VirtualGeneric> Anim = [];
-	public readonly List<VirtualGeneric> Attachment = [];
-	public readonly List<VirtualGeneric> Pose = [];
+	public List<VirtualSequence> Seq = [];
+	public List<VirtualGeneric> Anim = [];
+	public List<VirtualGeneric> Attachment = [];
+	public List<VirtualGeneric> Pose = [];
 	public readonly List<VirtualGroup> Group = [];
-	public readonly List<VirtualGeneric> Node = [];
-	public readonly List<VirtualGeneric> IKLock = [];
-	public readonly List<short> AutoplaySequences = [];
+	public List<VirtualGeneric> Node = [];
+	public List<VirtualGeneric> IKLock = [];
+	public short[] AutoplaySequences = [];
 }
 
 public enum StudioMeshGroupFlags
@@ -2038,7 +2038,7 @@ public class StudioHdr
 	public Span<MStudioBone> Bones() => studioHdr.Bones();
 
 
-	readonly List<StudioHeader?> StudioHdrCache = [];
+	StudioHeader?[] StudioHdrCache = [];
 
 	public StudioHdrFlags Flags() => studioHdr!.Flags;
 	public AnonymousSafeFieldPointer<int> FrameUnlockCounterPtr;
@@ -2048,7 +2048,7 @@ public class StudioHdr
 		this.studioHdr = studioHdr;
 
 		this.vModel = null;
-		StudioHdrCache.Clear();
+		StudioHdrCache = [];
 
 		if (this.studioHdr == null)
 			return;
@@ -2088,10 +2088,7 @@ public class StudioHdr
 	private VirtualModel? ResetVModel(VirtualModel? virtualModel) {
 		if (virtualModel != null) {
 			vModel = virtualModel;
-			StudioHdrCache!.EnsureCountDefault(vModel.Group.Count());
-
-			for (int i = 0; i < StudioHdrCache.Count; i++)
-				StudioHdrCache[i] = null!;
+			StudioHdrCache = new StudioHeader?[vModel.Group.Count()];
 
 			return vModel;
 		}
@@ -2120,13 +2117,13 @@ public class StudioHdr
 			lock (FrameUnlockCounterMutex) {
 				if (FrameUnlockCounterPtr.Get() != FrameUnlockCounter) // i.e., this thread got the mutex
 				{
-					memcreset(StudioHdrCache.Base());
+					memcreset<StudioHeader>(StudioHdrCache);
 					FrameUnlockCounter = FrameUnlockCounterPtr.Get();
 				}
 			}
 		}
 
-		if (!StudioHdrCache.IsValidIndex(i)) {
+		if ((uint)i >= (uint)StudioHdrCache.Length) {
 			ReadOnlySpan<char> name = (this.studioHdr != null) ? this.studioHdr.GetName() : "<<null>>";
 			Debugger.Break();
 			return this.studioHdr; // return something known to probably exist, certainly things will be messed up, but hopefully not crash before the warning is noticed
@@ -2674,7 +2671,7 @@ public class StudioHdr
 		return group.MasterSeq[relseq];
 	}
 
-	public int GetAutoplayList(out Span<short> pList) {
+	public int GetAutoplayList(out ReadOnlySpan<short> pList) {
 		return studioHdr!.GetAutoplayList(out pList);
 	}
 
@@ -3181,7 +3178,7 @@ public class StudioHeader
 	}
 
 
-	public int GetAutoplayList(out Span<short> pList) {
+	public int GetAutoplayList(out ReadOnlySpan<short> pList) {
 		return modelinfo.GetAutoplayList(this, out pList);
 	}
 
@@ -3219,18 +3216,6 @@ public class StudioHeader
 				count++;
 		}
 		return count;
-	}
-
-	public void CopyAutoplaySequences(ref Memory<short> autoplaySequenceList, int outCount) {
-		int outIndex = 0;
-		for (int i = 0; i < GetNumSeq() && outIndex < outCount; i++) {
-			MStudioSeqDesc seqdesc = Seqdesc(i);
-			if ((seqdesc.Flags & StudioAnimSeqFlags.Autoplay) != 0) {
-				autoplaySequenceList.Span[outIndex] = (short)i;
-				outIndex++;
-			}
-		}
-		autoplaySequenceList = autoplaySequenceList[..outIndex];
 	}
 
 	public int CopyAutoplaySequences(Span<short> autoplaySequenceList, int outCount) {
