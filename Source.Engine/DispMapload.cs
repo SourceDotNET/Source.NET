@@ -340,7 +340,7 @@ public static class DispMapload
 			desc.Vertex.TangentSSize = sizeof(DispRenderVert);
 			desc.Vertex.TangentTSize = sizeof(DispRenderVert);
 
-			DispRenderVert[] pBaseVert = pDisp.Verts.Base();
+			DispRenderVert[] pBaseVert = pDisp.Verts;
 
 			desc.Index.IndexSize = 1;
 
