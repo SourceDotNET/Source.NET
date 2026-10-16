@@ -1,5 +1,8 @@
 ﻿using Microsoft.Win32.SafeHandles;
 
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
 using Source.VPK.Exceptions;
 using Source.VPK.V1;
 
@@ -13,6 +16,125 @@ namespace Source.VPK
 		internal List<ArchivePart> Parts { get; set; }
 		internal string ArchivePath { get; set; }
 		public readonly SafeFileHandle FileHandle;
+		public byte[] Tree { get; private set; } = [];
+		public int EntryCount { get; private set; }
+
+		const int EntryDataSize = sizeof(uint) + sizeof(ushort) + sizeof(ushort) + sizeof(uint) + sizeof(uint) + sizeof(ushort);
+
+		struct TreeReader(byte[] tree)
+		{
+			readonly byte[] Tree = tree;
+			int Position;
+
+			public bool ReadString(out int offset, out ushort length) {
+				ReadOnlySpan<byte> remaining = Tree.AsSpan(Position);
+				int end = remaining.IndexOf((byte)0);
+				offset = Position;
+				if (end == -1) {
+					end = remaining.Length;
+					Position += end;
+				}
+				else
+					Position += end + 1;
+
+				length = (ushort)end;
+				return end != 0;
+			}
+
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			T Read<T>() where T : unmanaged {
+				T value = MemoryMarshal.Read<T>(Tree.AsSpan(Position));
+				Position += Unsafe.SizeOf<T>();
+				return value;
+			}
+
+			public bool ReadEntry(int pathOffset, ushort pathLength, int extensionOffset, ushort extensionLength, out VpkEntry entry) {
+				entry = default;
+				if (!ReadString(out int filenameOffset, out ushort filenameLength))
+					return false;
+
+				if (Tree.Length - Position < EntryDataSize)
+					return false;
+
+				uint crc = Read<uint>();
+				ushort preloadBytes = Read<ushort>();
+				ushort archiveIndex = Read<ushort>();
+				uint entryOffset = Read<uint>();
+				uint entryLength = Read<uint>();
+				// skip terminator
+				Read<ushort>();
+				int preloadTreeOffset = Position;
+				Position = Math.Min(Position + preloadBytes, Tree.Length);
+
+				entry = new VpkEntry(pathOffset, pathLength, filenameOffset, filenameLength, extensionOffset, extensionLength,
+					crc, preloadBytes, preloadTreeOffset, archiveIndex, entryOffset, entryLength);
+				return true;
+			}
+		}
+
+		static void LowerAscii(Span<byte> text) {
+			for (int i = 0; i < text.Length; i++) {
+				if ((uint)(text[i] - 'A') <= 'Z' - 'A')
+					text[i] |= 0x20;
+			}
+		}
+
+		void ParseTree() {
+			TreeReader reader = new(Tree);
+			while (reader.ReadString(out int extensionOffset, out ushort extensionLength)) {
+				LowerAscii(Tree.AsSpan(extensionOffset, extensionLength)); // once per extension block
+				while (reader.ReadString(out int pathOffset, out ushort pathLength)) {
+					LowerAscii(Tree.AsSpan(pathOffset, pathLength));
+					Directories.Add(new VpkDirectory(pathOffset, pathLength));
+					while (reader.ReadEntry(pathOffset, pathLength, extensionOffset, extensionLength, out VpkEntry entry)) {
+						LowerAscii(Tree.AsSpan(entry.FilenameOffset, entry.FilenameLength));
+						EntryCount++;
+					}
+				}
+			}
+		}
+
+		public IEnumerable<VpkEntry> EnumerateEntries() {
+			TreeReader reader = new(Tree);
+			while (reader.ReadString(out int extensionOffset, out ushort extensionLength)) {
+				while (reader.ReadString(out int pathOffset, out ushort pathLength)) {
+					while (reader.ReadEntry(pathOffset, pathLength, extensionOffset, extensionLength, out VpkEntry entry))
+						yield return entry;
+				}
+			}
+		}
+
+		public ReadOnlySpan<byte> GetPath(in VpkDirectory directory) => Tree.AsSpan(directory.PathOffset, directory.PathLength);
+		public ReadOnlySpan<byte> GetPath(in VpkEntry entry) => Tree.AsSpan(entry.PathOffset, entry.PathLength);
+		public ReadOnlySpan<byte> GetFilename(in VpkEntry entry) => Tree.AsSpan(entry.FilenameOffset, entry.FilenameLength);
+		public ReadOnlySpan<byte> GetExtension(in VpkEntry entry) => Tree.AsSpan(entry.ExtensionOffset, entry.ExtensionLength);
+		public ReadOnlySpan<byte> GetPreloadData(in VpkEntry entry) => Tree.AsSpan(entry.PreloadTreeOffset, Math.Min(entry.PreloadBytes, Tree.Length - entry.PreloadTreeOffset));
+
+		public byte[]? ReadPreloadData(in VpkEntry entry) => entry.HasPreloadData ? GetPreloadData(in entry).ToArray() : null;
+		public byte[]? ReadAnyData(in VpkEntry entry) => entry.HasPreloadData ? ReadPreloadData(in entry) : ReadData(in entry);
+
+		ArchivePart? FindPart(ushort archiveIndex) {
+			if (Parts == null)
+				return null;
+
+			for (int i = 0, c = Parts.Count; i < c; i++) {
+				ArchivePart part = Parts[i];
+				if (part.Index == archiveIndex)
+					return part;
+			}
+			return null;
+		}
+
+		public byte[] ReadData(in VpkEntry entry) {
+			ArchivePart? part = FindPart(entry.ArchiveIndex);
+			if (part == null)
+				return [];
+
+			byte[] data = new byte[entry.PreloadBytes + entry.EntryLength];
+			GetPreloadData(in entry).CopyTo(data);
+			RandomAccess.Read(part.FileHandle, data.AsSpan(entry.PreloadBytes), entry.EntryOffset);
+			return data;
+		}
 
 		public override string ToString() => $"VpkArchive '{ArchivePath}' [{Directories.Count} directories, {Parts.Count} parts]";
 
@@ -66,9 +188,8 @@ namespace Source.VPK
 						break;
 				}
 
-				var reader = _reader.ReadDirectories(this, header.TreeLength);
-				while (reader.MoveNext())
-					Directories.Add(reader.Current);
+				Tree = _reader.ReadTree(header.TreeLength);
+				ParseTree();
 			}
 			finally {
 				_reader?.Dispose();
@@ -109,9 +230,8 @@ namespace Source.VPK
 						break;
 				}
 
-				var reader = _reader.ReadDirectories(this, header.TreeLength);
-				while (reader.MoveNext())
-					Directories.Add(reader.Current);
+				Tree = _reader.ReadTree(header.TreeLength);
+				ParseTree();
 			}
 			finally {
 				_reader?.Dispose();
