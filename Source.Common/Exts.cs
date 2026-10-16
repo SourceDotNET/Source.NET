@@ -674,27 +674,6 @@ public static class ListExtensions
 		}
 	}
 
-	static class TempSwap<T>
-	{
-		public static readonly ThreadLocal<List<T>> List = new(() => []);
-	}
-
-	public static void Swap<T>(this List<T> a, List<T> b) {
-		var swap = TempSwap<T>.List.Value!;
-		swap.Clear();
-		swap.EnsureCapacity(a.Count);
-
-		a.Clear();
-		a.EnsureCapacity(b.Count);
-		b.Base().AsSpan()[..b.Count].CopyTo(a.Base());
-		a.CountForEdit() = b.Count;
-
-		b.Clear();
-		b.EnsureCapacity(swap.Count);
-		swap.Base().AsSpan()[..swap.Count].CopyTo(b.Base());
-		b.CountForEdit() = swap.Count;
-	}
-
 	public static nint Find<T>(this List<T> list, T? value) {
 		for (int i = 0, c = list.Count; i < c; i++) {
 			T? at = list[i];

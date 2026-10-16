@@ -343,13 +343,13 @@ public partial class VirtualModel
 
 	public readonly object Lock = new();
 
-	public readonly List<VirtualSequence> Seq = [];
-	public readonly List<VirtualGeneric> Anim = [];
-	public readonly List<VirtualGeneric> Attachment = [];
-	public readonly List<VirtualGeneric> Pose = [];
+	public List<VirtualSequence> Seq = [];
+	public List<VirtualGeneric> Anim = [];
+	public List<VirtualGeneric> Attachment = [];
+	public List<VirtualGeneric> Pose = [];
 	public readonly List<VirtualGroup> Group = [];
-	public readonly List<VirtualGeneric> Node = [];
-	public readonly List<VirtualGeneric> IKLock = [];
+	public List<VirtualGeneric> Node = [];
+	public List<VirtualGeneric> IKLock = [];
 	public short[] AutoplaySequences = [];
 }
 
