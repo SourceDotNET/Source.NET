@@ -40,7 +40,7 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 
 	public void OnLoadFailed(ReadOnlySpan<char> module) {
 		strcpy(gameDir, host_parms.BaseDir);
-		FixSlashes(gameDir, '\\');
+		FixSlashes(gameDir, Path.DirectorySeparatorChar);
 
 		if (!IsDedicatedServer() && HasSteamClient())
 			SteamApps.MarkContentCorrupt(false);
@@ -50,7 +50,7 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 			return;
 		}
 
-		string path = $"{GameDir()}\\{module}".Replace('/', '\\');
+		string path = Path.Combine(new string(GameDir()), new string(module));
 		string reason = "unknown";
 		try {
 			NativeLibrary.Load(path);
@@ -163,9 +163,9 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 		}
 
 		strcpy(gameDir, Common.Gamedir);
-		FixSlashes(gameDir, '\\');
+		FixSlashes(gameDir, Path.DirectorySeparatorChar);
 		strcpy(gameDirParent, Common.Gamedir);
-		FixSlashes(gameDirParent, '\\');
+		FixSlashes(gameDirParent, Path.DirectorySeparatorChar);
 		StripLastDir(gameDirParent);
 	}
 
