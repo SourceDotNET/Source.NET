@@ -24,17 +24,6 @@
       "console": "externalTerminal"
     },
     {
-      "name": "Source.LauncherMain (no sandbox)",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build Source.Launcher",
-      "program": "${workspaceFolder}/Build/Debug/Source.LauncherMain.dll",
-      "linux": { "program": "${workspaceFolder}/Build/Debug/Source.Launcher.dll" },
-      "cwd": "${workspaceFolder}/Build/Debug",
-      "args": ["-nochromiumsandbox"],
-      "stopAtEntry": false
-    },
-    {
       "name": "Source.Dedicated",
       "type": "coreclr",
       "request": "launch",
