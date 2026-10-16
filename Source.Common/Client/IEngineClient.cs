@@ -486,6 +486,9 @@ public interface IEngineClient
 	float GetPlayerVoiceVolume(CSteamID steamID);
 	void SetPlayerVoiceVolume(CSteamID steamID, float volume);
 	bool NET_IsHostLocal( ReadOnlySpan<char> hostName );
+#if GMOD_DLL
+	bool IsHostingGame();
+#endif
 	bool IsDedicatedServer();
 
 	uint GetProtocolVersion();

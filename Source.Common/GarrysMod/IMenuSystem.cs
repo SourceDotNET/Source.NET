@@ -10,7 +10,7 @@ public interface IMenuSystem
 	void SetupNetworkString(INetworkStringTableContainer networkStringTableContainer);
 	void Think();
 	void StartLua();
-	void ServerDetails(ReadOnlySpan<char> unk1, ReadOnlySpan<char> unk2, ReadOnlySpan<char> unk3, int unk4, ReadOnlySpan<char> unk5);
+	void ServerDetails(ReadOnlySpan<char> serverName, ReadOnlySpan<char> loadingURL, ReadOnlySpan<char> mapName, byte maxPlayers, short playerSlots, ReadOnlySpan<char> gamemode);
 	void OnLuaError(in LuaError err, IAddonSystem.Information? addonInfo);
 	void SendProblemToMenu(ReadOnlySpan<char> id, int severity, ReadOnlySpan<char> parms);
 	bool IsServerBlacklisted(ReadOnlySpan<char> address, ReadOnlySpan<char> hostname, ReadOnlySpan<char> description, ReadOnlySpan<char> gamemode, ReadOnlySpan<char> map);

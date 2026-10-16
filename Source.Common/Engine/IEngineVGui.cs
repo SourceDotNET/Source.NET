@@ -28,5 +28,6 @@ public interface IEngineVGui
 	void UpdateButtonState(in InputEvent ev);
 #if GMOD_DLL
 	void UpdateCustomProgressBar(float progress, ReadOnlySpan<char> desc);
+	void ShowConsole();
 #endif
 }

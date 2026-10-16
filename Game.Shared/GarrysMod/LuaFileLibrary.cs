@@ -1,10 +1,12 @@
-#if CLIENT_DLL || GAME_DLL
+#if CLIENT_DLL || GAME_DLL || MENU_DLL
 using Source.Common.Filesystem;
 using Source.Common.GarrysMod;
 using Source.Common.GarrysMod.Lua;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
+#elif MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
 #else
 namespace Game.Server.GarrysMod;
 #endif
@@ -253,10 +255,12 @@ public static partial class LuaFileLibrary
 		if (!pastEnd && length > 0)
 			toRead = length;
 		else {
+#if !MENU_DLL
 			if (Game.Client.GarrysMod.GarrysMod.lua_strict.GetInt() != 0) {
 				lua.ErrorFromLua($"File:Read() - Invalid requested size {(int)length}\n");
 				return 0;
 			}
+#endif
 
 			toRead = pastEnd && size > pos ? size - pos : 0;
 		}
@@ -305,7 +309,9 @@ public static partial class LuaFileLibrary
 			return 0;
 		}
 
+#if !MENU_DLL
 		if (Game.Client.GarrysMod.GarrysMod.lua_strict.GetInt() != 0)
+#endif
 			lua.ErrorFromLua($"File:Write() - Invalid write size {data.Length}\n");
 		return 0;
 	}
@@ -762,6 +768,7 @@ public static partial class LuaFileLibrary
 		return 1;
 	}
 
+#if !MENU_DLL
 	[LuaFunction]
 	static int AsyncRead(ILuaInterface lua) {
 		string fileName = lua.CheckString(1);
@@ -806,6 +813,7 @@ public static partial class LuaFileLibrary
 		lua.PushNumber((double)filesystem.AsyncRead(request));
 		return 1;
 	}
+#endif
 
 	[LuaFunction]
 	static int Find(ILuaInterface lua) {

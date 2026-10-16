@@ -1,7 +1,11 @@
 using Source.Common.GUI;
 using Source.GUI.Controls;
 
+#if MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
+#else
 namespace Game.Client.GarrysMod;
+#endif
 
 public struct LuaFont
 {
@@ -42,7 +46,11 @@ public static class LuaFonts
 			fontName = "Tahoma";
 		}
 
+#if MENU_DLL
+		Panel basePanel = MenuPanels.GetMenuPanel()!;
+#else
 		Panel basePanel = GModBase.GetGModBasePanel(true)!;
+#endif
 		IFont? schemeFont = basePanel.GetScheme()!.GetFont(fontName);
 		if (schemeFont != null && stricmp(Surface.GetFontName(schemeFont), fontName) != 0) {
 			DevWarning($"Tried to create font '{name}' from a game font '{fontName}', not supported!\n");

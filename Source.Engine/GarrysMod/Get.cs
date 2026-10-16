@@ -10,6 +10,7 @@ using Source.Common.Steam;
 
 using Steamworks;
 
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace Source.Engine.GarrysMod;
@@ -26,7 +27,7 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 	IGMod_Audio? audio;
 	// IAnalytics? analytics;
 	IServerAddons? serverAddons;
-	IGMHTML? html;
+	IHtmlSystem? html;
 	InlineArrayMaxPath<char> gameDirParent;
 	InlineArrayMaxPath<char> gameDir;
 	bool filterTextInitialized;
@@ -39,7 +40,7 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 
 	public void OnLoadFailed(ReadOnlySpan<char> module) {
 		strcpy(gameDir, host_parms.BaseDir);
-		FixSlashes(gameDir, '\\');
+		FixSlashes(gameDir, Path.DirectorySeparatorChar);
 
 		if (!IsDedicatedServer() && HasSteamClient())
 			SteamApps.MarkContentCorrupt(false);
@@ -49,7 +50,7 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 			return;
 		}
 
-		string path = $"{GameDir()}\\{module}".Replace('/', '\\');
+		string path = Path.Combine(new string(GameDir()), new string(module));
 		string reason = "unknown";
 		try {
 			NativeLibrary.Load(path);
@@ -74,7 +75,7 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 	public IIntroScreen? IntroScreen() => introScreen;
 	public IMaterialSystem? Materials() => materials;
 	public IServerAddons? ServerAddons() => serverAddons;
-	public IGMHTML? HTML() => html;
+	public IHtmlSystem? HTML() => html;
 
 	public ISteamHTTP? SteamHTTP() {
 #if !SWDS
@@ -144,27 +145,33 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 			if (html == null) {
 				if (!commandLine.CheckParm("-nochromium")) {
 					Msg("Attempting to load Chromium...\n");
-					// todo: LoadHTML("html_chromium.dll");
+					LoadHTML("html_chromium");
 				}
 
-				if (html == null && !commandLine.CheckParm("-noawesomium")) {
-					Msg("Attempting to load Awesomium...\n");
+				// if (html == null && !commandLine.CheckParm("-noawesomium")) {
+					// Msg("Attempting to load Awesomium...\n");
 					// todo: LoadHTML("html_awesomium.dll");
-				}
+				// }
 			}
 
 			if (html == null) {
 				Msg("Attempting to load Stub...\n");
-				// todo: LoadHTML("html_stub.dll");
-				// todo: if (html == null) Error("Couldn't find an HTML system.");
+				LoadHTML("html_stub");
+				if (html == null)
+					Error("Couldn't find an HTML system.");
 			}
 		}
 
 		strcpy(gameDir, Common.Gamedir);
-		FixSlashes(gameDir, '\\');
+		FixSlashes(gameDir, Path.DirectorySeparatorChar);
 		strcpy(gameDirParent, Common.Gamedir);
-		FixSlashes(gameDirParent, '\\');
+		FixSlashes(gameDirParent, Path.DirectorySeparatorChar);
 		StripLastDir(gameDirParent);
+	}
+
+	bool LoadHTML(string name) {
+		html = appSystemFactory.GetKeyedService<IHtmlSystem>(name);
+		return html != null;
 	}
 
 	static void FixSlashes(Span<char> str, char separator) {

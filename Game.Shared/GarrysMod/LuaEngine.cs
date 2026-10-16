@@ -1,9 +1,11 @@
-#if CLIENT_DLL || GAME_DLL
+#if CLIENT_DLL || GAME_DLL || MENU_DLL
 using Source.Common.GarrysMod;
 using Source.Common.GarrysMod.Lua;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
+#elif MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
 #else
 namespace Game.Server.GarrysMod;
 #endif
@@ -25,7 +27,7 @@ public static partial class LuaEngine
 		return 1;
 	}
 
-#if CLIENT_DLL
+#if CLIENT_DLL || MENU_DLL
 	[LuaFunction]
 	static int IsRecordingDemo(ILuaInterface lua) {
 		g_Lua!.PushBool(engine.IsRecordingDemo());
@@ -35,6 +37,87 @@ public static partial class LuaEngine
 	[LuaFunction]
 	static int IsPlayingDemo(ILuaInterface lua) {
 		g_Lua!.PushBool(engine.IsPlayingDemo());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetDemoPlaybackTick(ILuaInterface lua) {
+		lua.PushNumber(engine.GetDemoPlaybackTick());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetDemoPlaybackStartTick(ILuaInterface lua) {
+		lua.PushNumber(engine.GetDemoPlaybackStartTick());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetDemoPlaybackTimeScale(ILuaInterface lua) {
+		lua.PushNumber(engine.GetDemoPlaybackTimeScale());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetDemoPlaybackTotalTicks(ILuaInterface lua) {
+		lua.PushNumber(engine.GetDemoPlaybackTotalTicks());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int AbsoluteFrameTime(ILuaInterface lua) {
+		lua.PushNumber(gpGlobals.AbsoluteFrameTime);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int TickCount(ILuaInterface lua) {
+		lua.PushNumber(gpGlobals.TickCount);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetUserContent(ILuaInterface lua) {
+		LinkedList<IAddonSystem.UGCInfo> list = filesystem.Addons().GetUGCList();
+		LuaTable table = new(null, (uint)list.Count);
+		int i = 1;
+		foreach (IAddonSystem.UGCInfo info in list) {
+			LuaTable entry = new(null, 0);
+			entry.SetMember("title", info.Title);
+			entry.SetMember("tags", info.Tags);
+			entry.SetMember("wsid", info.WorkshopID.ToString());
+			entry.SetMember("timeadded", (double)info.TimeAdded);
+			entry.SetMember("type", info.Type switch {
+				Addon.AddonType.Dupe => "dupe",
+				Addon.AddonType.Save => "save",
+				Addon.AddonType.Demo => "demo",
+				_ => "unknown"
+			});
+			table.SetMember((float)i, entry);
+			i++;
+			entry.UnReference();
+		}
+		table.Push();
+		table.UnReference();
+		return 1;
+	}
+#endif
+
+#if MENU_DLL
+	[LuaFunction]
+	static int SetMounted(ILuaInterface lua) {
+		bool mounted = lua.GetBool(2);
+		filesystem.Games().SetMount(new Steamworks.AppId_t((uint)(int)lua.CheckNumber(1)), mounted);
+		filesystem.Games().Save();
+		filesystem.Games().Refresh();
+		filesystem.DoFilesystemRefresh();
+		return 0;
+	}
+
+	[LuaFunction]
+	static int CurrentServerAddress(ILuaInterface lua) {
+		Source.Common.Networking.INetChannelInfo? channel = engine.GetNetChannelInfo();
+		lua.PushString(channel == null ? "" : channel.GetAddress());
 		return 1;
 	}
 #endif

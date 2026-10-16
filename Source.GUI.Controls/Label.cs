@@ -37,6 +37,17 @@ public class Label : Panel
 		RegisterColorAsOverridable(DisabledFgColor2, "disabledfgcolor2_override");
 	}
 
+	public override bool RequestInfo(KeyValues outputData) {
+		if (0 == stricmp(outputData.Name, "GetText")) {
+			Span<char> buf = stackalloc char[256];
+			TextImage!.GetText(buf);
+			outputData.SetString("text", buf);
+			return true;
+		}
+
+		return base.RequestInfo(outputData);
+	}
+
 	public nint AddImage(IImage? textImage, int offset) {
 		nint newImage = Images.Count;
 		Images.Add(new() {

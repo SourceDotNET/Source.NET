@@ -1,0 +1,62 @@
+<Project>
+
+	<PropertyGroup>
+		<SNCefVersion>154.0.34</SNCefVersion>
+		<SNNativeSourceDir>$(MSBuildThisFileDirectory)</SNNativeSourceDir>
+		<SNNativeBuildDir>$(MSBuildProjectDirectory)\obj\native\</SNNativeBuildDir>
+		<SNCefRoot Condition="'$(IsWindows)' == 'true'">$(MSBuildThisFileDirectory)..\Dependencies\CEF\$(SNCefVersion)\windows64\</SNCefRoot>
+		<SNCefRoot Condition="'$(IsLinux)' == 'true'">$(MSBuildThisFileDirectory)../Dependencies/CEF/$(SNCefVersion)/linux64/</SNCefRoot>
+		<SNNetHostDir>$(NetCoreTargetingPackRoot)\Microsoft.NETCore.App.Host.win-x64\$(BundledNETCoreAppPackageVersion)\runtimes\win-x64\native\</SNNetHostDir>
+		<SNCefLinuxRuntimeDir>$(NuGetPackageRoot)cef.runtime.linux-x64\$(SNCefVersion)\CEF\linux-x64\</SNCefLinuxRuntimeDir>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<SNNativeInput Include="$(SNNativeSourceDir)*.cpp;$(SNNativeSourceDir)*.h;$(SNNativeSourceDir)CMakeLists.txt;$(MSBuildThisFileFullPath)" />
+	</ItemGroup>
+
+	<Target Name="SNFindCMake" Condition="'$(SNCMake)' == ''">
+		<PropertyGroup>
+			<_SNVsWhere>$(MSBuildProgramFiles32)\Microsoft Visual Studio\Installer\vswhere.exe</_SNVsWhere>
+		</PropertyGroup>
+		<Exec Condition="'$(IsWindows)' == 'true' And Exists('$(_SNVsWhere)')" Command="&quot;$(_SNVsWhere)&quot; -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath" ConsoleToMSBuild="true" StandardOutputImportance="low">
+			<Output TaskParameter="ConsoleOutput" PropertyName="_SNVsInstall" />
+		</Exec>
+		<PropertyGroup>
+			<_SNVsCMake>$(_SNVsInstall)\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe</_SNVsCMake>
+			<SNCMake Condition="'$(_SNVsInstall)' != '' And Exists('$(_SNVsCMake)')">$(_SNVsCMake)</SNCMake>
+			<SNCMake Condition="'$(SNCMake)' == ''">cmake</SNCMake>
+		</PropertyGroup>
+	</Target>
+
+	<Target Name="SNBuildNativeWindows" AfterTargets="Build" DependsOnTargets="SNFindCMake" Condition="'$(IsWindows)' == 'true'"
+			Inputs="@(SNNativeInput)" Outputs="$(SNNativeBuildDir)Release\Source.Launcher.dll">
+		<Error Condition="!Exists('$(SNNetHostDir)nethost.h')" Text="Could not find the .NET apphost pack (nethost) at $(SNNetHostDir)" />
+		<Exec Command="&quot;$(SNCMake)&quot; -S &quot;$(SNNativeSourceDir.TrimEnd('\'))&quot; -B &quot;$(SNNativeBuildDir.TrimEnd('\'))&quot; -A x64 -DUSE_ATL=OFF &quot;-DCEF_ROOT=$(SNCefRoot.TrimEnd('\').Replace('\','/'))&quot; &quot;-DNETHOST_DIR=$(SNNetHostDir.TrimEnd('\').Replace('\','/'))&quot;" />
+		<Exec Command="&quot;$(SNCMake)&quot; --build &quot;$(SNNativeBuildDir.TrimEnd('\'))&quot; --config Release --parallel" />
+	</Target>
+
+	<Target Name="SNCopyNativeWindows" AfterTargets="SNBuildNativeWindows" Condition="'$(IsWindows)' == 'true'">
+		<Copy SourceFiles="$(SNNativeBuildDir)Release\Source.Launcher.dll" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="$(SNNetHostDir)nethost.dll" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="$(SNCefRoot)Release\bootstrapc.exe" DestinationFiles="$(OutDir)Source.Launcher.exe" SkipUnchangedFiles="true" />
+		<CallTarget Targets="CefRedist64CopyResources" />
+	</Target>
+
+	<Target Name="SNBuildNativeLinux" AfterTargets="Build" DependsOnTargets="SNFindCMake" Condition="'$(IsLinux)' == 'true'"
+			Inputs="@(SNNativeInput)" Outputs="$(SNNativeBuildDir)Source.Launcher.CEF">
+		<Error Condition="!Exists('$(SNCefLinuxRuntimeDir)libcef.so')" Text="Could not find libcef.so at $(SNCefLinuxRuntimeDir)" />
+		<Exec Command="&quot;$(SNCMake)&quot; -S &quot;$(SNNativeSourceDir)&quot; -B &quot;$(SNNativeBuildDir)&quot; -DCMAKE_BUILD_TYPE=Release &quot;-DCEF_ROOT=$(SNCefRoot)&quot; &quot;-DCEF_LIBCEF_SO=$(SNCefLinuxRuntimeDir)libcef.so&quot;" />
+		<Exec Command="&quot;$(SNCMake)&quot; --build &quot;$(SNNativeBuildDir)&quot; --parallel $([System.Environment]::ProcessorCount)" />
+	</Target>
+
+	<Target Name="SNCopyNativeLinux" AfterTargets="SNBuildNativeLinux" Condition="'$(IsLinux)' == 'true'">
+		<ItemGroup>
+			<_SNCefLinuxRuntime Include="$(SNCefLinuxRuntimeDir)*" />
+			<_SNCefLinuxResources Include="$(SNCefLinuxRuntimeDir)Resources\**\*" />
+		</ItemGroup>
+		<Copy SourceFiles="$(SNNativeBuildDir)Source.Launcher.CEF" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(_SNCefLinuxRuntime)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(_SNCefLinuxResources)" DestinationFiles="@(_SNCefLinuxResources->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+	</Target>
+
+</Project>

@@ -43,7 +43,7 @@ public class FontTextureRegen : ITextureRegenerator
 				for (int y = subRect.Y; y < ymax; ++y) {
 					Span<byte> pchData = vtfTexture.ImageData(0, 0, 0, 0, y)[(subRect.X * nFormatBytes)..];
 					nint size = ImageLoader.GetMemRequired(subRect.Width, 1, 1, Format, false);
-					memcpy(pchData, TextureBits.AsSpan()[((y * Width + subRect.X) * nFormatBytes)..]);
+					memcpy(pchData, TextureBits.AsSpan()[((y * Width + subRect.X) * nFormatBytes)..], (int)size);
 				}
 			}
 			else {

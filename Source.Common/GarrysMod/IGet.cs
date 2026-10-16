@@ -7,7 +7,14 @@ using Steamworks;
 
 namespace Source.Common.GarrysMod;
 
-public interface IMotionSensor; // todo
+public interface IMotionSensor
+{
+	bool IsActive();
+	bool Start();
+	void Stop();
+	int NumSensors();
+	IMaterial? GetColourMaterial();
+}
 
 public interface IGet
 {
@@ -23,7 +30,7 @@ public interface IGet
 	IIntroScreen? IntroScreen();
 	IMaterialSystem? Materials();
 	IServerAddons? ServerAddons();
-	IGMHTML? HTML();
+	IHtmlSystem? HTML();
 	ISteamHTTP? SteamHTTP();
 	ISteamUtils? SteamUtils();
 	ISteamUGC? SteamUGC();

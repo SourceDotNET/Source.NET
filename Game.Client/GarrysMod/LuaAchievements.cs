@@ -1,18 +1,26 @@
+#if !MENU_DLL
 using Game.Shared;
+#endif
 
 using Source.Common;
 using Source.Common.GarrysMod.Lua;
 
 using Steamworks;
 
+#if MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
+#else
 namespace Game.Client.GarrysMod;
+#endif
 
 public static partial class LuaAchievements
 {
 	[LuaLibrary]
 	static readonly LuaLibrary LL_Factory_achievements = new("achievements");
 
+#if !MENU_DLL
 	static bool UnsetIncrementFlag;
+#endif
 
 	static IAchievement? GetAchievement(int index) {
 		IAchievementMgr? mgr = engine.GetAchievementMgr();
@@ -21,10 +29,12 @@ public static partial class LuaAchievements
 		return mgr.GetAchievementByIndex(index);
 	}
 
+#if !MENU_DLL
 	static void IncrementAchievement(GMODAchievementID id) {
 		if (engine.GetAchievementMgr()!.GetAchievementByID((int)id) is BaseAchievement achievement)
 			achievement.IncrementCount(0);
 	}
+#endif
 
 	[LuaFunction]
 	static int Count(ILuaInterface lua) {
@@ -85,6 +95,7 @@ public static partial class LuaAchievements
 		return 1;
 	}
 
+#if !MENU_DLL
 	static int IncrementFromNetMessage(GMODAchievementID id) {
 		if (UnsetIncrementFlag || GarrysMod.RunningNetMessage) {
 			IncrementAchievement(id);
@@ -118,4 +129,5 @@ public static partial class LuaAchievements
 
 	[LuaFunction] static int BalloonPopped(ILuaInterface lua) => IncrementFromLuaCmd(GMODAchievementID.GMA_BALLOONPOPPER);
 	[LuaFunction] static int Remover(ILuaInterface lua) => IncrementFromLuaCmd(GMODAchievementID.GMA_REMOVER);
+#endif
 }

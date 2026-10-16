@@ -281,7 +281,19 @@ public class Resources : IResources
 	public void AudioSamples(Span<byte> unk1, uint unk2, byte unk3, byte unk4) => throw new NotImplementedException();
 	public void SavePNGToBuffer(int unk1, int unk2, Span<byte> unk3, Stream unk4, int unk5, int unk6) => throw new NotImplementedException();
 	public void SaveJPGToBuffer(int unk1, int unk2, Span<byte> unk3, Stream unk4, int unk5, int unk6, int unk7) => throw new NotImplementedException();
-	public void SetImage(ITexture unk1, ReadOnlySpan<char> unk2) => throw new NotImplementedException();
+	public void SetImage(ITexture texture, ReadOnlySpan<char> name) {
+		foreach (Image image in Image.DynamicImages) {
+			if (image.Texture != texture)
+				continue;
+
+			if (!image.Bitmap.IsNull) {
+				FreeImage.Unload(image.Bitmap);
+				image.Bitmap = FIBITMAP.Zero;
+			}
+			image.Name = new(name);
+			return;
+		}
+	}
 
 	public IMaterial? FindMaterial(ReadOnlySpan<char> name, ReadOnlySpan<char> flags, bool create, bool anyExtension, bool dynamic) {
 		Span<char> extension = stackalloc char[6];
