@@ -20,4 +20,7 @@ public interface ICallQueue
 
 	}
 	void QueueFunctorInternal(ref Functor functor);
+
+	void QueueCall(Action func);
+	void QueueCall<T>(Action<T> func, in T args);
 }
