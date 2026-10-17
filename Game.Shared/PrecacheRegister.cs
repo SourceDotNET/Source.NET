@@ -36,8 +36,15 @@ public class PrecacheRegister
 	public PrecacheRegister? Next;
 
 	public static void Precache() {
+#if GAME_DLL || CLIENT_DLL
+		if (++Game.Client.GarrysMod.GarrysMod.g_GModPrecaching > 0x20)
+			Error("Something seems to have gone wrong");
+#endif
 		for (PrecacheRegister? cur = PrecacheRegisters; cur != null; cur = cur.Next)
 			cur.Fn(cur.User);
+#if GAME_DLL || CLIENT_DLL
+		Game.Client.GarrysMod.GarrysMod.g_GModPrecaching--;
+#endif
 	}
 
 	public static void PrecacheFn_Other(object? userdata) {

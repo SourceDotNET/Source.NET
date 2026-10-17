@@ -53,6 +53,8 @@ public static class MapEntities
 
 		BaseEntity? entity = (BaseEntity?)network.GetBaseEntity();
 		Assert(entity);
+		if (entity != null && entity.GetRefEHandle().Index != Constants.INVALID_EHANDLE_INDEX)
+			garrysmod.EntityCreated(entity);
 		return entity;
 	}
 
