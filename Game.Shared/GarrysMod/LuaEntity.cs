@@ -1808,11 +1808,7 @@ public static partial class LuaEntity
 
 	[LuaMethod]
 	static int Entity__GetTable(ILuaInterface lua) {
-		LuaType type = lua.GetType(1);
-		if (type != LuaType.Entity && type != LuaType.Nil)
-			lua.TypeError("Entity", 1);
-
-		BaseEntity? ent = UserGet(1);
+		BaseEntity? ent = Get_Entity(1, true);
 		if (ent == null)
 			return 0;
 
@@ -1822,6 +1818,20 @@ public static partial class LuaEntity
 
 		table.Push();
 		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetTable(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (g_Lua!.GetType(2) != LuaType.Table) {
+			g_Lua.TypeError("table", 2);
+			return 0;
+		}
+
+		ILuaObject? table = g_Lua.GetObject(2);
+		if (table != null)
+			ent.SetLuaTable(table);
+		return 0;
 	}
 
 	[LuaMethod]
