@@ -16,31 +16,42 @@ public class OcclusionQueryMgr(MaterialSystem materials)
 	}
 
 	readonly Dictionary<OcclusionQueryObjectHandle_t, OcclusionQueryObject> OcclusionQueryObjects = [];
+	readonly object Mutex = new();
+
+	bool TryGetObject(OcclusionQueryObjectHandle_t h, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out OcclusionQueryObject? obj) {
+		lock (Mutex)
+			return OcclusionQueryObjects.TryGetValue(h, out obj);
+	}
 	OcclusionQueryObjectHandle_t NextHandle = 1;
 	int FrameCount = 0;
 
 	IShaderAPI ShaderAPI => materials.ShaderAPI;
 
 	public OcclusionQueryObjectHandle_t CreateOcclusionQueryObject() {
-		OcclusionQueryObjectHandle_t h = NextHandle++;
-		OcclusionQueryObjects.Add(h, new());
-		return h;
+		lock (Mutex) {
+			OcclusionQueryObjectHandle_t h = NextHandle++;
+			OcclusionQueryObjects.Add(h, new());
+			return h;
+		}
 	}
 
 	public void OnCreateOcclusionQueryObject(OcclusionQueryObjectHandle_t h) {
-		OcclusionQueryObject obj = OcclusionQueryObjects[h];
+		if (!TryGetObject(h, out OcclusionQueryObject? obj))
+			return;
 		for (int i = 0; i < COUNT_OCCLUSION_QUERY_STACK; i++)
 			obj.QueryHandle[i] = ShaderAPI.CreateOcclusionQueryObject();
 	}
 
 	public void DestroyOcclusionQueryObject(OcclusionQueryObjectHandle_t occlusionQuery) {
-		Assert(OcclusionQueryObjects.ContainsKey(occlusionQuery));
-		if (OcclusionQueryObjects.TryGetValue(occlusionQuery, out OcclusionQueryObject? obj)) {
+		bool found = TryGetObject(occlusionQuery, out OcclusionQueryObject? obj);
+		Assert(found);
+		if (found) {
 			for (int i = 0; i < COUNT_OCCLUSION_QUERY_STACK; i++) {
 				if (obj.QueryHandle[i] != IShaderAPI.INVALID_SHADERAPI_OCCLUSION_QUERY_HANDLE)
 					ShaderAPI.DestroyOcclusionQueryObject(obj.QueryHandle[i]);
 			}
-			OcclusionQueryObjects.Remove(occlusionQuery);
+			lock (Mutex)
+				OcclusionQueryObjects.Remove(occlusionQuery);
 		}
 	}
 
@@ -49,7 +60,10 @@ public class OcclusionQueryMgr(MaterialSystem materials)
 	}
 
 	public void AllocOcclusionQueryObjects() {
-		foreach (OcclusionQueryObject obj in OcclusionQueryObjects.Values) {
+		OcclusionQueryObject[] objects;
+		lock (Mutex)
+			objects = [.. OcclusionQueryObjects.Values];
+		foreach (OcclusionQueryObject obj in objects) {
 			for (int i = 0; i < COUNT_OCCLUSION_QUERY_STACK; i++) {
 				obj.QueryHandle[i] = ShaderAPI.CreateOcclusionQueryObject();
 				obj.HasBeenIssued[i] = false;
@@ -58,7 +72,10 @@ public class OcclusionQueryMgr(MaterialSystem materials)
 	}
 
 	public void FreeOcclusionQueryObjects() {
-		foreach (OcclusionQueryObject obj in OcclusionQueryObjects.Values) {
+		OcclusionQueryObject[] objects;
+		lock (Mutex)
+			objects = [.. OcclusionQueryObjects.Values];
+		foreach (OcclusionQueryObject obj in objects) {
 			for (int i = 0; i < COUNT_OCCLUSION_QUERY_STACK; i++) {
 				if (obj.QueryHandle[i] != IShaderAPI.INVALID_SHADERAPI_OCCLUSION_QUERY_HANDLE) {
 					ShaderAPI.DestroyOcclusionQueryObject(obj.QueryHandle[i]);
@@ -70,8 +87,9 @@ public class OcclusionQueryMgr(MaterialSystem materials)
 	}
 
 	public void ResetOcclusionQueryObject(OcclusionQueryObjectHandle_t occlusionQuery) {
-		Assert(OcclusionQueryObjects.ContainsKey(occlusionQuery));
-		if (OcclusionQueryObjects.TryGetValue(occlusionQuery, out OcclusionQueryObject? obj)) {
+		bool found = TryGetObject(occlusionQuery, out OcclusionQueryObject? obj);
+		Assert(found);
+		if (found) {
 			for (int i = 0; i < COUNT_OCCLUSION_QUERY_STACK; i++)
 				obj.HasBeenIssued[i] = false;
 
@@ -81,8 +99,9 @@ public class OcclusionQueryMgr(MaterialSystem materials)
 	}
 
 	public void BeginOcclusionQueryDrawing(OcclusionQueryObjectHandle_t occlusionQuery) {
-		Assert(OcclusionQueryObjects.ContainsKey(occlusionQuery));
-		if (OcclusionQueryObjects.TryGetValue(occlusionQuery, out OcclusionQueryObject? obj)) {
+		bool found = TryGetObject(occlusionQuery, out OcclusionQueryObject? obj);
+		Assert(found);
+		if (found) {
 			int current = obj.CurrentIssue;
 			ShaderAPIOcclusionQuery_t query = obj.QueryHandle[current];
 			if (query != IShaderAPI.INVALID_SHADERAPI_OCCLUSION_QUERY_HANDLE) {
@@ -105,8 +124,9 @@ public class OcclusionQueryMgr(MaterialSystem materials)
 	static int s_WarnCount = 0;
 
 	public void EndOcclusionQueryDrawing(OcclusionQueryObjectHandle_t occlusionQuery) {
-		Assert(OcclusionQueryObjects.ContainsKey(occlusionQuery));
-		if (OcclusionQueryObjects.TryGetValue(occlusionQuery, out OcclusionQueryObject? obj)) {
+		bool found = TryGetObject(occlusionQuery, out OcclusionQueryObject? obj);
+		Assert(found);
+		if (found) {
 			int current = obj.CurrentIssue;
 			ShaderAPIOcclusionQuery_t query = obj.QueryHandle[current];
 			if (query != IShaderAPI.INVALID_SHADERAPI_OCCLUSION_QUERY_HANDLE) {
@@ -122,8 +142,9 @@ public class OcclusionQueryMgr(MaterialSystem materials)
 	}
 
 	public void OcclusionQuery_IssueNumPixelsRenderedQuery(OcclusionQueryObjectHandle_t occlusionQuery) {
-		Assert(OcclusionQueryObjects.ContainsKey(occlusionQuery));
-		if (OcclusionQueryObjects.TryGetValue(occlusionQuery, out OcclusionQueryObject? obj)) {
+		bool found = TryGetObject(occlusionQuery, out OcclusionQueryObject? obj);
+		Assert(found);
+		if (found) {
 			for (int i = 0; i < COUNT_OCCLUSION_QUERY_STACK; i++) {
 				int index = (obj.CurrentIssue + i) % COUNT_OCCLUSION_QUERY_STACK;
 				ShaderAPIOcclusionQuery_t query = obj.QueryHandle[index];
@@ -144,6 +165,6 @@ public class OcclusionQueryMgr(MaterialSystem materials)
 		if (doQuery)
 			OcclusionQuery_IssueNumPixelsRenderedQuery(h);
 
-		return OcclusionQueryObjects[h].LastResult;
+		return TryGetObject(h, out OcclusionQueryObject? obj) ? obj.LastResult : -1;
 	}
 }
