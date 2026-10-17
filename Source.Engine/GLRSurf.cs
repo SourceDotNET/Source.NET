@@ -760,7 +760,7 @@ public static class GLRSurf
 			count += group.SurfaceCount;
 
 		if (count != 0) {
-			SurfaceHandle_t[] pList = new SurfaceHandle_t[count];
+			Span<SurfaceHandle_t> pList = stackalloc SurfaceHandle_t[count];
 			int i = 0;
 			foreach (SurfaceSortGroup group in groupList) {
 				for (short blockIndex = group.ListHead; blockIndex != -1; blockIndex = list.GetSurfaceBlock(blockIndex).NextBlock) {
@@ -950,6 +950,7 @@ public static class GLRSurf
 
 		return false;
 	}
+	static readonly List<SurfaceHandle_t> s_TranslucentSurfaceList = [];
 	public static void Shader_DrawTranslucentSurfaces(IWorldRenderList renderListIn, int sortIndex, uint flags, bool shadowDepth) {
 		if (!r_drawtranslucentworld.GetBool())
 			return;
@@ -964,7 +965,7 @@ public static class GLRSurf
 			skipLight = true;
 		}
 
-		List<SurfaceHandle_t> surfaceList = [];
+		List<SurfaceHandle_t> surfaceList = s_TranslucentSurfaceList;
 		for (int i = 0; i < (int)MatSortGroup.Max; ++i) {
 			if ((flags & (1u << i)) == 0)
 				continue;
