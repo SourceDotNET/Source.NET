@@ -537,18 +537,26 @@ public static partial class Util
 	}
 
 	public static void PrecacheOther(ReadOnlySpan<char> className, ReadOnlySpan<char> modelName = default) {
+		bool precaching = s_RemoveImmediateSemaphore == 0;
+		if (precaching)
+			Game.Client.GarrysMod.GarrysMod.g_GModPrecaching++;
+		if (Game.Client.GarrysMod.GarrysMod.g_GModPrecaching > 0x20)
+			Error("Something seems to have gone wroong");
+
 		BaseEntity? entity = CreateEntityByName(className);
-		if (entity == null) {
+		if (entity == null)
 			Warning("NULL Ent in Util.PrecacheOther\n");
-			return;
+		else {
+			// If we have a specified model, set it before calling precache
+			if (!modelName.IsStringEmpty)
+				entity.SetModelName(modelName);
+
+			entity.Precache();
+			Util.RemoveImmediate(entity);
 		}
 
-		// If we have a specified model, set it before calling precache
-		if (!modelName.IsStringEmpty)
-			entity.SetModelName(modelName);
-
-		entity.Precache();
-		Util.RemoveImmediate(entity);
+		if (precaching)
+			Game.Client.GarrysMod.GarrysMod.g_GModPrecaching--;
 	}
 
 	public static void ClientPrintFilter<Filter>(scoped in Filter filter, HudPrint dest, ReadOnlySpan<char> msgName, ReadOnlySpan<char> param1 = default, ReadOnlySpan<char> param2 = default, ReadOnlySpan<char> param3 = default, ReadOnlySpan<char> param4 = default) where Filter : IRecipientFilter {

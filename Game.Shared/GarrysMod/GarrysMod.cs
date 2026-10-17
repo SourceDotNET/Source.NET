@@ -576,6 +576,38 @@ public class GarrysMod : IGarrysMod
 		throw new NotImplementedException();
 	}
 
+	public static sbyte g_GModPrecaching;
+
+	public static void ResetLuaIteratorEntityCache(BaseEntity ent) {
+		if (g_Lua == null || g_Lua.Global() == null)
+			return;
+
+		LuaObject invalidate = new();
+		g_Lua.Global().GetMember("InvalidateInternalEntityCache", invalidate);
+		if (invalidate.isFunction()) {
+			invalidate.Push();
+			g_Lua.PushBool(ent.IsPlayer());
+			g_Lua.CallInternalNoReturns(1);
+		}
+		invalidate.UnReference();
+	}
+
+	public void EntityCreated(BaseEntity? ent) {
+		if (g_Lua == null || gGM == null || ent == null || g_GModPrecaching != 0)
+			return;
+
+		ResetLuaIteratorEntityCache(ent);
+		if (gGM == null || !gGM.CallWithArgs((int)LUA_POOLEDSTRING.OnEntityCreated))
+			return;
+
+#if CLIENT_DLL
+		LuaEntity.Push_Entity(ent);
+#else
+		Game.Server.GarrysMod.LuaEntity.Push_Entity(ent);
+#endif
+		gGM.CallNoReturns(1);
+	}
+
 	public void Think() {
 		if (g_Lua != null) {
 			// CheckForFilesystemChanges();
