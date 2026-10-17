@@ -11,7 +11,7 @@ using System.Numerics;
 
 namespace Source.Engine;
 
-public class PortalRect
+public struct PortalRect
 {
 	public float Left, Top, Right, Bottom;
 }
@@ -19,7 +19,7 @@ public class PortalRect
 public class AreaCullInfo
 {
 	public Frustum_t Frustum = new();
-	public PortalRect Rect = new();
+	public PortalRect Rect;
 	public ushort GlobalCounter;
 }
 
@@ -49,7 +49,7 @@ public static class RAreaPortal
 	static ushort g_GlobalCounter = 1;
 
 	static ViewSetup g_viewSetup;
-	static PortalRect g_viewWindow = new();
+	static PortalRect g_viewWindow;
 	static Matrix4x4 g_ScreenFromWorldProjection;
 
 	public static void R_Areaportal_LevelInit() {
@@ -69,15 +69,11 @@ public static class RAreaPortal
 
 	static byte R_TestBit(byte[] bits, int bit) => (byte)(bits[bit >> 3] & (1 << (bit & 7)));
 
-	class PortalClip
-	{
-		public readonly Vector3[] v0 = new Vector3[MAX_PORTAL_VERTS];
-		public readonly Vector3[] v1 = new Vector3[MAX_PORTAL_VERTS];
-		public readonly Vector3[][] lists;
-		public PortalClip() => lists = [v0, v1];
-	}
+	static bool GetPortalScreenExtents(ref BSPDAreaPortal portal, out PortalRect portalRect, Span<float> reflectionWaterHeight) {
+		Span<Vector3> v0 = stackalloc Vector3[MAX_PORTAL_VERTS];
+		Span<Vector3> v1 = stackalloc Vector3[MAX_PORTAL_VERTS];
 
-	static bool GetPortalScreenExtents(ref BSPDAreaPortal portal, PortalClip clip, PortalRect portalRect, Span<float> reflectionWaterHeight) {
+		portalRect = default;
 		portalRect.Left = portalRect.Bottom = float.MaxValue;
 		portalRect.Right = portalRect.Top = float.MinValue;
 		bool validExtents = false;
@@ -89,10 +85,10 @@ public static class RAreaPortal
 			for (int j = 0; j < passCount; ++j) {
 				int i;
 				for (i = 0; i < startVerts; i++) {
-					clip.v0[i] = brushData.ClipPortalVerts![portal.FirstClipPortalVert + i];
+					v0[i] = brushData.ClipPortalVerts![portal.FirstClipPortalVert + i];
 
 					if (j == 1)
-						clip.v0[i].Z = 2.0f * reflectionWaterHeight[0] - clip.v0[i].Z;
+						v0[i].Z = 2.0f * reflectionWaterHeight[0] - v0[i].Z;
 				}
 
 				int curList = 0;
@@ -100,8 +96,8 @@ public static class RAreaPortal
 				for (int iPlane = 0; iPlane < 4; iPlane++) {
 					ref readonly CollisionPlane plane = ref g_Frustum.GetPlane(iPlane);
 
-					Vector3[] pIn = clip.lists[curList];
-					Vector3[] pOut = clip.lists[curList == 0 ? 1 : 0];
+					Span<Vector3> pIn = curList == 0 ? v0 : v1;
+					Span<Vector3> pOut = curList == 0 ? v1 : v0;
 
 					int outVerts = 0;
 					int prev = startVerts - 1;
@@ -143,7 +139,7 @@ public static class RAreaPortal
 
 				Assert(curList == 0);
 				for (i = 0; i < startVerts; i++) {
-					ref Vector3 point = ref clip.v0[i];
+					ref Vector3 point = ref v0[i];
 
 					g_EngineRenderer.ClipTransformWithProjection(g_ScreenFromWorldProjection, point, out Vector3 screenPos);
 
@@ -164,7 +160,8 @@ public static class RAreaPortal
 		return validExtents;
 	}
 
-	static bool GetRectIntersection(PortalRect rect1, PortalRect rect2, PortalRect outRect) {
+	static bool GetRectIntersection(in PortalRect rect1, in PortalRect rect2, out PortalRect outRect) {
+		outRect = default;
 		outRect.Left = MathF.Max(rect1.Left, rect2.Left);
 		outRect.Right = MathF.Min(rect1.Right, rect2.Right);
 		if (outRect.Left >= outRect.Right)
@@ -178,7 +175,7 @@ public static class RAreaPortal
 		return true;
 	}
 
-	static void R_FlowThroughArea(int area, in Vector3 vecVisOrigin, PortalRect clipRect, ReadOnlySpan<VisOverrideData> visData, Span<float> reflectionWaterHeight) {
+	static void R_FlowThroughArea(int area, in Vector3 vecVisOrigin, in PortalRect clipRect, ReadOnlySpan<VisOverrideData> visData, Span<float> reflectionWaterHeight) {
 		if (g_AreaCullInfo[area].GlobalCounter != g_GlobalCounter) {
 			g_VisibleAreas[g_nVisibleAreas] = (ushort)area;
 			++g_nVisibleAreas;
@@ -190,7 +187,7 @@ public static class RAreaPortal
 			g_AreaCullInfo[area].Rect.Bottom = clipRect.Bottom;
 		}
 		else {
-			PortalRect frustumRect = g_AreaCullInfo[area].Rect;
+			ref PortalRect frustumRect = ref g_AreaCullInfo[area].Rect;
 			frustumRect.Left = MathF.Min(frustumRect.Left, clipRect.Left);
 			frustumRect.Bottom = MathF.Min(frustumRect.Bottom, clipRect.Bottom);
 			frustumRect.Top = MathF.Max(frustumRect.Top, clipRect.Top);
@@ -205,7 +202,6 @@ public static class RAreaPortal
 
 		Assert(area < host_state.WorldBrush!.NumAreas);
 		ref BSPDArea areaData = ref host_state.WorldBrush!.Areas![area];
-		PortalClip clipTmp = new();
 
 		for (int iAreaPortal = 0; iAreaPortal < areaData.NumAreaPortals; iAreaPortal++) {
 			Assert(areaData.FirstAreaPortal + iAreaPortal < brushData.NumAreaPortals);
@@ -225,26 +221,26 @@ public static class RAreaPortal
 			if (R_TestBit(cl.AreaBits, areaPortal.OtherArea) == 0)
 				continue;
 
-			PortalRect portalRect = new();
+			PortalRect portalRect;
 			bool portalVis = true;
 
 			float distTolerance = (visData.Length != 0) ? visData[0].DistToAreaPortalTolerance : 0.1f;
 			if (dist > distTolerance)
-				portalVis = GetPortalScreenExtents(ref areaPortal, clipTmp, portalRect, reflectionWaterHeight);
+				portalVis = GetPortalScreenExtents(ref areaPortal, out portalRect, reflectionWaterHeight);
 			else {
+				portalRect = default;
 				portalRect.Left = -1;
 				portalRect.Top = 1;
 				portalRect.Right = 1;
 				portalRect.Bottom = -1;
 			}
 			if (portalVis) {
-				PortalRect intersection = new();
-				if (GetRectIntersection(portalRect, clipRect, intersection)) {
+				if (GetRectIntersection(in portalRect, in clipRect, out PortalRect intersection)) {
 					if (r_DrawPortals.GetInt() != 0) {
 						g_PortalRects.Add(intersection);
 					}
 
-					R_FlowThroughArea(areaPortal.OtherArea, vecVisOrigin, intersection, visData, reflectionWaterHeight);
+					R_FlowThroughArea(areaPortal.OtherArea, vecVisOrigin, in intersection, visData, reflectionWaterHeight);
 				}
 			}
 		}
@@ -477,7 +473,7 @@ public static class RAreaPortal
 			g_nVisibleAreas = 0;
 			Vector3 vecVisOrigin = (visData.Length != 0) ? visData[0].VisOrigin : g_EngineRenderer.ViewOrigin();
 			R_SetupGlobalFrustum();
-			R_FlowThroughArea(area, vecVisOrigin, rect, visData, waterReflectionHeight);
+			R_FlowThroughArea(area, vecVisOrigin, in rect, visData, waterReflectionHeight);
 			R_SetupVisibleAreaFrustums();
 		}
 	}
