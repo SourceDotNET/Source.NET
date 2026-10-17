@@ -759,16 +759,23 @@ public sealed class VoxelTree
 	public PartitionVisits? GetVisits() => t_visits;
 	public int GetTreeId() => TreeId;
 
+	[ThreadStatic] static Stack<PartitionVisits>? t_freeVisits;
+
 	public PartitionVisits? BeginVisit() {
 		var prev = t_visits;
-		var visits = new PartitionVisits();
+		Stack<PartitionVisits> free = t_freeVisits ??= new();
+		var visits = free.Count > 0 ? free.Pop() : new PartitionVisits();
 		visits.Resize(_nextVisitBit);
 		visits.ClearAll();
 		t_visits = visits;
 		return prev;
 	}
 
-	public void EndVisit(PartitionVisits? prev) => t_visits = prev;
+	public void EndVisit(PartitionVisits? prev) {
+		if (t_visits != null)
+			(t_freeVisits ??= new()).Push(t_visits);
+		t_visits = prev;
+	}
 
 	public VoxelTree() {
 		_levelCount = 0;
