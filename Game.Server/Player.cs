@@ -18,6 +18,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Game.Server;
 
@@ -426,6 +427,7 @@ public partial class BasePlayer : BaseCombatCharacter
 	public TimeUnit_t LerpTime;
 	public bool LagCompensation;
 	public bool PredictWeapons;
+	readonly List<UserCmd> AvailableCommandsBuf = [];
 
 	public static void SendProxy_CropFlagsToPlayerFlagBitsLength(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID) {
 		int mask = (1 << Constants.PLAYER_FLAG_BITS) - 1;
@@ -943,7 +945,7 @@ public partial class BasePlayer : BaseCombatCharacter
 				}
 
 				if (tr.Fraction != 1.0) { // line hit something, so paint a decal
-					// todo
+										  // todo
 				}
 
 				break;
@@ -1219,7 +1221,7 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	void RemoveAllCommandContexts() => CommandContext.Clear();
 
-	void ReplaceContextCommands(CommandContext ctx, UserCmd[] cmds, int commands) {
+	void ReplaceContextCommands(CommandContext ctx, ReadOnlySpan<UserCmd> cmds, int commands) {
 		ctx.Cmds.Clear();
 
 		ctx.NumCmds = commands;
@@ -1386,7 +1388,7 @@ public partial class BasePlayer : BaseCombatCharacter
 
 		int command_context_count = GetCommandContextCount();
 
-		List<UserCmd> vecAvailCommands = [];
+		AvailableCommandsBuf.Clear();
 
 		for (int context_number = 0; context_number < command_context_count; context_number++) {
 			CommandContext ctx = GetCommandContext(context_number);
@@ -1404,32 +1406,32 @@ public partial class BasePlayer : BaseCombatCharacter
 				while (droppedcmds > numbackup) {
 					UserCmd lastCmd = GetLastUserCommand();
 					lastCmd.CommandNumber++;
-					vecAvailCommands.Add(lastCmd);
+					AvailableCommandsBuf.Add(lastCmd);
 					droppedcmds--;
 				}
 
 				while (droppedcmds > 0) {
 					int cmdnum = ctx.NumCmds + droppedcmds - 1;
-					vecAvailCommands.Add(ctx.Cmds[cmdnum]);
+					AvailableCommandsBuf.Add(ctx.Cmds[cmdnum]);
 					droppedcmds--;
 				}
 			}
 
 			for (int i = ctx.NumCmds - 1; i >= 0; i--)
-				vecAvailCommands.Add(ctx.Cmds[i]);
+				AvailableCommandsBuf.Add(ctx.Cmds[i]);
 
 			LastCmd = ctx.Cmds[ctx.Cmds.Count - 1];
 		}
 
 		int commandLimit = IsSimulatingOnAlternateTicks() ? 2 : 1;
-		int commandsToRun = vecAvailCommands.Count;
-		if (gpGlobals.SimTicksThisFrame >= commandLimit && vecAvailCommands.Count > commandLimit) {
-			int commandsToRollOver = Math.Min(vecAvailCommands.Count, (gpGlobals.SimTicksThisFrame - 1));
-			commandsToRun = vecAvailCommands.Count - commandsToRollOver;
+		int commandsToRun = AvailableCommandsBuf.Count;
+		if (gpGlobals.SimTicksThisFrame >= commandLimit && AvailableCommandsBuf.Count > commandLimit) {
+			int commandsToRollOver = Math.Min(AvailableCommandsBuf.Count, (gpGlobals.SimTicksThisFrame - 1));
+			commandsToRun = AvailableCommandsBuf.Count - commandsToRollOver;
 			Assert(commandsToRun >= 0);
 			if (commandsToRollOver > 0) {
 				CommandContext ctx = RemoveAllCommandContextsExceptNewest();
-				ReplaceContextCommands(ctx, [.. vecAvailCommands.GetRange(vecAvailCommands.Count - commandsToRollOver, commandsToRollOver)], commandsToRollOver);
+				ReplaceContextCommands(ctx, CollectionsMarshal.AsSpan(AvailableCommandsBuf).Slice(AvailableCommandsBuf.Count - commandsToRollOver, commandsToRollOver), commandsToRollOver);
 			}
 			else
 				RemoveAllCommandContexts();
@@ -1458,7 +1460,7 @@ public partial class BasePlayer : BaseCombatCharacter
 				IPredictionSystem.SuppressHostEvents(this);
 
 			for (int i = 0; i < commandsToRun; ++i) {
-				PlayerRunCommand(vecAvailCommands[i], MoveHelperServer.s_MoveHelperServer);
+				PlayerRunCommand(AvailableCommandsBuf[i], MoveHelperServer.s_MoveHelperServer);
 
 				if (PhysicsController != null) {
 					UpdateVPhysicsPosition(NewVPhysicsPosition, NewVPhysicsVelocity, (float)vphysicsArrivalTime);
