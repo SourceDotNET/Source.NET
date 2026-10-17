@@ -678,7 +678,7 @@ public static class GLRSurf
 					for (int i = 0; i < surfaceList.Count; i++) {
 						SurfaceHandle_t surfID = surfaceList[i];
 						Assert(!ModelLoader.SurfaceHasDispInfo(ref ModelLoader.SurfaceHandleFromIndex(surfID)));
-						Shader_DrawSurfaceDynamic(renderContext, surfID, false);
+						Shader_DrawSurfaceDynamic(renderContext.Context, surfID, false);
 					}
 				}
 				break;
@@ -917,7 +917,7 @@ public static class GLRSurf
 			// overlaymgr todo
 
 #if !SWDS
-			Render.DecalSurfaceDraw(renderCtx, sortGroup);
+			Render.DecalSurfaceDraw(renderCtx.Context, sortGroup);
 #endif
 
 			g_ShadowMgr.DrawFlashlightDecals(sortGroup, flashlightMask);
@@ -987,7 +987,7 @@ public static class GLRSurf
 				if (!skipLight)
 					renderContext.BindLightmapPage(MatSys.MaterialSortInfoArray![ModelLoader.MSurf_MaterialSortID(ref surface)].LightmapPageID);
 
-				Shader_DrawSurfaceDynamic(renderContext, surfID, false);
+				Shader_DrawSurfaceDynamic(renderContext.Context, surfID, false);
 
 				// todo
 			}
@@ -1351,7 +1351,7 @@ public static class GLRSurf
 		}
 
 		using MatRenderContextPtr renderContext = new(materials);
-		using BrushModelTransform brushTransform = new(origin, angles, renderContext);
+		using BrushModelTransform brushTransform = new(origin, angles, renderContext.Context);
 
 		Assert(model!.Brush.FirstModelSurface != 0);
 
@@ -1368,7 +1368,7 @@ public static class GLRSurf
 		else if (drawOpaque)
 			g_BrushBatchRenderer.DrawOpaqueBrushModel(baseEntity, model, origin, depthMode);
 
-		Shader_BrushEnd(renderContext, brushTransform.GetNonIdentityMatrix(), model, depthMode != RenderDepthMode.Normal, baseEntity);
+		Shader_BrushEnd(renderContext.Context, brushTransform.GetNonIdentityMatrix(), model, depthMode != RenderDepthMode.Normal, baseEntity);
 
 		if (r_drawbrushmodels.GetInt() == 2) {
 			g_ShaderDebug.Wireframe = wireframe;
@@ -1384,7 +1384,7 @@ public static class GLRSurf
 		QAngle angles = renderable.GetRenderAngles();
 
 		using MatRenderContextPtr renderContext = new(materials);
-		using BrushModelTransform brushTransform = new(origin, angles, renderContext);
+		using BrushModelTransform brushTransform = new(origin, angles, renderContext.Context);
 		g_BrushBatchRenderer.DrawBrushModelShadow(model, renderable);
 	}
 	public static void R_DrawIdentityBrushModel(IWorldRenderList renderListIn, Model? model) => throw new NotImplementedException();
@@ -1986,7 +1986,7 @@ public class BrushBatchRender
 				}
 
 #if !SWDS
-				Render.DecalSurfaceDraw(renderContext, BRUSHMODEL_DECAL_SORT_GROUP);
+				Render.DecalSurfaceDraw(renderContext.Context, BRUSHMODEL_DECAL_SORT_GROUP);
 #endif
 
 #if !SWDS

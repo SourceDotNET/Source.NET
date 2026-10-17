@@ -42,7 +42,7 @@ public static partial class LuaCam
 
 		if (data.GetMemberStr("type", "3D")!.StartsWith('2')) {
 			using MatRenderContextPtr renderContext = new(materials);
-			ClientModeShared.SetupVGuiMatrices(true, renderContext);
+			ClientModeShared.SetupVGuiMatrices(true, renderContext.Context);
 			((ClientModeShared)clientMode).SetupGModSurface(true);
 			renderContext.OverrideAlphaWriteEnable(true, true);
 			Start2DCount++;
@@ -140,7 +140,7 @@ public static partial class LuaCam
 		using MatRenderContextPtr renderContext = new(materials);
 		renderContext.OverrideAlphaWriteEnable(false, false);
 		((ClientModeShared)clientMode).SetupGModSurface(false);
-		ClientModeShared.SetupVGuiMatrices(false, renderContext);
+		ClientModeShared.SetupVGuiMatrices(false, renderContext.Context);
 		return 0;
 	}
 

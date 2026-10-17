@@ -875,7 +875,7 @@ public class ViewRenderBeams : IViewRenderBeams, IDisposable
 		// Specify all the segments.
 		using MatRenderContextPtr renderContext = new(materials);
 		BeamSegDraw segDraw = new();
-		segDraw.Start(renderContext, segments, null);
+		segDraw.Start(renderContext.Context, segments, null);
 
 		for (i = 0; i < segments; i++) {
 			Assert(noiseIndex < (noise_divisions << 16));

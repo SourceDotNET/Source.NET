@@ -515,7 +515,7 @@ public class ViewRender : IViewRender
 			// VGui_PostRender();
 			using (renderContext = new MatRenderContextPtr(materials)) {
 #if GMOD_DLL
-				((ClientModeShared)clientMode).PostRenderVGui(renderContext);
+				((ClientModeShared)clientMode).PostRenderVGui(renderContext.Context);
 #endif
 				if (pTexture != null) {
 					// renderContext.OverrideAlphaWriteEnable(false, true);
