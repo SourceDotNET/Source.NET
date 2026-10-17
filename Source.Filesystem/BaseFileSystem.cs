@@ -310,7 +310,7 @@ public partial class BaseFileSystem : IFileSystem
 			ISearchPath path = iterator.Current;
 			if (path is DiskSearchPath disk) {
 				if (disk.ExistsOnDisk(filenameNormalized))
-					return ISearchPath.Concat(path, fileName, dest);
+					return disk.GetFullPath(ISearchPath.Concat(path, fileName, dest));
 
 				string resolved = g_AddonFileSystem.ResolveFile(disk.GetFullPath(filenameNormalized));
 				if (resolved.Length != 0) {
