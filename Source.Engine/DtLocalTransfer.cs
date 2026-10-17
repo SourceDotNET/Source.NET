@@ -31,6 +31,9 @@ public static class LocalTransfer
 		"(SP only) - show entities that were copied using small optimized lists (FL_EDICT_PARTIAL_CHANGE)."
 	);
 
+	static ServerDatatableStack? s_ServerStack;
+	static ClientDatatableStack? s_ClientStack;
+
 	public static void TransferEntity(BaseEdict edict, SendTable sendTable, object srcEnt, RecvTable recvTable, object destEnt, bool newlyCreated, bool justEnteredPVS, int objectID) {
 		TotalEntChanges++;
 		EdictChangeInfo changeInfo = g_SharedChangeInfo!.ChangeInfos[edict.GetChangeInfo()];
@@ -49,14 +52,18 @@ public static class LocalTransfer
 			FastSortList(propIndices, changeOffsets);
 
 			// Setup the structure to traverse the source tree.
-			ErrorIfNot(precalc != null, ($"SendTable_Encode: Missing precalc for SendTable {sendTable.NetTableName}."));
-			ServerDatatableStack serverStack = new(precalc, srcEnt, objectID);
+			if (precalc == null)
+				Error($"SendTable_Encode: Missing precalc for SendTable {sendTable.NetTableName}.");
+			ServerDatatableStack serverStack = s_ServerStack ??= new(precalc, srcEnt, objectID);
+			serverStack.Reset(precalc, srcEnt, objectID);
 			serverStack.Init(true);
 
 			// Setup the structure to traverse the dest tree.
 			RecvDecoder? decoder = recvTable.Decoder;
-			ErrorIfNot(decoder != null, ($"RecvTable_Decode: table '{recvTable.GetName()}' missing a decoder."));
-			ClientDatatableStack clientStack = new(decoder, destEnt, objectID);
+			if (decoder == null)
+				Error($"RecvTable_Decode: table '{recvTable.GetName()}' missing a decoder.");
+			ClientDatatableStack clientStack = s_ClientStack ??= new(decoder, destEnt, objectID);
+			clientStack.Reset(decoder, destEnt, objectID);
 			clientStack.Init(true);
 
 			// Cool. We can get away with just transferring a few.
@@ -86,14 +93,18 @@ public static class LocalTransfer
 		else {
 			// Setup the structure to traverse the source tree.
 			SendTablePrecalc precalc = sendTable.Precalc!;
-			ErrorIfNot(precalc != null, ($"SendTable_Encode: Missing precalc for SendTable {sendTable.NetTableName}."));
-			ServerDatatableStack serverStack = new(precalc, srcEnt, objectID);
+			if (precalc == null)
+				Error($"SendTable_Encode: Missing precalc for SendTable {sendTable.NetTableName}.");
+			ServerDatatableStack serverStack = s_ServerStack ??= new(precalc, srcEnt, objectID);
+			serverStack.Reset(precalc, srcEnt, objectID);
 			serverStack.Init();
 
 			// Setup the structure to traverse the dest tree.
 			RecvDecoder? decoder = recvTable.Decoder;
-			ErrorIfNot(decoder != null, ($"RecvTable_Decode: table '{recvTable.GetName()}' missing a decoder."));
-			ClientDatatableStack clientStack = new(decoder, destEnt, objectID);
+			if (decoder == null)
+				Error($"RecvTable_Decode: table '{recvTable.GetName()}' missing a decoder.");
+			ClientDatatableStack clientStack = s_ClientStack ??= new(decoder, destEnt, objectID);
+			clientStack.Reset(decoder, destEnt, objectID);
 			clientStack.Init();
 
 			AddToPartialChangeEntsList(Array.IndexOf(sv.Edicts, edict), false);
