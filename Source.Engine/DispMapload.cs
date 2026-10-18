@@ -375,7 +375,8 @@ public static class DispMapload
 
 		DispInfo_ReleaseMaterialSystemObjects(world);
 
-		Span<BSPDDispInfo> tempDisps = stackalloc BSPDDispInfo[BSPFileCommon.MAX_MAP_DISPINFO];
+		ErrorIfNot(numDisplacements <= BSPFileCommon.MAX_MAP_DISPINFO, $"DispInfo_LoadDisplacements: too many displacements ({numDisplacements})");
+		Span<BSPDDispInfo> tempDisps = new BSPDDispInfo[numDisplacements];
 		dispInfos.LoadLumpData(tempDisps);
 
 		DispInfo_LinkToParentFaces(world, tempDisps, numDisplacements);
