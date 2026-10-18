@@ -875,8 +875,8 @@ public class NetChannel : INetChannelInfo, INetChannel
 
 				int msgStartBit = buf.BitsRead;
 				if (!netMsg.ReadFromBuffer(buf)) {
-					Error($"NetChannel: failed reading message {msgName} from {RemoteAddress}\n");
-					Assert(false);
+					Warning($"NetChannel: failed reading message {msgName} from {RemoteAddress}\n");
+					//Assert(false);
 					return false;
 				}
 
