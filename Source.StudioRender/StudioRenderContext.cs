@@ -185,12 +185,14 @@ public class StudioRenderContext(IMaterialSystem materialSystem, IStudioDataCach
 
 		int nColorMeshID = 0;
 		int nLodID;
+		MaterialLock hLock = materialSystem.Lock();
 		for (nLodID = studioHWData.RootLOD; nLodID < studioHWData.NumLODs; nLodID++) {
 			LoadMaterials(studioHdr, vertexHdr, studioHWData.LODs[nLodID], nLodID);
 			R_StudioCreateStaticMeshes(studioHdr, vertexHdr, studioHWData, nLodID, ref nColorMeshID);
 			ComputeHWMorphDecalBoneRemap(studioHdr, vertexHdr, studioHWData, nLodID);
 			studioHWData.LODs[nLodID].SwitchPoint = vertexHdr.BodyPart(0).Model(0).LOD(nLodID).SwitchPoint;
 		}
+		materialSystem.Unlock(hLock);
 
 		return true;
 	}

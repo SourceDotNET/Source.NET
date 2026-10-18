@@ -9,24 +9,77 @@ namespace Source.MaterialSystem;
 public sealed class MaterialVar : IMaterialVar
 {
 	IMaterialInternal owningMaterial;
+	MaterialSystem? materials;
 	Matrix4x4 MatrixVal = Matrix4x4.Identity;
 
 	void VarChanged() => owningMaterial?.ReportVarChanged(this);
 
 	void Init() {
+		TempIndex = NO_TEMP_INDEX;
+	}
 
+	const byte NO_TEMP_INDEX = 0xFF;
+	const int MAX_TEMP_VARS = 254;
+	static readonly MaterialVar[] TempMaterialVars = CreateTempMaterialVars();
+	static readonly List<MaterialVar> TempIndexOwners = [];
+	static bool EnableThreadedAccess;
+	static int TempVarsUsed;
+
+	static MaterialVar[] CreateTempMaterialVars() {
+		MaterialVar[] vars = new MaterialVar[MAX_TEMP_VARS];
+		for (int i = 0; i < vars.Length; i++)
+			vars[i] = new MaterialVar(null!, "") { FakeMaterialVar = true };
+		return vars;
+	}
+
+	public static void EnableThreadedMaterialVarAccess(bool enable) {
+		if (EnableThreadedAccess == enable)
+			return;
+
+		EnableThreadedAccess = enable;
+		if (!EnableThreadedAccess) {
+			for (int i = 0; i < TempVarsUsed; ++i)
+				TempMaterialVars[i].SetUndefined();
+			for (int i = 0; i < TempIndexOwners.Count; ++i)
+				TempIndexOwners[i].TempIndex = NO_TEMP_INDEX;
+			TempIndexOwners.Clear();
+			TempVarsUsed = 0;
+		}
+	}
+
+	MatCallQueue? GetCallQueue() => FakeMaterialVar ? null : materials?.GetRenderCallQueue();
+
+	MaterialVar? GetThreadedTempVar() {
+		if (TempIndex == NO_TEMP_INDEX || GetCallQueue() == null)
+			return null;
+		return TempMaterialVars[TempIndex];
+	}
+
+	MaterialVar? AllocThreadedTempVar() {
+		if (!EnableThreadedAccess)
+			return null;
+
+		if (TempIndex == NO_TEMP_INDEX) {
+			if (TempVarsUsed >= MAX_TEMP_VARS)
+				return null;
+			TempIndex = (byte)TempVarsUsed++;
+			TempIndexOwners.Add(this);
+		}
+		return TempMaterialVars[TempIndex];
 	}
 
 
 	public MaterialVar(IMaterial material, ReadOnlySpan<char> key) {
 		Init();
 		owningMaterial = (IMaterialInternal)material!;
+		materials = (material as Material)?.materials;
 		Name = new(GetSymbol(key));
 		Type = MaterialVarType.Undefined;
 	}
 	public MaterialVar(IMaterial material, ReadOnlySpan<char> key, int val) {
 		Init();
 		owningMaterial = (IMaterialInternal)material!;
+		materials = (material as Material)?.materials;
 		Name = new(GetSymbol(key));
 		Type = MaterialVarType.Int;
 		VecVal[0] = VecVal[1] = VecVal[2] = VecVal[3] = (float)val;
@@ -35,6 +88,7 @@ public sealed class MaterialVar : IMaterialVar
 	public MaterialVar(IMaterial material, ReadOnlySpan<char> key, float val) {
 		Init();
 		owningMaterial = (IMaterialInternal)material!;
+		materials = (material as Material)?.materials;
 		Name = new(GetSymbol(key));
 		Type = MaterialVarType.Float;
 		VecVal[0] = VecVal[1] = VecVal[2] = VecVal[3] = val;
@@ -43,6 +97,7 @@ public sealed class MaterialVar : IMaterialVar
 	public MaterialVar(IMaterial material, ReadOnlySpan<char> key, Span<float> val) {
 		Init();
 		owningMaterial = (IMaterialInternal)material!;
+		materials = (material as Material)?.materials;
 		Name = new(GetSymbol(key));
 		Type = MaterialVarType.Vector;
 		NumVectorComps = (byte)Math.Min(val.Length, 4);
@@ -54,6 +109,7 @@ public sealed class MaterialVar : IMaterialVar
 	public MaterialVar(IMaterial material, ReadOnlySpan<char> key, ReadOnlySpan<char> val) {
 		Init();
 		owningMaterial = (IMaterialInternal)material!;
+		materials = (material as Material)?.materials;
 		Name = new(GetSymbol(key));
 		StringVal = new(val);
 		Type = MaterialVarType.String;
@@ -94,6 +150,9 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	public override string GetStringValue() {
+		MaterialVar? temp = GetThreadedTempVar();
+		if (temp != null)
+			return temp.GetStringValue();
 		return StringVal;
 	}
 
@@ -121,6 +180,12 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	public override unsafe void GetVecValue(Span<float> val) {
+		MaterialVar? temp = GetThreadedTempVar();
+		if (temp != null) {
+			temp.GetVecValue(val);
+			return;
+		}
+
 		fixed (Vector4* v4 = &VecVal)
 			new Span<float>(v4, val.Length > 4 ? 4 : val.Length).CopyTo(val);
 	}
@@ -143,6 +208,13 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	public override void SetFloatValue(float val) {
+		MatCallQueue? callQueue = GetCallQueue();
+		if (callQueue != null) {
+			AllocThreadedTempVar()?.SetFloatValue(val);
+			callQueue.QueueCall(static s => s.Var.SetFloatValue(s.Val), (Var: this, Val: val));
+			return;
+		}
+
 		// Suppress all this if we're not actually changing anything
 		if (Type == MaterialVarType.Float && VecVal[0] == val)
 			return;
@@ -160,6 +232,13 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	public override void SetIntValue(int val) {
+		MatCallQueue? callQueue = GetCallQueue();
+		if (callQueue != null) {
+			AllocThreadedTempVar()?.SetIntValue(val);
+			callQueue.QueueCall(static s => s.Var.SetIntValue(s.Val), (Var: this, Val: val));
+			return;
+		}
+
 		// Suppress all this if we're not actually changing anything
 		if (Type == MaterialVarType.Int && IntVal == val)
 			return;
@@ -177,6 +256,13 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	public override void SetMatrixValue(in Matrix4x4 matrix) {
+		MatCallQueue? callQueue = GetCallQueue();
+		if (callQueue != null) {
+			AllocThreadedTempVar()?.SetMatrixValue(in matrix);
+			callQueue.QueueCall(static s => s.Var.SetMatrixValue(in s.Val), (Var: this, Val: matrix));
+			return;
+		}
+
 		FlushIfCurrentMaterial();
 
 		Matrix.Matrix = matrix;
@@ -188,6 +274,14 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	public override void SetStringValue(ReadOnlySpan<char> val) {
+		MatCallQueue? callQueue = GetCallQueue();
+		if (callQueue != null) {
+			string copy = new(val.SliceNullTerminatedString());
+			AllocThreadedTempVar()?.SetStringValue(copy);
+			callQueue.QueueCall(static s => s.Var.SetStringValue(s.Val), (Var: this, Val: copy));
+			return;
+		}
+
 		FlushIfCurrentMaterial();
 
 		StringVal = new(val.SliceNullTerminatedString());
@@ -196,6 +290,13 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	public override void SetTextureValue(ITexture? texture) {
+		MatCallQueue? callQueue = GetCallQueue();
+		if (callQueue != null) {
+			AllocThreadedTempVar()?.SetTextureValue(texture);
+			callQueue.QueueCall(static s => s.Var.SetTextureValue(s.Val), (Var: this, Val: texture));
+			return;
+		}
+
 		// Suppress all this if we're not actually changing anything
 		if (Type == MaterialVarType.Texture && TextureValue == texture)
 			return;
@@ -208,6 +309,13 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	public override void SetUndefined() {
+		MatCallQueue? callQueue = GetCallQueue();
+		if (callQueue != null) {
+			AllocThreadedTempVar()?.SetUndefined();
+			callQueue.QueueCall(static var => var.SetUndefined(), this);
+			return;
+		}
+
 		if (Type == MaterialVarType.Undefined)
 			return;
 
@@ -222,6 +330,13 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	public override void SetVecComponentValue(float val, int component) {
+		MatCallQueue? callQueue = GetCallQueue();
+		if (callQueue != null) {
+			AllocThreadedTempVar()?.SetVecComponentValue(val, component);
+			callQueue.QueueCall(static s => s.Var.SetVecComponentValue(s.Val, s.Component), (Var: this, Val: val, Component: component));
+			return;
+		}
+
 		if (Type == MaterialVarType.Vector && VecVal[component] == val)
 			return;
 
@@ -243,6 +358,13 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	void SetVecValueInternal(in Vector4 vec, int comps) {
+		MatCallQueue? callQueue = GetCallQueue();
+		if (callQueue != null) {
+			AllocThreadedTempVar()?.SetVecValueInternal(in vec, comps);
+			callQueue.QueueCall(static s => s.Var.SetVecValueInternal(in s.Val, s.Comps), (Var: this, Val: vec, Comps: comps));
+			return;
+		}
+
 		// Suppress all this if we're not actually changing anything
 		if (Type == MaterialVarType.Vector && VecVal == vec)
 			return;
@@ -270,11 +392,13 @@ public sealed class MaterialVar : IMaterialVar
 	public override void SetVecValue(float x, float y, float z, float w) => SetVecValueInternal(new(x, y, z, w), 4);
 
 	protected override float GetFloatValueInternal() {
-		throw new NotImplementedException();
+		MaterialVar? temp = GetThreadedTempVar();
+		return temp != null ? temp.VecVal.X : VecVal.X;
 	}
 
 	protected override int GetIntValueInternal() {
-		throw new NotImplementedException();
+		MaterialVar? temp = GetThreadedTempVar();
+		return temp != null ? temp.IntVal : IntVal;
 	}
 
 	protected override Span<float> GetVecValueInternal() {
@@ -286,8 +410,14 @@ public sealed class MaterialVar : IMaterialVar
 	}
 
 	protected override int VectorSizeInternal() {
-		return NumVectorComps;
+		MaterialVar? temp = GetThreadedTempVar();
+		return temp != null ? temp.NumVectorComps : NumVectorComps;
 	}
 
-	public override Span<float> GetVecValue() => new Span<Vector4>(ref VecVal).Cast<Vector4, float>();
+	public override Span<float> GetVecValue() {
+		MaterialVar? temp = GetThreadedTempVar();
+		if (temp != null)
+			return temp.GetVecValue();
+		return new Span<Vector4>(ref VecVal).Cast<Vector4, float>();
+	}
 }

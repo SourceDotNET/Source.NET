@@ -47,7 +47,7 @@ public abstract class IMaterialVar
 	protected ITexture? TextureValue;
 	protected byte NumVectorComps;
 	protected bool FakeMaterialVar;
-	protected byte TempIndex;
+	protected byte TempIndex = 0xFF;
 	protected UtlSymbol Name = new();
 	public MaterialVarGPU GPU;
 
@@ -162,10 +162,10 @@ public abstract class IMaterialVar
 	protected abstract int VectorSizeInternal();
 
 	public int GetIntValue() {
-		return IntVal;
+		return TempIndex == 0xFF ? IntVal : GetIntValueInternal();
 	}
 	public float GetFloatValue() {
-		return VecVal.X;
+		return TempIndex == 0xFF ? VecVal.X : GetFloatValueInternal();
 	}
 
 	public static readonly UtlSymbolTableMT MaterialVarSymbols = new(true);

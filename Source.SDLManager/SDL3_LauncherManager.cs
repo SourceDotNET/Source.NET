@@ -76,6 +76,11 @@ public unsafe class SDL3_OpenGL46_Context(nint window, nint ctx) : IGraphicsCont
 			Warning($"Could not make GL context current: {SDL3.SDL_GetError()}\n");
 	}
 
+	public void ReleaseCurrent() {
+		if (!SDL3.SDL_GL_MakeCurrent((SDL_Window*)window, null))
+			Warning($"Could not release GL context: {SDL3.SDL_GetError()}\n");
+	}
+
 	public void SetSwapInterval(float swapInterval) {
 		SDL3.SDL_GL_MakeCurrent((SDL_Window*)window, (SDL_GLContextState*)ctx);
 		if (!SDL3.SDL_GL_SetSwapInterval((int)swapInterval)) {

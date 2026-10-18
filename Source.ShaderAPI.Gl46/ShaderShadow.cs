@@ -115,7 +115,7 @@ public class ShadowStateGl46 : IShaderShadow
 	internal VertexFormat VertexFormat;
 
 	public unsafe void Dispose() {
-		if (!ThreadInMainThread()) {
+		if (!ShaderAPI.IsOwnerThread()) {
 			Warning("NOT IN MAIN THREAD - CANNOT DELETE UBO - GRAPHICS MEMORY LEAK\n");
 			return;
 		}

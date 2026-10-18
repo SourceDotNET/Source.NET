@@ -1311,9 +1311,11 @@ public partial class Host
 		return count;
 	}
 
-	internal void AllowQueuedMaterialSystem(bool v) {
-		// todo
+	internal bool AllowQueuedMaterialSystem(bool v) {
+		return services.GetRequiredService<Source.Common.MaterialSystem.IMaterialSystem>().AllowThreading(v, MaterialSystemThread);
 	}
+
+	public static int MaterialSystemThread = 0;
 
 	[ConCommand(helpText: "Reload the most recent saved game (add setpos to jump to current view position on reload).")]
 	void reload(in TokenizedCommand args, CommandSource source, int clientSlot = -1) {

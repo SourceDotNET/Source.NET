@@ -121,13 +121,14 @@ public unsafe class MeshGl46 : IMesh
 		if (VertexBuffer == null)
 			return;
 
-		if (!ShaderUtil.OnDrawMesh(this, -1, 0)) {
-			MarkAsDrawn();
-			return;
-		}
+		fixed (Source.Common.MaterialSystem.PrimList* lp = lists) {
+			if (!ShaderUtil.OnDrawMesh(this, lp, numLists)) {
+				MarkAsDrawn();
+				return;
+			}
 
-		fixed (PrimList* p = MemoryMarshal.Cast<Source.Common.MaterialSystem.PrimList, PrimList>(lists))
-			DrawInternal(p, numLists);
+			DrawInternal((PrimList*)lp, numLists);
+		}
 	}
 
 	private unsafe void DrawInternal(PrimList* primList, int lists) {
@@ -289,6 +290,9 @@ public unsafe class MeshGl46 : IMesh
 	int ColorMeshVertOffsetInBytes = 0;
 
 	public virtual void SetColorMesh(IMesh colorMesh, int vertexOffset) {
+		if (!ShaderUtil.OnSetColorMesh(this, colorMesh, vertexOffset))
+			return;
+
 		ColorMesh = colorMesh;
 		ColorMeshVertOffsetInBytes = vertexOffset;
 	}
@@ -446,6 +450,9 @@ public unsafe class MeshGl46 : IMesh
 	bool HasFlexVerts;
 
 	public virtual void SetFlexMesh(IMesh? mesh, int vertexOffsetInBytes) {
+		if (!ShaderUtil.OnSetFlexMesh(this, mesh, vertexOffsetInBytes))
+			return;
+
 		FlexVertOffsetInBytes = vertexOffsetInBytes;
 
 		if (mesh != null) {
