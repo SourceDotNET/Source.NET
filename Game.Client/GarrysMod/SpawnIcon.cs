@@ -333,15 +333,15 @@ public class SpawnIconRenderer
 
 		renderContext.ClearColor4ub(255, 0, 0, 0);
 		renderContext.ClearBuffers(true, true);
-		RenderPass(red, ent, renderContext, viewSetup.Width, viewSetup.Height);
+		RenderPass(red, ent, renderContext.Context, viewSetup.Width, viewSetup.Height);
 
 		renderContext.ClearColor4ub(0, 255, 0, 0);
 		renderContext.ClearBuffers(true, true);
-		RenderPass(green, ent, renderContext, viewSetup.Width, viewSetup.Height);
+		RenderPass(green, ent, renderContext.Context, viewSetup.Width, viewSetup.Height);
 
 		renderContext.ClearColor4ub(0, 0, 255, 0);
 		renderContext.ClearBuffers(true, true);
-		RenderPass(blue, ent, renderContext, viewSetup.Width, viewSetup.Height);
+		RenderPass(blue, ent, renderContext.Context, viewSetup.Width, viewSetup.Height);
 
 		CombinePasses(red, green, blue, viewSetup.Width, viewSetup.Height);
 

@@ -412,6 +412,7 @@ public abstract class BaseServer : IServer
 	}
 
 	private readonly byte[] tempEntsBuffer = new byte[Protocol.MAX_PAYLOAD];
+	private readonly List<EventInfo> tempEntsSorted = [];
 	public virtual void WriteTempEntities(BaseClient client, FrameSnapshot to, FrameSnapshot from, bf_write pBuf, int nMaxEnts) {
 		SVC_TempEntities msg = new();
 		msg.DataOut.StartWriting(tempEntsBuffer, tempEntsBuffer.Length);
@@ -429,7 +430,8 @@ public abstract class BaseServer : IServer
 		else
 			pSnapshot = to;
 
-		List<EventInfo> sorted = new(nMaxEnts);
+		List<EventInfo> sorted = tempEntsSorted;
+		sorted.Clear();
 
 		while (pSnapshot != null && sorted.Count < nMaxEnts) {
 			for (int i = 0; i < pSnapshot.NumTempEntities; i++) {
@@ -515,6 +517,7 @@ public abstract class BaseServer : IServer
 
 		msg.NumEntries = sorted.Count;
 		msg.WriteToBuffer(pBuf);
+		sorted.Clear();
 	}
 
 

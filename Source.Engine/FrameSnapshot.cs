@@ -1,13 +1,15 @@
 ﻿
 using CommunityToolkit.HighPerformance;
 
+using System.Buffers;
+
 using Source.Common;
 using Source.Common.Commands;
 using Source.Common.Engine;
 
 namespace Source.Engine;
 
-public class FrameSnapshotEntry
+public struct FrameSnapshotEntry
 {
 	public ServerClass? Class;
 	public int SerialNumber;
@@ -45,6 +47,10 @@ public class FrameSnapshot(FrameSnapshotManager frameSnapshotManager) : IDisposa
 	volatile int References;
 
 	public void Dispose() {
+		if (ValidEntities != null)
+			ArrayPool<ushort>.Shared.Return(ValidEntities);
+		if (Entities != null)
+			ArrayPool<FrameSnapshotEntry>.Shared.Return(Entities);
 		ValidEntities = null;
 		Entities = null;
 		TempEntities = null;
@@ -95,15 +101,12 @@ public class FrameSnapshotManager
 		snap.NumEntities = maxEntities;
 		snap.NumValidEntities = 0;
 		snap.ValidEntities = null;
-		snap.Entities = new FrameSnapshotEntry[maxEntities];
-
-		for (int i = 0; i < maxEntities; i++) {
-			snap.Entities[i] = new FrameSnapshotEntry {
-				Class = null,
-				SerialNumber = -1,
-				PackedData = INVALID_PACKED_ENTITY_HANDLE
-			};
-		}
+		snap.Entities = ArrayPool<FrameSnapshotEntry>.Shared.Rent(maxEntities);
+		snap.Entities.AsSpan(0, maxEntities).Fill(new FrameSnapshotEntry {
+			Class = null,
+			SerialNumber = -1,
+			PackedData = INVALID_PACKED_ENTITY_HANDLE
+		});
 
 		FrameSnapshots.AddLast(snap);
 		snap.ListIndex = FrameSnapshots.Count - 1;
@@ -111,16 +114,15 @@ public class FrameSnapshotManager
 	}
 
 	public FrameSnapshot TakeTickSnapshot(int tickcount) {
-		Span<ushort> validEntities = stackalloc ushort[Constants.MAX_EDICTS];
-
 		FrameSnapshot snap = CreateEmptySnapshot(tickcount, sv.NumEdicts);
+		ushort[] validEntities = ArrayPool<ushort>.Shared.Rent(sv.NumEdicts);
 
 		int maxclients = sv.GetClientCount();
 		int numValid = 0;
 
 		for (int i = 0; i < sv.NumEdicts; i++) {
 			Edict edict = sv.Edicts![i];
-			FrameSnapshotEntry entry = snap.Entities![i];
+			ref FrameSnapshotEntry entry = ref snap.Entities![i];
 
 			IServerUnknown? unk = edict.GetUnknown();
 
@@ -145,7 +147,7 @@ public class FrameSnapshotManager
 		}
 
 		snap.NumValidEntities = numValid;
-		snap.ValidEntities = validEntities[..numValid].ToArray();
+		snap.ValidEntities = validEntities;
 
 		snap.ExplicitDeleteSlots.AddRange(ExplicitDeleteSlots);
 		ExplicitDeleteSlots.Clear();

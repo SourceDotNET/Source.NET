@@ -418,10 +418,11 @@ public class ViewRender : IViewRender
 		SkyboxVisibility skyboxVisible = SkyboxVisibility.NotVisible;
 
 		{
-			SkyboxView skyView = new SkyboxView(this);
+			SkyboxView skyView = FreeSkyboxViews.Count > 0 ? FreeSkyboxViews.Pop() : new SkyboxView(this);
 			if ((drew3dSkybox = skyView.Setup(in viewRender, ref clearFlags, ref skyboxVisible)) != false)
 				AddViewToScene(skyView);
 			skyView.ReleaseLists();
+			FreeSkyboxViews.Push(skyView);
 		}
 
 		if ((clearFlags & ClearFlags.ClearColor) == 0) {
@@ -515,7 +516,7 @@ public class ViewRender : IViewRender
 			// VGui_PostRender();
 			using (renderContext = new MatRenderContextPtr(materials)) {
 #if GMOD_DLL
-				((ClientModeShared)clientMode).PostRenderVGui(renderContext);
+				((ClientModeShared)clientMode).PostRenderVGui(renderContext.Context);
 #endif
 				if (pTexture != null) {
 					// renderContext.OverrideAlphaWriteEnable(false, true);
@@ -743,10 +744,11 @@ public class ViewRender : IViewRender
 		DetermineWaterRenderInfo(in fogVolumeInfo, out WaterRenderInfo info);
 
 		if (info.CheapWater) {
-			SimpleWorldView noWaterView = new SimpleWorldView(this);
+			SimpleWorldView noWaterView = FreeSimpleWorldViews.Count > 0 ? FreeSimpleWorldViews.Pop() : new SimpleWorldView(this);
 			noWaterView.Setup(in viewIn, clearFlags, drawSkybox, in fogVolumeInfo, in info);
 			AddViewToScene(noWaterView);
 			noWaterView.ReleaseLists();
+			FreeSimpleWorldViews.Push(noWaterView);
 			return;
 		}
 
@@ -754,18 +756,25 @@ public class ViewRender : IViewRender
 			fogVolumeInfo.VisibleFogVolumeLeaf = -1;
 
 		if (!fogVolumeInfo.EyeInFogVolume) {
-			AboveWaterView aboveWaterView = new AboveWaterView(this);
+			AboveWaterView aboveWaterView = FreeAboveWaterViews.Count > 0 ? FreeAboveWaterViews.Pop() : new AboveWaterView(this);
 			aboveWaterView.Setup(in viewIn, drawSkybox, in fogVolumeInfo, in info);
 			AddViewToScene(aboveWaterView);
 			aboveWaterView.ReleaseLists();
+			FreeAboveWaterViews.Push(aboveWaterView);
 		}
 		else {
-			UnderWaterView underWaterView = new UnderWaterView(this);
+			UnderWaterView underWaterView = FreeUnderWaterViews.Count > 0 ? FreeUnderWaterViews.Pop() : new UnderWaterView(this);
 			underWaterView.Setup(in viewIn, drawSkybox, in fogVolumeInfo, in info);
 			AddViewToScene(underWaterView);
 			underWaterView.ReleaseLists();
+			FreeUnderWaterViews.Push(underWaterView);
 		}
 	}
+
+	readonly Stack<SkyboxView> FreeSkyboxViews = [];
+	readonly Stack<SimpleWorldView> FreeSimpleWorldViews = [];
+	readonly Stack<AboveWaterView> FreeAboveWaterViews = [];
+	readonly Stack<UnderWaterView> FreeUnderWaterViews = [];
 
 	public static bool DoesViewPlaneIntersectWater(float waterZ, int leafWaterDataID) {
 		if (leafWaterDataID == -1)

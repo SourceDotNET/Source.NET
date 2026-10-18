@@ -107,7 +107,7 @@ public unsafe class StudioRender
 			// Bone to world must be set before calling drawmodel; it uses that here
 			ComputePoseToWorld(PoseToWorld, StudioHdr, boneMask, in pRC.ViewOrigin, pBoneToWorld);
 
-			R_StudioRenderModel(pRenderContext, info.Skin, info.Body, info.HitboxSet, info.ClientEntity,
+			R_StudioRenderModel(pRenderContext.Context, info.Skin, info.Body, info.HitboxSet, info.ClientEntity,
 				info.HardwareData.LODs[info.Lod].Materials,
 				info.HardwareData.LODs[info.Lod].MaterialFlags, flags, boneMask, info.Lod, info.ColorMeshes);
 
@@ -153,7 +153,7 @@ public unsafe class StudioRender
 			StudioHdr = info.StudioHdr;
 			StudioMeshes = info.HardwareData.LODs![lod].MeshData;
 
-			R_StudioRenderModel(pRenderContext, info.Skin, info.Body, info.HitboxSet, info.ClientEntity,
+			R_StudioRenderModel(pRenderContext.Context, info.Skin, info.Body, info.HitboxSet, info.ClientEntity,
 				info.HardwareData.LODs[lod].Materials,
 				info.HardwareData.LODs[lod].MaterialFlags, flags, Studio.BONE_USED_BY_ANYTHING, lod, info.ColorMeshes);
 
