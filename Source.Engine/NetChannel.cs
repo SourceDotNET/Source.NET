@@ -876,7 +876,6 @@ public class NetChannel : INetChannelInfo, INetChannel
 				int msgStartBit = buf.BitsRead;
 				if (!netMsg.ReadFromBuffer(buf)) {
 					Warning($"NetChannel: failed reading message {msgName} from {RemoteAddress}\n");
-					//Assert(false);
 					return false;
 				}
 
@@ -925,7 +924,6 @@ public class NetChannel : INetChannelInfo, INetChannel
 			}
 			else {
 				Warning($"NetChannel: unknown net message ({cmd}) from {RemoteAddress}.\n");
-				//Assert(false);
 				return false;
 			}
 		}
