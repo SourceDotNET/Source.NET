@@ -133,6 +133,15 @@ public abstract class DatatableStack
 		ObjectID = objectID;
 	}
 
+	public void Reset(SendTablePrecalc precalc, object instance, int objectID) {
+		Precalc = precalc;
+		Instance = instance;
+		ObjectID = objectID;
+		CurPropIndex = 0;
+		CurProp = null;
+		Initted = false;
+	}
+
 	protected static readonly object Uncomputed = new();
 
 	public void Init(bool explicitRoutes = false) {
@@ -227,10 +236,15 @@ public abstract class DatatableStack
 
 public class ClientDatatableStack : DatatableStack
 {
-	readonly RecvDecoder Decoder;
+	RecvDecoder Decoder;
 
 	public ClientDatatableStack(RecvDecoder decoder, object instance, int objectID) : base(decoder.Precalc, instance, objectID) {
 		Decoder = decoder;
+	}
+
+	public void Reset(RecvDecoder decoder, object instance, int objectID) {
+		Decoder = decoder;
+		Reset(decoder.Precalc, instance, objectID);
 	}
 
 	public override void RecurseAndCallProxies(SendNode node, object? instance) {

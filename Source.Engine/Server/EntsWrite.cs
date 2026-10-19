@@ -118,8 +118,8 @@ static class EntsWrite
 		if (index >= u.FromSnapshot!.NumEntities)
 			return true;
 
-		FrameSnapshotEntry fromEnt = u.FromSnapshot.Entities![index];
-		FrameSnapshotEntry toEnt = u.ToSnapshot.Entities![index];
+		ref readonly FrameSnapshotEntry fromEnt = ref u.FromSnapshot.Entities![index];
+		ref readonly FrameSnapshotEntry toEnt = ref u.ToSnapshot.Entities![index];
 
 		return (fromEnt.Class == null) || fromEnt.SerialNumber != toEnt.SerialNumber;
 	}
@@ -215,7 +215,7 @@ static class EntsWrite
 
 		Assert(u.NewEntity < u.ToSnapshot.NumEntities);
 
-		FrameSnapshotEntry entry = u.ToSnapshot.Entities![u.NewEntity];
+		ref readonly FrameSnapshotEntry entry = ref u.ToSnapshot.Entities![u.NewEntity];
 
 		ServerClass? entryClass = entry.Class;
 

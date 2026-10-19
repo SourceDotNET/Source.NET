@@ -9,6 +9,7 @@ using Source.Common.Mathematics;
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Source.Engine;
 
@@ -90,7 +91,7 @@ public enum HackLightCacheFlags
 	HasDoneStaticLighting = 0x4
 }
 
-public class LightingStateInfo
+public struct LightingStateInfo
 {
 	public InlineArrayMaxLocalLights<float> Illum;
 	public bool LightingStateHasSkylight;
@@ -105,22 +106,17 @@ public class LightingStateInfo
 			Illum[i] = 0;
 		LightingStateHasSkylight = false;
 	}
-
-	public void CopyFrom(LightingStateInfo src) {
-		for (int i = 0; i < Render.MAXLOCALLIGHTS; i++)
-			Illum[i] = src.Illum[i];
-		LightingStateHasSkylight = src.LightingStateHasSkylight;
-	}
 }
 
 [InlineArray(BaseLightCache.MAX_LIGHTSTYLE_BYTES)] public struct InlineArrayLightstyleBytes { public byte item; }
 
-public class BaseLightCache : LightingStateInfo
+public struct BaseLightCache
 {
 	public const int MAX_LIGHTSTYLE_BITS = BSPFileCommon.MAX_LIGHTSTYLES;
 	public const int MAX_LIGHTSTYLE_BYTES = (MAX_LIGHTSTYLE_BITS + 7) / 8;
 
 	public BaseLightCache() {
+		Info = new();
 		LightingOrigin = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
 		LastFrameUpdatedLightStyles = -1;
 		LastFrameUpdatedDynamicLighting = -1;
@@ -129,10 +125,11 @@ public class BaseLightCache : LightingStateInfo
 		EnvCubemapTexture = null;
 	}
 
-	public bool HasLightStyle() => (LightingFlags & (int)(HackLightCacheFlags.HasSwitchableLightStyle | HackLightCacheFlags.HasNonSwitchableLightStyle)) != 0;
-	public bool HasSwitchableLightStyle() => (LightingFlags & (int)HackLightCacheFlags.HasSwitchableLightStyle) != 0;
-	public bool HasNonSwitchableLightStyle() => (LightingFlags & (int)HackLightCacheFlags.HasNonSwitchableLightStyle) != 0;
+	public readonly bool HasLightStyle() => (LightingFlags & (int)(HackLightCacheFlags.HasSwitchableLightStyle | HackLightCacheFlags.HasNonSwitchableLightStyle)) != 0;
+	public readonly bool HasSwitchableLightStyle() => (LightingFlags & (int)HackLightCacheFlags.HasSwitchableLightStyle) != 0;
+	public readonly bool HasNonSwitchableLightStyle() => (LightingFlags & (int)HackLightCacheFlags.HasNonSwitchableLightStyle) != 0;
 
+	public LightingStateInfo Info;
 	public LightingState StaticLightingState;
 	public LightingState LightStyleLightingState;
 	public int LastFrameUpdatedLightStyles;
@@ -145,18 +142,21 @@ public class BaseLightCache : LightingStateInfo
 	public ITexture? EnvCubemapTexture;
 }
 
-public class LightCache : BaseLightCache
+public struct LightCache
 {
 	public LightCache() {
+		Base = new();
+		StaticPrecalcLightingStateInfo = new();
 		StaticPrecalcNumLocalLights = 0;
 		Next = Bucket = 0xFFFF;
 		LruPrev = LruNext = 0xFFFF;
 		X = Y = Z = int.MinValue;
 	}
 
+	public BaseLightCache Base;
 	public InlineArrayMaxLocalLights<BSPDWorldLightPtr> StaticPrecalcLocalLight;
 	public ushort StaticPrecalcNumLocalLights;
-	public LightingStateInfo StaticPrecalcLightingStateInfo = new();
+	public LightingStateInfo StaticPrecalcLightingStateInfo;
 	public ushort Next;
 	public ushort Bucket;
 	public ushort LruPrev;
@@ -165,17 +165,20 @@ public class LightCache : BaseLightCache
 	public int Index;
 }
 
-public class PropLightcache : BaseLightCache
+public struct PropLightcache
 {
+	public BaseLightCache Base;
 	public uint Flags;
 	public int DLightActive;
 	public int DLightMarkFrame;
-	public List<short> LightStyleWorldLights = [];
+	public List<short> LightStyleWorldLights;
 	public int SwitchableLightFrame;
 	public Vector3 Mins;
 	public Vector3 Maxs;
 
 	public PropLightcache() {
+		Base = new();
+		LightStyleWorldLights = [];
 		Flags = 0;
 		DLightActive = 0;
 		DLightMarkFrame = 0;
@@ -184,7 +187,7 @@ public class PropLightcache : BaseLightCache
 		Maxs = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
 	}
 
-	public bool HasDlights() => DLightActive != 0;
+	public readonly bool HasDlights() => DLightActive != 0;
 }
 
 public class LightVecState
@@ -241,9 +244,9 @@ public partial class Render
 	private static int FrameIndex = 0;
 	public static int r_framecount = 0;
 
-	private static ushort GetLightCacheIndex(LightCache cache) => (ushort)cache.Index;
-	private static LightCache GetLightLRUHead() => LightCaches[LIGHT_LRU_HEAD_INDEX];
-	private static LightCache GetLightLRUTail() => LightCaches[LIGHT_LRU_TAIL_INDEX];
+	private static ushort GetLightCacheIndex(in LightCache cache) => (ushort)cache.Index;
+	private static ref LightCache GetLightLRUHead() => ref LightCaches[LIGHT_LRU_HEAD_INDEX];
+	private static ref LightCache GetLightLRUTail() => ref LightCaches[LIGHT_LRU_TAIL_INDEX];
 
 	public void R_StudioInitLightingCache() {
 		int i;
@@ -281,7 +284,7 @@ public partial class Render
 		InvalidateStaticLightingCache();
 	}
 
-	private static void LightcacheMark(LightCache cache) {
+	private static void LightcacheMark(ref LightCache cache) {
 		if (cache.LruNext == 0 && cache.LruPrev == 0)
 			return;
 
@@ -298,7 +301,7 @@ public partial class Render
 		GetLightLRUTail().LruPrev = GetLightCacheIndex(cache);
 	}
 
-	private static void LightcacheUnlink(LightCache cache) {
+	private static void LightcacheUnlink(ref LightCache cache) {
 		ushort bucket = cache.Bucket;
 
 		if (bucket == 0xFFFF)
@@ -324,15 +327,15 @@ public partial class Render
 		}
 	}
 
-	private static LightCache LightcacheGetLRU() {
-		LightCache cache = LightCaches[GetLightLRUHead().LruNext];
+	private static ref LightCache LightcacheGetLRU() {
+		ref LightCache cache = ref LightCaches[GetLightLRUHead().LruNext];
 
-		LightcacheMark(cache);
+		LightcacheMark(ref cache);
 
-		LightcacheUnlink(cache);
+		LightcacheUnlink(ref cache);
 
-		cache.Leaf = -1;
-		return cache;
+		cache.Base.Leaf = -1;
+		return ref cache;
 	}
 
 	private static int LightcacheHashKey(int x, int y, int z, int leaf) {
@@ -341,28 +344,28 @@ public partial class Render
 		return (int)key;
 	}
 
-	private static LightCache? FindInCache(int bucket, int x, int y, int z, int leaf) {
+	private static ref LightCache FindInCache(int bucket, int x, int y, int z, int leaf) {
 		ushort cacheIndex;
 		for (cacheIndex = LightBuckets[bucket]; cacheIndex != 0xFFFF; cacheIndex = LightCaches[cacheIndex].Next) {
-			LightCache cache = LightCaches[cacheIndex];
+			ref LightCache cache = ref LightCaches[cacheIndex];
 
-			if (cache.X == x && cache.Y == y && cache.Z == z && cache.Leaf == leaf)
-				return cache;
+			if (cache.X == x && cache.Y == y && cache.Z == z && cache.Base.Leaf == leaf)
+				return ref cache;
 		}
-		return null;
+		return ref Unsafe.NullRef<LightCache>();
 	}
 
-	private static void LinkToBucket(int bucket, LightCache cache) {
+	private static void LinkToBucket(int bucket, ref LightCache cache) {
 		cache.Next = LightBuckets[bucket];
-		LightBuckets[bucket] = GetLightCacheIndex(cache);
+		LightBuckets[bucket] = GetLightCacheIndex(in cache);
 
 		cache.Bucket = (ushort)bucket;
 	}
 
-	private static LightCache NewLightcacheEntry(int bucket) {
-		LightCache cache = LightcacheGetLRU();
-		LinkToBucket(bucket, cache);
-		return cache;
+	private static ref LightCache NewLightcacheEntry(int bucket) {
+		ref LightCache cache = ref LightcacheGetLRU();
+		LinkToBucket(bucket, ref cache);
+		return ref cache;
 	}
 
 	private static void ComputeLightcacheBounds(in Vector3 vecOrigin, out Vector3 mins, out Vector3 maxs) {
@@ -410,30 +413,30 @@ public partial class Render
 		return true;
 	}
 
-	private static LightCache? FindNearestCache(int x, int y, int z, int leafIndex) {
+	private static ref LightCache FindNearestCache(int x, int y, int z, int leafIndex) {
 		int bestDist = int.MaxValue;
-		LightCache? best = null;
+		ref LightCache best = ref Unsafe.NullRef<LightCache>();
 		ushort current = GetLightLRUTail().LruPrev;
 		while (current != LIGHT_LRU_HEAD_INDEX) {
-			LightCache cache = LightCaches[current];
+			ref LightCache cache = ref LightCaches[current];
 			int dist = 0;
 			int dx = Math.Abs(cache.X - x);
 			int dy = Math.Abs(cache.Y - y);
 			int dz = Math.Abs(cache.Z - z);
-			if (leafIndex != cache.Leaf)
+			if (leafIndex != cache.Base.Leaf)
 				dist += 2;
 			dist = Math.Max(dist, dx);
 			dist = Math.Max(dist, dy);
 			dist = Math.Max(dist, dz);
 			if (dist < bestDist) {
-				best = cache;
+				best = ref cache;
 				bestDist = dist;
 				if (dist <= 1)
 					break;
 			}
 			current = cache.LruPrev;
 		}
-		return best;
+		return ref best;
 	}
 
 	private static void ComputeAmbientFromLeaf(in Vector3 start, int leafID, Span<Vector3> lightBoxColor, ref bool addedLeafAmbientCube) {
@@ -814,7 +817,7 @@ public partial class Render
 #endif
 	}
 
-	private static bool IsCachedLightStylesValid(BaseLightCache cache) {
+	private static bool IsCachedLightStylesValid(in BaseLightCache cache) {
 		if (!cache.HasLightStyle())
 			return true;
 
@@ -828,7 +831,7 @@ public partial class Render
 		return true;
 	}
 
-	private void AdjustLightCacheOrigin(LightCache cache, in Vector3 origin, int originLeaf) {
+	private void AdjustLightCacheOrigin(ref LightCache cache, in Vector3 origin, int originLeaf) {
 		Trace tr;
 		Ray ray = default;
 		TraceFilterWorldOnly worldTraceFilter = new();
@@ -855,7 +858,7 @@ public partial class Render
 		}
 
 		if (traceToCenter && tr.StartSolid)
-			MathLib.VectorCopy(origin, out cache.LightingOrigin);
+			MathLib.VectorCopy(origin, out cache.Base.LightingOrigin);
 		else if (!traceToCenter || tr.Fraction < 1) {
 			center.X = (cacheMins.X + cacheMaxs.X) * 0.5f;
 			center.Y = (cacheMins.Y + cacheMaxs.Y) * 0.5f;
@@ -865,12 +868,12 @@ public partial class Render
 			ray.Init(origin, center);
 			engineTrace.TraceRay(in ray, Mask.Opaque, ref worldTraceFilter, out tr);
 			if (tr.Fraction < 1)
-				MathLib.VectorCopy(origin, out cache.LightingOrigin);
+				MathLib.VectorCopy(origin, out cache.Base.LightingOrigin);
 			else
-				MathLib.VectorCopy(center, out cache.LightingOrigin);
+				MathLib.VectorCopy(center, out cache.Base.LightingOrigin);
 		}
 		else {
-			MathLib.VectorCopy(center, out cache.LightingOrigin);
+			MathLib.VectorCopy(center, out cache.Base.LightingOrigin);
 		}
 	}
 
@@ -895,29 +898,29 @@ public partial class Render
 			return null;
 	}
 
-	private ReadOnlySpan<byte> ComputeStaticLightingForCacheEntry(BaseLightCache cache, scoped in Vector3 origin, int leaf, bool staticProp = false) {
+	private ReadOnlySpan<byte> ComputeStaticLightingForCacheEntry(ref BaseLightCache cache, scoped in Vector3 origin, int leaf, bool staticProp = false) {
 		ReadOnlySpan<byte> vis = CM.ClusterPVS(CM.LeafCluster(leaf));
 
 		R_StudioGetAmbientLightForPoint(leaf, origin, cache.StaticLightingState.BoxColor, staticProp, out bool addedLeafAmbientCube);
 
 		if (r_ambientlightingonly.GetInt() == 0)
-			AddStaticLighting(cache, origin, vis, staticProp, addedLeafAmbientCube);
+			AddStaticLighting(ref cache, origin, vis, staticProp, addedLeafAmbientCube);
 
 		return vis;
 	}
 
-	private ReadOnlySpan<byte> PrecalcLightingState(LightCache cache, ReadOnlySpan<byte> vis) {
+	private ReadOnlySpan<byte> PrecalcLightingState(ref LightCache cache, ReadOnlySpan<byte> vis) {
 		LightingState lightingState = default;
 		lightingState.ZeroLightingState();
 
 		cache.StaticPrecalcLightingStateInfo.Clear();
 
 		int i;
-		for (i = 0; i < cache.StaticLightingState.NumLights; i++)
-			vis = AddWorldLightToLightingState(cache.StaticLightingState.LocalLight[i], null, ref lightingState, cache.StaticPrecalcLightingStateInfo, cache.LightingOrigin, vis, true, false);
+		for (i = 0; i < cache.Base.StaticLightingState.NumLights; i++)
+			vis = AddWorldLightToLightingState(cache.Base.StaticLightingState.LocalLight[i], null, ref lightingState, ref cache.StaticPrecalcLightingStateInfo, cache.Base.LightingOrigin, vis, true, false);
 
 		for (i = 0; i < 6; i++)
-			cache.StaticLightingState.BoxColor[i] += lightingState.BoxColor[i];
+			cache.Base.StaticLightingState.BoxColor[i] += lightingState.BoxColor[i];
 
 		cache.StaticPrecalcNumLocalLights = (ushort)lightingState.NumLights;
 		for (i = 0; i < cache.StaticPrecalcNumLocalLights; i++)
@@ -926,22 +929,22 @@ public partial class Render
 		return vis;
 	}
 
-	private static void CopyPrecalcedLightingState(LightCache cache, ref LightingState lightingState, LightingStateInfo info) {
-		info.CopyFrom(cache.StaticPrecalcLightingStateInfo);
+	private static void CopyPrecalcedLightingState(in LightCache cache, ref LightingState lightingState, scoped ref LightingStateInfo info) {
+		info = cache.StaticPrecalcLightingStateInfo;
 
 		int i;
 		for (i = 0; i < 6; i++)
-			lightingState.BoxColor[i] = cache.StaticLightingState.BoxColor[i];
+			lightingState.BoxColor[i] = cache.Base.StaticLightingState.BoxColor[i];
 
 		lightingState.NumLights = cache.StaticPrecalcNumLocalLights;
 		for (i = 0; i < lightingState.NumLights; i++)
 			lightingState.LocalLight[i] = cache.StaticPrecalcLocalLight[i];
 	}
 
-	private ReadOnlySpan<byte> AddLightingState(scoped ref LightingState dst, scoped in LightingState src, LightingStateInfo info, scoped in Vector3 bucketOrigin, ReadOnlySpan<byte> vis, bool dynamic, bool ignoreVis) {
+	private ReadOnlySpan<byte> AddLightingState(scoped ref LightingState dst, scoped in LightingState src, scoped ref LightingStateInfo info, scoped in Vector3 bucketOrigin, ReadOnlySpan<byte> vis, bool dynamic, bool ignoreVis) {
 		int i;
 		for (i = 0; i < src.NumLights; i++)
-			vis = AddWorldLightToLightingState(src.LocalLight[i], null, ref dst, info, bucketOrigin, vis, dynamic, ignoreVis);
+			vis = AddWorldLightToLightingState(src.LocalLight[i], null, ref dst, ref info, bucketOrigin, vis, dynamic, ignoreVis);
 
 		for (i = 0; i < 6; i++)
 			dst.BoxColor[i] += src.BoxColor[i];
@@ -1011,7 +1014,7 @@ public partial class Render
 
 	static readonly BSPDWorldLight[] s_pDynamicLight = new BSPDWorldLight[Constants.MAX_DLIGHTS + Constants.MAX_ELIGHTS];
 
-	private ReadOnlySpan<byte> AddDLights(LightingStateInfo info, scoped ref LightingState lightingState, scoped in Vector3 origin, int leaf, ReadOnlySpan<byte> vis) {
+	private ReadOnlySpan<byte> AddDLights(scoped ref LightingStateInfo info, scoped ref LightingState lightingState, scoped in Vector3 origin, int leaf, ReadOnlySpan<byte> vis) {
 		if (!CL.ActiveDlights)
 			return vis;
 
@@ -1034,13 +1037,13 @@ public partial class Render
 
 			WorldLightFromDynamicLight(dl, ref s_pDynamicLight[i]);
 
-			vis = AddWorldLightToLightingState(new BSPDWorldLightPtr(s_pDynamicLight, i), null, ref lightingState, info, origin, vis, true, ignoreVis, ignoreVisTest);
+			vis = AddWorldLightToLightingState(new BSPDWorldLightPtr(s_pDynamicLight, i), null, ref lightingState, ref info, origin, vis, true, ignoreVis, ignoreVisTest);
 		}
 
 		return vis;
 	}
 
-	private ReadOnlySpan<byte> AddELights(LightingStateInfo info, scoped ref LightingState lightingState, scoped in Vector3 origin, int leaf, ReadOnlySpan<byte> vis) {
+	private ReadOnlySpan<byte> AddELights(scoped ref LightingStateInfo info, scoped ref LightingState lightingState, scoped in Vector3 origin, int leaf, ReadOnlySpan<byte> vis) {
 		if (!CL.ActiveElights)
 			return vis;
 
@@ -1063,7 +1066,7 @@ public partial class Render
 
 			WorldLightFromDynamicLight(dl, ref s_pDynamicLight[Constants.MAX_DLIGHTS + i]);
 
-			vis = AddWorldLightToLightingState(new BSPDWorldLightPtr(s_pDynamicLight, Constants.MAX_DLIGHTS + i), null, ref lightingState, info, origin, vis, true, ignoreVis, ignoreVisTest);
+			vis = AddWorldLightToLightingState(new BSPDWorldLightPtr(s_pDynamicLight, Constants.MAX_DLIGHTS + i), null, ref lightingState, ref info, origin, vis, true, ignoreVis, ignoreVisTest);
 		}
 
 		return vis;
@@ -1090,7 +1093,7 @@ public partial class Render
 		return vis;
 	}
 
-	private ReadOnlySpan<byte> AddWorldLightToLightingState(scoped in BSPDWorldLightPtr light, LightZBuffer[]? zBuf, scoped ref LightingState lightingState, LightingStateInfo info, scoped in Vector3 bucketOrigin, ReadOnlySpan<byte> vis, bool dynamic = false, bool ignoreVis = false, bool ignoreVisTest = false) {
+	private ReadOnlySpan<byte> AddWorldLightToLightingState(scoped in BSPDWorldLightPtr light, LightZBuffer[]? zBuf, scoped ref LightingState lightingState, scoped ref LightingStateInfo info, scoped in Vector3 bucketOrigin, ReadOnlySpan<byte> vis, bool dynamic = false, bool ignoreVis = false, bool ignoreVisTest = false) {
 		Assert(lightingState.NumLights >= 0 && lightingState.NumLights <= MAXLOCALLIGHTS);
 
 		BSPDWorldLightPtr worldLightPtr = light;
@@ -1160,10 +1163,10 @@ public partial class Render
 		return vis;
 	}
 
-	private void AddStaticLighting(BaseLightCache cache, in Vector3 origin, ReadOnlySpan<byte> vis, bool staticProp, bool addedLeafAmbientCube) {
+	private void AddStaticLighting(ref BaseLightCache cache, in Vector3 origin, ReadOnlySpan<byte> vis, bool staticProp, bool addedLeafAmbientCube) {
 		int i;
 		cache.StaticLightingState.NumLights = 0;
-		cache.LightingStateHasSkylight = false;
+		cache.Info.LightingStateHasSkylight = false;
 
 		if (!staticProp) {
 			cache.LightingFlags &= ~(int)(HackLightCacheFlags.HasSwitchableLightStyle | HackLightCacheFlags.HasNonSwitchableLightStyle);
@@ -1187,7 +1190,7 @@ public partial class Render
 			}
 
 			if (worldLight.Style == 0)
-				AddWorldLightToLightingState(wl, zBuf, ref cache.StaticLightingState, cache, origin, vis, false, false);
+				AddWorldLightToLightingState(wl, zBuf, ref cache.StaticLightingState, ref cache.Info, origin, vis, false, false);
 			else {
 				if (!staticProp) {
 					int b = worldLight.Style >> 3;
@@ -1209,7 +1212,7 @@ public partial class Render
 		}
 	}
 
-	private ReadOnlySpan<byte> ComputeLightStyles(LightCache cache, scoped ref LightingState lightingState, scoped in Vector3 origin, int leaf, ReadOnlySpan<byte> vis) {
+	private ReadOnlySpan<byte> ComputeLightStyles(ref LightCache cache, scoped ref LightingState lightingState, scoped in Vector3 origin, int leaf, ReadOnlySpan<byte> vis) {
 		LightingStateInfo info = new();
 
 		lightingState.ZeroLightingState();
@@ -1221,33 +1224,33 @@ public partial class Render
 
 			int b = worldLight.Style >> 3;
 			int bit = worldLight.Style & 0x7;
-			if ((cache.Lightstyles[b] & (1 << bit)) == 0)
+			if ((cache.Base.Lightstyles[b] & (1 << bit)) == 0)
 				continue;
 
 			if (vis.IsEmpty)
 				vis = CM.ClusterPVS(CM.LeafCluster(leaf));
 
-			AddWorldLightToLightingState(wl, null, ref lightingState, info, origin, vis);
+			AddWorldLightToLightingState(wl, null, ref lightingState, ref info, origin, vis);
 		}
-		cache.LastFrameUpdatedLightStyles = r_framecount;
+		cache.Base.LastFrameUpdatedLightStyles = r_framecount;
 		return vis;
 	}
 
-	private ReadOnlySpan<byte> ComputeDynamicLighting(LightCache cache, scoped ref LightingState lightingState, scoped in Vector3 lightingOrigin, int leaf, ReadOnlySpan<byte> vis) {
-		if (cache.LastFrameUpdatedDynamicLighting != r_framecount) {
+	private ReadOnlySpan<byte> ComputeDynamicLighting(ref LightCache cache, scoped ref LightingState lightingState, scoped in Vector3 lightingOrigin, int leaf, ReadOnlySpan<byte> vis) {
+		if (cache.Base.LastFrameUpdatedDynamicLighting != r_framecount) {
 			LightingStateInfo info = new();
 
-			cache.DynamicLightingState.ZeroLightingState();
+			cache.Base.DynamicLightingState.ZeroLightingState();
 
-			vis = AddDLights(info, ref cache.DynamicLightingState, lightingOrigin, leaf, vis);
-			vis = AddELights(info, ref cache.DynamicLightingState, lightingOrigin, leaf, vis);
+			vis = AddDLights(ref info, ref cache.Base.DynamicLightingState, lightingOrigin, leaf, vis);
+			vis = AddELights(ref info, ref cache.Base.DynamicLightingState, lightingOrigin, leaf, vis);
 
-			cache.LastFrameUpdatedDynamicLighting = r_framecount;
+			cache.Base.LastFrameUpdatedDynamicLighting = r_framecount;
 		}
 
-		Assert(cache.DynamicLightingState.NumLights >= 0 && cache.DynamicLightingState.NumLights <= MAXLOCALLIGHTS);
-		if (!Unsafe.AreSame(ref lightingState, ref cache.DynamicLightingState))
-			lightingState = cache.DynamicLightingState;
+		Assert(cache.Base.DynamicLightingState.NumLights >= 0 && cache.Base.DynamicLightingState.NumLights <= MAXLOCALLIGHTS);
+		if (!Unsafe.AreSame(ref lightingState, ref cache.Base.DynamicLightingState))
+			lightingState = cache.Base.DynamicLightingState;
 		return vis;
 	}
 
@@ -1266,13 +1269,13 @@ public partial class Render
 	private readonly List<PropLightcache> PropCaches = [];
 
 	public ref LightingState LightcacheGetStatic(LightCacheHandle_t cache, out ITexture? envCubemap, LightCacheFlags flags = LightCacheFlags.Static | LightCacheFlags.Dynamic | LightCacheFlags.LightStyle) {
-		PropLightcache pcache = PropCaches[(int)cache - 1];
+		ref PropLightcache pcache = ref CollectionsMarshal.AsSpan(PropCaches)[(int)cache - 1];
 
-		envCubemap = pcache.EnvCubemapTexture;
+		envCubemap = pcache.Base.EnvCubemapTexture;
 
 		bool recalcStaticLighting = false;
-		bool recalcLightStyles = pcache.HasLightStyle() && pcache.LastFrameUpdatedLightStyles != r_framecount && !IsCachedLightStylesValid(pcache);
-		bool recalcDLights = pcache.HasDlights() && pcache.LastFrameUpdatedDynamicLighting != r_framecount;
+		bool recalcLightStyles = pcache.Base.HasLightStyle() && pcache.Base.LastFrameUpdatedLightStyles != r_framecount && !IsCachedLightStylesValid(in pcache.Base);
+		bool recalcDLights = pcache.HasDlights() && pcache.Base.LastFrameUpdatedDynamicLighting != r_framecount;
 
 		if (flags != (LightCacheFlags)pcache.Flags) {
 			recalcStaticLighting = true;
@@ -1282,7 +1285,7 @@ public partial class Render
 			pcache.Flags = (uint)flags;
 		}
 		else if (!recalcDLights && !recalcLightStyles)
-			return ref pcache.DynamicLightingState;
+			return ref pcache.Base.DynamicLightingState;
 		else {
 			if (recalcLightStyles)
 				recalcDLights = true;
@@ -1291,53 +1294,53 @@ public partial class Render
 		LightingState accumulatedState = default;
 
 		if ((flags & LightCacheFlags.Static) != 0) {
-			if (recalcStaticLighting && (pcache.LightingFlags & (int)HackLightCacheFlags.HasDoneStaticLighting) == 0) {
-				ComputeStaticLightingForCacheEntry(pcache, pcache.LightingOrigin, pcache.Leaf, true);
-				pcache.LightingFlags |= (int)HackLightCacheFlags.HasDoneStaticLighting;
+			if (recalcStaticLighting && (pcache.Base.LightingFlags & (int)HackLightCacheFlags.HasDoneStaticLighting) == 0) {
+				ComputeStaticLightingForCacheEntry(ref pcache.Base, pcache.Base.LightingOrigin, pcache.Base.Leaf, true);
+				pcache.Base.LightingFlags |= (int)HackLightCacheFlags.HasDoneStaticLighting;
 			}
 
-			accumulatedState = pcache.StaticLightingState;
+			accumulatedState = pcache.Base.StaticLightingState;
 		}
 		else
 			accumulatedState.ZeroLightingState();
 
 		if ((flags & LightCacheFlags.LightStyle) != 0) {
 			if (recalcLightStyles) {
-				AddLightStylesForStaticProp(pcache, ref accumulatedState);
-				pcache.LightStyleLightingState = accumulatedState;
-				pcache.LastFrameUpdatedLightStyles = r_framecount;
+				AddLightStylesForStaticProp(ref pcache, ref accumulatedState);
+				pcache.Base.LightStyleLightingState = accumulatedState;
+				pcache.Base.LastFrameUpdatedLightStyles = r_framecount;
 			}
 			else
-				accumulatedState = pcache.LightStyleLightingState;
+				accumulatedState = pcache.Base.LightStyleLightingState;
 		}
 
 		if ((flags & LightCacheFlags.Dynamic) != 0) {
 			if (recalcDLights) {
-				AddDLightsForStaticProps(pcache, ref accumulatedState, pcache);
-				pcache.DynamicLightingState = accumulatedState;
-				pcache.LastFrameUpdatedDynamicLighting = r_framecount;
+				AddDLightsForStaticProps(ref pcache.Base.Info, ref accumulatedState, ref pcache);
+				pcache.Base.DynamicLightingState = accumulatedState;
+				pcache.Base.LastFrameUpdatedDynamicLighting = r_framecount;
 			}
 			else
-				accumulatedState = pcache.DynamicLightingState;
+				accumulatedState = pcache.Base.DynamicLightingState;
 		}
 		else
-			pcache.DynamicLightingState = accumulatedState;
+			pcache.Base.DynamicLightingState = accumulatedState;
 
-		return ref pcache.DynamicLightingState;
+		return ref pcache.Base.DynamicLightingState;
 	}
 
-	private void AddLightStylesForStaticProp(PropLightcache pcache, ref LightingState lightingState) {
+	private void AddLightStylesForStaticProp(ref PropLightcache pcache, ref LightingState lightingState) {
 		for (int i = 0; i < pcache.LightStyleWorldLights.Count; ++i) {
 			Assert(pcache.LightStyleWorldLights[i] >= 0);
 			Assert(pcache.LightStyleWorldLights[i] < host_state.WorldBrush!.NumWorldLights);
 			BSPDWorldLightPtr wl = new(host_state.WorldBrush!.WorldLights!, pcache.LightStyleWorldLights[i]);
 			Assert(wl.Dereference().Style != 0);
 
-			AddWorldLightToLightingState(wl, null, ref lightingState, pcache, pcache.LightingOrigin, default, false, true);
+			AddWorldLightToLightingState(wl, null, ref lightingState, ref pcache.Base.Info, pcache.Base.LightingOrigin, default, false, true);
 		}
 	}
 
-	private void AddDLightsForStaticProps(LightingStateInfo info, ref LightingState lightingState, PropLightcache pcache) {
+	private void AddDLightsForStaticProps(scoped ref LightingStateInfo info, ref LightingState lightingState, ref PropLightcache pcache) {
 		// todo
 	}
 
@@ -1353,46 +1356,46 @@ public partial class Render
 		ReadOnlySpan<byte> vis = default;
 		bool computeLightStyles = (flags & LightCacheFlags.LightStyle) != 0;
 
-		LightCache? cache = FindInCache(bucket, x, y, z, originLeaf);
+		ref LightCache cache = ref FindInCache(bucket, x, y, z, originLeaf);
 
-		if (cache != null) {
-			LightcacheMark(cache);
+		if (!Unsafe.IsNullRef(ref cache)) {
+			LightcacheMark(ref cache);
 
-			if (computeLightStyles && IsCachedLightStylesValid(cache))
+			if (computeLightStyles && IsCachedLightStylesValid(in cache.Base))
 				computeLightStyles = false;
 		}
 		else if (!AllowFullCacheMiss(flags)) {
-			cache = FindNearestCache(x, y, z, originLeaf);
-			originLeaf = cache!.Leaf;
+			cache = ref FindNearestCache(x, y, z, originLeaf);
+			originLeaf = cache.Base.Leaf;
 
 			x = cache.X;
 			y = cache.Y;
 			z = cache.Z;
 		}
-		if (cache == null) {
-			cache = NewLightcacheEntry(bucket);
+		if (Unsafe.IsNullRef(ref cache)) {
+			cache = ref NewLightcacheEntry(bucket);
 
 			cache.X = x;
 			cache.Y = y;
 			cache.Z = z;
-			cache.Leaf = originLeaf;
+			cache.Base.Leaf = originLeaf;
 
 			if (r_lightcachecenter.GetBool())
-				AdjustLightCacheOrigin(cache, origin, originLeaf);
+				AdjustLightCacheOrigin(ref cache, origin, originLeaf);
 			else
-				cache.LightingOrigin = origin;
+				cache.Base.LightingOrigin = origin;
 
-			cache.EnvCubemapTexture = FindEnvCubemapForPoint(cache.LightingOrigin);
+			cache.Base.EnvCubemapTexture = FindEnvCubemapForPoint(cache.Base.LightingOrigin);
 
-			vis = ComputeStaticLightingForCacheEntry(cache, cache.LightingOrigin, originLeaf);
-			vis = PrecalcLightingState(cache, vis);
+			vis = ComputeStaticLightingForCacheEntry(ref cache.Base, cache.Base.LightingOrigin, originLeaf);
+			vis = PrecalcLightingState(ref cache, vis);
 		}
 
-		stats.HasNonSwitchableLightStyles = cache.HasNonSwitchableLightStyle();
-		stats.HasSwitchableLightStyles = cache.HasSwitchableLightStyle();
+		stats.HasNonSwitchableLightStyles = cache.Base.HasNonSwitchableLightStyle();
+		stats.HasSwitchableLightStyles = cache.Base.HasSwitchableLightStyle();
 
 		if (computeLightStyles) {
-			vis = ComputeLightStyles(cache, ref cache.LightStyleLightingState, cache.LightingOrigin, originLeaf, vis);
+			vis = ComputeLightStyles(ref cache, ref cache.Base.LightStyleLightingState, cache.Base.LightingOrigin, originLeaf, vis);
 			stats.NeedsSwitchableLightStyleUpdate = true;
 		}
 		else
@@ -1400,25 +1403,25 @@ public partial class Render
 
 		stats.HasDLights = false;
 		if ((flags & LightCacheFlags.Dynamic) != 0) {
-			vis = ComputeDynamicLighting(cache, ref cache.DynamicLightingState, cache.LightingOrigin, originLeaf, vis);
-			if (cache.DynamicLightingState.NumLights > 0)
+			vis = ComputeDynamicLighting(ref cache, ref cache.Base.DynamicLightingState, cache.Base.LightingOrigin, originLeaf, vis);
+			if (cache.Base.DynamicLightingState.NumLights > 0)
 				stats.HasDLights = true;
 		}
 
 		if ((flags & LightCacheFlags.Static) != 0)
-			CopyPrecalcedLightingState(cache, ref lightingState, info);
+			CopyPrecalcedLightingState(in cache, ref lightingState, ref info);
 		else
 			lightingState.ZeroLightingState();
 
 		if ((flags & LightCacheFlags.LightStyle) != 0)
-			vis = AddLightingState(ref lightingState, cache.LightStyleLightingState, info, cache.LightingOrigin, vis, true, false);
+			vis = AddLightingState(ref lightingState, cache.Base.LightStyleLightingState, ref info, cache.Base.LightingOrigin, vis, true, false);
 
 		if ((flags & LightCacheFlags.Dynamic) != 0)
-			vis = AddLightingState(ref lightingState, cache.DynamicLightingState, info, cache.LightingOrigin, vis, true, false);
+			vis = AddLightingState(ref lightingState, cache.Base.DynamicLightingState, ref info, cache.Base.LightingOrigin, vis, true, false);
 
 		// todo r_drawlightcache
 
-		return cache.EnvCubemapTexture;
+		return cache.Base.EnvCubemapTexture;
 	}
 
 	public void InvalidateStaticLightingCache() {
@@ -1760,13 +1763,13 @@ public partial class Render
 		return LightIntensityAndDirectionAtPoint(ref light, zBuf, mid, flags | LightIntensityFlags.NoRadiusCheck, null, out direction);
 	}
 
-	private void BuildStaticLightingCacheLightStyleInfo(PropLightcache cache, in Vector3 mins, in Vector3 maxs) {
+	private void BuildStaticLightingCacheLightStyleInfo(ref PropLightcache cache, in Vector3 mins, in Vector3 maxs) {
 		Span<byte> vis = default;
 		bool haveVis = false;
 		Assert(cache.LightStyleWorldLights.Count == 0);
-		cache.LightingFlags &= ~(int)(HackLightCacheFlags.HasSwitchableLightStyle | HackLightCacheFlags.HasNonSwitchableLightStyle);
+		cache.Base.LightingFlags &= ~(int)(HackLightCacheFlags.HasSwitchableLightStyle | HackLightCacheFlags.HasNonSwitchableLightStyle);
 		for (int i = 0; i < BaseLightCache.MAX_LIGHTSTYLE_BYTES; i++)
-			cache.Lightstyles[i] = 0;
+			cache.Base.Lightstyles[i] = 0;
 
 		WorldBrushData worldBrush = host_state.WorldBrush!;
 		for (short i = 0; i < worldBrush.NumWorldLights; ++i) {
@@ -1775,13 +1778,13 @@ public partial class Render
 				continue;
 
 			if (!haveVis) {
-				vis = CM.ClusterPVS(CM.LeafCluster(cache.Leaf));
+				vis = CM.ClusterPVS(CM.LeafCluster(cache.Base.Leaf));
 				haveVis = true;
 			}
 			if ((vis[wl.Cluster >> 3] & (1 << (wl.Cluster & 7))) != 0) {
 				BSPDWorldLight tmpLight = wl;
 				tmpLight.Style = 0;
-				float ratio = LightIntensityAndDirectionInBox(ref tmpLight, null, cache.LightingOrigin, mins, maxs,
+				float ratio = LightIntensityAndDirectionInBox(ref tmpLight, null, cache.Base.LightingOrigin, mins, maxs,
 					LightIntensityFlags.NoOcclusionCheck | LightIntensityFlags.IgnoreLightstyleValue, out _);
 				if (ratio <= 0.0f)
 					continue;
@@ -1790,11 +1793,11 @@ public partial class Render
 
 				int b = wl.Style >> 3;
 				int bit = wl.Style & 0x7;
-				cache.Lightstyles[b] |= (byte)(1 << bit);
+				cache.Base.Lightstyles[b] |= (byte)(1 << bit);
 				if (MatSysInterface.LightStyleNumFrames[wl.Style] <= 1)
-					cache.LightingFlags |= (int)HackLightCacheFlags.HasSwitchableLightStyle;
+					cache.Base.LightingFlags |= (int)HackLightCacheFlags.HasSwitchableLightStyle;
 				else
-					cache.LightingFlags |= (int)HackLightCacheFlags.HasNonSwitchableLightStyle;
+					cache.Base.LightingFlags |= (int)HackLightCacheFlags.HasNonSwitchableLightStyle;
 			}
 		}
 	}
@@ -1802,15 +1805,15 @@ public partial class Render
 	// Precache lighting
 	public LightCacheHandle_t CreateStaticLightingCache(in Vector3 origin, in Vector3 mins, in Vector3 maxs) {
 		PropLightcache pcache = new() {
-			LightingOrigin = origin,
 			Flags = 0,
 			Mins = mins,
-			Maxs = maxs,
-			Leaf = CM.PointLeafnum(origin),
-			EnvCubemapTexture = FindEnvCubemapForPoint(origin)
+			Maxs = maxs
 		};
+		pcache.Base.LightingOrigin = origin;
+		pcache.Base.Leaf = CM.PointLeafnum(origin);
+		pcache.Base.EnvCubemapTexture = FindEnvCubemapForPoint(origin);
 
-		BuildStaticLightingCacheLightStyleInfo(pcache, mins, maxs);
+		BuildStaticLightingCacheLightStyleInfo(ref pcache, mins, maxs);
 
 		PropCaches.Add(pcache);
 		return PropCaches.Count;
@@ -1826,13 +1829,13 @@ public partial class Render
 	}
 
 	public bool StaticLightCacheAffectedByDynamicLight(LightCacheHandle_t handle) {
-		PropLightcache pcache = PropCaches[(int)handle - 1];
+		ref PropLightcache pcache = ref CollectionsMarshal.AsSpan(PropCaches)[(int)handle - 1];
 		return pcache.HasDlights();
 	}
 
 	public bool StaticLightCacheAffectedByAnimatedLightStyle(LightCacheHandle_t handle) {
-		PropLightcache pcache = PropCaches[(int)handle - 1];
-		if (!pcache.HasLightStyle())
+		ref PropLightcache pcache = ref CollectionsMarshal.AsSpan(PropCaches)[(int)handle - 1];
+		if (!pcache.Base.HasLightStyle())
 			return false;
 		else {
 			for (int i = 0; i < pcache.LightStyleWorldLights.Count; ++i) {
@@ -1848,8 +1851,8 @@ public partial class Render
 	}
 
 	public bool StaticLightCacheNeedsSwitchableLightUpdate(LightCacheHandle_t handle) {
-		PropLightcache pcache = PropCaches[(int)handle - 1];
-		if (!pcache.HasSwitchableLightStyle())
+		ref PropLightcache pcache = ref CollectionsMarshal.AsSpan(PropCaches)[(int)handle - 1];
+		if (!pcache.Base.HasSwitchableLightStyle())
 			return false;
 		else {
 			for (int i = 0; i < pcache.LightStyleWorldLights.Count; ++i) {
