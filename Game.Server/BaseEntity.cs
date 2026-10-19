@@ -1686,6 +1686,7 @@ public partial class BaseEntity : IServerEntity
 	public virtual void VPhysicsShadowUpdate(IPhysicsObject physics) { }
 
 	public virtual BasePlayer? HasPhysicsAttacker(TimeUnit_t dt) => null;
+	public virtual void SetPhysicsAttacker(BasePlayer? entity, TimeUnit_t time) { }
 
 	public virtual void VPhysicsCollision(int index, ref GameVCollisionEvent ev) {
 		int otherIndex = index == 0 ? 1 : 0;
@@ -1781,7 +1782,7 @@ public partial class BaseEntity : IServerEntity
 
 		return physicsObject;
 	}
-	public int VPhysicsGetObjectList(Span<IPhysicsObject> list) {
+	public virtual int VPhysicsGetObjectList(Span<IPhysicsObject?> list) {
 		IPhysicsObject? phys = VPhysicsGetObject();
 		if (phys != null) {
 			Assert((phys.GetGameFlags() & PhysicsFlags.MultiObjectEntity) == 0);

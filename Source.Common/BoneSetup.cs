@@ -1646,6 +1646,26 @@ public ref partial struct BoneSetup
 		return -1;
 	}
 
+	public static void Studio_CalcBoneToBoneTransform(StudioHdr studioHdr, int inputBoneIndex, int outputBoneIndex, out Matrix3x4 matrixOut) {
+		MStudioBone bone = studioHdr.Bone(inputBoneIndex);
+
+		MathLib.MatrixInvert(bone.PoseToBone, out Matrix3x4 inputToPose);
+		MathLib.ConcatTransforms(studioHdr.Bone(outputBoneIndex).PoseToBone, inputToPose, out matrixOut);
+	}
+
+	public static void CalcBoneDerivatives(out Vector3 velocity, out Vector3 angVel, in Matrix3x4 prev, in Matrix3x4 current, float dt) {
+		float scale = 1.0f;
+		if (dt > 0)
+			scale = 1.0f / dt;
+
+		MathLib.MatrixAngles(prev, out QAngle startAngles, out Vector3 startPosition);
+		MathLib.MatrixAngles(current, out QAngle endAngles, out Vector3 endPosition);
+
+		velocity = (endPosition - startPosition) * scale;
+		MathLib.RotationDeltaAxisAngle(startAngles, endAngles, out Vector3 deltaAxis, out float deltaAngle);
+		MathLib.VectorScale(deltaAxis, deltaAngle * scale, out angVel);
+	}
+
 	public static void SetupSingleBoneMatrix(StudioHdr ownerHdr, int sequence, int frame, int bone, out Matrix3x4 boneLocal) {
 		MStudioSeqDesc seqdesc = ownerHdr.Seqdesc(sequence);
 		MStudioAnimDesc animdesc = ownerHdr.Animdesc(seqdesc.Anim(0, 0));

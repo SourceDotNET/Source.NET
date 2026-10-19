@@ -11,8 +11,10 @@ using Source.Common.Engine;
 using Source.Common.Formats.BSP;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.Mathematics;
+using Source.Common.Physics;
 
 using System;
+using System.Collections;
 using System.Drawing;
 using System.Linq;
 using System.Net.NetworkInformation;
@@ -177,6 +179,21 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 		// todo: eval
 		GroundSpeed = (float)GetSequenceGroundSpeed(hdr, GetSequence()) * GetModelScale();
+	}
+
+	public override int VPhysicsGetObjectList(Span<IPhysicsObject?> list){
+		if (IsRagdoll()) {
+			int i;
+			for (i = 0; i < Ragdoll.RagdollBoneCount(); ++i) {
+				if (i >= list.Length)
+					break;
+
+				list[i] = Ragdoll.GetElement(i);
+			}
+			return i;
+		}
+
+		return base.VPhysicsGetObjectList(list);
 	}
 
 	public TimeUnit_t GetSequenceMoveDist(StudioHdr? studioHdr, int sequence) {
@@ -830,7 +847,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		return Animation.GetSequenceName(GetModelPtr(), sequence);
 	}
 
-	public object? Ragdoll; // TODO
+	public ClientRagdoll? Ragdoll = null; 
 
 	public override void OnDataChanged(DataUpdateType updateType) {
 		if (Ragdoll != null && GetSequence() != PrevSequence) {
