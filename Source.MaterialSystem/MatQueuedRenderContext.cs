@@ -680,15 +680,7 @@ public sealed unsafe class MatQueuedRenderContext : MatRenderContextBase, IMatRe
 	public void DrawBatch(int firstIndex, int numIndices) => Queue.QueueCall(static s => s.H.DrawBatch(s.First, s.Num), (H, First: firstIndex, Num: numIndices));
 	public void EndBatch() => Queue.QueueCall(static h => h.EndBatch(), H);
 
-	public void ResetToneMappingScale(float monoscale) {
-		LastSetToneMapScale = new(monoscale, monoscale, monoscale);
-		Queue.QueueCall(static s => s.H.ResetToneMappingScale(s.Scale), (H, Scale: monoscale));
-	}
-
-	public void SetGoalToneMappingScale(float monoscale) => Queue.QueueCall(static s => s.H.SetGoalToneMappingScale(s.Scale), (H, Scale: monoscale));
-	public void TurnOnToneMapping() => Queue.QueueCall(static h => h.TurnOnToneMapping(), H);
-
-	public void SetToneMappingScaleLinear(in Vector3 scale) {
+	public override void SetToneMappingScaleLinear(in Vector3 scale) {
 		LastSetToneMapScale = scale;
 		Queue.QueueCall(static s => s.H.SetToneMappingScaleLinear(in s.Scale), (H, Scale: scale));
 	}

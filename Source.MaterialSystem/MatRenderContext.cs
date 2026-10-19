@@ -320,49 +320,7 @@ public class MatRenderContext : MatRenderContextBase, IMatRenderContextInternal
 		return FlashlightEnable;
 	}
 
-	float CurToneMapScale = 1.0f;
-	float GoalToneMapScale = 1.0f;
-
-	static readonly ConVar mat_accelerate_adjust_exposure_down = new("mat_accelerate_adjust_exposure_down", "3.0", FCvar.Cheat);
-	static readonly ConVar mat_hdr_manual_tonemap_rate = new("mat_hdr_manual_tonemap_rate", "1.0");
-	static readonly ConVar mat_tonemap_algorithm = new("mat_tonemap_algorithm", "1", FCvar.Cheat, "0 = Original Algorithm 1 = New Algorithm");
-
-	public void TurnOnToneMapping() {
-		if ((materials.HardwareConfig.GetHDRType() != HDRType.None) && (FrameTime > 0.0)) {
-			TimeUnit_t elapsedTime = FrameTime;
-			float goalScale = GoalToneMapScale;
-			float rate = mat_hdr_manual_tonemap_rate.GetFloat();
-
-			if (mat_tonemap_algorithm.GetInt() == 1)
-				rate *= 2.0f;
-
-			if (rate == 0.0f)
-				CurToneMapScale = goalScale;
-			else {
-				if (goalScale < CurToneMapScale) {
-					float accExposureAdjust = mat_accelerate_adjust_exposure_down.GetFloat();
-					rate = Math.Min(accExposureAdjust * rate, MathLib.Lerp(rate, accExposureAdjust * rate, 0.0f, 1.5f, CurToneMapScale - goalScale));
-				}
-
-				float rateTimesTime = (float)(rate * elapsedTime);
-				if (mat_tonemap_algorithm.GetInt() == 1)
-					rateTimesTime = Math.Min(rateTimesTime, (1.0f / 16.0f) * 0.25f);
-
-				float alpha = Math.Max(0.0f, Math.Min(1.0f, rateTimesTime));
-				CurToneMapScale = (goalScale * alpha) + (CurToneMapScale * (1.0f - alpha));
-
-				if (!float.IsFinite(CurToneMapScale)) {
-					Assert(false);
-					CurToneMapScale = goalScale;
-				}
-			}
-
-			SetToneMappingScaleLinear(new(CurToneMapScale, CurToneMapScale, CurToneMapScale));
-			LastSetToneMapScale = new(CurToneMapScale, CurToneMapScale, CurToneMapScale);
-		}
-	}
-
-	public void SetToneMappingScaleLinear(in Vector3 scale) => shaderAPI.SetToneMappingScaleLinear(in scale);
+	public override void SetToneMappingScaleLinear(in Vector3 scale) => shaderAPI.SetToneMappingScaleLinear(in scale);
 
 	public void BeginFrame() => shaderAPI.BeginFrame();
 	public void EndFrame() => shaderAPI.EndFrame();
@@ -855,13 +813,6 @@ public class MatRenderContext : MatRenderContextBase, IMatRenderContextInternal
 
 	public void ResetOcclusionQueryObject(OcclusionQueryObjectHandle_t handle) => materials.OcclusionQueryMgr.ResetOcclusionQueryObject(handle);
 
-	public void ResetToneMappingScale(float monoscale) {
-		CurToneMapScale = monoscale;
-		SetToneMappingScaleLinear(new(CurToneMapScale, CurToneMapScale, CurToneMapScale));
-		LastSetToneMapScale = new(CurToneMapScale, CurToneMapScale, CurToneMapScale);
-		GoalToneMapScale = 1;
-	}
-
 	public void SelectionBuffer(Span<uint> buffer) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
@@ -880,12 +831,6 @@ public class MatRenderContext : MatRenderContextBase, IMatRenderContextInternal
 
 	public void SetFullScreenDepthTextureValidityFlag(bool isValid) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public void SetGoalToneMappingScale(float monoscale) {
-		Assert(float.IsFinite(monoscale));
-		if (float.IsFinite(monoscale))
-			GoalToneMapScale = monoscale;
 	}
 
 	public void SetIntRenderingParameter(int parm_number, int value) => shaderAPI.SetIntRenderingParameter(parm_number, value);

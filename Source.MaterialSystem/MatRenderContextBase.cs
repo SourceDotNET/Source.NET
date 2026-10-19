@@ -1,4 +1,5 @@
 using Source.Common;
+using Source.Common.Commands;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 using Source.Common.ShaderAPI;
@@ -60,6 +61,8 @@ public abstract class MatRenderContextBase
 
 	protected Vector3 LastSetToneMapScale = new(1, 1, 1);
 	protected TimeUnit_t FrameTime;
+	protected float CurToneMapScale = 1.0f;
+	protected float GoalToneMapScale = 1.0f;
 
 	protected Vector3 VecViewOrigin;
 	protected Vector3 VecViewForward;
@@ -97,6 +100,9 @@ public abstract class MatRenderContextBase
 		}
 
 		FlashlightEnable = initialState.FlashlightEnable;
+		FrameTime = initialState.FrameTime;
+		GoalToneMapScale = initialState.GoalToneMapScale;
+		CurToneMapScale = initialState.CurToneMapScale;
 		LastSetToneMapScale = initialState.LastSetToneMapScale;
 	}
 
@@ -410,6 +416,60 @@ public abstract class MatRenderContextBase
 			return new(1, 1, 1);
 		else
 			return LastSetToneMapScale;
+	}
+
+	static readonly ConVar mat_accelerate_adjust_exposure_down = new("mat_accelerate_adjust_exposure_down", "3.0", FCvar.Cheat);
+	static readonly ConVar mat_hdr_manual_tonemap_rate = new("mat_hdr_manual_tonemap_rate", "1.0");
+	static readonly ConVar mat_tonemap_algorithm = new("mat_tonemap_algorithm", "1", FCvar.Cheat, "0 = Original Algorithm 1 = New Algorithm");
+
+	public abstract void SetToneMappingScaleLinear(in Vector3 scale);
+
+	public void TurnOnToneMapping() {
+		if ((materials.HardwareConfig.GetHDRType() != HDRType.None) && (FrameTime > 0.0)) {
+			TimeUnit_t elapsedTime = FrameTime;
+			float goalScale = GoalToneMapScale;
+			float rate = mat_hdr_manual_tonemap_rate.GetFloat();
+
+			if (mat_tonemap_algorithm.GetInt() == 1)
+				rate *= 2.0f;
+
+			if (rate == 0.0f)
+				CurToneMapScale = goalScale;
+			else {
+				if (goalScale < CurToneMapScale) {
+					float accExposureAdjust = mat_accelerate_adjust_exposure_down.GetFloat();
+					rate = Math.Min(accExposureAdjust * rate, MathLib.Lerp(rate, accExposureAdjust * rate, 0.0f, 1.5f, CurToneMapScale - goalScale));
+				}
+
+				float rateTimesTime = (float)(rate * elapsedTime);
+				if (mat_tonemap_algorithm.GetInt() == 1)
+					rateTimesTime = Math.Min(rateTimesTime, (1.0f / 16.0f) * 0.25f);
+
+				float alpha = Math.Max(0.0f, Math.Min(1.0f, rateTimesTime));
+				CurToneMapScale = (goalScale * alpha) + (CurToneMapScale * (1.0f - alpha));
+
+				if (!float.IsFinite(CurToneMapScale)) {
+					Assert(false);
+					CurToneMapScale = goalScale;
+				}
+			}
+
+			SetToneMappingScaleLinear(new(CurToneMapScale, CurToneMapScale, CurToneMapScale));
+			LastSetToneMapScale = new(CurToneMapScale, CurToneMapScale, CurToneMapScale);
+		}
+	}
+
+	public void ResetToneMappingScale(float monoscale) {
+		CurToneMapScale = monoscale;
+		SetToneMappingScaleLinear(new(CurToneMapScale, CurToneMapScale, CurToneMapScale));
+		LastSetToneMapScale = new(CurToneMapScale, CurToneMapScale, CurToneMapScale);
+		GoalToneMapScale = 1;
+	}
+
+	public void SetGoalToneMappingScale(float monoscale) {
+		Assert(float.IsFinite(monoscale));
+		if (float.IsFinite(monoscale))
+			GoalToneMapScale = monoscale;
 	}
 
 	public virtual int GetLightmapPage() {
