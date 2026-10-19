@@ -288,7 +288,7 @@ public partial class
 			renderContext.DepthRange(0, 0.01f);
 
 		double timeScale = hasTarget ? 10.0 : -2.0;
-		BindSprite(hasTarget ? BeamAModel : BeamModel, renderContext);
+		BindSprite(hasTarget ? BeamAModel : BeamModel, renderContext.Context);
 
 		Vector3 beamColor = default;
 		if (player is C_GMOD_Player gmodPlayer) {
@@ -297,9 +297,9 @@ public partial class
 		}
 
 		double now = gpGlobals.CurTime;
-		DrawBezierBeam(renderContext, attachOrigin, mid, end, 2.0f, beamColor, (float)(timeScale * now));
-		DrawBezierBeam(renderContext, end, mid, attachOrigin, random.RandomFloat(2.0f, 5.0f), beamColor, (float)(timeScale * now * 1.1));
-		DrawBezierBeam(renderContext, end, mid, attachOrigin, random.RandomFloat(2.0f, 6.0f), beamColor, (float)(timeScale * now * -0.9));
+		DrawBezierBeam(renderContext.Context, attachOrigin, mid, end, 2.0f, beamColor, (float)(timeScale * now));
+		DrawBezierBeam(renderContext.Context, end, mid, attachOrigin, random.RandomFloat(2.0f, 5.0f), beamColor, (float)(timeScale * now * 1.1));
+		DrawBezierBeam(renderContext.Context, end, mid, attachOrigin, random.RandomFloat(2.0f, 6.0f), beamColor, (float)(timeScale * now * -0.9));
 
 		DrawGlow(attachOrigin, hasTarget, attachAngles);
 
