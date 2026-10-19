@@ -713,7 +713,16 @@ public class LuaObject : ILuaObject
 	}
 #endif
 	public void SetEntity(IHandleEntity? ent) => throw new NotImplementedException();
+#if MENU_DLL
 	public void SetMemberPhysObject(ReadOnlySpan<char> name, IPhysicsObject? obj) => throw new NotImplementedException();
+#else
+	public void SetMemberPhysObject(ReadOnlySpan<char> name, IPhysicsObject? obj) {
+		if (!isTable())
+			return;
+		LuaPhysObj.Push_PhysObj(obj);
+		SetMember(name);
+	}
+#endif
 }
 
 public class LuaTable : LuaObject
