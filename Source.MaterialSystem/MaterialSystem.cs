@@ -676,10 +676,8 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 
 	public MaterialSystem_Config GetCurrentConfigForVideoCard() => Config;
 
-	readonly IMatRenderContextInternal?[] RenderContexts = new IMatRenderContextInternal?[2];
+	[ThreadStatic] static IMatRenderContextInternal? CurrentThreadRenderContext;
 	readonly MatRenderContext HardwareRenderContext;
-
-	ref IMatRenderContextInternal? CurrentThreadRenderContext => ref RenderContexts[ThreadInMainThread() ? 1 : 0];
 
 	public IMatRenderContext GetRenderContext() {
 		ref IMatRenderContextInternal? result = ref CurrentThreadRenderContext;
