@@ -1241,8 +1241,17 @@ public partial class C_BaseEntity : IClientEntity
 		if (nModelType == ModelType.Studio || nModelType == ModelType.Brush)
 			modelinfo.GetModelRenderBounds(GetModel(), out mins, out maxs);
 		else {
-			// todo
-			mins = maxs = default;
+			if (GetRenderAngles() == CollisionProp().GetCollisionAngles()) {
+				mins = CollisionProp().OBBMins();
+				maxs = CollisionProp().OBBMaxs();
+			}
+			else {
+				Assert(CollisionProp().GetCollisionAngles() == vec3_angle);
+				if (CollisionProp().BoundingRadius() == 0.0f)
+					mins = maxs = vec3_origin;
+				else
+					MathLib.IRotateAABB(EntityToWorldTransform(), CollisionProp().OBBMins(), CollisionProp().OBBMaxs(), out mins, out maxs);
+			}
 		}
 	}
 
