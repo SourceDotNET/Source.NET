@@ -183,8 +183,6 @@ internal unsafe class PhysicsObject : IPhysicsObject
 			BodyId.GravityScale = enable ? 1.0f : 0.0f;
 	}
 
-	public void EnableDrag(bool enable) => DragEnabled = enable;
-
 	public void EnableMotion(bool enable) {
 		if (Static || MotionEnabled == enable)
 			return;
@@ -306,10 +304,18 @@ internal unsafe class PhysicsObject : IPhysicsObject
 		rot = AngularDamping;
 	}
 
-	public void SetDragCoefficient(ref float drag, ref float angularDrag) {
-		DragCoefficient = drag;
-		AngularDragCoefficient = angularDrag;
-		DragEnabled = DragCoefficient != 0.0f || AngularDragCoefficient != 0.0f;
+	public void EnableDrag(bool enable) {
+		if (IsStatic())
+			return;
+		DragEnabled = enable;
+	}
+
+	public void SetDragCoefficient(in float? drag, in float? angularDrag) {
+		if (drag.HasValue)
+			DragCoefficient = drag.Value;
+		if (angularDrag.HasValue)
+			AngularDragCoefficient = angularDrag.Value;
+		EnableDrag(DragCoefficient != 0.0f || AngularDragCoefficient != 0.0f);
 		RecomputeDragBases();
 	}
 
@@ -317,6 +323,8 @@ internal unsafe class PhysicsObject : IPhysicsObject
 	public float GetBuoyancyRatio() => BuoyancyRatio;
 
 	void RecomputeDragBases() {
+		if (IsStatic() || GetCollide() == null) return;
+
 		DragBasis = default;
 		AngDragBasis = default;
 		if (Static || Collide == null)
