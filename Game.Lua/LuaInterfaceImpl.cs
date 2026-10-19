@@ -129,6 +129,16 @@ public unsafe class LuaInterfaceImpl : ILuaInterface
 		luaL_openlibs(state);
 		DoStackCheck();
 
+		GetField(LuaIndex.Global, "string");
+		GetField(-1, "gmatch");
+		SetField(-2, "gfind");
+		lua_settop(state, -2);
+
+		GetField(LuaIndex.Global, "math");
+		GetField(-1, "fmod");
+		SetField(-2, "mod");
+		lua_settop(state, -2);
+
 		GetField(LuaIndex.Global, "debug");
 		PushNil();
 		SetField(-2, "setlocal");

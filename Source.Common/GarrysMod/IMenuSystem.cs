@@ -14,4 +14,5 @@ public interface IMenuSystem
 	void OnLuaError(in LuaError err, IAddonSystem.Information? addonInfo);
 	void SendProblemToMenu(ReadOnlySpan<char> id, int severity, ReadOnlySpan<char> parms);
 	bool IsServerBlacklisted(ReadOnlySpan<char> address, ReadOnlySpan<char> hostname, ReadOnlySpan<char> description, ReadOnlySpan<char> gamemode, ReadOnlySpan<char> map);
+	void OnPauseMenuBlockedTooManyTimes();
 }

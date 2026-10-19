@@ -1165,6 +1165,17 @@ public class Panel : IPanel
 		if (x == 0 && y == 0 && wide == oldWide && tall == oldTall)
 			SetBounds(0, 0, screenWide, screenTall);
 
+#if GMOD_DLL
+		if (PushLuaHook(LUA_POOLEDSTRING.OnScreenSizeChanged)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.PushNumber(oldWide);
+			Lua.PushNumber(oldTall);
+			Lua.PushNumber(screenWide);
+			Lua.PushNumber(screenTall);
+			Lua.CallInternalNoReturns(5);
+		}
+#endif
+
 		Flags |= PanelFlags.NeedsLayout;
 
 		InvalidateLayout();

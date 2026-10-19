@@ -1,5 +1,7 @@
 #if MENU_DLL
+using Source;
 using Source.Common.Formats.Keyvalues;
+using Source.Common.MaterialSystem;
 using Source.Common.GUI;
 using Source.GUI.Controls;
 
@@ -43,6 +45,32 @@ public class OverlayPanel : Panel
 
 		Surface.MovePopupToFront(this);
 		MenuSystem.g_MenuSystem.Think();
+	}
+
+	static TimeUnit_t LastPaintTime;
+	public static TimeUnit_t FrameTime;
+
+	public override void Paint() {
+		if (IsMarkedForDeletion())
+			return;
+
+		using MatRenderContextPtr renderContext = new(materials);
+		renderContext.ClearBuffers(false, true);
+
+		double now = Platform.Time;
+		LastPaintTime = now - LastPaintTime;
+		FrameTime = 0.0;
+		if (LastPaintTime >= 0.0) {
+			FrameTime = LastPaintTime;
+			if (LastPaintTime >= 0.1)
+				FrameTime = 0.1;
+		}
+		LastPaintTime = now;
+
+		PaintDrawOnTopPanels();
+
+		MenuSystem.RunHook(LUA_POOLEDSTRING.DrawOverlay);
+		MenuSystem.RunHook(LUA_POOLEDSTRING.CaptureVideo);
 	}
 }
 

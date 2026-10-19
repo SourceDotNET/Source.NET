@@ -22,6 +22,18 @@ public static partial class LuaEngine
 	}
 
 	[LuaFunction]
+	static int AbsoluteFrameTime(ILuaInterface lua) {
+		lua.PushNumber(gpGlobals.AbsoluteFrameTime);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int TickCount(ILuaInterface lua) {
+		lua.PushNumber(gpGlobals.TickCount);
+		return 1;
+	}
+
+	[LuaFunction]
 	static int ActiveGamemode(ILuaInterface lua) {
 		g_Lua!.PushString(filesystem.Gamemodes().Active().Name);
 		return 1;
@@ -61,18 +73,6 @@ public static partial class LuaEngine
 	[LuaFunction]
 	static int GetDemoPlaybackTotalTicks(ILuaInterface lua) {
 		lua.PushNumber(engine.GetDemoPlaybackTotalTicks());
-		return 1;
-	}
-
-	[LuaFunction]
-	static int AbsoluteFrameTime(ILuaInterface lua) {
-		lua.PushNumber(gpGlobals.AbsoluteFrameTime);
-		return 1;
-	}
-
-	[LuaFunction]
-	static int TickCount(ILuaInterface lua) {
-		lua.PushNumber(gpGlobals.TickCount);
 		return 1;
 	}
 

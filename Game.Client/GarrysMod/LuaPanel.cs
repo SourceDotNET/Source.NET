@@ -88,7 +88,7 @@ public static partial class LuaVGUI
 			lua.Error("Tried to use a NULL Panel!");
 			return 0;
 		}
-		panel.PaintManual(lua.GetType(2) != LuaType.Nil &&lua.GetBool(2));
+		panel.PaintManual(lua.GetType(2) != LuaType.Nil && lua.GetBool(2));
 		return 0;
 	}
 
@@ -904,7 +904,6 @@ public static partial class LuaVGUI
 		return 1;
 	}
 
-#if !MENU_DLL
 	[LuaMethod]
 	static int Panel__UpdateHTMLTexture(ILuaInterface lua) {
 		Panel? panel = (Panel?)PanelClass.Get(1);
@@ -918,6 +917,7 @@ public static partial class LuaVGUI
 		return 0;
 	}
 
+#if !MENU_DLL
 	[LuaMethod]
 	static int Panel__GetHTMLMaterial(ILuaInterface lua) {
 		Panel? panel = (Panel?)PanelClass.Get(1);

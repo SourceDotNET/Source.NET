@@ -3,6 +3,7 @@ using CommunityToolkit.HighPerformance;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.GUI;
 using Source.Common.Input;
+using Source.Common.GarrysMod.Lua;
 
 namespace Source.GUI.Controls;
 
@@ -721,7 +722,12 @@ public class TextEntry : Panel
 			engine.ClientCmd_Unrestricted(command);
 			return;
 		}
-		// todo: OnKeyCodeTyped hook
+		if (PushLuaHook(LUA_POOLEDSTRING.OnKeyCodeTyped)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.PushNumber((int)code);
+			if (Lua.CallInternalGetBool(2))
+				return;
+		}
 #endif
 		CursorIsAtEnd = PutCursorAtEnd;
 		PutCursorAtEnd = false;
@@ -1816,7 +1822,10 @@ public class TextEntry : Panel
 		InvalidateLayout();
 #if GMOD_DLL
 		RecalculateLineBreaks();
-		// todo: OnTextChanged hook
+		if (PushLuaHook(LUA_POOLEDSTRING.OnTextChanged)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.CallInternalNoReturns(1);
+		}
 		FiringActionSignal = false;
 #endif
 	}

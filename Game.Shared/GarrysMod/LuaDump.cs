@@ -39,13 +39,17 @@ public static class LuaDump
 			return "lua"
 		end
 
+		local visited = {}
+
 		local function Scan(prefix, sep, t)
+			visited[t] = true
 			for k, v in pairs(t) do
 				if isstring(k) then
 					if isfunction(v) then
 						Emit(prefix .. sep .. k, Kind(v))
 					elseif istable(v) and v ~= t then
 						Emit(prefix .. "." .. k, TableKind(v))
+						if not visited[v] and v ~= _G and not metas[v] then Scan(prefix .. "." .. k, ".", v) end
 					end
 				end
 			end
@@ -111,7 +115,8 @@ public static class LuaDump
 
 	static readonly Regex GamemodeHook = new(@"gGM[!?]?\.(?:Call|CallWithArgs)\(\s*(?:\(int\))?(?:PooledStrings\.)?LUA_POOLEDSTRING\.(\w+)");
 	static readonly Regex GamemodeHookString = new(@"\bCall(?:WithArgs)?\(""(\w+)""\)");
-	static readonly Regex PanelHook = new(@"PushLuaHook\(LUA_POOLEDSTRING\.(\w+)|UpdateLuaHook\(panel, ""(\w+)""|GetField\(-1, ""(On\w+)""\)");
+	static readonly Regex MenuHook = new(@"\b(?:CallHook|Begin)\(""(\w+)""\)|\bRunHook\(LUA_POOLEDSTRING\.(\w+)\)");
+	static readonly Regex PanelHook = new(@"PushLuaHook\(LUA_POOLEDSTRING\.(\w+)|UpdateLuaHook\(panel, ""(\w+)""|GetField\(-1, ""(On\w+)""\)|CanCallLuaHook\((?:\w+\.)?Lua(\w+)\)");
 	static readonly Regex EntityHook = new(@"ScriptedEntity\.(?:StartFunction|CallFunction)\(\s*\(int\)LUA_POOLEDSTRING\.(\w+)");
 	static readonly Regex LuaHookCall = new(@"hook\.(?:Run|Call)\(\s*[""'](\w+)[""']|(?<!function\s+)\b(?:GAMEMODE|GM):(\w+)\(");
 
@@ -147,8 +152,10 @@ public static class LuaDump
 				if (name == "LuaGamemode.cs")
 					foreach (Match m in GamemodeHookString.Matches(text))
 						hooks["gm:" + m.Groups[1].Value.ToLowerInvariant()] = "c";
+				foreach (Match m in MenuHook.Matches(text))
+					hooks["gm:" + (m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value).ToLowerInvariant()] = "c";
 				foreach (Match m in PanelHook.Matches(text)) {
-					string hook = m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Value;
+					string hook = m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Success ? m.Groups[2].Value : m.Groups[3].Success ? m.Groups[3].Value : m.Groups[4].Value;
 					hooks[(hook == "DoClick" ? "dlabel:" : "panel:") + hook.ToLowerInvariant()] = "c";
 				}
 				string owner = name.Contains("SWEP") ? "weapon:" : "entity:";
