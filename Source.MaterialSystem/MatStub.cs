@@ -499,6 +499,9 @@ public class DummyMaterialSystem : IMaterialSystemStub, IShaderUtil, IMatRenderC
 	public bool HasShaderAPI() => true;
 	public bool InFlashlightMode() => false;
 	public bool OnDrawMesh(IMesh mesh, int firstIndex, int indexCount) => false;
+	public unsafe bool OnDrawMesh(IMesh mesh, PrimList* lists, int numLists) => false;
+	public bool OnSetFlexMesh(IMesh staticMesh, IMesh? mesh, int vertexOffsetInBytes) => false;
+	public bool OnSetColorMesh(IMesh staticMesh, IMesh? mesh, int vertexOffsetInBytes) => false;
 	public bool OnSetPrimitiveType(IMesh mesh, MaterialPrimitiveType type) => false;
 	public bool OnFlushBufferedPrimitives() => false;
 	public void SyncMatrices() { }

@@ -301,8 +301,10 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 
 	public void Download(Rectangle rect, int additionalCreationFlags) {
 		if (materials.ShaderAPI.CanDownloadTextures()) {
+			MaterialLock hLock = materials.Lock();
 			Flags |= (uint)additionalCreationFlags;
 			DownloadTexture(rect);
+			materials.Unlock(hLock);
 		}
 	}
 

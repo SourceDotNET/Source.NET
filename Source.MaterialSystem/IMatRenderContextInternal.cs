@@ -28,8 +28,8 @@ public interface IMatRenderContextInternal : IMatRenderContext
 
 	bool OnDrawMesh(IMesh mesh, int firstIndex, int numIndices);
 	unsafe bool OnDrawMesh(IMesh mesh, PrimList* pLists, int nLists);
-	bool OnSetFlexMesh(IMesh staticMesh, IMesh mesh, int nVertexOffsetInBytes);
-	bool OnSetColorMesh(IMesh staticMesh, IMesh mesh, int nVertexOffsetInBytes);
+	bool OnSetFlexMesh(IMesh staticMesh, IMesh? mesh, int nVertexOffsetInBytes);
+	bool OnSetColorMesh(IMesh staticMesh, IMesh? mesh, int nVertexOffsetInBytes);
 	bool OnSetPrimitiveType(IMesh mesh, MaterialPrimitiveType type);
 	bool OnFlushBufferedPrimitives();
 
@@ -43,7 +43,7 @@ public interface IMatRenderContextInternal : IMatRenderContext
 	void SetFrameTime(TimeUnit_t frameTime);
 	void SetCurrentProxy(object? proxy);
 	void MarkRenderDataUnused(bool bBeginFrame);
-	MatCallQueue GetCallQueueInternal();
+	MatCallQueue? GetCallQueueInternal();
 
 #if GMOD_DLL
 	bool GMOD_IsLowOnMemory() { return false; }

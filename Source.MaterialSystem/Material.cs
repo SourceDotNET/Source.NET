@@ -103,16 +103,22 @@ public class Material : IMaterialInternal
 		if (IsPrecached())
 			return;
 
-		if (!PrecacheVars())
-			return;
+		MaterialLock hMaterialLock = materials.Lock();
+		try {
+			if (!PrecacheVars())
+				return;
 
-		flags |= MaterialFlags.IsPrecached;
-		if (Shader != null)
-			materials.ShaderSystem.InitShaderInstance(Shader, ShaderParams, GetName(), GetTextureGroupName());
+			flags |= MaterialFlags.IsPrecached;
+			if (Shader != null)
+				materials.ShaderSystem.InitShaderInstance(Shader, ShaderParams, GetName(), GetTextureGroupName());
 
-		RecomputeStateSnapshots();
-		FindRepresentativeTexture();
-		PrecacheMappingDimensions();
+			RecomputeStateSnapshots();
+			FindRepresentativeTexture();
+			PrecacheMappingDimensions();
+		}
+		finally {
+			materials.Unlock(hMaterialLock);
+		}
 	}
 
 	public void ColorModulate(float r, float g, float b) {
@@ -146,6 +152,12 @@ public class Material : IMaterialInternal
 	}
 
 	public void RecomputeStateSnapshots() {
+		MatCallQueue? callQueue = materials.GetRenderCallQueue();
+		if (callQueue != null) {
+			callQueue.QueueCall(static material => material.RecomputeStateSnapshots(), this);
+			return;
+		}
+
 		bool ok = InitializeRenderState();
 		if (!ok)
 			SetupErrorShader();
@@ -1129,6 +1141,8 @@ public class Material : IMaterialInternal
 	}
 
 	public void Uncache(bool preserveVars = false) {
+		MaterialLock hMaterialLock = materials.Lock();
+
 		if (IsPrecached()) {
 			CleanUpStateSnapshots();
 			flags &= ~MaterialFlags.ValidRenderState;
@@ -1145,6 +1159,8 @@ public class Material : IMaterialInternal
 				flags &= ~MaterialFlags.VarsIsPrecached;
 			}
 		}
+
+		materials.Unlock(hMaterialLock);
 	}
 
 	private void CleanUpMaterialProxy() {
@@ -1326,9 +1342,16 @@ public class Material : IMaterialInternal
 
 	public void CallBindProxy(object? proxydata) {
 		if (ProxyInfo.Count != 0) {
+			bool threaded = materials.GetRenderCallQueue() != null;
+			if (threaded)
+				MaterialVar.EnableThreadedMaterialVarAccess(true);
+
 			foreach (var proxy in ProxyInfo) {
 				proxy.OnBind(proxydata);
 			}
+
+			if (threaded)
+				MaterialVar.EnableThreadedMaterialVarAccess(false);
 		}
 	}
 
@@ -1344,6 +1367,12 @@ public class Material : IMaterialInternal
 	}
 
 	public void SetMaterialVarFlag(MaterialVarFlags flag, bool on) {
+		MatCallQueue? callQueue = materials.GetRenderCallQueue();
+		if (callQueue != null) {
+			callQueue.QueueCall(static s => s.Material.SetMaterialVarFlag(s.Flag, s.On), (Material: this, Flag: flag, On: on));
+			return;
+		}
+
 		bool oldOn = (GetMaterialVarFlags() & flag) != 0;
 		if (oldOn != on) {
 			SetMaterialVarFlags(flag, on);
