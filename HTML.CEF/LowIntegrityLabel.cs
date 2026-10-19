@@ -11,6 +11,11 @@ static partial class LowIntegrityLabel
 	const int SeFileObject = 1;
 	const uint LabelSecurityInformation = 0x00000010;
 
+	static readonly Guid LocalAppDataLowFolderId = new("A520A1A4-1780-4FF6-BD18-167343C5AF16");
+
+	[LibraryImport("shell32.dll")]
+	private static partial int SHGetKnownFolderPath(in Guid folderId, uint flags, nint token, out nint path);
+
 	[LibraryImport("advapi32.dll", EntryPoint = "ConvertStringSecurityDescriptorToSecurityDescriptorW", StringMarshalling = StringMarshalling.Utf16)]
 	private static partial int ConvertStringSecurityDescriptorToSecurityDescriptor(string stringSecurityDescriptor, uint revision, out nint securityDescriptor, nint securityDescriptorSize);
 
@@ -28,6 +33,16 @@ static partial class LowIntegrityLabel
 
 	[LibraryImport("kernel32.dll")]
 	private static partial nint LocalFree(nint mem);
+
+	public static string? GetLocalAppDataLow() {
+		int result = SHGetKnownFolderPath(LocalAppDataLowFolderId, 0, 0, out nint path);
+		try {
+			return result == 0 ? Marshal.PtrToStringUni(path) : null;
+		}
+		finally {
+			Marshal.FreeCoTaskMem(path);
+		}
+	}
 
 	static bool IsApplied(string directory) {
 		if (GetNamedSecurityInfo(directory, SeFileObject, LabelSecurityInformation, 0, 0, 0, out _, out nint securityDescriptor) != 0)
