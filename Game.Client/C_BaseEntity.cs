@@ -874,7 +874,18 @@ public partial class C_BaseEntity : IClientEntity
 	IPhysicsObject? PhysicsObject = null!;
 	public void VPhysicsUpdate(IPhysicsObject physics) { }
 	public IPhysicsObject? VPhysicsGetObject() => PhysicsObject;
-	public int VPhysicsGetObjectList(Span<IPhysicsObject> list) => throw new NotImplementedException();
+	public virtual IPhysicsObject? VPhysicsGetElement(int element) => PhysicsObject;
+	public virtual int VPhysicsGetObjectList(Span<IPhysicsObject> list) {
+		IPhysicsObject? phys = VPhysicsGetObject();
+		if (phys != null) {
+			Assert((phys.GetGameFlags() & PhysicsFlags.MultiObjectEntity) == 0);
+			if (list.Length > 0) {
+				list[0] = phys;
+				return 1;
+			}
+		}
+		return 0;
+	}
 
 	public bool IsFloating() => false;
 
