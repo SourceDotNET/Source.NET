@@ -1195,12 +1195,18 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 		AllocatingRenderTargets = true;
 	}
 
+	static readonly ConVar mat_requires_rt_alloc_first = new("mat_requires_rt_alloc_first", "0", FCvar.Hidden);
+	static bool FirstRenderTargetAllocation = true;
+
 	public void EndRenderTargetAllocation() {
+		bool requiresRenderTargetAllocationFirst = mat_requires_rt_alloc_first.GetBool() || FirstRenderTargetAllocation;
+		FirstRenderTargetAllocation = false;
+
 		ShaderAPI.FlushBufferedPrimitives();
 		AllocatingRenderTargets = false;
 
 		// I believe this step is unnecessary (and breaks how textures work rn)
-		if (ShaderAPI.CanDownloadTextures()) {
+		if (requiresRenderTargetAllocationFirst && ShaderAPI.CanDownloadTextures()) {
 			ShaderDevice.ReleaseResources();
 			ShaderDevice.ReacquireResources();
 		}
