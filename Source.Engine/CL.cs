@@ -234,7 +234,7 @@ public partial class CL(IServiceProvider services, Net Net,
 			if (percent == lastShaderPercent)
 				return;
 			lastShaderPercent = percent;
-			EngineVGui?.UpdateCustomProgressBar((float)done / total, "#LoadingProgress_LoadResources");
+			EngineVGui?.UpdateCustomProgressBar((float)done / total, "Compiling shaders..."); // TODO: LOCALIZE THIS STRING #214
 		});
 #endif
 
