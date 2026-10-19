@@ -46,7 +46,7 @@ public static class BSPFileCommon
 	public const int MAX_MAP_AREAPORTALS = 1024;
 	public const int MAX_MAP_PLANES = 65536;
 	public const int MAX_MAP_NODES = 65536;
-	public const int MAX_MAP_BRUSHSIDES = 163840;
+	public const int MAX_MAP_BRUSHSIDES = 655350;
 	public const int MAX_MAP_LEAFS = 65536;
 	public const int MAX_MAP_VERTS = 65536;
 	public const int MAX_MAP_VERTNORMALS = 256000;
