@@ -1,8 +1,9 @@
-﻿using Game.Client.HUD;
+using Game.Client.HUD;
 using Game.Shared;
 
 using Source;
 using Source.Common;
+using Source.Common.Input;
 
 using System.Runtime.CompilerServices;
 
@@ -16,6 +17,8 @@ public partial class C_BaseCombatWeapon : C_BaseAnimating
 	public virtual bool WasDropped() => Dropped;
 	public virtual void SetDropped() => Dropped = true;
 	public virtual void DrawHUD() { }
+	public virtual bool ShouldFreezeViewAngles() => false;
+	public virtual int KeyInput(int down, ButtonCode keynum, ReadOnlySpan<char> currentBinding) => 1;
 	public virtual void DrawHUDBackground() { }
 	public override bool IsWeapon() => true;
 	public static BaseCombatWeapon? GetActiveWeapon() {

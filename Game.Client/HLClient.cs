@@ -804,9 +804,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		throw new NotImplementedException();
 	}
 
-	public void IN_MouseWheelAnalog(int value) {
-		throw new NotImplementedException();
-	}
+	public void IN_MouseWheelAnalog(int value) => input.MouseWheeled(value);
 
 	public void GMOD_SignOnStateChanged(int userID, int oldState, int newState) {
 		throw new NotImplementedException();

@@ -273,6 +273,10 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 			cmd.Buttons |= InButtons.Forward;
 		else if (cmd.ForwardMove < 0)
 			cmd.Buttons |= InButtons.Back;
+
+#if GMOD_DLL
+		MouseWheel = 0;
+#endif
 	}
 
 	private void ApplyExtras(ref UserCmd cmd) {
@@ -494,6 +498,7 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 
 	private void MouseMove(ref UserCmd cmd) {
 		engine.GetViewAngles(out QAngle viewangles);
+		QAngle originalViewangles = viewangles;
 		view.StopPitchDrift();
 
 		if (!CameraInterceptingMouse && !Surface.IsCursorVisible()) {
@@ -506,10 +511,18 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 			ResetMouse();
 		}
 
+#if GMOD_DLL
+		if (C_BasePlayer.GetLocalPlayer()?.GetActiveWeapon()?.ShouldFreezeViewAngles() == true)
+			viewangles = originalViewangles;
+#endif
+
 		engine.SetViewAngles(in viewangles);
 	}
 
 	private void ApplyMouse(ref QAngle viewangles, ref UserCmd cmd, float mouse_x, float mouse_y) {
+#if GMOD_DLL
+		cmd.ScrollWheelSpeed = (sbyte)MouseWheel;
+#endif
 		if ((in_strafe.State & KeyButtonStateFlags.Down) == 0 || lookstrafe.GetInt() != 0) {
 			if (CAM_IsThirdPerson() && thirdperson_platformer.GetInt() != 0) {
 				if (mouse_x != 0) {
