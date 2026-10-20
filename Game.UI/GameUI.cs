@@ -158,24 +158,15 @@ public class GameUI(IEngineClient engine) : IGameUI
 		platformDir = string.Empty;
 
 #if WIN32
-		var location = System.Reflection.Assembly.GetExecutingAssembly().Location;
-		if (string.IsNullOrEmpty(location))
-			return false;
-
-		var dir = Path.GetDirectoryName(location);
-		if (dir == null)
-			return false;
-
-		platformDir = Path.Combine(dir, "platform") + Path.DirectorySeparatorChar;
-		return true;
+		string? dir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 #else
-		string dir = Directory.GetCurrentDirectory();
+		string? dir = Directory.GetCurrentDirectory();
+#endif
 		if (string.IsNullOrEmpty(dir))
 			return false;
 
 		platformDir = Path.Combine(dir, "platform") + Path.DirectorySeparatorChar;
 		return true;
-#endif
 	}
 
 	public void Shutdown() {
