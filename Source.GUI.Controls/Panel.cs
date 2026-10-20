@@ -1090,6 +1090,7 @@ public class Panel : IPanel
 	public Panel? GetParent() => Parent;
 	IPanel? IPanel.GetParent() => Parent;
 
+	[UiMessage("OnScreenSizeChanged")]
 	public virtual void OnScreenSizeChanged(int oldWide, int oldTall) {
 		for (int i = 0; i < GetChildCount(); i++) {
 			IPanel child = GetChild(i);
@@ -1468,6 +1469,9 @@ public class Panel : IPanel
 		return false;
 	}
 
+#if GMOD_DLL
+	[UiMessage("activate")]
+#endif
 	public virtual void OnActivate() {
 		if (!PushLuaHook(LUA_POOLEDSTRING.OnActivate))
 			return;
@@ -1476,6 +1480,9 @@ public class Panel : IPanel
 		Lua!.CallInternalNoReturns(1);
 	}
 
+#if GMOD_DLL
+	[UiMessage("deactivate")]
+#endif
 	public virtual void OnDeactivate() {
 		if (!PushLuaHook(LUA_POOLEDSTRING.OnDeactivate))
 			return;
@@ -2181,8 +2188,9 @@ public class Panel : IPanel
 
 	public void CallParentFunction(KeyValues message) => GetParent()?.SendMessage(message, this);
 
-	public virtual void OnRequestFocus(Panel subFocus, Panel? defaultPanel)
-		=> GetParent()?.SendMessage(new KeyValues("OnRequestFocus").AddSubKey(new("subFocus", subFocus)).AddSubKey(new("defaultPanel", defaultPanel)), subFocus);
+	[UiMessage("OnRequestFocus")]
+	public virtual void OnRequestFocus(Panel sender, Panel? defaultPanel)
+		=> GetParent()?.SendMessage(new KeyValues("OnRequestFocus").AddSubKey(new("subFocus", sender)).AddSubKey(new("defaultPanel", defaultPanel)), sender);
 
 	public virtual bool RequestFocusNext(IPanel? existingPanel = null) {
 #if GMOD_DLL
@@ -2551,6 +2559,19 @@ public class Panel : IPanel
 	public virtual void DoModal() { }
 #endif
 
+	PanelHandlerTable? handlerTable;
+	PanelHandlerTable HandlerTable => handlerTable ??= PanelMessageMap.GetTable(GetType());
+
+	public void DoCommand(ReadOnlySpan<char> command, IPanel? sender = null) {
+		if (HandlerTable.TryGetCommand(command, out PanelCommandHandler handler))
+			handler(this, sender);
+		else
+			OnCommand(command);
+	}
+
+	[UiMessage("Command")]
+	private void OnCommandMessage(Panel? sender, ReadOnlySpan<char> command) => DoCommand(command, sender);
+
 	public virtual void OnCommand(ReadOnlySpan<char> command) {
 		if (command.Equals("performlayout", StringComparison.OrdinalIgnoreCase))
 			InvalidateLayout();
@@ -2559,6 +2580,7 @@ public class Panel : IPanel
 		else
 			PostActionSignal(new KeyValues(command));
 	}
+	[UiMessage("MouseCaptureLost")]
 	public virtual void OnMouseCaptureLost() => Tooltips?.ResetDelay();
 	public virtual void OnSetFocus() {
 		Repaint();
@@ -2638,6 +2660,7 @@ public class Panel : IPanel
 #endif
 	}
 	public virtual void OnMouseDoublePressed(ButtonCode code) { }
+	[UiMessage("MouseReleased")]
 	public virtual void OnMouseReleased(ButtonCode code) {
 #if GMOD_DLL
 		if (IsWorldClicker())
@@ -2650,6 +2673,7 @@ public class Panel : IPanel
 #endif
 	}
 	public virtual void OnMouseMismatchedRelease(ButtonCode code, IPanel? pressedPanel) { }
+	[UiMessage("MouseWheeled")]
 	public virtual void OnMouseWheeled(int delta) {
 #if GMOD_DLL
 		if (PushLuaHook(LUA_POOLEDSTRING.OnMouseWheeled)) {
@@ -2661,6 +2685,7 @@ public class Panel : IPanel
 #endif
 		CallParentFunction(new KeyValues("MouseWheeled", "delta", delta));
 	}
+	[UiMessage("DialogVariables")]
 	public virtual void OnDialogVariablesChanged(KeyValues variables) { }
 	bool TriplePressAllowed;
 	public virtual void SetTriplePressAllowed(bool state) => TriplePressAllowed = state;
@@ -2779,6 +2804,7 @@ public class Panel : IPanel
 	}
 
 
+	[UiMessage("KeyTyped")]
 	public virtual void OnKeyTyped(char unichar) { }
 	public virtual void OnKeyCodeReleased(ButtonCode code) {
 #if GMOD_DLL
@@ -2786,11 +2812,14 @@ public class Panel : IPanel
 #endif
 		CallParentFunction(new KeyValues("KeyCodeReleased", "code", (int)code));
 	}
+	[UiMessage("UnhandledMouseClick")]
 	public virtual void OnUnhandledMouseClick(ButtonCode code) { }
+	[UiMessage("KeyFocusTicked")]
 	public void InternalKeyFocusTicked() {
 		OnKeyFocusTicked();
 	}
 	public virtual void OnKeyFocusTicked() { }
+	[UiMessage("MouseFocusTicked")]
 	public void InternalMouseFocusTicked() {
 		InternalSetCursor();
 		OnMouseFocusTicked();
@@ -2799,7 +2828,9 @@ public class Panel : IPanel
 		// Send it to the parent
 		GetParent()?.OnMouseFocusTicked();
 	}
+	[UiMessage("Close")]
 	public virtual void OnClose() { }
+	[UiMessage("Delete")]
 	public virtual void OnDelete() {
 		Dispose();
 	}
@@ -2824,6 +2855,7 @@ public class Panel : IPanel
 
 	static ConVar vgui_print_messages = new("0", FCvar.None);
 
+	[UiMessage("KeyCodePressed")]
 	public void InternalKeyCodePressed(ButtonCode code) {
 		if (!ShouldHandleInputMessage())
 			return;
@@ -2857,6 +2889,7 @@ public class Panel : IPanel
 	private bool GetForceStereoRenderToFrameBuffer() => ForceStereoRenderToFrameBuffer;
 	public void SetForceStereoRenderToFrameBuffer(bool state) => ForceStereoRenderToFrameBuffer = state;
 
+	[UiMessage("KeyCodeTyped")]
 	public void InternalKeyCodeTyped(ButtonCode code) {
 		if (!ShouldHandleInputMessage()) {
 			Input.OnKeyCodeUnhandled(code);
@@ -2898,6 +2931,7 @@ public class Panel : IPanel
 		return false;
 	}
 
+	[UiMessage("MousePressed")]
 	private void InternalMousePressed(ButtonCode code) {
 		// todo triple press/dragdrop etc
 
@@ -2920,6 +2954,7 @@ public class Panel : IPanel
 		OnMousePressed(code);
 	}
 
+	[UiMessage("KeyCodeReleased")]
 	private void InternalKeyCodeReleased(ButtonCode code) {
 		if (!ShouldHandleInputMessage())
 			return;
@@ -2930,7 +2965,8 @@ public class Panel : IPanel
 			CallParentFunction(new KeyValues("KeyCodeReleased", "code", (int)code));
 	}
 
-	private void InternalCursorMoved(int x, int y) {
+	[UiMessage("CursorMoved")]
+	private void InternalCursorMoved([MessageParam("xpos")] int x, [MessageParam("ypos")] int y) {
 		// dragdrop todo
 
 		if (!ShouldHandleInputMessage())
@@ -2964,6 +3000,7 @@ public class Panel : IPanel
 
 	private bool IsCursorNone() => GetCursor() == CursorCode.None;
 
+	[UiMessage("CursorEntered")]
 	private void InternalCursorEntered() {
 		if (IsCursorNone() || !IsMouseInputEnabled())
 			return;
@@ -2985,6 +3022,7 @@ public class Panel : IPanel
 		OnCursorEntered();
 	}
 
+	[UiMessage("CursorExited")]
 	private void InternalCursorExited() {
 #if GMOD_DLL
 		if (Lua != null && LuaTable != null)
@@ -3006,55 +3044,30 @@ public class Panel : IPanel
 	public bool IsConsoleStylePanel() => false; // todo
 
 	public virtual void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "KeyCodePressed": InternalKeyCodePressed((ButtonCode)message.GetInt("code")); break;
-			case "KeyCodeTyped": InternalKeyCodeTyped((ButtonCode)message.GetInt("code")); break;
-			case "KeyTyped": OnKeyTyped((char)message.GetInt("unichar")); break;
-			case "KeyCodeReleased": InternalKeyCodeReleased((ButtonCode)message.GetInt("code")); break;
-			case "CursorEntered": InternalCursorEntered(); break;
-			case "CursorExited": InternalCursorExited(); break;
-			case "CursorMoved": InternalCursorMoved(message.GetInt("xpos"), message.GetInt("ypos")); break;
-			case "MouseFocusTicked": InternalMouseFocusTicked(); break;
-			case "KeyFocusTicked": InternalKeyFocusTicked(); break;
-			case "MouseCaptureLost": OnMouseCaptureLost(); break;
-			case "MousePressed": InternalMousePressed((ButtonCode)message.GetInt("code")); break;
-			case "MouseWheeled": OnMouseWheeled(message.GetInt("delta")); break;
-			case "MouseReleased": OnMouseReleased((ButtonCode)message.GetInt("code")); break;
-			case "UnhandledMouseClick": OnUnhandledMouseClick((ButtonCode)message.GetInt("code")); break;
-			case "SetFocus": InternalSetFocus(); break;
-			case "KillFocus": InternalKillFocus((Panel?)message.GetPtr("newPanel")); break;
-			case "TextChanged": OnTextChanged((Panel)message.GetPtr("panel")!); break;
-			case "Delete": OnDelete(); break;
-			case "Close": OnClose(); break;
-			case "OnRequestFocus": OnRequestFocus(message.GetPtr<Panel>("subFocus")!, message.GetPtr<Panel>("defaultPanel")); break;
-			case "OnScreenSizeChanged": OnScreenSizeChanged(message.GetInt("oldwide"), message.GetInt("oldtall")); break;
-			case "Command": OnCommand(message.GetString("command")); break;
-			case "DialogVariables": OnDialogVariablesChanged(message); break;
-#if GMOD_DLL
-			case "activate": OnActivate(); break;
-			case "deactivate": OnDeactivate(); break;
-#endif
+		if (HandlerTable.TryGetMessage(message.Name, out PanelMessageHandler handler))
+			handler(this, message, sender);
 #if DEBUG
-			default:
-				DevMsg(3, $"Unhandled message '{message.Name}' from {sender}");
-				break;
+		else
+			DevMsg(3, $"Unhandled message '{message.Name}' from {sender}");
 #endif
-		}
 		if (vgui_print_messages.GetBool())
 			if (vgui_print_messages.GetInt() == 2 || (!message.Name.Contains("Ticked") && !message.Name.Contains("Moved")))
 				Msg($"Message from {sender} to {this}: {message.Name}\n");
 	}
 
-	public virtual void OnTextChanged(Panel from) {
+	[UiMessage("TextChanged")]
+	public virtual void OnTextChanged(Panel sender) {
 
 	}
 
+	[UiMessage("SetFocus")]
 	private void InternalSetFocus() {
 		OnSetFocus();
 	}
 
-	private void InternalKillFocus(Panel? newPanel) {
-		OnKillFocus(newPanel);
+	[UiMessage("KillFocus")]
+	private void InternalKillFocus(Panel? sender) {
+		OnKillFocus(sender);
 	}
 
 
