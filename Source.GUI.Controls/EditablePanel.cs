@@ -355,7 +355,7 @@ public class EditablePanel : Panel
 
 		if (GetParent() != null) {
 			KeyValues msg = new("CurrentDefaultButtonSet");
-			msg.SetPtr("panel", defaultButton);
+			msg.SetPtr("button", defaultButton);
 			PostMessage(GetParent()!, msg);
 		}
 	}
@@ -374,10 +374,10 @@ public class EditablePanel : Panel
 	public override void OnMessage(KeyValues message, IPanel? from) {
 		switch (message.Name) {
 			case "DefaultButtonSet":
-				OnDefaultButtonSet((Panel)message.GetPtr("panel")!);
+				OnDefaultButtonSet((Panel)message.GetPtr("button")!);
 				break;
 			case "CurrentDefaultButtonSet":
-				OnCurrentDefaultButtonSet((Panel)message.GetPtr("panel")!);
+				OnCurrentDefaultButtonSet((Panel)message.GetPtr("button")!);
 				break;
 			case "FindDefaultButton":
 				OnFindDefaultButton();
