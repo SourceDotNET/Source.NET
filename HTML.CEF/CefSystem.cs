@@ -56,6 +56,8 @@ public class CefSystem : IHtmlSystem
 			BrowserSubprocessPath = Path.Combine(chromiumDir, OperatingSystem.IsWindows() ? "HTML.CEF.Process.exe" : "HTML.CEF.Process"),
 		};
 
+		Environment.SetEnvironmentVariable("DOTNET_DiagnosticPorts", null);
+
 		try {
 			CefRuntime.Initialize(new CefMainArgs([]), settings, new CefApplication(), 0);
 		}
