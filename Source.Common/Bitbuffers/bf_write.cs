@@ -645,7 +645,7 @@ public unsafe class bf_write : BitBuffer
 				WriteChar(0);
 		}
 
-		return Overflowed;
+		return !Overflowed;
 	}
 
 	public void WriteOneBit(int bit) {
