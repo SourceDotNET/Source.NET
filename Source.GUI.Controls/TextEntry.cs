@@ -976,16 +976,7 @@ public class TextEntry : Panel
 		if (CursorPos < 1)
 			return;
 
-		while (--CursorPos >= 0)
-			if (!char.IsWhiteSpace(TextStream[CursorPos]))
-				break;
-
-
-		while (--CursorPos >= 0)
-			if (char.IsWhiteSpace(TextStream[CursorPos]))
-				break;
-
-		CursorPos++;
+		CursorPos = FindWordLeft(CursorPos);
 
 		ScrollLeft();
 
@@ -1017,7 +1008,22 @@ public class TextEntry : Panel
 		return pos;
 	}
 
-		private void DeleteWordLeft() {
+	private int FindWordRight(int pos) {
+		int count = TextStream.Count;
+		if (pos < count) {
+			CharClass charClass = GetCharClass(TextStream[pos]);
+			if (charClass != CharClass.Whitespace)
+				while (pos < count && GetCharClass(TextStream[pos]) == charClass)
+					pos++;
+		}
+
+		while (pos < count && GetCharClass(TextStream[pos]) == CharClass.Whitespace)
+			pos++;
+
+		return pos;
+	}
+
+	private void DeleteWordLeft() {
 		int start = FindWordLeft(CursorPos);
 		if (start == CursorPos)
 			return;
@@ -1047,16 +1053,7 @@ public class TextEntry : Panel
 	private void GotoWordRight() {
 		SelectCheck();
 
-		while (++CursorPos < TextStream.Count)
-			if (char.IsWhiteSpace(TextStream[CursorPos]))
-				break;
-
-		while (++CursorPos < TextStream.Count)
-			if (!char.IsWhiteSpace(TextStream[CursorPos]))
-				break;
-
-		if (CursorPos > TextStream.Count)
-			CursorPos = TextStream.Count;
+		CursorPos = FindWordRight(CursorPos);
 
 		ScrollRight();
 
