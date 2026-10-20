@@ -4,4 +4,19 @@
 	<ItemGroup Condition="'@(Compile->WithMetadataValue('Identity', '..\Usings\GlobalUsings.cs'))' != ''">
 		<ProjectReference Include="$(MSBuildThisFileDirectory)Source.CodeAnalysis.ConVars\Source.CodeAnalysis.ConVars.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
 	</ItemGroup>
+
+	<ItemGroup Condition="'$(IsWindows)' != 'true'">
+		<Compile Remove="**\*.Win32.cs" />
+		<None Include="**\*.Win32.cs" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(IsOSX)' != 'true'">
+		<Compile Remove="**\*.OSX.cs" />
+		<None Include="**\*.OSX.cs" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(IsLinux)' != 'true'">
+		<Compile Remove="**\*.Linux.cs" />
+		<None Include="**\*.Linux.cs" />
+	</ItemGroup>
 </Project>
