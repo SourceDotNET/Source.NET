@@ -317,7 +317,7 @@ public unsafe class bf_write : BitBuffer
 	public void WriteOneBitNoCheck(int bit) {
 		fixed (byte* dataB = data) {
 			uint* data = (uint*)dataB;
-			if (bit > 0)
+			if (bit != 0)
 				data[curBit >> 5] |= g_LittleBits[curBit & 31];
 			else
 				data[curBit >> 5] &= ~g_LittleBits[curBit & 31];
@@ -665,7 +665,7 @@ public unsafe class bf_write : BitBuffer
 
 		fixed (byte* dataB = data) {
 			uint* data = (uint*)dataB;
-			if (value > 0)
+			if (value != 0)
 				data[bit >> 5] |= g_LittleBits[bit & 31];
 			else
 				data[bit >> 5] &= ~g_LittleBits[bit & 31];
