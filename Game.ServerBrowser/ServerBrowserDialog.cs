@@ -153,6 +153,7 @@ class ServerBrowserDialog : Frame
 
 	void UpdateStatusText(Span<char> code) { }
 
+	[UiMessage("PageChanged")]
 	void OnGameListChanged() { }
 
 	public ServerBrowserDialog? GetInstance() => Instance;
@@ -202,6 +203,7 @@ class ServerBrowserDialog : Frame
 
 	public CGameID GetActiveAppID() => LimitAppID;
 
+	[UiMessage("ActivateGameName")]
 	void OnActiveGameName(KeyValues kv) {
 		ModDir = kv.GetString("name", "").ToString();
 		GameName = kv.GetString("game", "").ToString();
@@ -218,10 +220,13 @@ class ServerBrowserDialog : Frame
 		History.LoadFilterSettings();
 	}
 
+	[UiMessage("ConnectedToGame")]
 	void OnConnectToGame(KeyValues messageValues) { }
 
+	[UiMessage("DisconnectedFromGame")]
 	void OnDisconnectFromGame() { }
 
+	[UiMessage("LoadingStarted")]
 	void OnLoadingStarted() { }
 
 	public override void ActivateBuildMode() { }
@@ -231,27 +236,4 @@ class ServerBrowserDialog : Frame
 	}
 
 	public override void OnKeyCodePressed(ButtonCode code) { }
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "PageChanged":
-				OnGameListChanged();
-				break;
-			case "ActivateGameName":
-				OnActiveGameName(message);
-				break;
-			case "ConnectedToGame":
-				OnConnectToGame(message);
-				break;
-			case "DisconnectedFromGame":
-				OnDisconnectFromGame();
-				break;
-			case "LoadingStarted":
-				OnLoadingStarted();
-				break;
-			default:
-				base.OnMessage(message, sender);
-				break;
-		}
-	}
 }

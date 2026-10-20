@@ -40,24 +40,17 @@ class DialogServerPassword : Frame
 	}
 
 	readonly static KeyValues KV_Close = new("Close");
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		bool close = false;
-
-		if (stricmp(command, "Connect") == 0) {
-			KeyValues msg = new("JoinServerWithPassword");
-			Span<char> buffer = stackalloc char[64];
-			PasswordEntry.GetText(buffer);
-			msg.SetString("password", buffer);
-			msg.SetInt("serverID", ServerID);
-			PostActionSignal(msg);
-			close = true;
-		}
-		else if (stricmp(command, "Close") == 0)
-			close = true;
-		else
-			base.OnCommand(command);
-
-		if (close)
-			PostMessage(this, KV_Close);
+	[UiCommand("Connect")]
+	private void OnConnect() {
+		KeyValues msg = new("JoinServerWithPassword");
+		Span<char> buffer = stackalloc char[64];
+		PasswordEntry.GetText(buffer);
+		msg.SetString("password", buffer);
+		msg.SetInt("serverID", ServerID);
+		PostActionSignal(msg);
+		PostMessage(this, KV_Close);
 	}
+
+	[UiCommand("Close")]
+	private void OnCloseCommand() => PostMessage(this, KV_Close);
 }

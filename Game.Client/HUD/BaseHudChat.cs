@@ -791,6 +791,7 @@ public class BaseHudChat : EditableHudElement
 		engine.ClientCmd_Unrestricted("gameui_preventescapetoshow\n");
 	}
 
+	[UiMessage("ChatEntrySend")]
 	public void Send() {
 		Span<char> text = stackalloc char[128];
 		ChatInput.GetMessageText(text);
@@ -806,14 +807,7 @@ public class BaseHudChat : EditableHudElement
 		engine.ClientCmd_Unrestricted(buf[..writePtr]);
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "ChatEntryStopMessageMode": StopMessageMode(); break;
-			case "ChatEntrySend": Send(); break;
-			default: base.OnMessage(message, sender); break;
-		}
-	}
-
+	[UiMessage("ChatEntryStopMessageMode")]
 	public void StopMessageMode() {
 		engine.ClientCmd_Unrestricted("gameui_allowescapetoshow\n");
 
