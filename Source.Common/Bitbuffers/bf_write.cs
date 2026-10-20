@@ -1,5 +1,4 @@
-﻿#define NEW_BITBUFFER
-
+﻿
 using Source.Common.Mathematics;
 
 using System.Diagnostics;
