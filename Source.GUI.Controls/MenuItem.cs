@@ -108,13 +108,13 @@ public class MenuItem : Button
 	public override void OnCursorEntered() {
 		KeyValues msg = new KeyValues("CursorEnteredMenuItem");
 		msg.SetPtr("Panel", this);
-		VGui.PostMessage(GetParent(), msg, null);
+		VGui.PostMessage(GetParent(), msg, this);
 	}
 
 	public override void OnCursorExited() {
 		KeyValues msg = new KeyValues("CursorExitedMenuItem");
 		msg.SetPtr("Panel", this);
-		VGui.PostMessage(GetParent(), msg, null);
+		VGui.PostMessage(GetParent(), msg, this);
 	}
 
 	public void ArmItem() {

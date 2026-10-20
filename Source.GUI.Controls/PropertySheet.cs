@@ -759,7 +759,7 @@ public class PropertySheet : EditablePanel
 			VGui.PostMessage(ActivePage, new KeyValues("PageHide"), this);
 			KeyValues msg = new("PageTabActivated");
 			msg.SetPtr("panel", null);
-			VGui.PostMessage(ActivePage, msg, this);
+			VGui.PostMessage(ActivePage, msg, null);
 		}
 
 		if (ActiveTab != null) {
@@ -805,7 +805,7 @@ public class PropertySheet : EditablePanel
 
 		KeyValues msg2 = new("PageTabActivated");
 		msg2.SetPtr("panel", ActivePage);
-		VGui.PostMessage(ActivePage, msg2, this);
+		VGui.PostMessage(ActivePage, msg2, ActivePage);
 
 		PostActionSignal(new KeyValues("PageChanged"));
 

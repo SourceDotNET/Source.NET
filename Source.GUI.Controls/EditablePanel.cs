@@ -356,7 +356,7 @@ public class EditablePanel : Panel
 		if (GetParent() != null) {
 			KeyValues msg = new("CurrentDefaultButtonSet");
 			msg.SetPtr("button", defaultButton);
-			PostMessage(GetParent()!, msg);
+			VGui.PostMessage(GetParent(), msg, defaultButton);
 		}
 	}
 

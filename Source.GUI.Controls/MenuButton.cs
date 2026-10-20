@@ -124,7 +124,7 @@ public class MenuButton : Button
 
 		KeyValues msg = new("CursorEnteredMenuButton");
 		msg.SetPtr("VPanel", this);
-		VGui.PostMessage(GetParent(), msg, null);
+		VGui.PostMessage(GetParent(), msg, this);
 	}
 
 	public void SetDropMenuButtonStyle(bool state) {

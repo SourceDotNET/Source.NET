@@ -2182,7 +2182,7 @@ public class Panel : IPanel
 	public void CallParentFunction(KeyValues message) => GetParent()?.SendMessage(message, this);
 
 	public virtual void OnRequestFocus(Panel subFocus, Panel? defaultPanel)
-		=> CallParentFunction(new KeyValues("OnRequestFocus").AddSubKey(new("subFocus", subFocus)).AddSubKey(new("defaultPanel", defaultPanel)));
+		=> GetParent()?.SendMessage(new KeyValues("OnRequestFocus").AddSubKey(new("subFocus", subFocus)).AddSubKey(new("defaultPanel", defaultPanel)), subFocus);
 
 	public virtual bool RequestFocusNext(IPanel? existingPanel = null) {
 #if GMOD_DLL

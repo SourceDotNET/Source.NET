@@ -938,7 +938,7 @@ public class Menu : Panel
 			if (parentMenu != null) {
 				KeyValues kv = new("MenuItemSelected");
 				kv.SetPtr("panel", panel);
-				VGui.PostMessage(parentMenu, kv, this);
+				VGui.PostMessage(parentMenu, kv, panel);
 			}
 		}
 
@@ -961,7 +961,7 @@ public class Menu : Panel
 		if (GetParent() != null) {
 			KeyValues kv = new("MenuItemSelected");
 			kv.SetPtr("panel", panel);
-			VGui.PostMessage(GetParent(), kv, this);
+			VGui.PostMessage(GetParent(), kv, panel);
 		}
 	}
 

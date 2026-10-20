@@ -299,7 +299,7 @@ public class BuildGroup
 		CurrentPanel = ParentPanel;
 		KeyValues keyval = new KeyValues("SetActiveControl");
 		keyval.SetPtr("PanelPtr", GetCurrentPanel());
-		VGui.PostMessage(BuildDialog, keyval, null);
+		VGui.PostMessage(BuildDialog, keyval, GetCurrentPanel());
 	}
 
 	public bool IsEnabled() => Enabled;
