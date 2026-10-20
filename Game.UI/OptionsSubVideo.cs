@@ -49,7 +49,7 @@ class OptionsSubVideoAdvancedDlg : Frame
 		SetTitle("#GameUI_VideoAdvanced_Title", true);
 		SetSize(260, 400);
 
-		DXLevel = new(this, "dxlevel", 6, false);
+		DXLevel = new(this, "dxlabel", 6, false);
 
 		MaterialSystem_Config config = Materials.GetCurrentConfigForVideoCard();
 		// KeyValues kv = new("config");
