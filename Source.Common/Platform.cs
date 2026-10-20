@@ -1,12 +1,13 @@
 using Source.Common;
 
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Source;
 
-public static class PlatformMacros
+public delegate bool MessageBoxFn(ReadOnlySpan<char> title, ReadOnlySpan<char> info, bool showOkAndCancel);
+
+public static class Platform
 {
 	public const bool IsOSX
 #if OSX
@@ -17,12 +18,7 @@ public static class PlatformMacros
 
 	public const int MAX_PATH = 260;
 	public const int MAX_OSPATH = 260;
-}
 
-public delegate bool MessageBoxFn(ReadOnlySpan<char> title, ReadOnlySpan<char> info, bool showOkAndCancel);
-
-public static class Platform
-{
 	readonly static Lazy<Stopwatch> __timer = new(() => {
 		Stopwatch stopwatch = new();
 		stopwatch.Start();
