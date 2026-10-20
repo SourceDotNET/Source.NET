@@ -566,8 +566,10 @@ public unsafe class bf_read : BitBuffer
 	}
 
 	public bool ReadString(out string? str, int maxLen, bool bLine = false) {
-		str = ReadString(maxLen, bLine);
-		return !Overflowed;
+		Span<byte> buffer = stackalloc byte[maxLen];
+		bool fits = ReadString(buffer, bLine, out int chars);
+		str = Encoding.ASCII.GetString(buffer[..chars]);
+		return fits;
 	}
 	public bool ReadString(Span<char> str, bool bLine, out int outNumChars) {
 		Assert(!str.IsEmpty);
@@ -640,23 +642,22 @@ public unsafe class bf_read : BitBuffer
 	public int ReadString(Span<char> target, bool bLine = false) {
 		if (target.Length < 1) return 0;
 		Span<byte> data = stackalloc byte[target.Length];
-		int bytes = ReadString(data, bLine);
-		int chars = Encoding.ASCII.GetChars(data[..bytes], target[..^1]);
+		ReadString(data, bLine, out int bytes);
+		int chars = Encoding.ASCII.GetChars(data[..bytes], target);
 		target[chars] = '\0';
 		return chars;
 	}
 	public int ReadString(Span<byte> target, bool bLine = false) {
 		Assert(target.Length != 0);
 		int i = 0;
-		while (target.Length > 0 && !Overflowed) {
+		while (!Overflowed) {
 			byte val = ReadByte();
 			if (val == 0)
 				break;
 			else if (bLine && val == '\n')
 				break;
-			target[0] = val;
-			target = target[1..];
-			i++;
+			if (i < target.Length)
+				target[i++] = val;
 		}
 		return i;
 	}
@@ -665,20 +666,8 @@ public unsafe class bf_read : BitBuffer
 			return string.Empty;
 
 		Span<byte> writeTarget = stackalloc byte[maxLen];
-
-		int iChar = 0;
-		while (iChar < writeTarget.Length && !Overflowed) {
-			byte val = ReadByte();
-
-			if (val == 0)
-				break;
-			else if (bLine && val == '\n')
-				break;
-
-			writeTarget[iChar++] = val;
-		}
-
-		return Encoding.ASCII.GetString(writeTarget[..iChar]);
+		ReadString(writeTarget, bLine, out int chars);
+		return Encoding.ASCII.GetString(writeTarget[..chars]);
 	}
 
 	public void ExciseBits(int startbit, int bitstoremove) {
