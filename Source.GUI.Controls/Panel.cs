@@ -1526,12 +1526,6 @@ public class Panel : IPanel
 		LuaObject?.UnReference();
 		LuaObject = null;
 	}
-
-	public virtual void ClearLuaReferencesRecursive() {
-		ClearLuaReferences();
-		for (int i = 0; i < GetChildCount(); i++)
-			GetChild(i).ClearLuaReferencesRecursive();
-	}
 #endif
 
 	public virtual bool HasLuaTable() => LuaTable != null;
