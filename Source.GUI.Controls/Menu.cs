@@ -928,7 +928,8 @@ public class Menu : Panel
 				menuItem.GetMenu()!.SetFgColor(color);
 	}
 
-	public void OnMenuItemSelected(Panel panel) {
+	[UiMessage("MenuItemSelected")]
+	public void OnMenuItemSelected(Panel sender) {
 		SetVisible(false);
 		Scroller!.SetVisible(false);
 
@@ -937,14 +938,14 @@ public class Menu : Panel
 			Menu parentMenu = item.GetParentMenu()!;
 			if (parentMenu != null) {
 				KeyValues kv = new("MenuItemSelected");
-				kv.SetPtr("panel", panel);
-				VGui.PostMessage(parentMenu, kv, this);
+				kv.SetPtr("panel", sender);
+				VGui.PostMessage(parentMenu, kv, sender);
 			}
 		}
 
 		// bool activeItemSet = false;
 		foreach (MenuItem menuItem in MenuItems) {
-			if (menuItem == panel) {
+			if (menuItem == sender) {
 				// activeItemSet = true;
 				ActivatedItem = MenuItems.FindIndex(x => x == menuItem);
 				break;
@@ -960,8 +961,8 @@ public class Menu : Panel
 
 		if (GetParent() != null) {
 			KeyValues kv = new("MenuItemSelected");
-			kv.SetPtr("panel", panel);
-			VGui.PostMessage(GetParent(), kv, this);
+			kv.SetPtr("panel", sender);
+			VGui.PostMessage(GetParent(), kv, sender);
 		}
 	}
 
@@ -1162,6 +1163,7 @@ public class Menu : Panel
 		SizedForScrollBar = false;
 	}
 
+	[UiMessage("ScrollBarSliderMoved")]
 	public void OnSliderMoved() {
 		CloseOtherMenus(null);
 
@@ -1199,21 +1201,23 @@ public class Menu : Panel
 		return CurrentlySelectedItemID;
 	}
 
-	private void OnCursorEnteredMenuItem(MenuItem panel) {
+	[UiMessage("CursorEnteredMenuItem")]
+	private void OnCursorEnteredMenuItem(MenuItem sender) {
 		if (InputMode == MenuMode.MOUSE) {
-			panel.ArmItem();
-			SetCurrentlySelectedItem(MenuItems.FindIndex(x => x == panel));
+			sender.ArmItem();
+			SetCurrentlySelectedItem(MenuItems.FindIndex(x => x == sender));
 
-			if (panel.HasMenu()) {
-				panel.OpenCasecadeMenu();
+			if (sender.HasMenu()) {
+				sender.OpenCasecadeMenu();
 				ActivateItem(CurrentlySelectedItemID);
 			}
 		}
 	}
 
-	private void OnCursorExitedMenuItem(MenuItem panel) {
+	[UiMessage("CursorExitedMenuItem")]
+	private void OnCursorExitedMenuItem(MenuItem sender) {
 		if (InputMode == MenuMode.MOUSE)
-			panel.DisarmItem();
+			sender.DisarmItem();
 	}
 
 	private void MoveAlongMenuItemList(int direction, int loopCount) {
@@ -1274,6 +1278,7 @@ public class Menu : Panel
 		return InputMode;
 	}
 
+	[UiMessage("KeyModeSet")]
 	public void OnKeyModeSet() {
 		InputMode = MenuMode.KEYBOARD;
 	}
@@ -1390,28 +1395,6 @@ public class Menu : Panel
 	public override void OnCommand(ReadOnlySpan<char> command) {
 		PostActionSignal(new KeyValues("Command", "command", command));
 		base.OnCommand(command);
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		switch (message.Name) {
-			case "MenuItemSelected":
-				OnMenuItemSelected((Panel)message.GetPtr("panel")!);
-				break;
-			case "ScrollBarSliderMoved":
-				OnSliderMoved();
-				break;
-			case "CursorEnteredMenuItem":
-				OnCursorEnteredMenuItem((MenuItem)message.GetPtr("Panel")!);
-				break;
-			case "CursorExitedMenuItem":
-				OnCursorExitedMenuItem((MenuItem)message.GetPtr("Panel")!);
-				break;
-			case "KeyModeSet":
-				OnKeyModeSet();
-				break;
-		}
-
-		base.OnMessage(message, from);
 	}
 }
 

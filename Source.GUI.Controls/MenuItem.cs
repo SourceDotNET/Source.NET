@@ -108,15 +108,16 @@ public class MenuItem : Button
 	public override void OnCursorEntered() {
 		KeyValues msg = new KeyValues("CursorEnteredMenuItem");
 		msg.SetPtr("Panel", this);
-		VGui.PostMessage(GetParent(), msg, null);
+		VGui.PostMessage(GetParent(), msg, this);
 	}
 
 	public override void OnCursorExited() {
 		KeyValues msg = new KeyValues("CursorExitedMenuItem");
 		msg.SetPtr("Panel", this);
-		VGui.PostMessage(GetParent(), msg, null);
+		VGui.PostMessage(GetParent(), msg, this);
 	}
 
+	[UiMessage("ArmItem")]
 	public void ArmItem() {
 		GetParentMenu()!.CloseOtherMenus(this);
 		SetArmed(true);
@@ -128,6 +129,7 @@ public class MenuItem : Button
 		Repaint();
 	}
 
+	[UiMessage("DisarmItem")]
 	public void DisarmItem() {
 		if (CascadeMenu == null)
 			base.OnCursorExited();
@@ -244,6 +246,7 @@ public class MenuItem : Button
 		return null;
 	}
 
+	[UiMessage("KeyModeSet")]
 	public void OnKeyModeSet() {
 		VGui.PostMessage(GetParent(), new KeyValues("KeyModeSet"), this);
 	}
@@ -335,23 +338,8 @@ public class MenuItem : Button
 		tall = Math.Max(tall, ih);
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		switch (message.Name) {
-			case "MenuClose":
-				OnKillFocus(newPanel: null);
-				break;
-			case "ArmItem":
-				ArmItem();
-				break;
-			case "DisarmItem":
-				DisarmItem();
-				break;
-			case "KeyModeSet":
-				OnKeyModeSet();
-				break;
-			default:
-				base.OnMessage(message, from);
-				break;
-		}
+	[UiMessage("MenuClose")]
+	private void OnMenuClose() {
+		OnKillFocus(newPanel: null);
 	}
 }

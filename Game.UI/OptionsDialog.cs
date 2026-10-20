@@ -79,20 +79,12 @@ public class OptionsDialog : PropertyDialog
 	}
 
 	static readonly KeyValues KV_GameUIHidden = new("GameUIHidden");
+	[UiMessage("GameUIHidden")]
 	public void OnGameUIHidden() {
 		for (int i = 0; i < GetChildCount(); i++) {
 			Panel child = GetChild(i);
 			if (child != null && child.IsVisible())
 				PostMessage(child, KV_GameUIHidden);
 		}
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name == "GameUIHidden") {
-			OnGameUIHidden();
-			return;
-		}
-
-		base.OnMessage(message, from);
 	}
 }

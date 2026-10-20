@@ -159,7 +159,7 @@ public class OptionsSubMultiplayer : PropertyPage
 		LogoImage.SetImage(fullLogoName);
 	}
 
-	public override void OnTextChanged(Panel panel) => RemapLogo();
+	public override void OnTextChanged(Panel sender) => RemapLogo();
 
 	void OnControlModified() { }
 

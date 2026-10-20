@@ -87,17 +87,9 @@ public class CvarNegateCheckButton : CheckButton
 	}
 
 	static readonly KeyValues KV_ControlModified = new("ControlModified");
+	[UiMessage("CheckButtonChecked")]
 	public void OnButtonChecked() {
 		if (HasBeenModified())
 			PostActionSignal(KV_ControlModified);
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name.Equals("CheckButtonChecked", StringComparison.OrdinalIgnoreCase)) {
-			OnButtonChecked();
-			return;
-		}
-
-		base.OnMessage(message, from);
 	}
 }

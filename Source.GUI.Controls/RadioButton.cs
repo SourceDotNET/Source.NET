@@ -120,9 +120,9 @@ public class RadioButton : ToggleButton
 				Panel? radioParent = GetParent();
 				if (radioParent != null) {
 					for (int i = 0; i < radioParent.GetChildCount(); i++) {
-						RadioButton? child = (RadioButton)radioParent.GetChild(i);
-						if (child != null && child != this)
-							child.PostMessage(radioParent, msg.MakeCopy());
+						Panel child = radioParent.GetChild(i);
+						if (child != this)
+							PostMessage(child, msg.MakeCopy());
 					}
 				}
 
@@ -169,7 +169,8 @@ public class RadioButton : ToggleButton
 		resourceData.SetInt("TabPosition", GetRadioTabPosition());
 	}
 
-	public void OnRadioButtonChecked(int tabPosition) {
+	[UiMessage("RadioButtonChecked")]
+	public void OnRadioButtonChecked([MessageParam("tabposition")] int tabPosition) {
 		if (tabPosition != OldTabPosition)
 			return;
 
@@ -242,14 +243,5 @@ public class RadioButton : ToggleButton
 		}
 
 		return bestRadio;
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name == "RadioButtonChecked") {
-			OnRadioButtonChecked(message.GetInt("tabposition", -1));
-			return;
-		}
-
-		base.OnMessage(message, from);
 	}
 }

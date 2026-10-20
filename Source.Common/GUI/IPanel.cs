@@ -134,7 +134,7 @@ public interface IPanel : IExtDisposable
 	void TraverseLevel(int v);
 	void SetPopup(bool v);
 	void OnTick();
-	void SendMessage(KeyValues parms, IPanel? from);
+	void SendMessage(KeyValues parms, IPanel? sender);
 	IPanel? FindChildByName(ReadOnlySpan<char> childName, bool recurseDown);
 	void AddActionSignalTarget(IPanel editablePanel);
 }

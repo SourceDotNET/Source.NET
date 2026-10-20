@@ -190,11 +190,11 @@ public class EditablePanel : Panel
 		return base.GetCurrentKeyFocus();
 	}
 
-	public override void OnRequestFocus(Panel subFocus, Panel? defaultPanel) {
-		if (!subFocus.IsPopup())
-			defaultPanel = NavGroup.SetCurrentFocus(subFocus, defaultPanel);
+	public override void OnRequestFocus(Panel sender, Panel? defaultPanel) {
+		if (!sender.IsPopup())
+			defaultPanel = NavGroup.SetCurrentFocus(sender, defaultPanel);
 
-		base.OnRequestFocus(subFocus, defaultPanel);
+		base.OnRequestFocus(sender, defaultPanel);
 	}
 
 	public override bool RequestFocusNext(IPanel? existingPanel = null) {
@@ -350,41 +350,27 @@ public class EditablePanel : Panel
 
 	public KeyValues GetDialogVariables() => DialogVariables ??= new KeyValues("DialogVariables");
 
-	private void OnCurrentDefaultButtonSet(Panel defaultButton) {
-		NavGroup.SetCurrentDefaultButton(defaultButton, false);
+	[UiMessage("CurrentDefaultButtonSet")]
+	private void OnCurrentDefaultButtonSet(Panel sender) {
+		NavGroup.SetCurrentDefaultButton(sender, false);
 
 		if (GetParent() != null) {
 			KeyValues msg = new("CurrentDefaultButtonSet");
-			msg.SetPtr("panel", defaultButton);
-			PostMessage(GetParent()!, msg);
+			msg.SetPtr("button", sender);
+			VGui.PostMessage(GetParent(), msg, sender);
 		}
 	}
 
-	private void OnDefaultButtonSet(Panel defaultButton) => NavGroup.SetDefaultButton(defaultButton);
+	[UiMessage("DefaultButtonSet")]
+	private void OnDefaultButtonSet(Panel sender) => NavGroup.SetDefaultButton(sender);
 
 	static readonly KeyValues KV_FindDefaultButton = new("FindDefaultButton");
+	[UiMessage("FindDefaultButton")]
 	private void OnFindDefaultButton() {
 		if (NavGroup.GetDefaultButton() != null)
 			NavGroup.SetCurrentDefaultButton(NavGroup.GetDefaultButton());
 		else if (GetParent() != null) {
 			PostMessage(GetParent()!, KV_FindDefaultButton);
-		}
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		switch (message.Name) {
-			case "DefaultButtonSet":
-				OnDefaultButtonSet((Panel)message.GetPtr("panel")!);
-				break;
-			case "CurrentDefaultButtonSet":
-				OnCurrentDefaultButtonSet((Panel)message.GetPtr("panel")!);
-				break;
-			case "FindDefaultButton":
-				OnFindDefaultButton();
-				break;
-			default:
-				base.OnMessage(message, from);
-				break;
 		}
 	}
 }

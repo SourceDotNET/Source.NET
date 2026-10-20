@@ -50,7 +50,7 @@ public class PropertyDialog : Frame
 	}
 
 	public void ApplyChanges() {
-		OnCommand("Apply");
+		DoCommand("Apply");
 	}
 
 	public override void PerformLayout() {
@@ -82,23 +82,24 @@ public class PropertyDialog : Frame
 		Repaint();
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.Equals("OK", StringComparison.OrdinalIgnoreCase)) {
-			if (OnOK(false))
-				OnCommand("Close");
-			ApplyButton.SetEnabled(false);
-		}
-		else if (command.Equals("Cancel", StringComparison.OrdinalIgnoreCase)) {
-			OnCancel();
-			Close();
-		}
-		else if (command.Equals("Apply", StringComparison.OrdinalIgnoreCase)) {
-			OnOK(true);
-			ApplyButton.SetEnabled(false);
-			InvalidateLayout();
-		}
-		else
-			base.OnCommand(command);
+	[UiCommand("OK")]
+	private void OnOKCommand() {
+		if (OnOK(false))
+			DoCommand("Close");
+		ApplyButton.SetEnabled(false);
+	}
+
+	[UiCommand("Cancel")]
+	private void OnCancelCommand() {
+		OnCancel();
+		Close();
+	}
+
+	[UiCommand("Apply")]
+	private void OnApplyCommand() {
+		OnOK(true);
+		ApplyButton.SetEnabled(false);
+		InvalidateLayout();
 	}
 
 	public void OnCancel() {
@@ -154,6 +155,7 @@ public class PropertyDialog : Frame
 		InvalidateLayout();
 	}
 
+	[UiMessage("ApplyButtonEnable")]
 	public void OnApplyButtonEnable() {
 		if (ApplyButton.IsEnabled())
 			return;
@@ -168,14 +170,5 @@ public class PropertyDialog : Frame
 
 	public override void RequestFocus(int direction) {
 		PropertySheet!.RequestFocus(direction);
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name == "ApplyButtonEnable") {
-			OnApplyButtonEnable();
-			return;
-		}
-
-		base.OnMessage(message, from);
 	}
 }

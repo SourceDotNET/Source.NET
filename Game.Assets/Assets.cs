@@ -355,23 +355,7 @@ public class AssetLinker : Frame
 		UnlinkSelectedButton.SetEnabled(canUnlinkSelected);
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.SequenceEqual("LinkAll"))
-			LinkAllAssets();
-		else if (command.SequenceEqual("UnlinkAll"))
-			UnlinkAllAssets();
-		else if (command.SequenceEqual("LinkSelected"))
-			LinkSelectedAsset();
-		else if (command.SequenceEqual("UnlinkSelected"))
-			UnlinkSelectedAsset();
-		else if (command.SequenceEqual("Refresh"))
-			RefreshList();
-		else if (command.SequenceEqual("Close"))
-			Close();
-		else
-			base.OnCommand(command);
-	}
-
+	[UiCommand("LinkSelected")]
 	private void LinkSelectedAsset() {
 		if (ListPanel.GetSelectedItemsCount() == 0)
 			return;
@@ -400,6 +384,7 @@ public class AssetLinker : Frame
 		RefreshList();
 	}
 
+	[UiCommand("UnlinkSelected")]
 	private void UnlinkSelectedAsset() {
 		if (ListPanel.GetSelectedItemsCount() == 0)
 			return;
@@ -425,6 +410,7 @@ public class AssetLinker : Frame
 		RefreshList();
 	}
 
+	[UiCommand("Refresh")]
 	private void RefreshList() {
 		string? selectedPath = null;
 		if (ListPanel.GetSelectedItemsCount() > 0) {
@@ -457,6 +443,7 @@ public class AssetLinker : Frame
 		UpdateButtons();
 	}
 
+	[UiCommand("LinkAll")]
 	private void LinkAllAssets() {
 		string? gmodPath = AssetUtils.FindGarrysModPath();
 		if (gmodPath == null)
@@ -466,6 +453,7 @@ public class AssetLinker : Frame
 		RefreshList();
 	}
 
+	[UiCommand("UnlinkAll")]
 	private void UnlinkAllAssets() {
 		foreach (var asset in AssetsStringList) {
 			if (!AssetUtils.IsAssetLinked(asset.LocalPath, ProjectRoot))

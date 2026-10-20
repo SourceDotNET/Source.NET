@@ -7,6 +7,10 @@ namespace Source.GUI.Controls;
 public class FrameSystemButton : MenuButton
 {
 	public FrameSystemButton(Panel parent, string name) : base(parent, name, "") {
+		Responsive = true;
+		SetEnabled(false);
+		SetMouseClickEnabled(ButtonCode.MouseRight, true);
+		SetBlockDragChaining(true);
 	}
 
 	IImage? Enabled, Disabled;
@@ -14,6 +18,11 @@ public class FrameSystemButton : MenuButton
 	bool Responsive;
 	string? EnabledImage;
 	string? DisabledImage;
+
+	public void SetImages(string enabledImage, string? disabledImage = null) {
+		EnabledImage = enabledImage;
+		DisabledImage = disabledImage ?? enabledImage;
+	}
 
 	public void SetResponsive(bool state) => Responsive = state;
 
@@ -36,8 +45,8 @@ public class FrameSystemButton : MenuButton
 		EnabledColor = GetSchemeColor("FrameSystemButton.FgColor", scheme);
 		DisabledColor = GetSchemeColor("FrameSystemButton.BgColor", scheme);
 
-		ReadOnlySpan<char> enabledImage = EnabledImage ?? scheme.GetResourceString("FrameSystemButton.EnabledImage");
-		ReadOnlySpan<char> disabledImage = DisabledImage ?? scheme.GetResourceString("FrameSystemButton.DisabledImage");
+		ReadOnlySpan<char> enabledImage = string.IsNullOrEmpty(EnabledImage) ? scheme.GetResourceString("FrameSystemButton.Icon") : EnabledImage;
+		ReadOnlySpan<char> disabledImage = string.IsNullOrEmpty(DisabledImage) ? scheme.GetResourceString("FrameSystemButton.DisabledIcon") : DisabledImage;
 		Enabled = SchemeManager.GetImage(enabledImage, false);
 		Disabled = SchemeManager.GetImage(disabledImage, false);
 
@@ -50,7 +59,7 @@ public class FrameSystemButton : MenuButton
 	public override void SetEnabled(bool state) {
 		base.SetEnabled(state);
 
-		if (IsEnabled() && Responsive) {
+		if (IsEnabled()) {
 			if (Enabled != null)
 				SetImageAtIndex(0, Enabled, 0);
 
@@ -67,6 +76,24 @@ public class FrameSystemButton : MenuButton
 			SetDefaultColor(DisabledColor, DisabledColor);
 			SetArmedColor(DisabledColor, DisabledColor);
 			SetDepressedColor(DisabledColor, DisabledColor);
+		}
+	}
+
+	public override void OnMousePressed(ButtonCode code) {
+		if (!Responsive)
+			return;
+
+		base.OnMousePressed(code);
+	}
+
+	public override void OnMouseDoublePressed(ButtonCode code) {
+		if (!Responsive)
+			return;
+
+		if (code == ButtonCode.MouseLeft) {
+			Menu? menu = GetMenu();
+			if (menu != null && menu.FindChildByName("Close") != null)
+				PostMessage(GetParent(), new KeyValues("CloseFrameButtonPressed"));
 		}
 	}
 }
@@ -902,20 +929,6 @@ public class Frame : EditablePanel
 		MenuButton?.SetVisible(state);
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		switch (command) {
-			case "Close":
-				Close();
-				return;
-			case "CloseModal":
-				CloseModal();
-				return;
-			default:
-				base.OnCommand(command);
-				break;
-		}
-	}
-
 	public Menu GetSysMenu() {
 		if (SysMenu == null) {
 			SysMenu = new Menu(this, null);
@@ -941,10 +954,14 @@ public class Frame : EditablePanel
 		return SysMenu;
 	}
 
+	[UiMessage("Close")]
+	[UiCommand("Close")]
 	public virtual void Close() {
 		OnClose();
 	}
 
+	[UiMessage("CloseModal")]
+	[UiCommand("CloseModal")]
 	private void CloseModal() {
 		Input.ReleaseAppModalSurface();
 		if (PreviousModal != null) {
@@ -1168,12 +1185,16 @@ public class Frame : EditablePanel
 		base.OnMousePressed(code);
 	}
 
-	private void InternalSetTitle(ReadOnlySpan<char> title) => SetTitle(title, true);
-	private void OnCloseFrameButtonPressed() => OnCommand("Close");
+	[UiMessage("SetTitle")]
+	private void InternalSetTitle([MessageParam("text")] ReadOnlySpan<char> title) => SetTitle(title, true);
+	[UiMessage("CloseFrameButtonPressed")]
+	private void OnCloseFrameButtonPressed() => DoCommand("Close");
+	[UiMessage("Minimize")]
 	private void OnMinimize() => Surface.SetMinimized(this, true);
 
 	static readonly KeyValues KV_FlashWindow = new("FlashWindow");
 	bool NextFlashState = false;
+	[UiMessage("FlashWindow")]
 	private void InternalFlashWindow() {
 		if (FlashWindow) {
 			NextFlashState = true;
@@ -1181,35 +1202,6 @@ public class Frame : EditablePanel
 			NextFlashState = !NextFlashState;
 
 			PostMessage(this, KV_FlashWindow, 1.8f);
-		}
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		switch (message.Name) {
-			case "Close":
-				Close();
-				return;
-			case "CloseModal":
-				CloseModal();
-				return;
-			case "SetTitle":
-				InternalSetTitle(message.GetString("text", ""));
-				return;
-			case "FlashWindow":
-				InternalFlashWindow();
-				return;
-			case "DialogVariables":
-
-				return;
-			case "CloseFrameButtonPressed":
-				OnCloseFrameButtonPressed();
-				return;
-			case "Minimize":
-				OnMinimize();
-				return;
-			default:
-				base.OnMessage(message, from);
-				break;
 		}
 	}
 }

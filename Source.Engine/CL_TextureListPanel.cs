@@ -1421,56 +1421,41 @@ class TextureListPanel : Frame
 		TotalUsageLabel.SetText(data);
 	}
 
-	public override void OnTextChanged(Panel from) => OnCommand("FilteringTxt");
+	public override void OnTextChanged(Panel sender) => DoCommand("FilteringTxt");
+	[UiCommand("Collapse")]
+	[UiCommand("ViewThumbnails")]
+	private void OnInvalidateLayoutCommand() => InvalidateLayout();
+
+	[UiCommand("ShowAlpha")]
+	private void OnShowAlpha() => ViewPanel.SetPaintAlpha(Alpha.IsSelected());
+
+	[UiCommand("ThumbWarnings")]
+	private void OnThumbWarnings() => WarnEnable = ThumbWarnings.IsSelected();
+
+	[UiCommand("CopyToClipboard")]
+	private void OnCopyToClipboard() {
+		// CopyListPanelToClipboard(ListPanel);
+	}
+
+	[UiCommand("ReloadAllMaterials")]
+	private void OnReloadAllMaterials() {
+		cbuf.AddText("mat_reloadallmaterials");
+		cbuf.Execute();
+	}
+
+	[UiCommand("CommitChanges")]
+	private void OnCommitChanges() {
+		cbuf.AddText("mat_texture_list_txlod_sync save");
+		cbuf.Execute();
+	}
+
+	[UiCommand("DiscardChanges")]
+	private void OnDiscardChanges() {
+		cbuf.AddText("mat_texture_list_txlod_sync reset");
+		cbuf.Execute();
+	}
+
 	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.Equals("Close", StringComparison.OrdinalIgnoreCase)) {
-			base.OnCommand(command);
-			return;
-		}
-
-		if (command.Equals("Collapse", StringComparison.OrdinalIgnoreCase)) {
-			InvalidateLayout();
-			return;
-		}
-
-		if (command.Equals("ShowAlpha", StringComparison.OrdinalIgnoreCase)) {
-			ViewPanel.SetPaintAlpha(Alpha.IsSelected());
-			return;
-		}
-
-		if (command.Equals("ThumbWarnings", StringComparison.OrdinalIgnoreCase)) {
-			WarnEnable = ThumbWarnings.IsSelected();
-			return;
-		}
-
-		if (command.Equals("ViewThumbnails", StringComparison.OrdinalIgnoreCase)) {
-			InvalidateLayout();
-			return;
-		}
-
-		if (command.Equals("CopyToClipboard", StringComparison.OrdinalIgnoreCase)) {
-			// CopyListPanelToClipboard(ListPanel);
-			return;
-		}
-
-		if (command.Equals("ReloadAllMaterials", StringComparison.OrdinalIgnoreCase)) {
-			cbuf.AddText("mat_reloadallmaterials");
-			cbuf.Execute();
-			return;
-		}
-
-		if (command.Equals("CommitChanges", StringComparison.OrdinalIgnoreCase)) {
-			cbuf.AddText("mat_texture_list_txlod_sync save");
-			cbuf.Execute();
-			return;
-		}
-
-		if (command.Equals("DiscardChanges", StringComparison.OrdinalIgnoreCase)) {
-			cbuf.AddText("mat_texture_list_txlod_sync reset");
-			cbuf.Execute();
-			return;
-		}
-
 		mat_texture_list_on_f();
 		InvalidateLayout();
 	}
