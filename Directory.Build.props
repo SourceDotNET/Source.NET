@@ -40,6 +40,10 @@
 		<DefineConstants>$(DefineConstants);LINUX</DefineConstants>
 	</PropertyGroup>
 
+	<PropertyGroup Condition="'$(IsOSX)'=='true' Or '$(IsLinux)'=='true'">
+		<DefineConstants>$(DefineConstants);POSIX</DefineConstants>
+	</PropertyGroup>
+
 	<PropertyGroup Condition="$(Configuration.Contains('(Dedicated)'))">
 		<DefineConstants>$(DefineConstants);SWDS;DEDICATED</DefineConstants>
 	</PropertyGroup>
