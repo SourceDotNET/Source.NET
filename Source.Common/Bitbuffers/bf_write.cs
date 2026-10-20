@@ -431,11 +431,11 @@ public unsafe class bf_write : BitBuffer
 	}
 
 	public void WriteBitCoordMP(float f, bool bIntegral, bool bLowPrecision) {
-		int signbit = f <= -(bLowPrecision ? COORD_RESOLUTION_LOWPRECISION : COORD_RESOLUTION) ? 1 : 0;
-		int intval = (int)MathF.Abs(f);
+		int signbit = MathLib.NotGreater(f, -(bLowPrecision ? COORD_RESOLUTION_LOWPRECISION : COORD_RESOLUTION)) ? 1 : 0;
+		int intval = MathLib.TruncateOrMinValue(MathF.Abs(f));
 		int fractval = bLowPrecision ?
-			Math.Abs((int)(f * COORD_DENOMINATOR_LOWPRECISION)) & COORD_DENOMINATOR_LOWPRECISION - 1 :
-			Math.Abs((int)(f * COORD_DENOMINATOR)) & COORD_DENOMINATOR - 1;
+			MathLib.AbsWrapping(MathLib.TruncateOrMinValue(f * COORD_DENOMINATOR_LOWPRECISION)) & COORD_DENOMINATOR_LOWPRECISION - 1 :
+			MathLib.AbsWrapping(MathLib.TruncateOrMinValue(f * COORD_DENOMINATOR)) & COORD_DENOMINATOR - 1;
 
 		int bInBounds = intval < 1 << (int)COORD_INTEGER_BITS_MP ? 1 : 0;
 
@@ -443,7 +443,7 @@ public unsafe class bf_write : BitBuffer
 
 		if (bIntegral) {
 			// Integer encoding: in-bounds bit, nonzero bit, optional sign bit + integer value bits
-			if (intval > 0) {
+			if (intval != 0) {
 				// Adjust the integers from [1..MAX_COORD_VALUE] to [0..MAX_COORD_VALUE-1]
 				--intval;
 				bits = (uint)(intval * 8 + signbit * 4 + 2 + bInBounds);
@@ -456,7 +456,7 @@ public unsafe class bf_write : BitBuffer
 		}
 		else {
 			// Float encoding: in-bounds bit, integer bit, sign bit, fraction value bits, optional integer value bits
-			if (intval > 0) {
+			if (intval != 0) {
 				// Adjust the integers from [1..MAX_COORD_VALUE] to [0..MAX_COORD_VALUE-1]
 				--intval;
 				bits = (uint)(intval * 8 + signbit * 4 + 2 + bInBounds);
@@ -474,28 +474,28 @@ public unsafe class bf_write : BitBuffer
 	}
 
 	public void WriteBitCoord(float f) {
-		int signbit = f <= -COORD_RESOLUTION ? 1 : 0;
-		int intval = (int)Math.Abs(f);
-		int fractval = Math.Abs((int)(f * COORD_DENOMINATOR)) & COORD_DENOMINATOR - 1;
+		int signbit = MathLib.NotGreater(f, -COORD_RESOLUTION) ? 1 : 0;
+		int intval = MathLib.TruncateOrMinValue(MathF.Abs(f));
+		int fractval = MathLib.AbsWrapping(MathLib.TruncateOrMinValue(f * COORD_DENOMINATOR)) & COORD_DENOMINATOR - 1;
 
 
 		// Send the bit flags that indicate whether we have an integer part and/or a fraction part.
 		WriteOneBit(intval);
 		WriteOneBit(fractval);
 
-		if (intval > 0 || fractval > 0) {
+		if (intval != 0 || fractval != 0) {
 			// Send the sign bit
 			WriteOneBit(signbit);
 
 			// Send the integer if we have one.
-			if (intval > 0) {
+			if (intval != 0) {
 				// Adjust the integers from [1..MAX_COORD_VALUE] to [0..MAX_COORD_VALUE-1]
 				intval--;
 				WriteUBitLong((uint)intval, (int)COORD_INTEGER_BITS);
 			}
 
 			// Send the fraction if we have one
-			if (fractval > 0) {
+			if (fractval != 0) {
 				WriteUBitLong((uint)fractval, (int)COORD_FRACTIONAL_BITS);
 			}
 		}
@@ -504,9 +504,9 @@ public unsafe class bf_write : BitBuffer
 	public void WriteBitVec3Coord(Vector3 fa) {
 		int xflag, yflag, zflag;
 
-		xflag = fa[0] >= COORD_RESOLUTION || fa[0] <= -COORD_RESOLUTION ? 1 : 0;
-		yflag = fa[1] >= COORD_RESOLUTION || fa[1] <= -COORD_RESOLUTION ? 1 : 0;
-		zflag = fa[2] >= COORD_RESOLUTION || fa[2] <= -COORD_RESOLUTION ? 1 : 0;
+		xflag = MathLib.NotLess(fa[0], COORD_RESOLUTION) || MathLib.NotGreater(fa[0], -COORD_RESOLUTION) ? 1 : 0;
+		yflag = MathLib.NotLess(fa[1], COORD_RESOLUTION) || MathLib.NotGreater(fa[1], -COORD_RESOLUTION) ? 1 : 0;
+		zflag = MathLib.NotLess(fa[2], COORD_RESOLUTION) || MathLib.NotGreater(fa[2], -COORD_RESOLUTION) ? 1 : 0;
 
 		WriteOneBit(xflag);
 		WriteOneBit(yflag);
@@ -521,10 +521,10 @@ public unsafe class bf_write : BitBuffer
 	}
 
 	public void WriteBitNormal(float f) {
-		int signbit = f <= -NORMAL_RESOLUTION ? 1 : 0;
+		int signbit = MathLib.NotGreater(f, -NORMAL_RESOLUTION) ? 1 : 0;
 
 		// NOTE: Since +/-1 are valid values for a normal, I'm going to encode that as all ones
-		uint fractval = (uint)Math.Abs((int)(f * NORMAL_DENOMINATOR));
+		uint fractval = (uint)MathLib.AbsWrapping(MathLib.TruncateOrMinValue(f * NORMAL_DENOMINATOR));
 
 		// clamp..
 		if (fractval > NORMAL_DENOMINATOR)
