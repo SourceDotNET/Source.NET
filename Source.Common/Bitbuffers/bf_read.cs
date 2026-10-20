@@ -80,7 +80,7 @@ public unsafe class bf_read : BitBuffer
 		StartReading(pData, bytes, 0, bits);
 	}
 
-	public bf_read(string name, byte[]? pData, int bytes, int bits = 0) {
+	public bf_read(string name, byte[]? pData, int bytes, int bits = -1) {
 		debugName = name;
 		StartReading(pData, bytes, 0, bits);
 	}
