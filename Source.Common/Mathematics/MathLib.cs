@@ -367,6 +367,18 @@ public static class MathLib
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static int TruncateOrMinValue(float f) => f >= -2147483648f && f < 2147483648f ? (int)f : int.MinValue;
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static int AbsWrapping(int n) => n < 0 ? unchecked(-n) : n;
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool NotGreater(float a, double b) => !(a > b);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool NotLess(float a, double b) => !(a < b);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static float SimpleSplineRemapValClamped(float val, float A, float B, float C, float D) {
 		if (A == B)
 			return val >= B ? D : C;
