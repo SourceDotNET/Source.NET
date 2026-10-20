@@ -20,6 +20,28 @@ public static class LuaHelper
 
 	public static long cvttsd2si64(double value) => double.IsNaN(value) || value >= 9223372036854775808.0 || value < -9223372036854775808.0 ? long.MinValue : (long)value;
 
+	public static bool PushLibraryFunction(ILuaInterface lua, ReadOnlySpan<char> library, ReadOnlySpan<char> function) {
+		LuaObject lib = new();
+		lib.SetFromGlobal(library);
+		bool found;
+		if (!lib.isTable()) {
+			Warning($"'{library}' is not a table!\n");
+			found = false;
+		}
+		else {
+			LuaObject func = new();
+			lib.GetMember(function, func);
+			found = func.isFunction();
+			if (found)
+				func.Push();
+			else
+				Warning($"'{library}.{function}' is not a function!\n");
+			func.UnReference();
+		}
+		lib.UnReference();
+		return found;
+	}
+
 	public static void KeyValuesToTable(KeyValues kv, ILuaObject table, bool preserveKeyCase) {
 		for (KeyValues? sub = kv.GetFirstSubKey(); sub != null; sub = sub.GetNextKey()) {
 			string name = sub.Name.Length > 511 ? sub.Name[..511] : sub.Name;

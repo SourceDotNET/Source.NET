@@ -211,10 +211,11 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 	public void Shutdown() {
 		ClientVoiceMgr_Shutdown();
-		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
 #if GMOD_DLL
+		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
 		get.MenuSystem()?.Shutdown();
 		get.HTML()?.Shutdown();
+		Game.Client.GarrysMod.MaterialProxyFactory.Shutdown();
 #endif
 	}
 
