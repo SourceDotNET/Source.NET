@@ -127,6 +127,8 @@ public interface IPanel : IExtDisposable
 	// Used by the drag/drop manager to always draw on top
 	bool IsTopmostPopup();
 	void SetTopmostPopup(bool state);
+	bool IsPopupStayAtBack();
+	void SetPopupStayAtBack(bool state);
 	void InvalidateLayout(bool layoutNow = false, bool reloadScheme = false);
 
 	int GetAlpha();
