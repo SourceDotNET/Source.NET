@@ -17,7 +17,7 @@ class ContextLabel : Label
 	public override void OnMouseReleased(ButtonCode code) {
 		base.OnMouseReleased(code);
 		if (GetParent() != null)
-			GetParent()!.OnCommand("ShowContextMenu");
+			GetParent()!.DoCommand("ShowContextMenu");
 	}
 
 	public override void ApplySchemeSettings(IScheme scheme) {
@@ -179,16 +179,12 @@ class PageTab : Button
 		base.ApplySettings(resourceData);
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.Equals("ShowContextMenu", StringComparison.OrdinalIgnoreCase)) {
-			KeyValues kv = new("OpenContextMenu");
-			kv.SetPtr("page", Page);
-			kv.SetPtr("contextlabel", ContextLabel);
-			PostActionSignal(kv);
-			return;
-		}
-
-		base.OnCommand(command);
+	[UiCommand("ShowContextMenu")]
+	private void OnShowContextMenu() {
+		KeyValues kv = new("OpenContextMenu");
+		kv.SetPtr("page", Page);
+		kv.SetPtr("contextlabel", ContextLabel);
+		PostActionSignal(kv);
 	}
 
 	public override IBorder? GetBorder(bool depressed, bool armed, bool selected, bool keyfocus) {
@@ -649,9 +645,10 @@ public class PropertySheet : EditablePanel
 		}
 	}
 
-	public void OnTabPressed(Panel panel) {
+	[UiMessage("TabPressed")]
+	public void OnTabPressed(Panel sender) {
 		for (int i = 0; i < PageTabs.Count; i++) {
-			if (PageTabs[i] == panel) {
+			if (PageTabs[i] == sender) {
 				ChangeActiveTab(i);
 				return;
 			}
@@ -818,6 +815,7 @@ public class PropertySheet : EditablePanel
 		return null;
 	}
 
+	[UiMessage("OpenContextMenu")]
 	public void OnOpenContextMenu(KeyValues parameters) {
 		KeyValues kv = parameters.MakeCopy();
 		PostActionSignal(kv);
@@ -854,8 +852,9 @@ public class PropertySheet : EditablePanel
 			base.OnKeyCodePressed(code);
 	}
 
-	public void OnTextChanged(Panel panel, ReadOnlySpan<char> text) {
-		if (panel == Combo) {
+	[UiMessage("TextChanged")]
+	public void OnTextChanged(Panel sender, ReadOnlySpan<char> text) {
+		if (sender == Combo) {
 			Span<char> tabText = stackalloc char[30];
 			for (int i = 0; i < PageTabs.Count; i++) {
 				tabText.Clear();
@@ -866,45 +865,21 @@ public class PropertySheet : EditablePanel
 		}
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.Equals("Close", StringComparison.OrdinalIgnoreCase) && GetParent() != null)
-			CallParentFunction(new KeyValues("Command", "command", command));
+	[UiCommand("Close")]
+	private void OnCloseCommand() {
+		if (GetParent() != null)
+			CallParentFunction(new KeyValues("Command", "command", "Close"));
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "TabPressed":
-				OnTabPressed((Panel)sender!);
-				return;
-			case "TextChanged":
-				OnTextChanged((Panel)sender!, message.GetString("text", ""));
-				return;
-			case "OpenContextMenu":
-				OnOpenContextMenu(message);
-				return;
-			case "ApplyButtonEnable":
-				OnApplyButtonEnable();
-				return;
-			case "DefaultButtonSet":
-				OnDefaultButtonSet((Panel)message.GetPtr("button")!);
-				return;
-			case "CurrentDefaultButtonSet":
-				OnCurrentDefaultButtonSet((Panel)message.GetPtr("button")!);
-				return;
-			case "FindDefaultButton":
-				OnFindDefaultButton();
-				return;
-			default:
-				base.OnMessage(message, sender);
-				return;
-		}
-	}
+	public override void OnCommand(ReadOnlySpan<char> command) { }
 
+	[UiMessage("ApplyButtonEnable")]
 	public void OnApplyButtonEnable() {
 		PostActionSignal(KV_ApplyButtonEnable);
 	}
 
-	public void OnCurrentDefaultButtonSet(Panel defaultButton) {
+	[UiMessage("CurrentDefaultButtonSet")]
+	public void OnCurrentDefaultButtonSet(Panel sender) {
 		if (GetParent() != null) {
 			// KeyValues msg = new("CurrentDefaultButtonSet");
 			// msg.SetInt("button", VGui.PanelToHandle(defaultButton));
@@ -912,7 +887,8 @@ public class PropertySheet : EditablePanel
 		}
 	}
 
-	public void OnDefaultButtonSet(Panel defaultButton) {
+	[UiMessage("DefaultButtonSet")]
+	public void OnDefaultButtonSet(Panel sender) {
 		if (GetParent() != null) {
 			// KeyValues msg = new("DefaultButtonSet");
 			// msg.SetInt("button", VGui.PanelToHandle(defaultButton));
@@ -920,6 +896,7 @@ public class PropertySheet : EditablePanel
 		}
 	}
 
+	[UiMessage("FindDefaultButton")]
 	public void OnFindDefaultButton() {
 		if (GetParent() != null)
 			CallParentFunction(KV_FindDefaultButton);

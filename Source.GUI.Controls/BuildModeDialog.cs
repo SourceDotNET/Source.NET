@@ -553,11 +553,6 @@ public class BuildModeDialog : Frame
 		}
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-
-		base.OnCommand(command);
-	}
-
 	public void OnDeletePanel() {
 
 	}
@@ -608,15 +603,15 @@ public class BuildModeDialog : Frame
 
 	}
 
-	public override void OnTextChanged(Panel panel) {
-		if (panel == FileSelectionCombo) {
+	public override void OnTextChanged(Panel sender) {
+		if (sender == FileSelectionCombo) {
 			Span<char> newFile = stackalloc char[512];
 			FileSelectionCombo.GetText(newFile);
 
 			// GetResourceName
 		}
 
-		if (panel == AddNewControlCombo) {
+		if (sender == AddNewControlCombo) {
 			// FIXME: Freezes program here (KV->FindKey)
 			// Span<char> buf = stackalloc char[40];
 			// AddNewControlCombo.GetText(buf);
@@ -626,7 +621,7 @@ public class BuildModeDialog : Frame
 			// }
 		}
 
-		if (panel == EditableChildren) {
+		if (sender == EditableChildren) {
 			KeyValues? kv = EditableChildren.GetActiveItemUserData();
 			if (kv != null) {
 				EditablePanel? ep = (EditablePanel?)kv.GetPtr("ptr");
@@ -634,7 +629,7 @@ public class BuildModeDialog : Frame
 			}
 		}
 
-		if (panel == EditableParents) {
+		if (sender == EditableParents) {
 			KeyValues? kv = EditableParents.GetActiveItemUserData();
 			if (kv != null) {
 				EditablePanel? ep = (EditablePanel?)kv.GetPtr("ptr");

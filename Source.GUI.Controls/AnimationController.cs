@@ -257,7 +257,7 @@ public class AnimationController : Panel, IAnimationController
 					}
 					break;
 				case AnimCommandType.FireCommand: {
-						msg.Parent.OnCommand(ScriptSymbols.String(msg.Variable));
+						msg.Parent.DoCommand(ScriptSymbols.String(msg.Variable));
 					}
 					break;
 				case AnimCommandType.PlaySound:

@@ -140,21 +140,13 @@ public class CheckButton : ToggleButton
 		return base.GetButtonFgColor();
 	}
 
-	public virtual void OnCheckButtonChecked(Panel panel) { }
+	[UiMessage("CheckButtonChecked")]
+	public virtual void OnCheckButtonChecked(Panel sender) { }
 
 	public void SetHighlightColor(Color color) {
 		if (HighlightFgColor != color) {
 			HighlightFgColor = color;
 			InvalidateLayout(false);
 		}
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		if (message.Name == "CheckButtonChecked") {
-			OnCheckButtonChecked((Panel)sender!);
-			return;
-		}
-
-		base.OnMessage(message, sender);
 	}
 }

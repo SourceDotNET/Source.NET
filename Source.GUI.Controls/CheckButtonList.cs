@@ -88,6 +88,7 @@ class CheckButtonList : EditablePanel
 	public bool IsItemChecked(int itemID) => CheckItems[itemID].CheckButton.IsSelected();
 	public void SetItemCheckable(int itemID, bool state) => CheckItems[itemID].CheckButton.SetCheckButtonCheckable(state);
 
+	[UiMessage("CheckButtonChecked")]
 	void OnCheckButtonChecked(KeyValues _params) {
 		Panel panel = (Panel)_params.GetPtr("panel")!;
 		for (int i = 0; i < CheckItems.Count; i++) {
@@ -100,6 +101,7 @@ class CheckButtonList : EditablePanel
 		}
 	}
 
+	[UiMessage("ScrollBarSliderMoved")]
 	void OnScrollBarSliderMoved() {
 		InvalidateLayout();
 		Repaint();
@@ -109,14 +111,5 @@ class CheckButtonList : EditablePanel
 		int val = ScrollBar.GetValue();
 		val -= delta * 15;
 		ScrollBar.SetValue(val);
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		if (message.Name == "CheckButtonChecked")
-			OnCheckButtonChecked(message);
-		else if (message.Name == "ScrollBarSliderMoved")
-			OnScrollBarSliderMoved();
-		else
-			base.OnMessage(message, sender);
 	}
 }

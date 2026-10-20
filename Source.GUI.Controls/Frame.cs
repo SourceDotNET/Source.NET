@@ -929,20 +929,6 @@ public class Frame : EditablePanel
 		MenuButton?.SetVisible(state);
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		switch (command) {
-			case "Close":
-				Close();
-				return;
-			case "CloseModal":
-				CloseModal();
-				return;
-			default:
-				base.OnCommand(command);
-				break;
-		}
-	}
-
 	public Menu GetSysMenu() {
 		if (SysMenu == null) {
 			SysMenu = new Menu(this, null);
@@ -968,10 +954,14 @@ public class Frame : EditablePanel
 		return SysMenu;
 	}
 
+	[UiMessage("Close")]
+	[UiCommand("Close")]
 	public virtual void Close() {
 		OnClose();
 	}
 
+	[UiMessage("CloseModal")]
+	[UiCommand("CloseModal")]
 	private void CloseModal() {
 		Input.ReleaseAppModalSurface();
 		if (PreviousModal != null) {
@@ -1195,12 +1185,16 @@ public class Frame : EditablePanel
 		base.OnMousePressed(code);
 	}
 
-	private void InternalSetTitle(ReadOnlySpan<char> title) => SetTitle(title, true);
-	private void OnCloseFrameButtonPressed() => OnCommand("Close");
+	[UiMessage("SetTitle")]
+	private void InternalSetTitle([MessageParam("text")] ReadOnlySpan<char> title) => SetTitle(title, true);
+	[UiMessage("CloseFrameButtonPressed")]
+	private void OnCloseFrameButtonPressed() => DoCommand("Close");
+	[UiMessage("Minimize")]
 	private void OnMinimize() => Surface.SetMinimized(this, true);
 
 	static readonly KeyValues KV_FlashWindow = new("FlashWindow");
 	bool NextFlashState = false;
+	[UiMessage("FlashWindow")]
 	private void InternalFlashWindow() {
 		if (FlashWindow) {
 			NextFlashState = true;
@@ -1208,35 +1202,6 @@ public class Frame : EditablePanel
 			NextFlashState = !NextFlashState;
 
 			PostMessage(this, KV_FlashWindow, 1.8f);
-		}
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "Close":
-				Close();
-				return;
-			case "CloseModal":
-				CloseModal();
-				return;
-			case "SetTitle":
-				InternalSetTitle(message.GetString("text", ""));
-				return;
-			case "FlashWindow":
-				InternalFlashWindow();
-				return;
-			case "DialogVariables":
-
-				return;
-			case "CloseFrameButtonPressed":
-				OnCloseFrameButtonPressed();
-				return;
-			case "Minimize":
-				OnMinimize();
-				return;
-			default:
-				base.OnMessage(message, sender);
-				break;
 		}
 	}
 }

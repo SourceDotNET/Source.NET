@@ -68,22 +68,40 @@ public class MessageBox : Frame
 		Input.SetAppModalSurface(this);
 	}
 
+	[UiCommand("OnOk")]
+	private void OnOk() {
+		ReleaseModalSurface();
+		if (OkCommand != null)
+			PostActionSignal(OkCommand.MakeCopy());
+		AutoClose();
+	}
+
+	[UiCommand("OnCancel")]
+	private void OnCancel() {
+		ReleaseModalSurface();
+		if (CancelCommand != null)
+			PostActionSignal(CancelCommand.MakeCopy());
+		AutoClose();
+	}
+
+	[UiCommand("Close")]
+	[UiCommand("CloseModal")]
+	private void OnCloseCommand() {
+		ReleaseModalSurface();
+		AutoClose();
+	}
+
 	public override void OnCommand(ReadOnlySpan<char> command) {
+		ReleaseModalSurface();
+		AutoClose();
+	}
+
+	private void ReleaseModalSurface() {
 		if (Input.GetAppModalSurface() == this)
 			Input.ReleaseAppModalSurface();
+	}
 
-		switch (command) {
-			case "OnOk":
-				if (OkCommand != null)
-					PostActionSignal(OkCommand.MakeCopy());
-				break;
-
-			case "OnCancel":
-				if (CancelCommand != null)
-					PostActionSignal(CancelCommand.MakeCopy());
-				break;
-		}
-
+	private void AutoClose() {
 		if (!NoAutoClose)
 			OnShutdownRequest();
 	}

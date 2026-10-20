@@ -235,13 +235,13 @@ public class ComboBox : TextEntry
 			OnMousePressed(code);
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (string.Equals(new(command), "ButtonClicked", StringComparison.OrdinalIgnoreCase))
-			DoClick();
-
-		base.OnCommand(command);
+	[UiCommand("ButtonClicked")]
+	private void OnButtonClicked() {
+		DoClick();
+		base.OnCommand("ButtonClicked");
 	}
 
+	[UiMessage("SetText")]
 	public override void OnSetText(ReadOnlySpan<char> text) {
 		if (!text.IsEmpty && text[0] == '#') {
 			ulong unlocalizedTextSymbol = Localize.FindIndex(text[1..]);
@@ -285,6 +285,7 @@ public class ComboBox : TextEntry
 		SelectNoText();
 	}
 
+	[UiMessage("MenuClose")]
 	public void OnMenuClose() {
 		HideMenu();
 
@@ -360,6 +361,7 @@ public class ComboBox : TextEntry
 		}
 	}
 
+	[UiMessage("MenuItemSelected")]
 	public void OnMenuItemSelected() {
 		Highlight = true;
 
@@ -459,23 +461,8 @@ public class ComboBox : TextEntry
 	public virtual void OnShowMenu(Menu menu) { }
 	public virtual void OnHideMenu() { }
 
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "MenuItemSelected":
-				OnMenuItemSelected();
-				break;
-			case "SetText":
-				OnSetText(message.GetString("text", ""));
-				break;
-			case "MenuClose":
-				OnMenuClose();
-				break;
-			case "ActivateItem":
-				ActivateItem(message.GetInt("itemID", -1));
-				break;
-			default:
-				base.OnMessage(message, sender);
-				break;
-		}
+	[UiMessage("ActivateItem")]
+	private void OnActivateItem(KeyValues message) {
+		ActivateItem(message.GetInt("itemID", -1));
 	}
 }

@@ -116,8 +116,8 @@ public class ConsolePanel : EditablePanel, IConsoleDisplayFunc
 	static readonly KeyValues KV_ClosedByHittingTilde = new("ClosedByHittingTilde");
 	static readonly KeyValues KV_Close = new("Close");
 
-	public override void OnTextChanged(Panel panel) {
-		if (panel != Entry)
+	public override void OnTextChanged(Panel sender) {
+		if (sender != Entry)
 			return;
 
 		PartialText.CopyTo(PreviousPartialText);
@@ -179,35 +179,34 @@ public class ConsolePanel : EditablePanel, IConsoleDisplayFunc
 		Entry.RequestFocus();
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.Equals("submit", StringComparison.OrdinalIgnoreCase)) {
-			Span<char> incoming = stackalloc char[256];
-			int len = Entry.GetText(incoming);
-			PostActionSignal(new KeyValues("CommandSubmitted", "command", incoming[..len]));
+	[UiCommand("submit")]
+	private void OnSubmit() {
+		Span<char> incoming = stackalloc char[256];
+		int len = Entry.GetText(incoming);
+		PostActionSignal(new KeyValues("CommandSubmitted", "command", incoming[..len]));
 
-			Print("] ");
-			Print(incoming[..len]);
-			Print("\n");
-			Entry.SetText("");
+		Print("] ");
+		Print(incoming[..len]);
+		Print("\n");
+		Entry.SetText("");
 
-			OnTextChanged(Entry);
+		OnTextChanged(Entry);
 
-			History.GotoTextEnd();
+		History.GotoTextEnd();
 
-			string incomingText = incoming[..len].ToString();
-			int extraPtr = incomingText.IndexOf(' ');
-			string? extra = null;
-			if (extraPtr != -1) {
-				extra = incomingText[(extraPtr + 1)..];
-				incomingText = incomingText[..extraPtr];
-			}
-
-			if (incomingText.Length > 0)
-				AddToHistory(incomingText, extra);
-
-			CompletionList.SetVisible(false);
+		string incomingText = incoming[..len].ToString();
+		int extraPtr = incomingText.IndexOf(' ');
+		string? extra = null;
+		if (extraPtr != -1) {
+			extra = incomingText[(extraPtr + 1)..];
+			incomingText = incomingText[..extraPtr];
 		}
-		base.OnCommand(command);
+
+		if (incomingText.Length > 0)
+			AddToHistory(incomingText, extra);
+
+		CompletionList.SetVisible(false);
+		base.OnCommand("submit");
 	}
 
 	private void AddToHistory(ReadOnlySpan<char> commandText, ReadOnlySpan<char> extraText) {
@@ -613,18 +612,9 @@ public class ConsolePanel : EditablePanel, IConsoleDisplayFunc
 		}
 	}
 
+	[UiMessage("CloseCompletionList")]
 	internal void OnCloseCompletionList() {
 		CompletionList.SetVisible(false);
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "CloseCompletionList":
-				OnCloseCompletionList();
-				return;
-		}
-
-		base.OnMessage(message, sender);
 	}
 
 	public bool TextEntryHasFocus() => Input.GetFocus() == Entry;
@@ -736,6 +726,7 @@ public class ConsoleDialog : Frame
 
 	private List<ExtraItem>? ExtraItems = null;
 
+	[UiCommand("OpenExtra")]
 	private void OnOpenExtra() {
 		Menu menu = new(this, "ConsoleExtraOptions");
 		menu.AddActionSignalTarget(this);
@@ -786,6 +777,7 @@ public class ConsoleDialog : Frame
 		menu.MoveToFront();
 	}
 
+	[UiMessage("ExtraCmd")]
 	private void OnExtraCmd(KeyValues msg) {
 		if (!msg.GetString("cvar").IsEmpty) {
 			ReadOnlySpan<char> cvarName = msg.GetString("cvar");
@@ -811,35 +803,10 @@ public class ConsoleDialog : Frame
 	}
 #endif
 
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "CommandSubmitted":
-				OnCommandSubmitted(message.GetString("command"));
-				return;
-			case "Activate":
-				Activate();
-				return;
 #if GMOD_DLL
-			case "ExtraCmd":
-				OnExtraCmd(message);
-				break;
-#endif
-		}
-
-		base.OnMessage(message, sender);
-	}
-
-#if GMOD_DLL
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		switch (command.ToString()) {
-			case "Clear":
-				ConsolePanel.Clear();
-				return;
-			case "OpenExtra":
-				OnOpenExtra();
-				return;
-		}
-		base.OnCommand(command);
+	[UiCommand("Clear")]
+	private void OnClear() {
+		ConsolePanel.Clear();
 	}
 
 	public override void OnKeyCodeTyped(ButtonCode code) {
@@ -856,6 +823,7 @@ public class ConsoleDialog : Frame
 	}
 #endif
 
+	[UiMessage("CommandSubmitted")]
 	protected virtual void OnCommandSubmitted(ReadOnlySpan<char> command) {
 		PostActionSignal(new KeyValues("CommandSubmitted", "command", command));
 	}
@@ -898,6 +866,7 @@ public class ConsoleDialog : Frame
 		}
 	}
 
+	[UiMessage("Activate")]
 	public override void Activate() {
 		base.Activate();
 		ConsolePanel.Entry.RequestFocus();

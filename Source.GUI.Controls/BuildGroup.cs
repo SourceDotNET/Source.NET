@@ -262,7 +262,7 @@ public class BuildGroup
 			if (state)
 				ActivateBuildDialog();
 			else {
-				BuildDialog?.OnCommand("Close");
+				BuildDialog?.DoCommand("Close");
 				ParentPanel!.RequestFocus();
 			}
 		}

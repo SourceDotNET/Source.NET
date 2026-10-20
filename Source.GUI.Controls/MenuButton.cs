@@ -63,6 +63,7 @@ public class MenuButton : Button
 	}
 
 	static readonly KeyValues KV_MenuClose = new("MenuClose");
+	[UiMessage("MenuClose")]
 	public void OnMenuClose() {
 		HideMenu();
 		PostActionSignal(KV_MenuClose);
@@ -211,14 +212,5 @@ public class MenuButton : Button
 	public Menu GetMenu() {
 		Assert(Menu != null);
 		return Menu;
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		if (message.Name == "MenuClose") {
-			OnMenuClose();
-			return;
-		}
-
-		base.OnMessage(message, sender);
 	}
 }

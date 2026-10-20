@@ -387,11 +387,13 @@ public class HTML : Panel
 		}
 	}
 
+	[UiCommand("stop")]
 	bool StopLoading() {
 		SteamHTMLSurface.StopLoad(BrowserHandle);
 		return true;
 	}
 
+	[UiCommand("reload")]
 	bool Refresh() {
 		SteamHTMLSurface.Reload(BrowserHandle);
 		return true;
@@ -641,6 +643,7 @@ public class HTML : Panel
 		}
 	}
 
+	[UiMessage("ScrollBarSliderMoved")]
 	void OnSliderMoved() {
 		if (HBar.IsVisible()) {
 			int scrollX = HBar.GetValue();
@@ -686,36 +689,47 @@ public class HTML : Panel
 			SteamHTMLSurface.SetKeyFocus(BrowserHandle, false);
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (stricmp(command, "back") == 0)
-			PostActionSignal(new KeyValues("HTMLBackRequested"));
-		else if (stricmp(command, "forward") == 0)
-			PostActionSignal(new KeyValues("HTMLForwardRequested"));
-		else if (stricmp(command, "reload") == 0)
-			Refresh();
-		else if (stricmp(command, "stop") == 0)
-			StopLoading();
-		else if (stricmp(command, "viewsource") == 0)
-			SteamHTMLSurface.ViewSource(BrowserHandle);
-		else if (stricmp(command, "copy") == 0)
-			SteamHTMLSurface.CopyToClipboard(BrowserHandle);
-		else if (stricmp(command, "paste") == 0)
-			SteamHTMLSurface.PasteFromClipboard(BrowserHandle);
-		else if (stricmp(command, "copyurl") == 0) {
-			// system.SetClipboardText(CurrentURL);
-		}
-		else if (stricmp(command, "copylink") == 0) {
-			ContextMenu.GetPos(out int x, out int y);
-			GetAbsPos(out int htmlx, out int htmly);
-
-			RequestingCopyLink = true;
-			GetLinkAtPosition(x - htmlx, y - htmly);
-		}
-		else
-			base.OnCommand(command);
+	[UiCommand("back")]
+	private void OnBack() {
+		PostActionSignal(new KeyValues("HTMLBackRequested"));
 	}
 
-	void OnFileSelected(ReadOnlySpan<char> selectedFile) {
+	[UiCommand("forward")]
+	private void OnForward() {
+		PostActionSignal(new KeyValues("HTMLForwardRequested"));
+	}
+
+	[UiCommand("viewsource")]
+	private void OnViewSource() {
+		SteamHTMLSurface.ViewSource(BrowserHandle);
+	}
+
+	[UiCommand("copy")]
+	private void OnCopy() {
+		SteamHTMLSurface.CopyToClipboard(BrowserHandle);
+	}
+
+	[UiCommand("paste")]
+	private void OnPaste() {
+		SteamHTMLSurface.PasteFromClipboard(BrowserHandle);
+	}
+
+	[UiCommand("copyurl")]
+	private void OnCopyURL() {
+		// system.SetClipboardText(CurrentURL);
+	}
+
+	[UiCommand("copylink")]
+	private void OnCopyLink() {
+		ContextMenu.GetPos(out int x, out int y);
+		GetAbsPos(out int htmlx, out int htmly);
+
+		RequestingCopyLink = true;
+		GetLinkAtPosition(x - htmlx, y - htmly);
+	}
+
+	[UiMessage("FileSelected")]
+	void OnFileSelected([MessageParam("fullpath")] ReadOnlySpan<char> selectedFile) {
 		byte[] bytes = new byte[Encoding.UTF8.GetByteCount(selectedFile) + 1];
 		Encoding.UTF8.GetBytes(selectedFile, bytes);
 		nint file = Marshal.AllocHGlobal(bytes.Length);
@@ -730,6 +744,7 @@ public class HTML : Panel
 		FileOpenDialog.Close();
 	}
 
+	[UiMessage("FileSelectionCancelled")]
 	void OnFileSelectionCancelled() {
 		SteamHTMLSurface.FileLoadDialogResponse(BrowserHandle, 0);
 		FileOpenDialog.Close();
@@ -754,9 +769,10 @@ public class HTML : Panel
 		InFind = false;
 	}
 
-	void OnEditNewLine(Panel panel) => OnTextChanged(panel);
+	[UiMessage("TextNewLine")]
+	void OnEditNewLine(Panel sender) => OnTextChanged(sender);
 
-	public override void OnTextChanged(Panel panel) {
+	public override void OnTextChanged(Panel sender) {
 		Span<char> txt = stackalloc char[2000];
 		FindBar.GetText(txt);
 		Find(txt.SliceNullTerminatedString().ToString());
@@ -961,6 +977,7 @@ public class HTML : Panel
 		dlg.DoModal();
 	}
 
+	[UiMessage("DismissJSDialog")]
 	void DismissJSDialog(int result) => SteamHTMLSurface.JSDialogResponse(BrowserHandle, result != 0);
 
 	void BrowserCanGoBackandForward(HTML_CanGoBackAndForward_t cmd) {
@@ -973,32 +990,6 @@ public class HTML : Panel
 	void UpdateSizeAndScrollBars() {
 		BrowserResize();
 		InvalidateLayout();
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "ScrollBarSliderMoved":
-				OnSliderMoved();
-				break;
-			case "FileSelected":
-				OnFileSelected(message.GetString("fullpath"));
-				break;
-			case "FileSelectionCancelled":
-				OnFileSelectionCancelled();
-				break;
-			case "TextChanged":
-				OnTextChanged((Panel)sender!);
-				break;
-			case "TextNewLine":
-				OnEditNewLine((Panel)sender!);
-				break;
-			case "DismissJSDialog":
-				DismissJSDialog(message.GetInt("result", 0));
-				break;
-			default:
-				base.OnMessage(message, sender);
-				break;
-		}
 	}
 
 #if DEBUG

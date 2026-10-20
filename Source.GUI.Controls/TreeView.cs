@@ -29,17 +29,9 @@ class TreeNodeText : TextEntry
 		SetAllowKeyBindingChainToParent(true);
 	}
 
-	public override void OnTextChanged(Panel from) {
-		base.OnTextChanged(from);
+	public override void OnTextChanged(Panel sender) {
+		base.OnTextChanged(sender);
 		GetParent()!.InvalidateLayout();
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		if (message.Name == "TextChanged") {
-			OnTextChanged((Panel)sender!);
-			return;
-		}
-		base.OnMessage(message, sender);
 	}
 
 	public override bool IsKeyRebound(ButtonCode code, KeyModifier modifiers) {
@@ -309,6 +301,7 @@ public class TreeNode : Panel
 		}
 	}
 
+	[UiMessage("LabelChanged")]
 	private void OnLabelChanged(KeyValues data) {
 		ReadOnlySpan<char> oldString = Data.GetString("original");
 		ReadOnlySpan<char> newString = data.GetString("text");
@@ -946,14 +939,6 @@ public class TreeNode : Panel
 		}
 		return count;
 	}
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		if (message.Name == "LabelChanged") {
-			OnLabelChanged(message);
-			return;
-		}
-		base.OnMessage(message, sender);
-	}
 }
 
 public class TreeView : Panel
@@ -1456,6 +1441,7 @@ public class TreeView : Panel
 		SubPanel.SetBgColor(color);
 	}
 
+	[UiMessage("SliderMoved")]
 	private void OnSliderMoved(int position) {
 		InvalidateLayout();
 		Repaint();
@@ -1690,13 +1676,4 @@ public class TreeView : Panel
 
 	virtual public void GenerateChildrenOfNode(int itemIndex) { }
 	virtual public void GenerateContextMenu(int itemIndex, int x, int y) { }
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		if (message.Name == "SliderMoved") {
-			OnSliderMoved(message.GetInt("position", 0));
-			return;
-		}
-
-		base.OnMessage(message, sender);
-	}
 }

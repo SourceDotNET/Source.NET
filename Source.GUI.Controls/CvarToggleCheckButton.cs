@@ -40,6 +40,7 @@ public class CvarToggleCheckButton : CheckButton
 		base.Paint();
 	}
 
+	[UiMessage("ApplyChanges")]
 	public void ApplyChanges() {
 		if (CvarName == null || CvarName.Length == 0)
 			return;
@@ -66,6 +67,7 @@ public class CvarToggleCheckButton : CheckButton
 	public bool HasBeenModified() => IsSelected() != StartValue;
 
 	static readonly KeyValues KV_ControlModified = new("ControlModified");
+	[UiMessage("CheckButtonChecked")]
 	public void OnButtonChecked() {
 		if (HasBeenModified())
 			PostActionSignal(KV_ControlModified);
@@ -93,20 +95,6 @@ public class CvarToggleCheckButton : CheckButton
 				SetSelected(true);
 			else
 				SetSelected(false);
-		}
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "CheckButtonChecked":
-				OnButtonChecked();
-				break;
-			case "ApplyChanges":
-				ApplyChanges();
-				break;
-			default:
-				base.OnMessage(message, sender);
-				break;
 		}
 	}
 }
