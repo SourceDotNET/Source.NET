@@ -26,21 +26,35 @@ public static class ServerClassRetriever
 public class NetworkNameAttribute(string name) : Attribute
 {
 	public readonly string Name = name;
+}
 
-	public static string Get(Type t) => t.GetCustomAttribute<NetworkNameAttribute>(false)?.Name ?? throw new NullReferenceException($"{t.Name} is missing a {nameof(NetworkNameAttribute)}");
+static class NetworkClassSite
+{
+	public static string FileName(string path) => path[(path.LastIndexOfAny(['/', '\\']) + 1)..];
 }
 
 public class ServerClass
 {
 	public static ServerClass? Head;
 
+	readonly record struct Site(string TypeName, string? NetworkName);
+	static readonly Dictionary<(string File, int Line), Site> Sites = [];
+
+	public static void RegisterSite(string file, int line, string typeName, string? networkName) => Sites[(file, line)] = new(typeName, networkName);
+
+	static string TakeNetworkName(string callerFile, int callerLine) {
+		if (!Sites.Remove((NetworkClassSite.FileName(callerFile), callerLine), out Site site))
+			throw new NullReferenceException($"No generated ServerClass registration for {callerFile}:{callerLine}");
+		return site.NetworkName ?? throw new NullReferenceException($"{site.TypeName} is missing a {nameof(NetworkNameAttribute)}");
+	}
+
 	public string NetworkName;
 	public SendTable Table;
 	public ServerClass? Next;
 	public int ClassID;
 	public int InstanceBaselineIndex = INetworkStringTable.INVALID_STRING_INDEX;
-	public ServerClass(SendTable table, [CallerArgumentExpression(nameof(table))] string? nameOfTable = null) {
-		NetworkName = NetworkNameAttribute.Get(WhoCalledMe(skipFrames: 2) ?? throw new NullReferenceException("This doesnt work as well as we hoped!"));
+	public ServerClass(SendTable table, [CallerArgumentExpression(nameof(table))] string? nameOfTable = null, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0) {
+		NetworkName = TakeNetworkName(callerFile, callerLine);
 		Table = table;
 		if (nameOfTable != null)
 			table.NetTableName = nameOfTable;

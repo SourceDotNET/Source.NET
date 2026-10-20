@@ -12,42 +12,13 @@ using System.Runtime.InteropServices;
 
 namespace Source.MaterialSystem;
 
-public class MatRenderContext : IMatRenderContextInternal
+public class MatRenderContext : MatRenderContextBase, IMatRenderContextInternal
 {
-	readonly MaterialSystem materials;
 	readonly IShaderAPI shaderAPI;
 
-	public MatRenderContext(MaterialSystem materials) {
-		this.materials = materials;
-		RenderTargetStack = new RefStack<RenderTargetStackElement>();
-		MatrixStacks = new RefStack<MatrixStackItem>[(int)MaterialMatrixMode.Count];
-		MatrixStacksDirtyStates = new bool[(int)MaterialMatrixMode.Count];
-		for (int i = 0; i < MatrixStacks.Length; i++) {
-			MatrixStacks[i] = new();
-			ref MatrixStackItem item = ref MatrixStacks[i].Push();
-			MatrixStacksDirtyStates[i] = true;
-			item.Matrix = Matrix4x4.Identity;
-		}
-		RenderTargetStackElement initialElement = new() {
-			DepthTexture = null,
-			ViewX = 0,
-			ViewY = 0,
-			ViewW = -1,
-			ViewH = -1
-		};
-		RenderTargetStack.Push(initialElement);
+	public MatRenderContext(MaterialSystem materials) : base(materials) {
 		shaderAPI = materials.ShaderAPI;
-
-		DirtyViewState = true;
-		DirtyViewProjState = true;
 	}
-	RefStack<RenderTargetStackElement> RenderTargetStack;
-	RefStack<MatrixStackItem>[] MatrixStacks;
-	bool[] MatrixStacksDirtyStates;
-	MaterialMatrixMode matrixMode;
-	ShaderViewport ActiveViewport = new(0, 0, 0, 0, 0, 1);
-	public ref MatrixStackItem CurMatrixItem => ref MatrixStacks[(int)matrixMode].Top();
-	public ref RenderTargetStackElement CurRenderTargetStack => ref RenderTargetStack.Top();
 
 	public void BeginRender() {
 
@@ -83,13 +54,13 @@ public class MatRenderContext : IMatRenderContextInternal
 
 	}
 
-	public void Flush(bool flushHardware = false) {
+	public override void Flush(bool flushHardware = false) {
 		shaderAPI.FlushBufferedPrimitives();
 	}
 
 	public void GMOD_ForceFilterMode(bool min, int mode) => shaderAPI.GMOD_ForceFilterMode(min, mode);
 
-	public void GetViewport(out int x, out int y, out int width, out int height) {
+	public override void GetViewport(out int x, out int y, out int width, out int height) {
 		Assert(RenderTargetStack.Count > 0);
 		ref RenderTargetStackElement element = ref RenderTargetStack.Top();
 		if (element.ViewW <= 0 || element.ViewH <= 0) {
@@ -111,59 +82,13 @@ public class MatRenderContext : IMatRenderContextInternal
 		}
 	}
 
-	public void LoadIdentity() {
-		ref MatrixStackItem item = ref CurMatrixItem;
-		item.Matrix = Matrix4x4.Identity;
-		CurrentMatrixChanged();
-	}
-
-	public void LoadMatrix(in Matrix4x4 matrix) {
-		ref MatrixStackItem item = ref CurMatrixItem;
-		item.Matrix = matrix;
-		CurrentMatrixChanged();
-	}
-
-	public void LoadMatrix(Matrix3x4 matrix) {
-		ref MatrixStackItem item = ref CurMatrixItem;
-		item.Matrix = matrix;
-		CurrentMatrixChanged();
-	}
-
-	private void MarkDirty() => MatrixStacksDirtyStates[(int)matrixMode] = true;
-
-	public void MatrixMode(MaterialMatrixMode mode) {
-		matrixMode = mode;
-	}
-
-	public void PushMatrix() {
-		RefStack<MatrixStackItem> curStack = MatrixStacks[(int)matrixMode];
-		curStack.Push(CurMatrixItem);
-		CurrentMatrixChanged();
+	public override void PushMatrix() {
+		base.PushMatrix();
 		shaderAPI.PushMatrix();
 	}
 
-	private void CurrentMatrixChanged() {
-		MarkDirty();
-
-		if (matrixMode == MaterialMatrixMode.View) {
-			DirtyViewState = true;
-			DirtyViewProjState = true;
-		}
-		else if (matrixMode == MaterialMatrixMode.Projection)
-			DirtyViewProjState = true;
-	}
-
-	public void Viewport(int x, int y, int width, int height) {
-		Dbg.Assert(RenderTargetStack.Count > 0);
-
-		RenderTargetStackElement newTOS = new();
-		newTOS = CurRenderTargetStack; // copy
-		newTOS.ViewX = x;
-		newTOS.ViewY = y;
-		newTOS.ViewW = width;
-		newTOS.ViewH = height;
-		RenderTargetStack.Pop();
-		RenderTargetStack.Push(newTOS);
+	public override void Viewport(int x, int y, int width, int height) {
+		base.Viewport(x, y, width, height);
 
 		if ((width < 0) || (height < 0)) {
 			ITexture? target = RenderTargetStack.Top().RenderTarget0;
@@ -191,9 +116,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		}
 	}
 
-	IMaterialInternal? currentMaterial;
-
-	public void Bind(IMaterial iMaterial, object? proxyData) {
+	public override void Bind(IMaterial iMaterial, object? proxyData) {
 		if (iMaterial == null) {
 			if (materials.errorMaterial == null)
 				return;
@@ -207,50 +130,29 @@ public class MatRenderContext : IMatRenderContextInternal
 		IMaterialInternal material = (IMaterialInternal)iMaterial;
 		material = material.GetRealTimeVersion(); // TODO: figure out how to do this.
 
-		SyncMatrices();
-
 		if (material == null) {
 			Warning("Programming error: MatRenderContext.Bind NULL material\n");
 			material = ((MaterialSystem)materials).errorMaterial;
 		}
 
-		if (GetCurrentMaterialInternal() != material) {
-			if (!material.IsPrecached()) {
-				material.Precache();
-			}
-			SetCurrentMaterialInternal(material);
-		}
-		SetCurrentProxy(proxyData);
+		base.Bind(material, proxyData);
 
+		IMaterialInternal? matInternal = GetCurrentMaterialInternal();
+		Assert(matInternal != null);
+
+		SyncMatrices();
 		if (materials.GetThreadMode() == MaterialThreadMode.SingleThreaded)
-			GetCurrentMaterialInternal()!.CallBindProxy(proxyData);
+			matInternal!.CallBindProxy(proxyData);
 
-		shaderAPI.Bind(GetCurrentMaterialInternal());
+		shaderAPI.Bind(matInternal);
 	}
-
-	public IMaterialInternal? GetCurrentMaterialInternal() {
-		return currentMaterial;
-	}
-	public void SetCurrentMaterialInternal(IMaterialInternal? mat) {
-		currentMaterial = mat;
-	}
-
-	public IMaterial? GetCurrentMaterial() {
-		return currentMaterial;
-	}
-
-	object? CurrentProxyData;
-	public object? GetCurrentProxy() => CurrentProxyData;
-	public void SetCurrentProxy(object? proxyData) => CurrentProxyData = proxyData;
 
 	public int GetCurrentNumBones() => shaderAPI.GetCurrentNumBones();
 
-	public void PopMatrix() {
+	public override void PopMatrix() {
 		shaderAPI.PopMatrix(); // We need to tell ShaderAPI *NOW* so it can flush primitives trigger matrix sync etc
 													 // ^^ is NOT source behavior. But I think, for all intents and purposes, it will act as such (we'll see if I eat my words on that)
-		RefStack<MatrixStackItem> curStack = MatrixStacks[(int)matrixMode];
-		curStack.Pop();
-		CurrentMatrixChanged();
+		base.PopMatrix();
 	}
 
 	public IShaderAPI GetShaderAPI() {
@@ -313,13 +215,6 @@ public class MatRenderContext : IMatRenderContextInternal
 		BatchMesh = null;
 	}
 
-	bool FlashlightEnable;
-	bool DirtyViewState;
-	bool DirtyViewProjState;
-	bool EnableClippingValue = true;
-	MaterialHeightClipMode HeightClipMode;
-	float HeightClipZ;
-
 	struct PlaneStackElement
 	{
 		public InlineArray4<float> Values;
@@ -328,33 +223,7 @@ public class MatRenderContext : IMatRenderContextInternal
 
 	readonly List<PlaneStackElement> CustomClipPlanes = [];
 
-	public bool EnableClipping(bool enable) {
-		if (enable != EnableClippingValue) {
-			EnableClippingValue = enable;
-			ApplyCustomClipPlanes();
-
-			return !enable;
-		}
-		return enable;
-	}
-
-	public MaterialHeightClipMode GetHeightClipMode() => HeightClipMode;
-
-	public void SetHeightClipMode(MaterialHeightClipMode heightClipMode) {
-		if (HeightClipMode != heightClipMode) {
-			HeightClipMode = heightClipMode;
-			UpdateHeightClipUserClipPlane();
-		}
-	}
-
-	public void SetHeightClipZ(float z) {
-		if (z != HeightClipZ) {
-			HeightClipZ = z;
-			UpdateHeightClipUserClipPlane();
-		}
-	}
-
-	void UpdateHeightClipUserClipPlane() {
+	protected override void UpdateHeightClipUserClipPlane() {
 		PlaneStackElement pse = default;
 		pse.Hack_IsHeightClipPlane = true;
 
@@ -416,7 +285,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		ApplyCustomClipPlanes();
 	}
 
-	void ApplyCustomClipPlanes() {
+	protected override void ApplyCustomClipPlanes() {
 		int maxClipPlanes = materials.HardwareConfig.MaxUserClipPlanes();
 		int customPlanes = EnableClippingValue ? CustomClipPlanes.Count : 0;
 
@@ -451,62 +320,10 @@ public class MatRenderContext : IMatRenderContextInternal
 		return FlashlightEnable;
 	}
 
-	Vector3 LastSetToneMapScale = new(1, 1, 1);
-	float CurToneMapScale = 1.0f;
-	float GoalToneMapScale = 1.0f;
-	TimeUnit_t FrameTime;
-
-	static readonly ConVar mat_accelerate_adjust_exposure_down = new("mat_accelerate_adjust_exposure_down", "3.0", FCvar.Cheat);
-	static readonly ConVar mat_hdr_manual_tonemap_rate = new("mat_hdr_manual_tonemap_rate", "1.0");
-	static readonly ConVar mat_tonemap_algorithm = new("mat_tonemap_algorithm", "1", FCvar.Cheat, "0 = Original Algorithm 1 = New Algorithm");
-
-	public void TurnOnToneMapping() {
-		if ((materials.HardwareConfig.GetHDRType() != HDRType.None) && (FrameTime > 0.0)) {
-			TimeUnit_t elapsedTime = FrameTime;
-			float goalScale = GoalToneMapScale;
-			float rate = mat_hdr_manual_tonemap_rate.GetFloat();
-
-			if (mat_tonemap_algorithm.GetInt() == 1)
-				rate *= 2.0f;
-
-			if (rate == 0.0f)
-				CurToneMapScale = goalScale;
-			else {
-				if (goalScale < CurToneMapScale) {
-					float accExposureAdjust = mat_accelerate_adjust_exposure_down.GetFloat();
-					rate = Math.Min(accExposureAdjust * rate, MathLib.Lerp(rate, accExposureAdjust * rate, 0.0f, 1.5f, CurToneMapScale - goalScale));
-				}
-
-				float rateTimesTime = (float)(rate * elapsedTime);
-				if (mat_tonemap_algorithm.GetInt() == 1)
-					rateTimesTime = Math.Min(rateTimesTime, (1.0f / 16.0f) * 0.25f);
-
-				float alpha = Math.Max(0.0f, Math.Min(1.0f, rateTimesTime));
-				CurToneMapScale = (goalScale * alpha) + (CurToneMapScale * (1.0f - alpha));
-
-				if (!float.IsFinite(CurToneMapScale)) {
-					Assert(false);
-					CurToneMapScale = goalScale;
-				}
-			}
-
-			SetToneMappingScaleLinear(new(CurToneMapScale, CurToneMapScale, CurToneMapScale));
-			LastSetToneMapScale = new(CurToneMapScale, CurToneMapScale, CurToneMapScale);
-		}
-	}
-
-	public void SetToneMappingScaleLinear(in Vector3 scale) => shaderAPI.SetToneMappingScaleLinear(in scale);
+	public override void SetToneMappingScaleLinear(in Vector3 scale) => shaderAPI.SetToneMappingScaleLinear(in scale);
 
 	public void BeginFrame() => shaderAPI.BeginFrame();
 	public void EndFrame() => shaderAPI.EndFrame();
-
-	public void MarkRenderDataUnused(bool v) {
-
-	}
-
-	public void SetFrameTime(double frameTime) {
-		FrameTime = frameTime;
-	}
 
 	public void SwapBuffers() {
 		materials.OcclusionQueryMgr.AdvanceFrame();
@@ -542,7 +359,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		}
 	}
 
-	public void SyncMatrices() {
+	public override void SyncMatrices() {
 		if (!ShouldValidateMatrices() && AllowLazyMatrixSync()) {
 			for (int i = 0; i < (int)MaterialMatrixMode.Count; i++) {
 				ref MatrixStackItem top = ref MatrixStacks[i].Top();
@@ -562,35 +379,12 @@ public class MatRenderContext : IMatRenderContextInternal
 		}
 	}
 
-	public void SyncMatrix(MaterialMatrixMode mode) {
+	public override void SyncMatrix(MaterialMatrixMode mode) {
 		if (!ShouldValidateMatrices() && AllowLazyMatrixSync())
 			ForceSyncMatrix(mode);
 	}
 
-	public void Translate(float x, float y, float z) {
-		MathLib.MatrixBuildTranslation(out Matrix4x4 mat, x, y, z);
-		MultMatrixLocal(in mat);
-	}
-
-	public void Scale(float x, float y, float z) {
-		MathLib.MatrixBuildScale(out Matrix4x4 mat, x, y, z);
-		MultMatrixLocal(in mat);
-	}
-
-
-	public void MultMatrixLocal(in Matrix4x4 mat) {
-		MathLib.MatrixMultiply(in CurMatrixItem.Matrix, in mat, out Matrix4x4 result);
-		CurMatrixItem.Matrix = result;
-		CurrentMatrixChanged();
-	}
-
-	public void Ortho(double left, double top, double right, double bottom, double near, double far) {
-		ref Matrix4x4 item = ref CurMatrixItem.Matrix;
-		MathLib.MatrixOrtho(ref item, (float)left, (float)right, (float)bottom, (float)top, (float)near, (float)far);
-		CurrentMatrixChanged();
-	}
-
-	private void CommitRenderTargetAndViewport() {
+	protected override void CommitRenderTargetAndViewport() {
 		Assert(RenderTargetStack.Count > 0);
 
 		ref RenderTargetStackElement element = ref RenderTargetStack.Top();
@@ -644,18 +438,6 @@ public class MatRenderContext : IMatRenderContextInternal
 		}
 	}
 
-	public void PushRenderTargetAndViewport(ITexture? thisTexture, int x, int y, int w, int h) {
-		RenderTargetStackElement element = new(thisTexture, x, y, w, h);
-		RenderTargetStack.Push(element);
-		CommitRenderTargetAndViewport();
-	}
-
-	public void PushRenderTargetAndViewport(ITexture? colorTexture, ITexture? depthTexture, int x, int y, int w, int h) {
-		RenderTargetStackElement element = new(colorTexture, depthTexture, x, y, w, h);
-		RenderTargetStack.Push(element);
-		CommitRenderTargetAndViewport();
-	}
-
 	public void CopyRenderTargetToTexture(ITexture texture) => CopyRenderTargetToTextureEx(texture, 0, ref Unsafe.NullRef<System.Drawing.Rectangle>(), ref Unsafe.NullRef<System.Drawing.Rectangle>());
 
 	public void CopyRenderTargetToTextureEx(ITexture? texture, int renderTargetID, ref System.Drawing.Rectangle srcRect, ref System.Drawing.Rectangle dstRect) {
@@ -668,33 +450,8 @@ public class MatRenderContext : IMatRenderContextInternal
 		((ITextureInternal)texture).CopyFrameBufferToMe(renderTargetID, Unsafe.IsNullRef(ref srcRect) ? null : srcRect, Unsafe.IsNullRef(ref dstRect) ? null : dstRect);
 	}
 
-	public void PushRenderTargetAndViewport(ITexture? thisTexture) {
-		RenderTargetStackElement element = new(thisTexture, 0, 0, -1, -1);
-		RenderTargetStack.Push(element);
-		CommitRenderTargetAndViewport();
-	}
-
-	public void PopRenderTargetAndViewport() {
-		if (RenderTargetStack.Count == 0) {
-			AssertMsg(false, "MatRenderContext.PopRenderTargetAndViewport: Stack is empty!\n");
-			return;
-		}
-
-		Flush();
-
-		RenderTargetStack.Pop();
-		CommitRenderTargetAndViewport();
-	}
-
 	public void GetWindowSize(out int w, out int h) {
 		shaderAPI.GetBackBufferDimensions(out w, out h);
-	}
-
-	public ITexture? GetRenderTarget() {
-		if (RenderTargetStack.Count > 0)
-			return RenderTargetStack.Top().RenderTarget0;
-		else
-			return null;
 	}
 
 	public IMesh CreateStaticMesh(VertexFormat format, ReadOnlySpan<char> textureGroup, IMaterial? material) {
@@ -708,98 +465,6 @@ public class MatRenderContext : IMatRenderContextInternal
 	public int GetMaxVerticesToRender(IMaterial material) => materials.ShaderAPI.GetMaxVerticesToRender(material);
 	public int GetMaxIndicesToRender() => materials.ShaderAPI.GetMaxIndicesToRender();
 
-	public float ComputePixelDiameterOfSphere(in Vector3 absOrigin, float radius) {
-		RecomputeViewState();
-		RecomputeViewProjState();
-		// This is sort of faked, but it's faster that way
-		// FIXME: Also, there's a much faster way to do this with similar triangles
-		// but I want to make sure it exactly matches the current matrices, so
-		// for now, I do it this conservative way
-		Vector4 testPoint1 = default, testPoint2 = default;
-		MathLib.VectorMA(in absOrigin, radius, in VecViewUp, out testPoint1.AsVector3D());
-		MathLib.VectorMA(in absOrigin, -radius, in VecViewUp, out testPoint2.AsVector3D());
-		testPoint1.W = testPoint2.W = 1.0f;
-
-		Vector4 clipPos1 = default, clipPos2 = default;
-		MathLib.Vector4DMultiply(ViewProjMatrix, in testPoint1, ref clipPos1);
-		MathLib.Vector4DMultiply(ViewProjMatrix, in testPoint2, ref clipPos2);
-
-		if (clipPos1.W >= 0.001f)
-			clipPos1.Y /= clipPos1.W;
-		else
-			clipPos1.Y *= 1000;
-
-		if (clipPos2.W >= 0.001f)
-			clipPos2.Y /= clipPos2.W;
-		else
-			clipPos2.Y *= 1000;
-
-		GetViewport(out int vx, out int vy, out int vwidth, out int vheight);
-
-		return vheight * MathF.Abs(clipPos2.Y - clipPos1.Y) / 2.0f;
-	}
-
-	Vector3 VecViewOrigin;
-	Vector3 VecViewForward;
-	Vector3 VecViewRight;
-	Vector3 VecViewUp;
-
-	private void RecomputeViewProjState() {
-		if (DirtyViewProjState) {
-			Matrix4x4 viewMatrix, projMatrix;
-
-			// FIXME: Should consider caching this upon change for projection or view matrix.
-			GetMatrix(MaterialMatrixMode.View, out viewMatrix);
-			GetMatrix(MaterialMatrixMode.Projection, out projMatrix);
-			ViewProjMatrix = projMatrix * viewMatrix;
-			DirtyViewProjState = false;
-		}
-	}
-	Matrix4x4 ViewProjMatrix;
-
-	private void RecomputeViewState() {
-		if (!DirtyViewState)
-			return;
-		DirtyViewState = false;
-
-		// FIXME: Cache this off to make it less expensive?
-		Matrix4x4 viewMatrix;
-		GetMatrix(MaterialMatrixMode.View, out viewMatrix);
-		VecViewOrigin.X =
-			-(viewMatrix[0][3] * viewMatrix[0][0] +
-			viewMatrix[1][3] * viewMatrix[1][0] +
-			viewMatrix[2][3] * viewMatrix[2][0]);
-		VecViewOrigin.Y =
-			-(viewMatrix[0][3] * viewMatrix[0][1] +
-			viewMatrix[1][3] * viewMatrix[1][1] +
-			viewMatrix[2][3] * viewMatrix[2][1]);
-		VecViewOrigin.Z =
-			-(viewMatrix[0][3] * viewMatrix[0][2] +
-			viewMatrix[1][3] * viewMatrix[1][2] +
-			viewMatrix[2][3] * viewMatrix[2][2]);
-
-		// FIXME Implement computation of m_vecViewForward, etc
-		VecViewForward = new();
-		VecViewRight = new();
-
-		// FIXME: Is this correct?
-		VecViewUp = new(viewMatrix[1][0], viewMatrix[1][1], viewMatrix[1][2]);
-	}
-
-	public void GetMatrix(MaterialMatrixMode mode, out Matrix4x4 viewMatrix) {
-		var stack = MatrixStacks[(int)mode];
-		if (stack.Count == 0) {
-			viewMatrix = Matrix4x4.Identity;
-			return;
-		}
-
-		viewMatrix = stack.Top().Matrix;
-	}
-
-	public float ComputePixelWidthOfSphere(in Vector3 origin, float radius) {
-		return ComputePixelDiameterOfSphere(origin, radius) * 2.0f;
-	}
-
 	public void SetNumBoneWeights(int numBones) {
 		shaderAPI.SetNumBoneWeights(numBones);
 	}
@@ -810,17 +475,12 @@ public class MatRenderContext : IMatRenderContextInternal
 		shaderAPI.LoadBoneMatrix(boneIndex, in matrix);
 	}
 
-	public void GetWorldSpaceCameraPosition(out Vector3 vecCameraPos) {
-		vecCameraPos = VecViewOrigin;
-	}
-
-	int LightmapPageID;
-	public void BindLightmapPage(int lightmapPageID) {
+	public override void BindLightmapPage(int lightmapPageID) {
 		if (lightmapPageID == LightmapPageID)
 			return;
 
 		shaderAPI.FlushBufferedPrimitives();
-		LightmapPageID = lightmapPageID;
+		base.BindLightmapPage(lightmapPageID);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public ShaderAPITextureHandle_t GetBlackTextureHandle() => materials.GetBlackTextureHandle();
@@ -850,10 +510,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		}
 	}
 
-	public const int MAX_FB_TEXTURES = 4;
-	readonly ITexture?[] CurrentFrameBufferCopyTexture = new ITexture?[MAX_FB_TEXTURES];
-
-	public void SetFrameBufferCopyTexture(ITexture? texture, int textureIndex = 0) {
+	public override void SetFrameBufferCopyTexture(ITexture? texture, int textureIndex = 0) {
 		if (textureIndex < 0 || textureIndex >= MAX_FB_TEXTURES) {
 			Assert(false);
 			return;
@@ -865,20 +522,10 @@ public class MatRenderContext : IMatRenderContextInternal
 		CurrentFrameBufferCopyTexture[textureIndex] = texture;
 	}
 
-	public ITexture? GetFrameBufferCopyTexture(int textureIndex) {
-		if (textureIndex < 0 || textureIndex >= MAX_FB_TEXTURES) {
-			Assert(false);
-			return null; // FIXME!  This should return the error texture.
-		}
-		return CurrentFrameBufferCopyTexture[textureIndex];
-	}
-
-	ITexture? LocalCubemapTexture;
-
-	public void BindLocalCubemap(ITexture? texture) {
+	public override void BindLocalCubemap(ITexture? texture) {
 		ITexture? previousTexture = LocalCubemapTexture;
 
-		LocalCubemapTexture = texture ?? materials.TextureSystem.ErrorTexture();
+		base.BindLocalCubemap(texture);
 
 		if (LocalCubemapTexture != previousTexture)
 			shaderAPI.FlushBufferedPrimitives();
@@ -947,10 +594,6 @@ public class MatRenderContext : IMatRenderContextInternal
 	}
 
 	public ColorCorrectionHandle_t AddLookup(ReadOnlySpan<char> name) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public void AddRefRenderData() {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
@@ -1078,19 +721,13 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public ICallQueue? GetCallQueue() {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public ICallQueue? GetCallQueue() => null;
 
 	public void GetFogColor(out Color rgb) => shaderAPI.GetSceneFogColor(out rgb);
 
 	public void GetFogDistances(out float start, out float end, out float fogZ) => shaderAPI.GetFogDistances(out start, out end, out fogZ);
 
 	public MaterialFogMode GetFogMode() => shaderAPI.GetSceneFogMode();
-
-	public void GetMatrix(MaterialMatrixMode matrixMode, out Matrix3x4 matrix) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
 
 	public void GetMaxToRender(IMesh? pMesh, bool bMaxUntilFlush, Span<int> maxVerts, Span<int> maxIndices) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -1101,25 +738,6 @@ public class MatRenderContext : IMatRenderContextInternal
 	}
 
 	public int GetNumActiveDeformations() {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public Vector3 GetToneMappingScaleLinear() {
-		if (materials.HardwareConfig.GetHDRType() == HDRType.None)
-			return new(1, 1, 1);
-		else
-			return LastSetToneMapScale;
-	}
-
-	public void GetWorldSpaceCameraVectors(out Vector3 forward, out Vector3 right, out Vector3 up) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public bool IsRenderData(object? data) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public float Knob(Span<char> knobname, Span<float> setvalue = default) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
@@ -1135,23 +753,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public object? LockRenderData(int sizeInBytes) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
 	public E? LockRenderDataTyped<E>(int count, E? srcData = null) where E : class {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public void MultMatrix(in Matrix3x4 matrix) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public void MultMatrix(in Matrix4x4 matrix) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public void MultMatrixLocal(in Matrix3x4 matrix) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
@@ -1175,18 +777,6 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void PerspectiveOffCenterX(double fovx, double aspect, double zNear, double zFar, double bottom, double top, double left, double right) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public void PerspectiveX(double fovx, double aspect, double zNear, double zFar) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public void PickMatrix(int x, int y, int width, int height) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
 	public void PopDeformation() {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
@@ -1197,12 +787,6 @@ public class MatRenderContext : IMatRenderContextInternal
 
 	public void PushDeformation(ref readonly DeformationBase deformation) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
-	public void PushRenderTargetAndViewport() {
-		RenderTargetStackElement top = RenderTargetStack.Top();
-		RenderTargetStack.Push(top);
-		CommitRenderTargetAndViewport();
 	}
 
 	public void PushSelectionName(int name) {
@@ -1219,10 +803,6 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void ReleaseRenderData() {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
 	public bool RemoveLookup(ColorCorrectionHandle_t handle) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
@@ -1232,17 +812,6 @@ public class MatRenderContext : IMatRenderContextInternal
 	}
 
 	public void ResetOcclusionQueryObject(OcclusionQueryObjectHandle_t handle) => materials.OcclusionQueryMgr.ResetOcclusionQueryObject(handle);
-
-	public void ResetToneMappingScale(float monoscale) {
-		CurToneMapScale = monoscale;
-		SetToneMappingScaleLinear(new(CurToneMapScale, CurToneMapScale, CurToneMapScale));
-		LastSetToneMapScale = new(CurToneMapScale, CurToneMapScale, CurToneMapScale);
-		GoalToneMapScale = 1;
-	}
-
-	public void Rotate(float angle, float x, float y, float z) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
 
 	public void SelectionBuffer(Span<uint> buffer) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -1264,12 +833,6 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void SetGoalToneMappingScale(float monoscale) {
-		Assert(float.IsFinite(monoscale));
-		if (float.IsFinite(monoscale))
-			GoalToneMapScale = monoscale;
-	}
-
 	public void SetIntRenderingParameter(int parm_number, int value) => shaderAPI.SetIntRenderingParameter(parm_number, value);
 
 	public void SetLookupWeight(ColorCorrectionHandle_t handle, float weight) {
@@ -1284,17 +847,12 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void SetRenderTarget(ITexture? texture) => SetRenderTargetEx(0, texture);
-
-	public void SetRenderTargetEx(int renderTargetID, ITexture? newTarget) {
+	public override void SetRenderTargetEx(int renderTargetID, ITexture? newTarget) {
 		Assert(RenderTargetStack.Count > 0);
 
 		ITexture? oldTarget = RenderTargetStack.Top()[renderTargetID];
 
-		RenderTargetStackElement newTOS = RenderTargetStack.Top();
-		newTOS[renderTargetID] = newTarget;
-		RenderTargetStack.Pop();
-		RenderTargetStack.Push(newTOS);
+		base.SetRenderTargetEx(renderTargetID, newTarget);
 
 		if (newTarget != oldTarget) {
 			if (newTarget == null) {
@@ -1348,10 +906,6 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void UnlockRenderData(object? data) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
-
 	public void UserClipTransform(in Matrix4x4 worldToView) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
@@ -1372,9 +926,7 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
 	}
 
-	public MatCallQueue GetCallQueueInternal() {
-		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
-	}
+	public MatCallQueue? GetCallQueueInternal() => null;
 
 	public float GetFloatRenderingParameter(int parmNumber) => shaderAPI.GetFloatRenderingParameter(parmNumber);
 
@@ -1384,31 +936,18 @@ public class MatRenderContext : IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
 	}
 
-	public int GetLightmapPage() {
-		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
-	}
-
-	public ITexture? GetRenderTargetEx(int renderTargetId) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
-	}
-
 	public Vector3 GetVectorRenderingParameter(int parmNumber) => shaderAPI.GetVectorRenderingParameter(parmNumber);
 
 	public unsafe bool OnDrawMesh(IMesh mesh, PrimList* pLists, int nLists) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
+		SyncMatrices();
+		return true;
 	}
 
-	public bool OnFlushBufferedPrimitives() {
-		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
-	}
+	public bool OnFlushBufferedPrimitives() => true;
 
-	public bool OnSetColorMesh(IMesh staticMesh, IMesh mesh, int nVertexOffsetInBytes) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
-	}
+	public bool OnSetColorMesh(IMesh staticMesh, IMesh? mesh, int nVertexOffsetInBytes) => true;
 
-	public bool OnSetFlexMesh(IMesh staticMesh, IMesh mesh, int nVertexOffsetInBytes) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
-	}
+	public bool OnSetFlexMesh(IMesh staticMesh, IMesh? mesh, int nVertexOffsetInBytes) => true;
 
 	public int AddRef() {
 		throw new NotImplementedException("Incomplete port of IRefCounted");

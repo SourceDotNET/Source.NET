@@ -27,7 +27,7 @@ public class BaseToggle : BaseEntity
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_BaseToggle);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseToggle);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseToggle);
 #endif

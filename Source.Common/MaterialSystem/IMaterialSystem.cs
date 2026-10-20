@@ -1286,7 +1286,7 @@ public interface IMatRenderContext : IRefCounted
 #endif
 }
 
-public readonly struct MatRenderContextPtr : IDisposable, IMatRenderContext
+public readonly ref struct MatRenderContextPtr : IDisposable
 {
 	public readonly IMatRenderContext Context;
 

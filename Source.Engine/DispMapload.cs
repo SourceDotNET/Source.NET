@@ -340,7 +340,7 @@ public static class DispMapload
 			desc.Vertex.TangentSSize = sizeof(DispRenderVert);
 			desc.Vertex.TangentTSize = sizeof(DispRenderVert);
 
-			DispRenderVert[] pBaseVert = pDisp.Verts.Base();
+			DispRenderVert[] pBaseVert = pDisp.Verts;
 
 			desc.Index.IndexSize = 1;
 
@@ -375,7 +375,8 @@ public static class DispMapload
 
 		DispInfo_ReleaseMaterialSystemObjects(world);
 
-		Span<BSPDDispInfo> tempDisps = stackalloc BSPDDispInfo[BSPFileCommon.MAX_MAP_DISPINFO];
+		ErrorIfNot(numDisplacements <= BSPFileCommon.MAX_MAP_DISPINFO, $"DispInfo_LoadDisplacements: too many displacements ({numDisplacements})");
+		Span<BSPDDispInfo> tempDisps = new BSPDDispInfo[numDisplacements];
 		dispInfos.LoadLumpData(tempDisps);
 
 		DispInfo_LinkToParentFaces(world, tempDisps, numDisplacements);
@@ -391,10 +392,10 @@ public static class DispMapload
 		int curVert = 0;
 		int curTri = 0;
 
-		List<CoreDispInfo> coreDisps = [];
+		CoreDispInfo[] coreDisps = new CoreDispInfo[numDisplacements];
 		int disp = 0;
 		for (disp = 0; disp < numDisplacements; disp++)
-			coreDisps.Add(new());
+			coreDisps[disp] = new();
 
 		for (disp = 0; disp < numDisplacements; ++disp) {
 			ref BSPDDispInfo mapDisp = ref tempDisps[disp];
@@ -413,7 +414,7 @@ public static class DispMapload
 				return false;
 		}
 
-		SmoothDispSurfNormals(coreDisps.Base(), numDisplacements);
+		SmoothDispSurfNormals(coreDisps, numDisplacements);
 
 		for (disp = 0; disp < numDisplacements; ++disp) {
 			DispInfo_CreateStaticBuffersAndTags(world, disp, coreDisps[disp], tempVerts);

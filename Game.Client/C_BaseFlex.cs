@@ -169,7 +169,7 @@ public partial class C_BaseFlex : C_BaseAnimatingOverlay, IHasLocalToGlobalFlexS
 		RecvPropVector  ( FIELD.OF(nameof(Lean))),
 		RecvPropVector  ( FIELD.OF(nameof(Shift))),
 	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_BaseFlex);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseFlex);
 	[NetworkName("m_flexWeight")]
 	public InlineArray96<float> FlexWeight;
 	[NetworkName("m_blinktoggle")]

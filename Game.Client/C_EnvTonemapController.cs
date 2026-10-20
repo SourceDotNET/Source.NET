@@ -18,7 +18,7 @@ public class C_EnvTonemapController : C_BaseEntity
 		RecvPropFloat(FIELD.OF(nameof(CustomAutoExposureMax))),
 		RecvPropFloat(FIELD.OF(nameof(CustomBloomScale))),
 		RecvPropFloat(FIELD.OF(nameof(CustomBloomScaleMinimum))),
-	]); public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_EnvTonemapController);
+	]); public static readonly new ClientClass ClientClass = new ClientClass(DT_EnvTonemapController);
 
 	[NetworkName("m_bUseCustomAutoExposureMin")]
 	public bool UseCustomAutoExposureMin;

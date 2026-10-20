@@ -283,7 +283,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	Vector3 BonePosition;
 	QAngle BoneAngles;
 	Handle<C_BaseAnimating> AttachedTo = new();
-	readonly List<Matrix3x4> CachedBoneData = [];
+	Matrix3x4[] CachedBoneData = [];
 
 	public void InvalidateBoneCache() {
 		MostRecentModelBoneCounter = ModelBoneCounter - 1;
@@ -533,7 +533,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 			AccumulatedBoneMask = 0;
 		}
 
-		int nBoneCount = CachedBoneData.Count;
+		int nBoneCount = CachedBoneData.Length;
 
 		AccumulatedBoneMask |= boneMask;
 
@@ -597,11 +597,11 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		}
 
 		if (!boneToWorldOut.IsEmpty) {
-			if (maxBones >= CachedBoneData.Count) {
+			if (maxBones >= CachedBoneData.Length) {
 				memcpy(boneToWorldOut, CachedBoneData.AsSpan());
 			}
 			else {
-				Warning($"SetupBones: invalid bone array size ({maxBones} - needs {CachedBoneData.Count})\n");
+				Warning($"SetupBones: invalid bone array size ({maxBones} - needs {CachedBoneData.Length})\n");
 				return false;
 			}
 		}
@@ -965,7 +965,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	public virtual void DoMuzzleFlash() => MuzzleFlashParity = unchecked((byte)((MuzzleFlashParity + 1) & ((1 << (int)EntityEffects.MuzzleflashBits) - 1)));
 
 
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_BaseAnimating);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseAnimating);
 	protected override StudioHdr? OnNewModel() {
 		InvalidateMdlCache();
 		int i;
@@ -992,12 +992,12 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		Studio.DestroyBoneCache(HitboxBoneCacheHandle);
 		HitboxBoneCacheHandle = 0;
 
-		if (CachedBoneData.Count != hdr.NumBones()) {
-			CachedBoneData.SetSize(hdr.NumBones());
+		if (CachedBoneData.Length != hdr.NumBones()) {
+			CachedBoneData = new Matrix3x4[hdr.NumBones()];
 			for (i = 0; i < hdr.NumBones(); i++)
-				MathLib.SetIdentityMatrix(out CachedBoneData.AsSpan()[i]);
+				MathLib.SetIdentityMatrix(out CachedBoneData[i]);
 		}
-		BoneAccessor.Init(CachedBoneData.Base());
+		BoneAccessor.Init(CachedBoneData);
 
 		Ik = null;
 

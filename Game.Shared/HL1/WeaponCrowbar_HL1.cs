@@ -14,7 +14,7 @@ public class WeaponCrowbar_HL1 : BaseHL1MPCombatWeapon
 #endif
 		DT_WeaponCrowbar_HL1 = new(DT_BaseHL1MPCombatWeapon, []);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_WeaponCrowbar_HL1);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponCrowbar_HL1);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponCrowbar_HL1);
 #endif

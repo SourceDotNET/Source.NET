@@ -675,7 +675,7 @@ public partial class C_BaseEntity : IClientEntity
 
 	public void SetCollisionBounds(in Vector3 mins, in Vector3 maxs) => CollisionProp().SetCollisionBounds(in mins, in maxs);
 
-	public static readonly ClientClass ClientClass = new ClientClass(null, null, DT_BaseEntity);
+	public static readonly ClientClass ClientClass = new ClientClass(DT_BaseEntity);
 	const float coordTolerance = 2.0f / (float)(1 << (int)COORD_FRACTIONAL_BITS);
 
 	public float GetGravity() => Gravity;
@@ -1474,6 +1474,7 @@ public partial class C_BaseEntity : IClientEntity
 
 	double flSpawnTime;
 	double LastMessageTime;
+	bool LuaEntityCreatedCalled;
 
 	public void MoveToLastReceivedPosition(bool force = false) {
 		if (force || (RenderFx)RenderFX != RenderFx.Ragdoll) {
@@ -1571,6 +1572,11 @@ public partial class C_BaseEntity : IClientEntity
 			UpdateVisibility();
 		if (OldShouldDraw != ShouldDraw())
 			UpdateVisibility();
+
+		if (updateType == DataUpdateType.Created && GetRefEHandle().Index != Constants.INVALID_EHANDLE_INDEX && !LuaEntityCreatedCalled) {
+			LuaEntityCreatedCalled = true;
+			garrysmod.EntityCreated(this);
+		}
 	}
 	public ReadOnlySpan<char> GetModelName() => ModelName.SliceNullTerminatedString();
 	public void AllocateIntermediateData() {
@@ -1797,6 +1803,11 @@ public partial class C_BaseEntity : IClientEntity
 		CollisionProp().CreatePartitionHandle();
 
 		SpawnClientEntity();
+
+		if (!LuaEntityCreatedCalled) {
+			LuaEntityCreatedCalled = true;
+			garrysmod.EntityCreated(this);
+		}
 
 		return true;
 	}

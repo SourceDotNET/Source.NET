@@ -25,8 +25,8 @@ public class DispInfo : DispUtilsHelper, IDispInfo
 
 	public readonly MeshReader MeshReader = new();
 
-	public readonly List<ushort> Indices = [];
-	public readonly List<DispRenderVert> Verts = [];
+	public ushort[] Indices = [];
+	public DispRenderVert[] Verts = [];
 
 	public MaxDispVertsBitSet ActiveVerts;
 	public MaxDispVertsBitSet AllowedVerts;
@@ -259,7 +259,7 @@ public class DispInfo : DispUtilsHelper, IDispInfo
 		PowerInfo = PowerInfo.GetPowerInfo(Power);
 
 		int size = GetSideLength();
-		Indices.SetSize(6 * (size - 1) * (size - 1));
+		Array.Resize(ref Indices, 6 * (size - 1) * (size - 1));
 
 		NodeInfo = new DispNodeInfo[PowerInfo.NodeCount];
 	}
@@ -311,7 +311,7 @@ public class DispInfo : DispUtilsHelper, IDispInfo
 		if (NumLightmaps() <= 1)
 			bumpSTexCoordOffset = 0.0f;
 
-		Verts.SetSizeInitialized(PowerInfo!.MaxVerts);
+		Array.Resize(ref Verts, PowerInfo!.MaxVerts);
 		BumpSTexCoordOffset = bumpSTexCoordOffset;
 		for (int i = 0; i < NumVerts(); i++) {
 			ref DispRenderVert vert = ref GetVertex(i);
@@ -426,7 +426,7 @@ public class DispInfo : DispUtilsHelper, IDispInfo
 
 	public ref DispRenderVert GetVertex(int i) {
 		Assert(i < NumVerts());
-		return ref Verts.AsSpan()[i];
+		return ref Verts[i];
 	}
 
 	// public void ComputeLightmapAndTextureCoordinate(in RayDispOutput output, Vector2[]? luv, Vector2[]? tuv) => throw new NotImplementedException();

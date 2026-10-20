@@ -503,7 +503,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 		gHUD.UpdateHud(active);
 
-		BaseAnimating.AutoAllowBoneAccess boneAccess = new(true, true);
+		using BaseAnimating.AutoAllowBoneAccess boneAccess = new(true, true);
 		IGameSystem.UpdateAllSystems(frameTime);
 
 		vgui!.GetAnimationController().UpdateAnimations(gpGlobals.CurTime);

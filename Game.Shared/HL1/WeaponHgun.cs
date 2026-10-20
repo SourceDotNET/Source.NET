@@ -22,7 +22,7 @@ public class WeaponHgun : BaseHL1MPCombatWeapon
 #endif
 		]);
 #if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_WeaponHgun);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponHgun);
 #else
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponHgun);
 #endif

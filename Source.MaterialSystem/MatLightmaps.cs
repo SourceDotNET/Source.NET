@@ -410,10 +410,22 @@ public class MatLightmaps
 	public MaterialSystem GetMaterialSystem() => materialSystem;
 
 	public void BeginUpdateLightmaps() {
+		MatCallQueue? callQueue = materialSystem.GetRenderContextInternal().GetCallQueueInternal();
+		if (callQueue != null) {
+			callQueue.QueueCall(static lightmaps => lightmaps.BeginUpdateLightmaps(), this);
+			return;
+		}
+
 		UpdatingLightmapsStackDepth++;
 	}
 
 	public void EndUpdateLightmaps() {
+		MatCallQueue? callQueue = materialSystem.GetRenderContextInternal().GetCallQueueInternal();
+		if (callQueue != null) {
+			callQueue.QueueCall(static lightmaps => lightmaps.EndUpdateLightmaps(), this);
+			return;
+		}
+
 		UpdatingLightmapsStackDepth--;
 		Assert(UpdatingLightmapsStackDepth >= 0);
 		if (UpdatingLightmapsStackDepth <= 0 && LockedLightmap != -1) {

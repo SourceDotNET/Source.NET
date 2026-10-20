@@ -15,7 +15,7 @@ public partial class C_BaseHLPlayer : C_BasePlayer
 		RecvPropDataTable("m_HL2Local", FIELD.OF(nameof(HL2Local)), C_HL2PlayerLocalData.DT_HL2Local, 0, DataTableRecvProxy_PointerDataTable),
 		RecvPropBool(FIELD.OF(nameof(m_bIsSprinting)))
 	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(null, null, DT_HL2_Player);
+	public static readonly new ClientClass ClientClass = new ClientClass(DT_HL2_Player);
 
 	public static readonly new DataMap PredMap = new(typeof(C_BaseHLPlayer), C_BasePlayer.PredMap, [
 		DEFINE.PRED_TYPEDESCRIPTION( nameof(HL2Local), C_HL2PlayerLocalData.PredMap ),

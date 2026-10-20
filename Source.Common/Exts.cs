@@ -650,51 +650,7 @@ public static class BitVecExts
 	public static void Clear(this bool[] bools, int bit) => bools[bit] = false;
 }
 public static class ListExtensions
-{ // Thanks JamesHoux: https://stackoverflow.com/questions/4972951/listt-to-t-without-copying
-	delegate ref TField RefAccessor<TObj, TField>(TObj obj);
-	static class ArrayAccessor<T>
-	{
-		public static Func<List<T>, T[]> Getter;
-		public static RefAccessor<List<T>, int> GetCount;
-
-		static ArrayAccessor() {
-			var dm = new DynamicMethod("get", MethodAttributes.Static | MethodAttributes.Public, CallingConventions.Standard, typeof(T[]), [typeof(List<T>)], typeof(ArrayAccessor<T>), true);
-			var il = dm.GetILGenerator();
-			il.Emit(OpCodes.Ldarg_0); // Load List<T> argument
-			il.Emit(OpCodes.Ldfld, typeof(List<T>).GetField("_items", BindingFlags.NonPublic | BindingFlags.Instance)!); // Replace argument by field
-			il.Emit(OpCodes.Ret); // Return field
-			Getter = (Func<List<T>, T[]>)dm.CreateDelegate(typeof(Func<List<T>, T[]>));
-
-			dm = new DynamicMethod("getSize", MethodAttributes.Static | MethodAttributes.Public, CallingConventions.Standard, typeof(int).MakeByRefType(), [typeof(List<T>)], typeof(ArrayAccessor<T>), true);
-			il = dm.GetILGenerator();
-			il.Emit(OpCodes.Ldarg_0);
-			il.Emit(OpCodes.Ldflda, typeof(List<T>).GetField("_size", BindingFlags.NonPublic | BindingFlags.Instance)!);
-			il.Emit(OpCodes.Ret);
-			GetCount = (RefAccessor<List<T>, int>)dm.CreateDelegate(typeof(RefAccessor<List<T>, int>));
-		}
-	}
-
-	static class TempSwap<T>
-	{
-		public static readonly ThreadLocal<List<T>> List = new(() => []);
-	}
-
-	public static void Swap<T>(this List<T> a, List<T> b) {
-		var swap = TempSwap<T>.List.Value!;
-		swap.Clear();
-		swap.EnsureCapacity(a.Count);
-
-		a.Clear();
-		a.EnsureCapacity(b.Count);
-		b.Base().AsSpan()[..b.Count].CopyTo(a.Base());
-		a.CountForEdit() = b.Count;
-
-		b.Clear();
-		b.EnsureCapacity(swap.Count);
-		swap.Base().AsSpan()[..swap.Count].CopyTo(b.Base());
-		b.CountForEdit() = swap.Count;
-	}
-
+{
 	public static nint Find<T>(this List<T> list, T? value) {
 		for (int i = 0, c = list.Count; i < c; i++) {
 			T? at = list[i];
@@ -709,14 +665,6 @@ public static class ListExtensions
 				return i;
 		}
 		return -1;
-	}
-
-	public static T[] Base<T>(this List<T> list) {
-		return ArrayAccessor<T>.Getter(list);
-	}
-
-	public static ref int CountForEdit<T>(this List<T> list) {
-		return ref ArrayAccessor<T>.GetCount(list);
 	}
 }
 public static class ClassUtils
@@ -1444,21 +1392,6 @@ public static class GlobalReflectionUtils
 		}
 		return arr;
 	}
-	/// <summary>
-	/// Try to get the type that called this method, taking account of skip frames if necessary
-	/// </summary>
-	/// <param name="skipFrames"></param>
-	/// <returns></returns>
-	public static Type? WhoCalledMe(int skipFrames = 1) {
-		var stack = new StackTrace(skipFrames: skipFrames, fNeedFileInfo: false);
-		for (int i = 0; i < stack.FrameCount; i++) {
-			var method = stack.GetFrame(i)!.GetMethod()!;
-			var declaringType = method.DeclaringType;
-			if (declaringType != null && declaringType != typeof(GlobalReflectionUtils))
-				return declaringType;
-		}
-		return null;
-	}
 }
 public static class ReflectionUtils
 {
@@ -1593,13 +1526,6 @@ public static class ReflectionUtils
 			T? attr = type.GetCustomAttribute<T>();
 			if (attr != null)
 				yield return new(field, attr);
-		}
-	}
-	public static IEnumerable<KeyValuePair<MethodInfo, T>> GetMethodsWithAttribute<T>(this Type type) where T : Attribute {
-		foreach (var method in type.GetMethods()) {
-			T? attr = type.GetCustomAttribute<T>();
-			if (attr != null)
-				yield return new(method, attr);
 		}
 	}
 }

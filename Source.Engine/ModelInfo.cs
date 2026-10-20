@@ -99,9 +99,9 @@ public abstract class ModelInfo(IFileSystem filesystem, IModelLoader modelloader
 	public Memory<byte> GetAnimBlock(StudioHeader studioHdr, int block) {
 		return mdlCache.GetAnimBlock(studioHdr.VirtualModel, block);
 	}
-	public int GetAutoplayList(StudioHeader studioHdr, out Span<short> autoplayList) {
+	public int GetAutoplayList(StudioHeader studioHdr, out ReadOnlySpan<short> autoplayList) {
 		MDLHandle_t handle = studioHdr.VirtualModel;
-		autoplayList = mdlCache.GetAutoplayList(handle).Span;
+		autoplayList = mdlCache.GetAutoplayList(handle);
 		return autoplayList.Length;
 	}
 

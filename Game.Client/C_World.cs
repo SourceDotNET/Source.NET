@@ -34,7 +34,7 @@ public class C_World : C_BaseEntity
 		RecvPropString(FIELD.OF(nameof(DetailSpriteMaterial))),
 	]);
 
-	public static new readonly ClientClass ClientClass = new ClientClass(null, null, DT_WORLD);
+	public static new readonly ClientClass ClientClass = new ClientClass(DT_WORLD);
 
 	public override bool Init(int entNum, int serialNum) {
 		WaveHeight = 0.0f;

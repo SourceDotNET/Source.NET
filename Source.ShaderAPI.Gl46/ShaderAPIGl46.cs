@@ -1057,7 +1057,12 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 		return true;
 	}
-	public void FlushBufferedPrimitives() => FlushBufferedPrimitivesInternal();
+	public void FlushBufferedPrimitives() {
+		if (ShaderUtil != null && !ShaderUtil.OnFlushBufferedPrimitives())
+			return;
+
+		FlushBufferedPrimitivesInternal();
+	}
 	private void FlushBufferedPrimitivesInternal() {
 		Assert(RenderMesh == null);
 #if DEBUG
@@ -1689,6 +1694,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 		Driver = deviceInfo.Driver;
 		Device!.MakeCurrent();
+		OwnerThreadID = ThreadGetCurrentId();
 		unsafe {
 			if (0 != (deviceInfo.Driver & GraphicsDriver.OpenGL))
 				GL_LoadExtensions(graphics.GL_LoadExtensionsPtr());
@@ -1726,13 +1732,6 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 	public void Present() {
 		FlushBufferedPrimitives();
-		bool validPresent = true;
-		bool inMainThread = ThreadInMainThread();
-
-		if (!inMainThread) {
-			throw new Exception();
-		}
-
 		Device!.SwapBuffers();
 		MeshMgr.DiscardVertexBuffers();
 	}
@@ -3315,8 +3314,15 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		return fLuminance / 6.0f;
 	}
 
+	int OwnerThreadID;
+	internal bool IsOwnerThread() => OwnerThreadID == ThreadGetCurrentId();
+
 	public void AcquireThreadOwnership() {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		if (OwnerThreadID == ThreadGetCurrentId())
+			return;
+
+		Device?.MakeCurrent();
+		OwnerThreadID = ThreadGetCurrentId();
 	}
 
 	public void BeginOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query) {
@@ -3356,8 +3362,9 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		throw new NotImplementedException("Incomplete port of IShaderAPI");
 	}
 
-	public void ComputeVertexDescription(Span<byte> buffer, VertexFormat vertexFormat, ref MeshDesc desc) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+	public unsafe void ComputeVertexDescription(Span<byte> buffer, VertexFormat vertexFormat, ref MeshDesc desc) {
+		fixed (byte* memory = buffer)
+			VertexBufferGl46.ComputeVertexDescription(memory, vertexFormat, ref desc.Vertex);
 	}
 
 	public void CopyRenderTargetToTexture(ShaderAPITextureHandle_t textureHandle) {
@@ -3429,9 +3436,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		throw new NotImplementedException("Incomplete port of IShaderAPI");
 	}
 
-	public void EnableShaderShaderMutex(bool enable) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
-	}
+	public void EnableShaderShaderMutex(bool enable) { }
 
 	public void EnableUserClipTransformOverride(bool enable) {
 		throw new NotImplementedException("Incomplete port of IShaderAPI");
@@ -3647,7 +3652,11 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public void ReleaseThreadOwnership() {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		if (OwnerThreadID != ThreadGetCurrentId())
+			return;
+
+		Device?.ReleaseCurrent();
+		OwnerThreadID = 0;
 	}
 
 	public void SceneFogColor3ub(byte r, byte g, byte b) {
@@ -3700,9 +3709,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		}
 	}
 
-	public void SetDisallowAccess(bool access) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
-	}
+	public void SetDisallowAccess(bool access) { }
 
 	public void SetFastClipPlane(ReadOnlySpan<float> plane) {
 		throw new NotImplementedException("Incomplete port of IShaderAPI");
@@ -3756,13 +3763,9 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		throw new NotImplementedException("Incomplete port of IShaderAPI");
 	}
 
-	public void ShaderLock() {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
-	}
+	public void ShaderLock() { }
 
-	public void ShaderUnlock() {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
-	}
+	public void ShaderUnlock() { }
 
 	public bool SupportsCSAAMode(int numSamples, int qualityLevel) {
 		throw new NotImplementedException("Incomplete port of IShaderAPI");

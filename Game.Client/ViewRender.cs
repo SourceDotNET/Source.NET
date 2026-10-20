@@ -794,6 +794,7 @@ public class Rendering3dView : Base3dView
 		WorldRenderList?.Release();
 		WorldRenderList = null;
 		ClientRenderablesList.Shared.Free(RenderablesList);
+		RenderablesList = null!;
 	}
 	public override DrawFlags GetDrawFlags() {
 		return DrawFlags;

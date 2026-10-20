@@ -61,7 +61,7 @@ internal static class SDL3_State
 		SDL3.SDL_SetLogPriorities(SDL_LogPriority.SDL_LOG_PRIORITY_TRACE);
 		SDL3.SDL_SetAppMetadata(Path.GetFileNameWithoutExtension(Environment.ProcessPath), "N/A", "N/A");
 		if (!SDL3.SDL_InitSubSystem(SDL_InitFlags.SDL_INIT_VIDEO))
-			throw new Exception("Couldn't initialize SDL3's video subsystem.");
+			throw new Exception($"Couldn't initialize SDL3's video subsystem: ${SDL3.SDL_GetError()}");
 
 		ready = true;
 	}
@@ -74,6 +74,11 @@ public unsafe class SDL3_OpenGL46_Context(nint window, nint ctx) : IGraphicsCont
 	public void MakeCurrent() {
 		if (!SDL3.SDL_GL_MakeCurrent((SDL_Window*)window, (SDL_GLContextState*)ctx))
 			Warning($"Could not make GL context current: {SDL3.SDL_GetError()}\n");
+	}
+
+	public void ReleaseCurrent() {
+		if (!SDL3.SDL_GL_MakeCurrent((SDL_Window*)window, null))
+			Warning($"Could not release GL context: {SDL3.SDL_GetError()}\n");
 	}
 
 	public void SetSwapInterval(float swapInterval) {
