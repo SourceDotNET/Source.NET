@@ -418,14 +418,14 @@ public unsafe class bf_write : BitBuffer
 
 	public void WriteBitAngle(float fAngle, int numbits) {
 		int d;
-		int mask;
-		int shift;
+		uint mask;
+		uint shift;
 
-		shift = (int)BitForBitnum(numbits);
+		shift = BitForBitnum(numbits);
 		mask = shift - 1;
 
-		d = (int)(fAngle / 360.0 * shift);
-		d &= mask;
+		d = MathLib.TruncateOrMinValue(fAngle * (1f / 360f) * shift);
+		d &= (int)mask;
 
 		WriteUBitLong((uint)d, numbits);
 	}
