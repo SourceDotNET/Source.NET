@@ -485,7 +485,7 @@ public partial class SV(IServiceProvider services, Cbuf Cbuf, ED ED, Host Host, 
 
 		}
 
-		if (IsPC() && sv.IsMultiplayer())
+		if (sv.IsMultiplayer())
 			Steam3Server().RunFrame();
 	}
 

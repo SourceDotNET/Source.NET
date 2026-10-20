@@ -186,20 +186,18 @@ public class GameUI(IEngineClient engine) : IGameUI
 		if (!FindPlatformDirectory(out ReadOnlySpan<char> platformDir))
 			return;
 
-		if (IsPC()) {
-			Span<char> configDir = stackalloc char[512];
-			strcpy(configDir, platformDir);
-			strcat(configDir, "config");
+		Span<char> configDir = stackalloc char[512];
+		strcpy(configDir, platformDir);
+		strcat(configDir, "config");
 
-			Msg($"Steam config directory: {configDir.SliceNullTerminatedString()}\n");
+		Msg($"Steam config directory: {configDir.SliceNullTerminatedString()}\n");
 
-			fileSystem.AddSearchPath(configDir.SliceNullTerminatedString(), "CONFIG");
-			fileSystem.CreateDirHierarchy("", "CONFIG");
+		fileSystem.AddSearchPath(configDir.SliceNullTerminatedString(), "CONFIG");
+		fileSystem.CreateDirHierarchy("", "CONFIG");
 
-			// todo SetUserConfigFile
+		// todo SetUserConfigFile
 
-			fileSystem.AddSearchPath("platform", "PLATFORM");
-		}
+		fileSystem.AddSearchPath("platform", "PLATFORM");
 
 		localize.AddFile("Resource/platform_%language%.txt");
 		localize.AddFile("Resource/vgui_%language%.txt");

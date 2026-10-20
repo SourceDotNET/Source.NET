@@ -3015,25 +3015,23 @@ public partial class BaseEntity : IServerEntity
 			return;
 
 		// sounds
-		if (IsPC()) {
-			ReadOnlySpan<char> name = modelinfo.GetModelName(model);
-			if (!g_ModelSoundsCache.TryGetValue(name.Hash(), out _)) {
-				ReadOnlySpan<char> extension = Path.GetExtension(name);
+		ReadOnlySpan<char> name = modelinfo.GetModelName(model);
+		if (!g_ModelSoundsCache.TryGetValue(name.Hash(), out _)) {
+			ReadOnlySpan<char> extension = Path.GetExtension(name);
 
-				if (!stristr(extension, "mdl").IsEmpty)
-					DevMsg(2, $"Late precache of {name}, need to rebuild modelsounds.cache\n");
-				else {
-					if (extension[0] == '\0')
-						Warning($"Precache of {name} ambigious (no extension specified)\n");
-					else
-						Warning($"Late precache of {name} (file missing?)\n");
-					return;
-				}
+			if (!stristr(extension, "mdl").IsEmpty)
+				DevMsg(2, $"Late precache of {name}, need to rebuild modelsounds.cache\n");
+			else {
+				if (extension[0] == '\0')
+					Warning($"Precache of {name} ambigious (no extension specified)\n");
+				else
+					Warning($"Late precache of {name} (file missing?)\n");
+				return;
 			}
-
-			if (g_ModelSoundsCache.TryGetValue(name.Hash(), out ModelSoundsCache? entry))
-				entry.PrecacheSoundList();
 		}
+
+		if (g_ModelSoundsCache.TryGetValue(name.Hash(), out ModelSoundsCache? entry))
+			entry.PrecacheSoundList();
 	}
 
 	static readonly Dictionary<UtlSymId_t, ModelSoundsCache> g_ModelSoundsCache = [];

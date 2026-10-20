@@ -271,7 +271,7 @@ public class KeyValues : IEnumerable<KeyValues>
 			bNot = true;
 
 		if (str.Contains("$WIN32", StringComparison.OrdinalIgnoreCase))
-			return IsPC() ^ bNot;
+			return !bNot;
 
 		if (str.Contains("$WINDOWS", StringComparison.OrdinalIgnoreCase))
 #if WIN32

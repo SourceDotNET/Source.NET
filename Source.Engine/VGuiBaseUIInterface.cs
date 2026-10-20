@@ -652,26 +652,24 @@ public class EngineVGui(
 		staticGameDLLPanel.SetCursor(CursorCode.None);
 		staticGameDLLPanel.SetZPos(135);
 
-		if (IsPC()) {
-			Common.TimestampedLog("Building Panels (staticDebugSystemPanel)");
+		Common.TimestampedLog("Building Panels (staticDebugSystemPanel)");
 
-			staticDebugSystemPanel = new DebugSystemPanel(staticPanel, "Engine Debug System");
-			staticDebugSystemPanel.SetZPos(125);
+		staticDebugSystemPanel = new DebugSystemPanel(staticPanel, "Engine Debug System");
+		staticDebugSystemPanel.SetZPos(125);
 
-			// DemoUIPanel.InstallDemoUI(staticEngineToolsPanel);
-			// DemoUIPanel2.Install(staticClientDLLPanel, staticEngineToolsPanel, true);
+		// DemoUIPanel.InstallDemoUI(staticEngineToolsPanel);
+		// DemoUIPanel2.Install(staticClientDLLPanel, staticEngineToolsPanel, true);
 
-			// FogUIPanel.InstallFogUI(staticEngineToolsPanel);
+		// FogUIPanel.InstallFogUI(staticEngineToolsPanel);
 
-			TxViewPanel.Install(staticEngineToolsPanel);
+		TxViewPanel.Install(staticEngineToolsPanel);
 
-			Common.TimestampedLog("Install perf tools");
+		Common.TimestampedLog("Install perf tools");
 
-			EnginePerfTools.InstallPerformanceToolsUI(staticEngineToolsPanel);
+		EnginePerfTools.InstallPerformanceToolsUI(staticEngineToolsPanel);
 
-			// colorcorrectiontools.InstallColorCorrectionUI(staticEngineToolsPanel);
-			// colorcorrectiontools.Init();
-		}
+		// colorcorrectiontools.InstallColorCorrectionUI(staticEngineToolsPanel);
+		// colorcorrectiontools.Init();
 
 		if (CommandLine.CheckParm("-tools"))
 			staticGameDLLPanel.SetVisible(true);
@@ -695,13 +693,11 @@ public class EngineVGui(
 		// - DemoUIPanel (if we even do demos)
 		// - FogUIPanel
 
-		if (IsPC()) {
-			Con.CreateConsolePanel(staticEngineToolsPanel);
-			VGuiDrawTree.CreateDrawTreePanel(staticEngineToolsPanel);
-			TextureListPanel.CreateTextureListPanel(staticEngineToolsPanel);
-			CL.CreateEntityReportPanel(staticEngineToolsPanel);
-			CreateVProfPanels(staticEngineToolsPanel);
-		}
+		Con.CreateConsolePanel(staticEngineToolsPanel);
+		VGuiDrawTree.CreateDrawTreePanel(staticEngineToolsPanel);
+		TextureListPanel.CreateTextureListPanel(staticEngineToolsPanel);
+		CL.CreateEntityReportPanel(staticEngineToolsPanel);
+		CreateVProfPanels(staticEngineToolsPanel);
 
 		staticEngineToolsPanel.LoadControlSettings("scripts/EngineVGuiLayout.res");
 
@@ -716,9 +712,7 @@ public class EngineVGui(
 		staticGameUIFuncs.Initialize(engineAPI);
 		staticGameUIFuncs.Start();
 
-		if (IsPC()) {
-			staticGameConsole = engineAPI.GetRequiredService<IGameConsole>();
-		}
+		staticGameConsole = engineAPI.GetRequiredService<IGameConsole>();
 
 		if (staticGameConsole != null) {
 			staticGameConsole.Initialize();
@@ -1005,7 +999,7 @@ public class EngineVGui(
 		bool down = ev.Type != InputEventType.IE_ButtonReleased;
 		ButtonCode code = (ButtonCode)ev.Data;
 
-		if (IsPC() && IsShiftKeyDown()) {
+		if (IsShiftKeyDown()) {
 			switch (code) {
 				case ButtonCode.KeyF1:
 					if (down)
@@ -1022,29 +1016,27 @@ public class EngineVGui(
 		}
 
 #if WIN32
-		if (IsPC() && code == ButtonCode.KeyBackquote && (IsAltKeyDown() || IsCtrlKeyDown()))
+		if (code == ButtonCode.KeyBackquote && (IsAltKeyDown() || IsCtrlKeyDown()))
 			return true;
 #endif
 
 		if (down && code == ButtonCode.KeyEscape && !clientDLL.HandleUiToggle()) {
-			if (IsPC()) {
-				if (IsGameUIVisible()) {
-					ReadOnlySpan<char> levelName = engineClient.GetLevelName();
-					if (!levelName.IsEmpty && levelName.Length > 0) {
-						Cbuf.AddText("gameui_hide");
-						if (IsDebugSystemVisible())
-							Cbuf.AddText("debugsystemui 0");
-					}
+			if (IsGameUIVisible()) {
+				ReadOnlySpan<char> levelName = engineClient.GetLevelName();
+				if (!levelName.IsEmpty && levelName.Length > 0) {
+					Cbuf.AddText("gameui_hide");
+					if (IsDebugSystemVisible())
+						Cbuf.AddText("debugsystemui 0");
 				}
-				else {
-					Cbuf.AddText("gameui_activate");
-				}
-				return true;
 			}
+			else {
+				Cbuf.AddText("gameui_activate");
+			}
+			return true;
 		}
 
 		if (surface.HandleInputEvent(in ev)) {
-			if (IsPC() && (code == ButtonCode.KeyBackquote))
+			if (code == ButtonCode.KeyBackquote)
 				return false;
 			return true;
 		}

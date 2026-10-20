@@ -234,9 +234,7 @@ public partial class BaseVSShader
 
 				// bool hasEnvmap = (!hasFlashlight) && (info.Envmap != -1) && parms[info.Envmap].IsTexture();
 				bool hasLegacyEnvSphereMap = hasEnvmap && IsFlagSet(parms, MaterialVarFlags.EnvMapSphere);
-				bool hasNormal = vertexLitGeneric || hasEnvmap || hasFlashlight || seamlessBase || seamlessDetail;
-				if (IsPC())
-					hasNormal = true;
+				bool hasNormal = true;
 
 				bool halfLambert = IsFlagSet(parms, MaterialVarFlags.HalfLambert);
 				shaderShadow!.EnableAlphaTest(isAlphaTested);
@@ -898,7 +896,7 @@ public partial class BaseVSShader
 				dynamicCmdsOut.SetDepthFeatheringPixelShaderConstant(13, GetFloatParam(info.DepthBlendScale, parms, 50.0f));
 
 			float pixelFogType = shaderAPI.GetPixelFogCombo() == 1 ? 1.0f : 0.0f;
-			float fWriteDepthToAlpha = writeDepthToAlpha && IsPC() ? 1.0f : 0.0f;
+			float fWriteDepthToAlpha = writeDepthToAlpha ? 1.0f : 0.0f;
 			float fWriteWaterFogToDestAlpha = (shaderAPI.GetPixelFogCombo() == 1 && writeWaterFogToAlpha) ? 1.0f : 0.0f;
 			float vertexAlpha = hasVertexAlpha ? 1.0f : 0.0f;
 

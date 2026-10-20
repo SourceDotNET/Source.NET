@@ -31,13 +31,11 @@ public static class ViewScene
 
 		using MatRenderContextPtr renderContext = new(materials);
 		ITexture? texture = RenderTexture.GetPowerOfTwoFrameBufferTexture();
-		if (IsPC() || forceUpdate || g_bAllowMultipleRefractUpdatesPerScenePerFrame || (gpGlobals.FrameCount != g_viewscene_refractUpdateFrame)) {
-			// forced or only once per frame 
-			System.Drawing.Rectangle rect = new(x, y, w, h);
-			renderContext.CopyRenderTargetToTextureEx(texture!, 0, ref rect, ref Unsafe.NullRef<System.Drawing.Rectangle>());
+		// forced or only once per frame 
+		System.Drawing.Rectangle rect = new(x, y, w, h);
+		renderContext.CopyRenderTargetToTextureEx(texture!, 0, ref rect, ref Unsafe.NullRef<System.Drawing.Rectangle>());
 
-			g_viewscene_refractUpdateFrame = gpGlobals.FrameCount;
-		}
+		g_viewscene_refractUpdateFrame = gpGlobals.FrameCount;
 		renderContext.SetFrameBufferCopyTexture(texture);
 	}
 
