@@ -572,7 +572,7 @@ public class HTML : Panel
 				}
 			case ButtonCode.KeyF: {
 					if (Input.IsKeyDown(ButtonCode.KeyLControl) || Input.IsKeyDown(ButtonCode.KeyRControl)
-						|| (IsOSX() && (Input.IsKeyDown(ButtonCode.KeyLWin) || Input.IsKeyDown(ButtonCode.KeyRWin)))) {
+						|| (IsOSX && (Input.IsKeyDown(ButtonCode.KeyLWin) || Input.IsKeyDown(ButtonCode.KeyRWin)))) {
 						if (!FindDialogVisible())
 							ShowFindDialog();
 						else

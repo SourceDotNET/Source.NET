@@ -16,9 +16,7 @@ public class MeshMgr : IMeshMgr
 	internal IMaterialSystem MaterialSystem;
 
 	internal void Flush() {
-		if (IsPC()) {
-			BufferedMesh.Flush();
-		}
+		BufferedMesh.Flush();
 	}
 
 	internal void DiscardVertexBuffers() {

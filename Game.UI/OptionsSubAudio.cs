@@ -40,15 +40,14 @@ public class OptionsSubAudio : PropertyPage
 		SoundQualityCombo.AddItem("#GameUI_Low", null);
 
 		SpeakerSetupCombo = new(this, "SpeakerSetup", 6, false);
-#if !POSIX
-		SpeakerSetupCombo.AddItem("#GameUI_Headphones", null);
-#endif
+		if (!IsPosix)
+			SpeakerSetupCombo.AddItem("#GameUI_Headphones", null);
 		SpeakerSetupCombo.AddItem("#GameUI_2Speakers", null);
-#if !POSIX
-		SpeakerSetupCombo.AddItem("#GameUI_4Speakers", null);
-		SpeakerSetupCombo.AddItem("#GameUI_5Speakers", null);
-		SpeakerSetupCombo.AddItem("#GameUI_7Speakers", null);
-#endif
+		if (!IsPosix) {
+			SpeakerSetupCombo.AddItem("#GameUI_4Speakers", null);
+			SpeakerSetupCombo.AddItem("#GameUI_5Speakers", null);
+			SpeakerSetupCombo.AddItem("#GameUI_7Speakers", null);
+		}
 		SpokenLanguageCombo = new(this, "AudioSpokenLanguage", 6, false);
 
 		SoundMuteLoseFocusCheckButton = new(this, "snd_mute_losefocus", "#GameUI_SndMuteLoseFocus", "snd_mute_losefocus");
@@ -77,10 +76,8 @@ public class OptionsSubAudio : PropertyPage
 		ConVarRef snd_surround_speakers = new("snd_surround_speakers");
 		int speakers = snd_surround_speakers.GetInt();
 
-#if POSIX
-		if (speakers == 0)
+		if (IsPosix && speakers == 0)
 			speakers = 2;
-#endif
 
 		if (speakers < 0)
 			speakers = 2;

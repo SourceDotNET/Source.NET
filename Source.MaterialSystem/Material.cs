@@ -1006,9 +1006,9 @@ public class Material : IMaterialInternal
 			else if (0 == stricmp(cond, "ldr"))
 				shouldSkip = materials.HardwareConfig.GetHDRType() != HDRType.None;
 			else if (0 == stricmp(cond, "360"))
-				shouldSkip = !IsX360();
+				shouldSkip = true;
 			else if (0 == stricmp(cond, "gameconsole"))
-				shouldSkip = !IsConsole();
+				shouldSkip = true;
 			else
 				Warning($"unrecognized conditional test {varName} in {GetName()}\n");
 

@@ -62,7 +62,7 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 	public readonly MaterialSystem_Config Config;
 
 	readonly static ConVar mat_vsync = new("mat_vsync", "0", 0, "Force sync to vertical retrace", 0, 1);
-	readonly static ConVar mat_forcehardwaresync = new(IsPC() ? "1" : "0", 0);
+	readonly static ConVar mat_forcehardwaresync = new("1", 0);
 	readonly static ConVar mat_trilinear = new("1", 0);
 	readonly static ConVar mat_forceaniso = new("16", FCvar.Archive); // 0 = Bilinear, 1 = Trilinear, 2+ = Aniso
 	readonly static ConVar mat_filterlightmaps = new("1", 0);
@@ -705,14 +705,12 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 		TextureManager.FreeStandardRenderTargets();
 		TextureManager.AllocateStandardRenderTargets();
 		if (!previouslyUsingGraphics) {
-			if (IsPC()) {
-				TextureManager.RestoreRenderTargets();
-				TextureManager.RestoreNonRenderTargetTextures();
-				if (MaterialSystem.CanUseEditorMaterials())
-					MathLib.Init(2.2f, 2.2f, 0.0f, (int)IMaterialSystem.OVERBRIGHT);
+			TextureManager.RestoreRenderTargets();
+			TextureManager.RestoreNonRenderTargetTextures();
+			if (MaterialSystem.CanUseEditorMaterials())
+				MathLib.Init(2.2f, 2.2f, 0.0f, (int)IMaterialSystem.OVERBRIGHT);
 
-				AllocateStandardTextures();
-			}
+			AllocateStandardTextures();
 		}
 
 		// Copy over that state which isn't stored currently in convars
@@ -900,12 +898,10 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 
 	public void ReleaseStandardTextures() {
 		if (StandardTexturesAllocated) {
-			if (IsPC()) {
-				ShaderAPI.DeleteTexture(BlackTextureHandle);
-				ShaderAPI.DeleteTexture(WhiteTextureHandle);
-				ShaderAPI.DeleteTexture(GreyTextureHandle);
-				ShaderAPI.DeleteTexture(GreyAlphaZeroTextureHandle);
-			}
+			ShaderAPI.DeleteTexture(BlackTextureHandle);
+			ShaderAPI.DeleteTexture(WhiteTextureHandle);
+			ShaderAPI.DeleteTexture(GreyTextureHandle);
+			ShaderAPI.DeleteTexture(GreyAlphaZeroTextureHandle);
 			ShaderAPI.DeleteTexture(FullbrightLightmapTextureHandle);
 			ShaderAPI.DeleteTexture(FlatNormalTextureHandle);
 			ShaderAPI.DeleteTexture(FullbrightBumpedLightmapTextureHandle);

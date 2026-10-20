@@ -7,13 +7,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using CommunityToolkit.HighPerformance;
 
-#if WIN32
-using Microsoft.Win32;
-#endif
-
 namespace Source.SDLManager;
 
-public unsafe class SDL3_System(ICommandLine commandLine) : ISystem
+public unsafe partial class SDL3_System(ICommandLine commandLine) : ISystem
 {
 	public bool CommandLineParamExists(ReadOnlySpan<char> paramName) {
 		return commandLine.FindParm(paramName) != 0;
@@ -157,124 +153,6 @@ public unsafe class SDL3_System(ICommandLine commandLine) : ISystem
 	public void ShellExecuteEx(ReadOnlySpan<char> command, ReadOnlySpan<char> file, ReadOnlySpan<char> pParams) {
 		throw new NotImplementedException();
 	}
-
-#if WIN32
-#pragma warning disable CA1416 // Validate platform compatibility (WIN32 ifdef catches this instead)
-	static string[] possibleKeys = [@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts", @"SOFTWARE\Microsoft\Windows\CurrentVersion\Fonts"];
-
-	struct Entry
-	{
-		public string Name;
-		public int Index;
-		public int Weight;
-		public bool Italic;
-		public string AbsPath;
-	}
-	List<Entry>? Entries;
-
-	public ReadOnlySpan<char> GetEntryPath(ReadOnlySpan<char> name, int weight, bool italic) {
-		if (Entries == null) {
-			Entries = [];
-			string windowsDirectory = Environment.GetEnvironmentVariable("windir")!;
-			string fontsPath = Path.Combine(windowsDirectory, "Fonts");
-			foreach (var keyPath in possibleKeys) {
-				using var baseKey = Registry.LocalMachine.OpenSubKey(keyPath, false);
-				if (baseKey is null)
-					continue;
-
-				foreach (var valueName in baseKey.GetValueNames()) {
-					var value = baseKey.GetValue(valueName);
-
-					string absPath = Path.Combine(fontsPath, (string)value!);
-					int i = 0;
-					foreach (var fontfile in GetFontConditions(absPath)) {
-						Entries.Add(new() {
-							AbsPath = absPath,
-							Index = i++,
-							Italic = fontfile.Italic,
-							Weight = fontfile.Weight,
-							Name = fontfile.Name
-						});
-					}
-				}
-			}
-		}
-
-		Span<Entry> entries = Entries.AsSpan();
-
-		string? consideration = null;
-		int closestDistance = int.MaxValue;
-
-		for (int i = 0; i < entries.Length; i++) {
-			ref Entry entry = ref entries[i];
-
-			if (entry.Italic == italic && name.Equals(entry.Name, StringComparison.OrdinalIgnoreCase)) {
-				int distance = Math.Abs(entry.Weight - weight);
-				if (distance < closestDistance) {
-					consideration = entry.AbsPath;
-					closestDistance = distance;
-				}
-			}
-		}
-
-		return consideration;
-	}
-
-	public ReadOnlySpan<char> GetSystemFontPath(ReadOnlySpan<char> fontName, int weight = 0, bool italic = false) {
-		return GetEntryPath(fontName, weight, italic);
-	}
-#pragma warning restore CA1416 // Validate platform compatibility
-#elif LINUX
-	const string FontConfig = "libfontconfig.so.1";
-	const int FcMatchPattern = 0;
-	const int FcResultMatch = 0;
-
-	[DllImport(FontConfig)] static extern nint FcNameParse(byte* name);
-	[DllImport(FontConfig)] static extern int FcConfigSubstitute(nint config, nint pattern, int kind);
-	[DllImport(FontConfig)] static extern void FcDefaultSubstitute(nint pattern);
-	[DllImport(FontConfig)] static extern nint FcFontMatch(nint config, nint pattern, out int result);
-	[DllImport(FontConfig)] static extern int FcPatternGetString(nint pattern, byte* obj, int n, out byte* value);
-	[DllImport(FontConfig)] static extern void FcPatternDestroy(nint pattern);
-
-	public ReadOnlySpan<char> GetSystemFontPath(ReadOnlySpan<char> fontName, int weight = 0, bool italic = false) {
-		try {
-			byte[] name = Encoding.UTF8.GetBytes(new string(fontName) + '\0');
-			nint pattern;
-			fixed (byte* pName = name)
-				pattern = FcNameParse(pName);
-			if (pattern == 0)
-				return null;
-
-			try {
-				FcConfigSubstitute(0, pattern, FcMatchPattern);
-				FcDefaultSubstitute(pattern);
-
-				nint match = FcFontMatch(0, pattern, out int result);
-				if (match == 0)
-					return null;
-
-				try {
-					fixed (byte* pFile = "file"u8)
-						if (result == FcResultMatch && FcPatternGetString(match, pFile, 0, out byte* file) == FcResultMatch && file != null)
-							return Marshal.PtrToStringUTF8((nint)file);
-				}
-				finally {
-					FcPatternDestroy(match);
-				}
-			}
-			finally {
-				FcPatternDestroy(pattern);
-			}
-		}
-		catch (Exception ex) {
-			Assert($"GetSystemFontPath: {ex.Message}");
-		}
-
-		return null;
-	}
-#else
-#error Please implement System.GetSystemFontPath for this platform
-#endif
 
 	private static ushort SwapUInt16(ushort val) {
 		return (ushort)((val >> 8) | (val << 8));

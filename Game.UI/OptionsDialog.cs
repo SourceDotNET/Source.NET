@@ -33,12 +33,12 @@ public class OptionsDialog : PropertyDialog
 		AddPage(new OptionsSubVoice(this, null), "#GameUI_Voice");
 		// AddPage(new OptionsSubLegal(this, null), "#GameUI_Legal");
 #else
-#if WIN32
-		ConVarRef hap_HasDevice = new("hap_HasDevice");
-		hap_HasDevice.Init("hap_HasDevice", true);
-		// if (hap_HasDevice.GetBool())
-			// AddPage(new OptionsSubHaptics(this), "#GameUI_Haptics_TabTitle");
-#endif
+		if (IsWindows) {
+			ConVarRef hap_HasDevice = new("hap_HasDevice");
+			hap_HasDevice.Init("hap_HasDevice", true);
+			// if (hap_HasDevice.GetBool())
+				// AddPage(new OptionsSubHaptics(this), "#GameUI_Haptics_TabTitle");
+		}
 
 		// if (ModInfo.IsSinglePlayerOnly() && !ModInfo.NoDifficulty())
 			// AddPage(new OptionsSubDifficulty(this), "#GameUI_Difficulty");

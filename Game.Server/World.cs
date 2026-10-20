@@ -171,8 +171,8 @@ public class World : BaseEntity
 		g_EventQueue.Init();
 		Precache();
 
-		GlobalEntity.Add("is_console", gpGlobals.MapName, (IsConsole()) ? GlobalEState.On : GlobalEState.Off);
-		GlobalEntity.Add("is_pc", gpGlobals.MapName, (!IsConsole()) ? GlobalEState.On : GlobalEState.Off);
+		GlobalEntity.Add("is_console", gpGlobals.MapName, GlobalEState.Off);
+		GlobalEntity.Add("is_pc", gpGlobals.MapName, GlobalEState.On);
 	}
 
 	public static readonly new ServerClass ServerClass = new ServerClass(DT_WORLD);

@@ -732,7 +732,7 @@ public class TextEntry : Panel
 		bool winkey = Input.IsKeyDown(ButtonCode.KeyLWin) || Input.IsKeyDown(ButtonCode.KeyRWin);
 		bool fallThrough = false;
 
-		if ((ctrl || (winkey && IsOSX())) && !alt) {
+		if ((ctrl || (winkey && IsOSX)) && !alt) {
 			switch (code) {
 				case ButtonCode.KeyA:
 					SelectAllText(false);

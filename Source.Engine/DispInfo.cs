@@ -272,7 +272,7 @@ public class DispInfo : DispUtilsHelper, IDispInfo
 		MatSys.SurfSetupSurfaceContext(ref ctx, ref GetParent());
 #endif
 
-		if (IsPC() && restoring) {
+		if (restoring) {
 #if !SWDS
 			if (NumLightmaps() > 1)
 				BumpSTexCoordOffset = ctx.BumpSTexCoordOffset;
