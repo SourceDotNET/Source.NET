@@ -144,6 +144,12 @@ public unsafe class bf_read : BitBuffer
 			byte* pOut = pOutRO;
 			int nBitsLeft = nBits;
 
+			while (((nint)pOut & 3) != 0 && nBitsLeft >= 8) {
+				*pOut = (byte)ReadUBitLong(8);
+				++pOut;
+				nBitsLeft -= 8;
+			}
+
 			// read dwords
 			while (nBitsLeft >= 32) {
 				*(uint*)pOut = ReadUBitLong(32);
