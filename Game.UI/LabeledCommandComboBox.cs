@@ -72,6 +72,7 @@ public class LabeledCommandComboBox : ComboBox
 	}
 
 	readonly static KeyValues KV_ControlModified = new("ControlModified");
+	[UiMessage("TextChanged")]
 	public void OnTextChanged(ReadOnlySpan<char> text) {
 		text = text.SliceNullTerminatedString();
 		for (int i = 0; i < items.Count; i++) {
@@ -108,16 +109,5 @@ public class LabeledCommandComboBox : ComboBox
 	public void Reset() {
 		if (StartSelection != -1)
 			ActivateItem(StartSelection);
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "TextChanged":
-				OnTextChanged(message.GetString("text", ""));
-				return;
-			default:
-				base.OnMessage(message, sender);
-				return;
-		}
 	}
 }

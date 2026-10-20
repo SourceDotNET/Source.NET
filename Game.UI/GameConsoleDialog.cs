@@ -20,7 +20,4 @@ public class GameConsoleDialog : ConsoleDialog  {
 	readonly public IEngineClient engine = Singleton<IEngineClient>();
 
 	protected override void OnCommandSubmitted(ReadOnlySpan<char> command) => engine.ClientCmd_Unrestricted(command);
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		base.OnCommand(command);
-	}
 }

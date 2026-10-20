@@ -95,14 +95,9 @@ public class OptionsSubAudio : PropertyPage
 
 
 	static readonly KeyValues KV_ApplyButtonEnable = new("ApplyButtonEnable");
-	public void OnControlModified(Panel panel) {
+	[UiMessage("ControlModified")]
+	public void OnControlModified(Panel sender) {
 		PostActionSignal(KV_ApplyButtonEnable);
-	}
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		if (message.Name.Equals("ControlModified"))
-			OnControlModified((Panel)sender!);
-		else
-			base.OnMessage(message, sender);
 	}
 
 	public override void OnApplyChanges() {

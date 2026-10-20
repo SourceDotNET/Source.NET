@@ -208,6 +208,7 @@ public class CvarSlider : Slider
 	}
 
 	readonly static KeyValues KV_ControlModified = new("ControlModified");
+	[UiMessage("SliderMoved")]
 	public void OnSliderMoved() {
 		if (HasBeenModified()) {
 			if (LastSliderValue != GetValue()) {
@@ -219,22 +220,9 @@ public class CvarSlider : Slider
 		}
 	}
 
+	[UiMessage("SliderDragEnd")]
 	public void OnSliderDragEnd() {
 		if (!CreatedInCode)
 			ApplyChanges();
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? sender) {
-		switch (message.Name) {
-			case "SliderMoved":
-				OnSliderMoved();
-				break;
-			case "SliderDragEnd":
-				OnSliderDragEnd();
-				break;
-			default:
-				base.OnMessage(message, sender);
-				break;
-		}
 	}
 }
