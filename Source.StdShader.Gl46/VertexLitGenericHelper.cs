@@ -278,7 +278,7 @@ public partial class BaseVSShader
 					else
 						shaderShadow.EnableSRGBRead(Sampler.Sampler0, true);
 
-					if (IsOSX() && !HardwareConfig.CanDoSRGBReadFromRTs()) {
+					if (IsOSX && !HardwareConfig.CanDoSRGBReadFromRTs()) {
 						ITexture? baseTexture = parms[info.BaseTexture].GetTextureValue();
 						if (baseTexture != null && baseTexture.IsRenderTarget())
 							bSRGBInputAdapter = true;

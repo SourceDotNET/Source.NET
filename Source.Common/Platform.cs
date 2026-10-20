@@ -8,11 +8,11 @@ namespace Source;
 
 public static class PlatformMacros
 {
-	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsOSX()
+	public const bool IsOSX
 #if OSX
-		=> true;
+		= true;
 #else
-		=> false;
+		= false;
 #endif
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsPlatform64Bits() => IntPtr.Size == 8;
 
