@@ -193,10 +193,11 @@ public class Material : IMaterialInternal
 		Span<char> lowercased = stackalloc char[varName.Length];
 		varName.ToLowerInvariant(lowercased);
 		ReadOnlySpan<char> lowercasedROS = lowercased; // Need to make a version of that that works on Span...
-		foreach (var shaderParam in Vars) {
-			if (shaderParam.GetName().Hash() == lowercasedROS.Hash()) {
+		Span<IMaterialVar> vars = Vars;
+		for (int i = vars.Length; --i >= 0;) {
+			if (vars[i].GetName().Hash() == lowercasedROS.Hash()) {
 				found = true;
-				return shaderParam;
+				return vars[i];
 			}
 		}
 		found = false;
