@@ -190,12 +190,20 @@ public partial class C_BaseEntity : IClientEntity
 	public virtual bool IsBaseCombatWeapon() => false;
 	public virtual bool IsCombatItem() => false;
 
+	string? Classname;
+
 	public void SetClassname(ReadOnlySpan<char> classname) {
-		// todo
+		Classname = new(classname);
 	}
 
 	static readonly char[] GetClassname__outstr = new char[256];
 	public ReadOnlySpan<char> GetClassname() {
+		if (!string.IsNullOrEmpty(Classname))
+			return Classname;
+#if GMOD_DLL
+		if (!GetLuaScriptName().IsEmpty)
+			return GetLuaScriptName();
+#endif
 		GetClassname__outstr[0] = '\0';
 		bool gotname = false;
 		if (GetPredDescMap() != null) {

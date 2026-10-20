@@ -41,6 +41,12 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 			gGM.LoadGamemode(Gamemode, false);
 			gGM.SetGamemode(Gamemode, true);
 		}
+		RecacheMaterials();
+	}
+
+	static void RecacheMaterials() {
+		materials.UncacheAllMaterials();
+		materials.CacheUsedMaterials();
 	}
 	public override void Update(double frametime) {
 		// RemoveQueuedRenderTargets();

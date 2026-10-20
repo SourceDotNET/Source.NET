@@ -113,6 +113,7 @@ public class GarrysMod : IGarrysMod
 		// todo: convar defaults
 #endif
 #if CLIENT_DLL
+		MaterialProxyFactory.Init();
 		string absPath = $"{engine.GetGameDirectory()}/cache";
 #else // TODO: This is really stupid. Why is server different here in the interface. This deserves deviation.
 		Span<char> path = stackalloc char[MAX_PATH];

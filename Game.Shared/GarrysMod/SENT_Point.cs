@@ -1,4 +1,5 @@
-﻿#if (CLIENT_DLL || GAME_DLL) && GMOD_DLL
+﻿using Source.Common.Engine;
+#if (CLIENT_DLL || GAME_DLL) && GMOD_DLL
 using Source.Common;
 using Game.Shared;
 using Source;
@@ -71,11 +72,37 @@ public partial class
 		ScriptedEntity.StartLua();
 	}
 
+#if GAME_DLL
+	public override EdictFlags UpdateTransmitState() {
+		if (ScriptedEntity.StartFunction((int)LUA_POOLEDSTRING.UpdateTransmitState) && ScriptedEntity.Call(0, 1)) {
+			int transmit = g_Lua!.GetReturn(0).GetInt();
+			if (transmit == 0)
+				return SetTransmitState(EdictFlags.Always);
+			if (transmit != 1)
+				return SetTransmitState(EdictFlags.PVSCheck);
+		}
+		return SetTransmitState(EdictFlags.DontSend);
+	}
+#endif
+
 #if CLIENT_DLL
 	public override void OnDataChanged(DataUpdateType updateType) {
 		base.OnDataChanged(updateType);
 		if (updateType == DataUpdateType.Created)
 			ScriptedEntity.StartLua();
+	}
+
+	public override void Spawn() {
+		SetThink(Think);
+		SetNextThink(gpGlobals.CurTime + 0.1);
+		SetNextClientThink(CLIENT_THINK_ALWAYS);
+	}
+
+	public override void ClientThink() => ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.Think, false);
+
+	public override void Think() {
+		if (!ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.Think, true))
+			SetNextThink(gpGlobals.CurTime + 0.2);
 	}
 #endif
 }

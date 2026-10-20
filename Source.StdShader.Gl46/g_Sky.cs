@@ -1,13 +1,13 @@
 #if GMOD_DLL
 using Source.Common.MaterialSystem;
+using Source.Common.ShaderAPI;
 using Source.Common.ShaderLib;
 
 namespace Source.StdShader.Gl46;
 
-public class g_Sky : BaseVSShader
+public class g_sky : BaseVSShader
 {
-
-	public static string HelpString = "Help for g_Sky";
+	public static string HelpString = "Help for g_sky";
 	public static ShaderFlags Flags = ShaderFlags.None;
 	public static List<ShaderParam> ShaderParams = [];
 	public static ShaderParam[] ShaderParamOverrides = new ShaderParam[(int)ShaderMaterialVars.Count];
@@ -50,33 +50,23 @@ public class g_Sky : BaseVSShader
 		public ReadOnlySpan<char> GetHelp() => Info.Help;
 	}
 
-	public static readonly ShaderParam DETAIL = new($"${nameof(DETAIL)}", ShaderParamType.Texture, "shadertest/detail", "detail texture");
-	public static readonly ShaderParam DETAILSCALE = new($"${nameof(DETAILSCALE)}", ShaderParamType.Float, "4", "scale of the detail texture" );
-	public static readonly ShaderParam ENVMAP = new($"${nameof(ENVMAP)}", ShaderParamType.Texture, "shadertest/shadertest_env", "envmap" );
-	public static readonly ShaderParam ENVMAPFRAME = new($"${nameof(ENVMAPFRAME)}", ShaderParamType.Integer, "0", "" );
-	public static readonly ShaderParam ENVMAPMASK = new($"${nameof(ENVMAPMASK)}", ShaderParamType.Texture, "shadertest/shadertest_envmask", "envmap mask" );
-	public static readonly ShaderParam ENVMAPMASKFRAME = new($"${nameof(ENVMAPMASKFRAME)}", ShaderParamType.Integer, "0", "" );
-	public static readonly ShaderParam ENVMAPMASKSCALE = new($"${nameof(ENVMAPMASKSCALE)}", ShaderParamType.Float, "1", "envmap mask scale" );
-	public static readonly ShaderParam ENVMAPTINT = new($"${nameof(ENVMAPTINT)}", ShaderParamType.Color, "[1 1 1]", "envmap tint" );
-	public static readonly ShaderParam ENVMAPOPTIONAL = new($"${nameof(ENVMAPOPTIONAL)}", ShaderParamType.Bool, "0", "Make the envmap only apply to dx9 and higher hardware" );
-	public static readonly ShaderParam DETAILBLENDMODE = new($"${nameof(DETAILBLENDMODE)}", ShaderParamType.Integer, "0", "mode for combining detail texture with base. 0=normal, 1= additive, 2=alpha blend detail over base, 3=crossfade" );
-	public static readonly ShaderParam ALPHATESTREFERENCE = new($"${nameof(ALPHATESTREFERENCE)}", ShaderParamType.Float, "0.7", "" );
-	public static readonly ShaderParam OUTLINE = new($"${nameof(OUTLINE)}", ShaderParamType.Bool, "0", "Enable outline for distance coded textures.");
-	public static readonly ShaderParam OUTLINECOLOR = new($"${nameof(OUTLINECOLOR)}", ShaderParamType.Color, "[1 1 1]", "color of outline for distance coded images." );
-	public static readonly ShaderParam OUTLINESTART0 = new($"${nameof(OUTLINESTART0)}", ShaderParamType.Float, "0.0", "outer start value for outline");
-	public static readonly ShaderParam OUTLINESTART1 = new($"${nameof(OUTLINESTART1)}", ShaderParamType.Float, "0.0", "inner start value for outline");
-	public static readonly ShaderParam OUTLINEEND0 = new($"${nameof(OUTLINEEND0)}", ShaderParamType.Float, "0.0", "inner end value for outline");
-	public static readonly ShaderParam OUTLINEEND1 = new($"${nameof(OUTLINEEND1)}", ShaderParamType.Float, "0.0", "outer end value for outline");
-	public static readonly ShaderParam SEPARATEDETAILUVS = new($"${nameof(SEPARATEDETAILUVS)}", ShaderParamType.Integer, "0", "" );
+	public static readonly ShaderParam TOPCOLOR = new($"${nameof(TOPCOLOR)}", ShaderParamType.Vec3, "[0 0 1]", "");
+	public static readonly ShaderParam BOTTOMCOLOR = new($"${nameof(BOTTOMCOLOR)}", ShaderParamType.Vec3, "[0 1 1]", "");
+	public static readonly ShaderParam FADEBIAS = new($"${nameof(FADEBIAS)}", ShaderParamType.Float, "1.0", "");
+	public static readonly ShaderParam HDRSCALE = new($"${nameof(HDRSCALE)}", ShaderParamType.Float, "1.0", "");
+	public static readonly ShaderParam SUNNORMAL = new($"${nameof(SUNNORMAL)}", ShaderParamType.Vec3, "[0 1 0.5]", "");
+	public static readonly ShaderParam DUSKCOLOR = new($"${nameof(DUSKCOLOR)}", ShaderParamType.Vec3, "[1 0.4 0]", "");
+	public static readonly ShaderParam DUSKSCALE = new($"${nameof(DUSKSCALE)}", ShaderParamType.Float, "1.0", "");
+	public static readonly ShaderParam DUSKINTENSITY = new($"${nameof(DUSKINTENSITY)}", ShaderParamType.Float, "1.0", "");
+	public static readonly ShaderParam SUNCOLOR = new($"${nameof(SUNCOLOR)}", ShaderParamType.Vec3, "[1 1 1]", "");
+	public static readonly ShaderParam SUNSIZE = new($"${nameof(SUNSIZE)}", ShaderParamType.Float, "1", "");
+	public static readonly ShaderParam STARTEXTURE = new($"${nameof(STARTEXTURE)}", ShaderParamType.Texture, "skybox/stars", "");
+	public static readonly ShaderParam STARFADE = new($"${nameof(STARFADE)}", ShaderParamType.Float, "1", "");
+	public static readonly ShaderParam STARSCALE = new($"${nameof(STARSCALE)}", ShaderParamType.Float, "1", "");
+	public static readonly ShaderParam STARPOS = new($"${nameof(STARPOS)}", ShaderParamType.Float, "1", "");
+	public static readonly ShaderParam STARLAYERS = new($"${nameof(STARLAYERS)}", ShaderParamType.Integer, "0", "");
 
-
-	protected override void OnInitShaderParams(IMaterialVar[] vars, ReadOnlySpan<char> materialName) {
-		InitParamsUnlitGeneric((int)ShaderMaterialVars.BaseTexture, DETAILSCALE, ENVMAPOPTIONAL, ENVMAP, ENVMAPTINT, ENVMAPMASKSCALE, DETAILBLENDMODE);
-	}
-
-	public override string? GetFallbackShader(IMaterialVar[] vars) {
-		return null;
-	}
+	public override string? GetFallbackShader(IMaterialVar[] vars) => null;
 	public override ShaderFlags GetFlags() => Flags;
 	public override int GetNumParams() => base.GetNumParams() + ShaderParams.Count;
 	public override ReadOnlySpan<char> GetParamName(int paramIndex) {
@@ -107,17 +97,72 @@ public class g_Sky : BaseVSShader
 		else
 			return ShaderParams[paramIndex - baseClassParamCount].GetDefaultValue();
 	}
+
 	protected override void OnInitShaderInstance(IMaterialVar[] vars, ReadOnlySpan<char> materialName) {
-		InitUnlitGeneric((int)ShaderMaterialVars.BaseTexture, DETAIL, ENVMAP, ENVMAPMASK);
+		LoadTexture(STARTEXTURE);
 	}
+
 	protected override void OnDrawElements(IMaterialVar[] vars, IShaderDynamicAPI shaderAPI, VertexCompressionType vertexCompression) {
 		if (IsSnapshotting()) {
-			ShaderShadow.EnableDepthTest(false);
+			ShaderShadow.EnableDepthWrites(false);
+			ShaderShadow.VertexShaderVertexFormat(VertexFormat.Position, 1, null, 0);
+			ShaderShadow.EnableBlending(false);
+			ShaderShadow.BlendFunc(ShaderBlendFactor.One, ShaderBlendFactor.One);
+			if (!HardwareConfig.SupportsPixelShaders_2_b()) {
+				ShaderShadow.SetPixelShader("g_sky", 0);
+				ShaderShadow.SetVertexShader("g_sky", 0);
+				ShaderShadow.EnableTexture(Sampler.Sampler0, false);
+			}
+			else {
+				ShaderShadow.SetPixelShader("g_sky", vars[STARLAYERS].GetIntValue());
+				ShaderShadow.SetVertexShader("g_sky", 0);
+				ShaderShadow.EnableTexture(Sampler.Sampler0, true);
+				ShaderShadow.EnableSRGBRead(Sampler.Sampler0, false);
+			}
+			ShaderShadow.EnableSRGBWrite(true);
+			ShaderShadow.EnableAlphaWrites(true);
 		}
-		VertexShaderUnlitGenericPass((int)ShaderMaterialVars.BaseTexture, (int)ShaderMaterialVars.Frame, (int)ShaderMaterialVars.BaseTextureTransform,
-			DETAIL, DETAILSCALE, true, ENVMAP, ENVMAPFRAME, ENVMAPMASK,
-			ENVMAPMASKFRAME, ENVMAPMASKSCALE, ENVMAPTINT, ALPHATESTREFERENCE,
-			DETAILBLENDMODE, OUTLINE, OUTLINECOLOR, OUTLINESTART0, OUTLINEEND1, SEPARATEDETAILUVS, "unlitgeneric");
+		else {
+			shaderAPI.SetVertexShaderIndex(0);
+			shaderAPI.SetPixelShaderIndex(0);
+
+			Span<float> v = [0, 0, 0, 0];
+			shaderAPI.GetWorldSpaceCameraPosition(v);
+			shaderAPI.SetPixelShaderConstant(0, v, 1);
+
+			vars[TOPCOLOR].GetVecValue(v);
+			shaderAPI.SetPixelShaderConstant(1, v, 1);
+			vars[BOTTOMCOLOR].GetVecValue(v);
+			shaderAPI.SetPixelShaderConstant(2, v, 1);
+			shaderAPI.SetPixelShaderConstant(3, [vars[FADEBIAS].GetFloatValue(), 0, 0, 0], 1);
+
+			if (HardwareConfig.SupportsPixelShaders_2_0()) {
+				float hdrScale = vars[HDRSCALE].GetFloatValue();
+				if (HardwareConfig.GetHDRType() == HDRType.None)
+					hdrScale = 1.0f;
+				shaderAPI.SetPixelShaderConstant(4, [hdrScale, 0, 0, 0], 1);
+
+				vars[SUNNORMAL].GetVecValue(v);
+				shaderAPI.SetPixelShaderConstant(5, v, 1);
+				vars[DUSKCOLOR].GetVecValue(v);
+				shaderAPI.SetPixelShaderConstant(6, v, 1);
+				shaderAPI.SetPixelShaderConstant(7, [vars[DUSKSCALE].GetFloatValue(), 0, 0, 0], 1);
+				shaderAPI.SetPixelShaderConstant(8, [vars[DUSKINTENSITY].GetFloatValue(), 0, 0, 0], 1);
+				vars[SUNCOLOR].GetVecValue(v);
+				shaderAPI.SetPixelShaderConstant(9, v, 1);
+				shaderAPI.SetPixelShaderConstant(10, [vars[SUNSIZE].GetFloatValue(), 0, 0, 0], 1);
+				shaderAPI.SetPixelShaderConstant(11, [vars[STARFADE].GetFloatValue(), 0, 0, 0], 1);
+			}
+
+			if (HardwareConfig.SupportsPixelShaders_2_b()) {
+				float starScale = vars[STARSCALE].GetFloatValue();
+				if (starScale != 0.0f)
+					shaderAPI.SetPixelShaderConstant(12, [1.0f / starScale, 0, 0, 0], 1);
+				shaderAPI.SetPixelShaderConstant(13, [vars[STARPOS].GetFloatValue(), 0, 0, 0], 1);
+				BindTexture(Sampler.Sampler0, STARTEXTURE, -1);
+			}
+		}
+		Draw();
 	}
 }
 #endif

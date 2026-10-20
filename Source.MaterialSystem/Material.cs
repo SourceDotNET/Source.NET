@@ -1165,7 +1165,17 @@ public class Material : IMaterialInternal
 	}
 
 	private void CleanUpMaterialProxy() {
+		if (ProxyInfo.Count == 0)
+			return;
 
+		IMaterialProxyFactory? materialProxyFactory = materials.GetMaterialProxyFactory();
+		if (materialProxyFactory == null)
+			return;
+
+		for (int i = ProxyInfo.Count - 1; i >= 0; i--)
+			materialProxyFactory.DeleteProxy(ProxyInfo[i]);
+
+		ProxyInfo.Clear();
 	}
 
 	private void CleanUpShaderParams() {
