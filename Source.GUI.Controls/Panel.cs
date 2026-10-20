@@ -14,7 +14,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -160,68 +159,6 @@ public class PanelAnimationVarAttribute : Attribute
 		DefaultValue = defaultValue;
 		Type = type;
 	}
-
-	public static void InitVar(Type t, PanelAnimationVarAttribute attribute, FieldInfo field) {
-		PanelGetFunc get;
-		PanelSetFunc set;
-
-		{
-			DynamicMethod methodBuilder = new($"{t.Name}PanelAnim_GetVar_{field.Name}", typeof(object), [typeof(Panel)]);
-			var il = methodBuilder.GetILGenerator();
-			{
-				il.Emit(OpCodes.Ldarg_0);
-				il.Emit(OpCodes.Ldfld, field);
-				if (field.FieldType.IsValueType)
-					il.Emit(OpCodes.Box, field.FieldType);
-
-				il.Emit(OpCodes.Ret);
-			}
-			get = methodBuilder.CreateDelegate<PanelGetFunc>();
-		}
-
-		{
-			DynamicMethod methodBuilder = new($"{t.Name}PanelAnim_SetVar_{field.Name}", typeof(void), [typeof(Panel), typeof(object)]);
-			var il = methodBuilder.GetILGenerator();
-			{
-				il.Emit(OpCodes.Ldarg_0);
-				il.Emit(OpCodes.Ldarg_1);
-
-				if (field.FieldType.IsValueType)
-					il.Emit(OpCodes.Unbox_Any, field.FieldType);
-				else
-					il.Emit(OpCodes.Castclass, field.FieldType);
-
-				il.Emit(OpCodes.Stfld, field);
-
-				il.Emit(OpCodes.Ret);
-			}
-			set = methodBuilder.CreateDelegate<PanelSetFunc>();
-		}
-
-		Panel.AddToAnimationMap(
-			t,
-			attribute.Name ?? field.Name,
-			attribute.Type ?? (typedefs.TryGetValue(field.FieldType, out string? name) ? name : field.FieldType.Name),
-			field.Name,
-			attribute.DefaultValue,
-			false,
-			get,
-			set
-		);
-	}
-
-	static readonly Dictionary<Type, string> typedefs = new() {
-		{ typeof(sbyte), "sbyte" },
-		{ typeof(byte), "byte" },
-		{ typeof(short), "short" },
-		{ typeof(ushort), "ushort" },
-		{ typeof(int), "int" },
-		{ typeof(uint), "uint" },
-		{ typeof(long), "long" },
-		{ typeof(ulong), "ulong" },
-		{ typeof(float), "float" },
-		{ typeof(double), "double" }
-	};
 }
 
 public class Panel : IPanel
@@ -3264,13 +3201,7 @@ public class Panel : IPanel
 	}
 	public static void ChainToAnimationMap<T>() where T : Panel => ChainToAnimationMap(typeof(T));
 	public static void ChainToAnimationMap(Type t) {
-		foreach (var field in t.GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)) {
-			PanelAnimationVarAttribute? attr = field.GetCustomAttribute<PanelAnimationVarAliasTypeAttribute>() ?? field.GetCustomAttribute<PanelAnimationVarAttribute>();
-			if (attr == null)
-				continue;
-
-			PanelAnimationVarAttribute.InitVar(t, attr, field);
-		}
+		PanelRegistry.AddAnimationVars(t);
 
 		PanelAnimationMap map = PanelAnimationDictionary.FindOrAddPanelAnimationMap(t.Name);
 		map.ClassName = t.Name;
@@ -3281,50 +3212,31 @@ public class Panel : IPanel
 
 	public virtual PanelAnimationMap GetAnimMap() => PanelAnimationDictionary.FindOrAddPanelAnimationMap(GetType().Name);
 
-	delegate Panel CreatePanelFactoryFn();
-	static readonly ConcurrentDictionary<UtlSymId_t, CreatePanelFactoryFn> PanelFactories = [];
-	static readonly ConcurrentDictionary<UtlSymId_t, Type> PanelNames = [];
+	static readonly ConcurrentDictionary<UtlSymId_t, Func<Panel>> PanelFactories = [];
 
 	public static void InitializeControls() {
-		List<Type> list = [];
-
-		foreach (Type type in ReflectionUtils.GetLoadedTypes())
-			if (typeof(Panel).IsAssignableFrom(type))
-				list.Add(type);
+		foreach (Assembly assembly in ReflectionUtils.GetAssemblies())
+			RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
 
 		int count = 0;
-		Parallel.ForEach(list, type => {
-			ChainToAnimationMap(type);
-			//Msg($"VGUI: Initializing {type.Name}\n");
+		foreach (PanelRegistry.Entry entry in PanelRegistry.Entries) {
+			ChainToAnimationMap(entry.Type);
 
-			UtlSymbol nameSymbol = new(type.Name);
-			MethodInfo? method = type.GetMethod($"Create_{type.Name}", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-			if (method != null)
-				PanelFactories[nameSymbol] = method.CreateDelegate<CreatePanelFactoryFn>();
-
-			PanelNames[nameSymbol] = type;
-
-			PanelAliasAttribute? aliasAttr = type.GetCustomAttribute<PanelAliasAttribute>();
-			if (aliasAttr != null) {
-				UtlSymbol aliasSymbol = new(aliasAttr.Alias);
-				PanelNames[aliasSymbol] = type;
-				if (method != null)
-					PanelFactories[aliasSymbol] = method.CreateDelegate<CreatePanelFactoryFn>();
+			if (entry.Factory != null) {
+				PanelFactories[new UtlSymbol(entry.Name)] = entry.Factory;
+				if (entry.Alias != null)
+					PanelFactories[new UtlSymbol(entry.Alias)] = entry.Factory;
 			}
 
-			Interlocked.Increment(ref count);
-		});
+			count++;
+		}
 
 		Msg($"Initialized {count} VGUI controls in all currently loaded assemblies\n");
 	}
 
 	public static Panel? InstancePanel(ReadOnlySpan<char> className) {
-		UtlSymbol sym = new(className);
-		if (PanelFactories.TryGetValue(sym, out CreatePanelFactoryFn? fn))
+		if (PanelFactories.TryGetValue(new UtlSymbol(className), out Func<Panel>? fn))
 			return fn();
-
-		if (PanelNames.TryGetValue(sym, out Type? t))
-			return (Panel)Activator.CreateInstance(t)!;
 
 		return null;
 	}
