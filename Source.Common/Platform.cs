@@ -14,7 +14,6 @@ public static class PlatformMacros
 #else
 		= false;
 #endif
-	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsPlatform64Bits() => IntPtr.Size == 8;
 
 	public const int MAX_PATH = 260;
 	public const int MAX_OSPATH = 260;
