@@ -772,6 +772,13 @@ public class TextEntry : Panel
 					GotoWordLeft();
 					break;
 
+				case ButtonCode.KeyBackspace:
+					if (GetSelectedRange(out _, out _))
+						DeleteSelected();
+					else
+						DeleteWordLeft();
+					break;
+
 				case ButtonCode.KeyEnter:
 					if (Multiline) {
 						DeleteSelected();
@@ -985,6 +992,39 @@ public class TextEntry : Panel
 		LayoutVerticalScrollBarSlider();
 		ResetCursorBlink();
 		Repaint();
+	}
+
+	enum CharClass { Whitespace, Word, Punctuation }
+
+	static CharClass GetCharClass(char ch) {
+		if (char.IsWhiteSpace(ch))
+			return CharClass.Whitespace;
+		if (char.IsLetterOrDigit(ch) || ch == '_')
+			return CharClass.Word;
+		return CharClass.Punctuation;
+	}
+
+	private int FindWordLeft(int pos) {
+		while (pos > 0 && GetCharClass(TextStream[pos - 1]) == CharClass.Whitespace)
+			pos--;
+
+		if (pos > 0) {
+			CharClass charClass = GetCharClass(TextStream[pos - 1]);
+			while (pos > 0 && GetCharClass(TextStream[pos - 1]) == charClass)
+				pos--;
+		}
+
+		return pos;
+	}
+
+		private void DeleteWordLeft() {
+		int start = FindWordLeft(CursorPos);
+		if (start == CursorPos)
+			return;
+
+		Select[0] = start;
+		Select[1] = CursorPos;
+		DeleteSelected();
 	}
 
 	private void ScrollLeft() {
