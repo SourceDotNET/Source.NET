@@ -686,8 +686,13 @@ public static partial class LuaGlobalFunctions
 	static float RealTime() => (float)gpGlobals.RealTime;
 #endif
 
+#if MENU_DLL
+	[LuaGlobal]
+	static double FrameTime() => OverlayPanel.FrameTime;
+#else
 	[LuaGlobal]
 	static float FrameTime() => (float)gpGlobals.FrameTime;
+#endif
 
 #if !MENU_DLL
 	[LuaGlobal]

@@ -226,10 +226,12 @@ public class MSurfaceSortList
 	public List<SurfaceSortGroup> GetSortList(int sortGroup) => SortGroupLists[sortGroup];
 
 	public void GetSurfaceListForGroup(List<SurfaceHandle_t> list, in SurfaceSortGroup group) {
-		for (short blockIndex = group.ListHead; blockIndex != -1; blockIndex = GetSurfaceBlock(blockIndex).NextBlock) {
-			ref MaterialList matList = ref GetSurfaceBlock(blockIndex);
+		Span<MaterialList> blocks = List.AsSpan();
+		for (short blockIndex = group.ListHead; blockIndex != -1;) {
+			ref MaterialList matList = ref blocks[blockIndex];
 			for (int index = 0; index < matList.Count; ++index)
 				list.Add((SurfaceHandle_t)matList.Surfaces[index]);
+			blockIndex = matList.NextBlock;
 		}
 	}
 

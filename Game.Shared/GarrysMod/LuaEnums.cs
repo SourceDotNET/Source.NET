@@ -1959,6 +1959,16 @@ public class LuaEnums : LuaUser
 		global.SetMemberDouble("RIGHT", 3.0);
 		global.SetMemberDouble("FILL", 1.0);
 
+		global.SetMemberDouble("BOTTOM_LEFT", 1.0);
+		global.SetMemberDouble("BOTTOM_CENTER", 2.0);
+		global.SetMemberDouble("BOTTOM_RIGHT", 3.0);
+		global.SetMemberDouble("MIDDLE_LEFT", 4.0);
+		global.SetMemberDouble("CENTER", 5.0);
+		global.SetMemberDouble("MIDDLE_RIGHT", 6.0);
+		global.SetMemberDouble("TOP_LEFT", 7.0);
+		global.SetMemberDouble("TOP_CENTER", 8.0);
+		global.SetMemberDouble("TOP_RIGHT", 9.0);
+
 #if MENU_DLL
 		global.SetMember("MENU_DLL", true);
 #else

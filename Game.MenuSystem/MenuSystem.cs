@@ -65,6 +65,25 @@ public class MenuSystem : IMenuSystem
 		hook.UnReference();
 	}
 
+	internal static void RunHook(LUA_POOLEDSTRING name) {
+		if (g_Lua == null || g_Lua.Global() == null)
+			return;
+
+		LuaObject hook = new();
+		g_Lua.Global().GetMember("hook", hook);
+		if (hook.isTable()) {
+			LuaObject run = new();
+			hook.GetMember("Run", run);
+			if (run.isFunction()) {
+				run.Push();
+				g_Lua.PushPooledString((int)name);
+				g_Lua.CallInternalNoReturns(1);
+			}
+			run.UnReference();
+		}
+		hook.UnReference();
+	}
+
 	public void Think() {
 		if (g_Lua != null && g_Lua.Global() != null) {
 			g_Lua.Cycle();
@@ -254,6 +273,12 @@ public class MenuSystem : IMenuSystem
 			g_Lua.CallInternalNoReturns(3);
 		}
 		func.UnReference();
+#endif
+	}
+
+	public void OnPauseMenuBlockedTooManyTimes() {
+#if MENU_DLL
+		CallHook("OnPauseMenuBlockedTooManyTimes");
 #endif
 	}
 

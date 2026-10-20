@@ -64,8 +64,8 @@ public static partial class LuaVGUI
 			return 1;
 
 		if (panel != null) {
-			string? key = lua.GetString(2);
-			if (key != null && key.Length == 1) {
+			ReadOnlySpan<byte> key = lua.GetStringBytes(2);
+			if (key.Length == 1) {
 				if (key[0] == 'x' || key[0] == 'X') {
 					panel.GetPos(out int x, out _);
 					lua.PushNumber(x);
@@ -88,7 +88,7 @@ public static partial class LuaVGUI
 			lua.Error("Tried to use a NULL Panel!");
 			return 0;
 		}
-		panel.PaintManual(lua.GetType(2) != LuaType.Nil &&lua.GetBool(2));
+		panel.PaintManual(lua.GetType(2) != LuaType.Nil && lua.GetBool(2));
 		return 0;
 	}
 
@@ -112,13 +112,13 @@ public static partial class LuaVGUI
 		ILuaObject key = lua.GetObject(2)!;
 		if (key.isString()) {
 			ILuaObject value = lua.GetObject(3)!;
-			string? name = key.GetString();
-			if (name == "x" || name == "X") {
+			ReadOnlySpan<byte> name = lua.GetStringBytes(2);
+			if (name.Length == 1 && (name[0] == 'x' || name[0] == 'X')) {
 				panel.GetPos(out _, out int y);
 				panel.SetPos((int)value.GetFloat(), y);
 				return 0;
 			}
-			if (name == "y" || name == "Y") {
+			if (name.Length == 1 && (name[0] == 'y' || name[0] == 'Y')) {
 				panel.GetPos(out int x, out _);
 				panel.SetPos(x, (int)value.GetFloat());
 				return 0;
@@ -904,7 +904,6 @@ public static partial class LuaVGUI
 		return 1;
 	}
 
-#if !MENU_DLL
 	[LuaMethod]
 	static int Panel__UpdateHTMLTexture(ILuaInterface lua) {
 		Panel? panel = (Panel?)PanelClass.Get(1);
@@ -918,6 +917,7 @@ public static partial class LuaVGUI
 		return 0;
 	}
 
+#if !MENU_DLL
 	[LuaMethod]
 	static int Panel__GetHTMLMaterial(ILuaInterface lua) {
 		Panel? panel = (Panel?)PanelClass.Get(1);

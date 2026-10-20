@@ -46,11 +46,12 @@ public class LuaClass
 	}
 
 	public object? Get(int stackPos) {
-		if (!g_Lua!.IsType(stackPos, Type)) {
+		object? obj = g_Lua!.GetObjectUserType<object>(stackPos, Type);
+		if (obj == null && !g_Lua.IsType(stackPos, Type)) {
 			g_Lua.TypeError(Name, stackPos);
 			return null;
 		}
-		return g_Lua.GetObjectUserType<object>(stackPos, Type);
+		return obj;
 	}
 
 	public ref T GetValue<T>(int stackPos) where T : unmanaged {

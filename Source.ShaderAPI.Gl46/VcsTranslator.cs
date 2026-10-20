@@ -346,7 +346,7 @@ internal sealed class VcsTranslator
 		if (pixel)
 			head.Append("layout(std140, binding = 3) uniform source_pixel_sharedUBO { bool isAlphaTesting; int alphaTestFunc; float alphaTestRef; };\nlayout(std140, binding = 6) uniform source_ps_constants { vec4 ps_const[256]; };\nlayout(location = 0) out vec4 oC0;\n");
 		else
-			head.Append("layout(std140, binding = 0) uniform source_matrices { mat4 viewMatrix; mat4 projectionMatrix; mat4 modelMatrix; };\nlayout(std140, binding = 5) uniform source_vs_constants { vec4 vs_const[256]; };\n");
+			head.Append("layout(std140, binding = 0) uniform source_matrices { mat4 viewMatrix; mat4 projectionMatrix; mat4 modelMatrix; };\nlayout(std140, binding = 5) uniform source_vs_constants { vec4 vs_const[256]; };\nout gl_PerVertex { vec4 gl_Position; };\n");
 
 		StringBuilder body = new("void main() {\n");
 		body.Append(pixel

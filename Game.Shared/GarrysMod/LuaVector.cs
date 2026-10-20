@@ -23,7 +23,11 @@ public static partial class LuaVector
 
 	public static void Push_Vector(in Vector3 vec) => g_Lua!.PushVector(in vec);
 
-	static char FirstChar(ReadOnlySpan<char> str) => str.IsEmpty ? '\0' : str[0];
+	static char FirstChar(int stackPos) {
+		g_Lua!.CheckType(stackPos, LuaType.String);
+		ReadOnlySpan<byte> str = g_Lua.GetStringBytes(stackPos);
+		return str.IsEmpty ? '\0' : (char)str[0];
+	}
 
 	[LuaMethod]
 	static int Vector____index(ILuaInterface lua) {
@@ -38,7 +42,7 @@ public static partial class LuaVector
 				return 0;
 		}
 		else {
-			switch (FirstChar(g_Lua.CheckString(2))) {
+			switch (FirstChar(2)) {
 				case 'X': case 'r': case 'x': index = 0; break;
 				case 'Y': case 'g': case 'y': index = 1; break;
 				case 'Z': case 'b': case 'z': index = 2; break;
@@ -62,7 +66,7 @@ public static partial class LuaVector
 				return 0;
 		}
 		else {
-			switch (FirstChar(g_Lua.CheckString(2))) {
+			switch (FirstChar(2)) {
 				case 'X': case 'r': case 'x': index = 0; break;
 				case 'Y': case 'g': case 'y': index = 1; break;
 				case 'Z': case 'b': case 'z': index = 2; break;

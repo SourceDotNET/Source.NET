@@ -74,7 +74,7 @@ public class Image : ITextureRegenerator
 			return false;
 		}
 
-		byte[] data = new byte[size];
+		byte[] data = GC.AllocateUninitializedArray<byte>((int)size);
 		file.Stream.ReadExactly(data);
 		file.Dispose();
 
