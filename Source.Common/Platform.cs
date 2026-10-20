@@ -8,7 +8,6 @@ namespace Source;
 
 public static class PlatformMacros
 {
-	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsConsole() => false;
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsX360() => false;
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsRetail() => false;
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsOSX()

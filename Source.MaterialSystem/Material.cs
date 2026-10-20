@@ -1008,7 +1008,7 @@ public class Material : IMaterialInternal
 			else if (0 == stricmp(cond, "360"))
 				shouldSkip = !IsX360();
 			else if (0 == stricmp(cond, "gameconsole"))
-				shouldSkip = !IsConsole();
+				shouldSkip = true;
 			else
 				Warning($"unrecognized conditional test {varName} in {GetName()}\n");
 

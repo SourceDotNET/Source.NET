@@ -219,7 +219,7 @@ public class HudCredits : Panel, IHudElement
 						LastOneInPlace = true;
 
 						// 360 certification requires that we not hold a static image too long.
-						FadeTime = gpGlobals.CurTime + (IsConsole() ? 2.0f : 10.0f);
+						FadeTime = gpGlobals.CurTime + 10.0f;
 					}
 				}
 				else {
