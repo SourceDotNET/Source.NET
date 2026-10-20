@@ -578,7 +578,7 @@ public unsafe class bf_read : BitBuffer
 		bool bTooSmall = false;
 		int iChar = 0;
 		while (true) {
-			char val = (char)ReadChar();
+			char val = (char)ReadByte();
 			if (val == 0)
 				break;
 			else if (bLine && val == '\n')
