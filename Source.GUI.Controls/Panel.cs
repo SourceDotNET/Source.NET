@@ -3186,7 +3186,7 @@ public class Panel : IPanel
 	}
 
 	public static void AddToAnimationMap(Type t, ReadOnlySpan<char> scriptName, ReadOnlySpan<char> type, ReadOnlySpan<char> var, ReadOnlySpan<char> defaultValue, bool array, PanelGetFunc get, PanelSetFunc set) {
-		PanelAnimationMap map = PanelAnimationDictionary.FindOrAddPanelAnimationMap(t.Name);
+		PanelAnimationMap map = PanelAnimationDictionary.FindOrAddPanelAnimationMap(t.FullName);
 
 		PanelAnimationMapEntry entry = new() {
 			ScriptName = new string(scriptName),
@@ -3203,14 +3203,14 @@ public class Panel : IPanel
 	public static void ChainToAnimationMap(Type t) {
 		PanelRegistry.AddAnimationVars(t);
 
-		PanelAnimationMap map = PanelAnimationDictionary.FindOrAddPanelAnimationMap(t.Name);
+		PanelAnimationMap map = PanelAnimationDictionary.FindOrAddPanelAnimationMap(t.FullName);
 		map.ClassName = t.Name;
 		Type? baseClass = t.BaseType;
 		if (baseClass?.IsAssignableTo(typeof(Panel)) ?? false)
-			map.BaseMap = PanelAnimationDictionary.FindOrAddPanelAnimationMap(baseClass.Name);
+			map.BaseMap = PanelAnimationDictionary.FindOrAddPanelAnimationMap(baseClass.FullName);
 	}
 
-	public virtual PanelAnimationMap GetAnimMap() => PanelAnimationDictionary.FindOrAddPanelAnimationMap(GetType().Name);
+	public virtual PanelAnimationMap GetAnimMap() => PanelAnimationDictionary.FindOrAddPanelAnimationMap(GetType().FullName);
 
 	static readonly ConcurrentDictionary<UtlSymId_t, Func<Panel>> PanelFactories = [];
 
