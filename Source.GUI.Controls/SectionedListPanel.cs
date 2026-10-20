@@ -1263,13 +1263,13 @@ public class SectionedListPanel : Panel
 		ColorOverrides.Add(newOverride);
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name.Equals("ScrollBarSliderMoved")) {
 			OnSliderMoved();
 			return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 
 	internal bool IsClickable() => Clickable;

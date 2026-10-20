@@ -213,12 +213,12 @@ public class MenuButton : Button
 		return Menu;
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name == "MenuClose") {
 			OnMenuClose();
 			return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 }

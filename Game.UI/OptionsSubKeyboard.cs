@@ -332,13 +332,13 @@ public class OptionsSubKeyboard : PropertyPage
 		OptionsSubKeyboardAdvancedDlg.Activate();
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name == "ItemSelected") {
 			ItemSelected(message.GetInt("itemID", -1));
 			return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 }
 

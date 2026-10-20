@@ -87,12 +87,12 @@ public class OptionsDialog : PropertyDialog
 		}
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name == "GameUIHidden") {
 			OnGameUIHidden();
 			return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 }

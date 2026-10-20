@@ -224,7 +224,7 @@ public class CvarSlider : Slider
 			ApplyChanges();
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "SliderMoved":
 				OnSliderMoved();
@@ -233,7 +233,7 @@ public class CvarSlider : Slider
 				OnSliderDragEnd();
 				break;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				break;
 		}
 	}

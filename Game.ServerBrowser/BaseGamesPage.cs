@@ -1137,7 +1137,7 @@ public class BaseGamesPage : PropertyPage, IGameList
 	public virtual bool SupportsItem(IGameList.InterfaceItem item) => false;
 	public virtual void OnOpenContextMenu(int itemID) { }
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "OpenContextMenu":
 				OnOpenContextMenu(message.GetInt("itemID"));
@@ -1161,13 +1161,13 @@ public class BaseGamesPage : PropertyPage, IGameList
 				OnRefreshServer(message.GetInt("serverID"));
 				return;
 			case "TextChanged":
-				OnTextChanged((Panel)from!, message.GetString("text"));
+				OnTextChanged((Panel)sender!, message.GetString("text"));
 				break;
 			case "ButtonToggled":
-				OnButtonToggled((Panel)from!, message.GetInt("state"));
+				OnButtonToggled((Panel)sender!, message.GetInt("state"));
 				break;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				break;
 		}
 	}

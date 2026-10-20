@@ -582,7 +582,7 @@ public class BuildModeDialog : Frame
 
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "ApplyDataToControls": ApplyDataToControls(); return;
 			case "TextChanged": OnTextChanged((Panel)message.GetPtr("panel")!); return;

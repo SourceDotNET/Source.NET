@@ -550,10 +550,10 @@ class OptionsSubVideoAdvancedDlg : Frame
 		return false;
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "TextChanged":
-				OnTextChanged((Panel)from!);
+				OnTextChanged((Panel)sender!);
 				break;
 			case "GameUIHidden":
 				OnGameUIHidden();
@@ -565,7 +565,7 @@ class OptionsSubVideoAdvancedDlg : Frame
 				OK_Confirmed();
 				break;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				break;
 		}
 	}
@@ -932,13 +932,13 @@ public class OptionsSubVideo : PropertyPage
 		throw new NotImplementedException();
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "ControlModified":
 				OnDataChanged();
 				break;
 			case "TextChanged":
-				OnTextChanged((Panel)from!);
+				OnTextChanged((Panel)sender!);
 				break;
 			case "OpenAdvanced":
 				OpenAdvanced();
@@ -953,7 +953,7 @@ public class OptionsSubVideo : PropertyPage
 			// 	OpenThirdPartyVideoCreditsDialog();
 			// 	break;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				break;
 		}
 	}

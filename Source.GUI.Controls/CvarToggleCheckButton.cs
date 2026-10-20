@@ -96,7 +96,7 @@ public class CvarToggleCheckButton : CheckButton
 		}
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "CheckButtonChecked":
 				OnButtonChecked();
@@ -105,7 +105,7 @@ public class CvarToggleCheckButton : CheckButton
 				ApplyChanges();
 				break;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				break;
 		}
 	}

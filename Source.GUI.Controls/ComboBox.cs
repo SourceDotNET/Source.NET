@@ -459,7 +459,7 @@ public class ComboBox : TextEntry
 	public virtual void OnShowMenu(Menu menu) { }
 	public virtual void OnHideMenu() { }
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "MenuItemSelected":
 				OnMenuItemSelected();
@@ -474,7 +474,7 @@ public class ComboBox : TextEntry
 				ActivateItem(message.GetInt("itemID", -1));
 				break;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				break;
 		}
 	}

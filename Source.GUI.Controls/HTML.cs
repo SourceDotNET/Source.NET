@@ -975,7 +975,7 @@ public class HTML : Panel
 		InvalidateLayout();
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "ScrollBarSliderMoved":
 				OnSliderMoved();
@@ -987,16 +987,16 @@ public class HTML : Panel
 				OnFileSelectionCancelled();
 				break;
 			case "TextChanged":
-				OnTextChanged((Panel)from!);
+				OnTextChanged((Panel)sender!);
 				break;
 			case "TextNewLine":
-				OnEditNewLine((Panel)from!);
+				OnEditNewLine((Panel)sender!);
 				break;
 			case "DismissJSDialog":
 				DismissJSDialog(message.GetInt("result", 0));
 				break;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				break;
 		}
 	}

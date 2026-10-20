@@ -244,12 +244,12 @@ public class RadioButton : ToggleButton
 		return bestRadio;
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name == "RadioButtonChecked") {
 			OnRadioButtonChecked(message.GetInt("tabposition", -1));
 			return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 }

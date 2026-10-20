@@ -170,12 +170,12 @@ public class PropertyDialog : Frame
 		PropertySheet!.RequestFocus(direction);
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name == "ApplyButtonEnable") {
 			OnApplyButtonEnable();
 			return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 }

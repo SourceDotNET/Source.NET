@@ -617,14 +617,14 @@ public class ConsolePanel : EditablePanel, IConsoleDisplayFunc
 		CompletionList.SetVisible(false);
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "CloseCompletionList":
 				OnCloseCompletionList();
 				return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 
 	public bool TextEntryHasFocus() => Input.GetFocus() == Entry;
@@ -811,7 +811,7 @@ public class ConsoleDialog : Frame
 	}
 #endif
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "CommandSubmitted":
 				OnCommandSubmitted(message.GetString("command"));
@@ -826,7 +826,7 @@ public class ConsoleDialog : Frame
 #endif
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 
 #if GMOD_DLL

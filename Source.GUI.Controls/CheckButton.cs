@@ -149,12 +149,12 @@ public class CheckButton : ToggleButton
 		}
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name == "CheckButtonChecked") {
-			OnCheckButtonChecked((Panel)from!);
+			OnCheckButtonChecked((Panel)sender!);
 			return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 }

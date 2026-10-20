@@ -92,12 +92,12 @@ public class CvarNegateCheckButton : CheckButton
 			PostActionSignal(KV_ControlModified);
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name.Equals("CheckButtonChecked", StringComparison.OrdinalIgnoreCase)) {
 			OnButtonChecked();
 			return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 }

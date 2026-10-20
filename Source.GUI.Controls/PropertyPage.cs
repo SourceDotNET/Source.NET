@@ -39,7 +39,7 @@ public class PropertyPage : EditablePanel
 		base.SetVisible(state);
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "ApplyChanges":
 				OnApplyChanges();
@@ -57,7 +57,7 @@ public class PropertyPage : EditablePanel
 				OnPageTabActivated((Panel)message.GetPtr("Panel")!);
 				break;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				break;
 		}
 	}

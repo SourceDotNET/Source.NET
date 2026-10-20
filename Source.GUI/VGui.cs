@@ -185,7 +185,7 @@ public class VGui : IVGui
 					Input.UpdateCursorPosInternal(xpos, ypos);
 				}
 
-				messageItem.To?.SendMessage(parms, messageItem.From);
+				messageItem.To?.SendMessage(parms, messageItem.Sender);
 			}
 			passCount += 1;
 			if (passCount == 1)
@@ -196,7 +196,7 @@ public class VGui : IVGui
 		return doneWork;
 	}
 
-	public void PostMessage(IPanel? target, KeyValues parms, IPanel? from, double delay = 0, MessageItemType type = MessageItemType.TargettingPanel) {
+	public void PostMessage(IPanel? target, KeyValues parms, IPanel? sender, double delay = 0, MessageItemType type = MessageItemType.TargettingPanel) {
 		if (IsReentrant()) {
 			Assert(false);
 			return;
@@ -209,7 +209,7 @@ public class VGui : IVGui
 		messageItem.To = target;
 
 		messageItem.Params = parms;
-		messageItem.From = from;
+		messageItem.Sender = sender;
 		messageItem.ArrivalTime = 0;
 		messageItem.MessageID = CurrentMessageID++;
 		messageItem.Special = type;

@@ -232,7 +232,7 @@ class ServerBrowserDialog : Frame
 
 	public override void OnKeyCodePressed(ButtonCode code) { }
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "PageChanged":
 				OnGameListChanged();
@@ -250,7 +250,7 @@ class ServerBrowserDialog : Frame
 				OnLoadingStarted();
 				break;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				break;
 		}
 	}

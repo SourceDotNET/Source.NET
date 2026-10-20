@@ -296,13 +296,13 @@ public class ScrollBar : Panel
 		UpdateSliderImages();
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "ScrollBarSliderMoved":
 				OnSliderMoved(message.GetInt("position"));
 				break;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				break;
 		}
 	}

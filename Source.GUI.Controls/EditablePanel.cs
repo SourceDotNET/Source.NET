@@ -371,7 +371,7 @@ public class EditablePanel : Panel
 		}
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "DefaultButtonSet":
 				OnDefaultButtonSet((Panel)message.GetPtr("button")!);
@@ -383,7 +383,7 @@ public class EditablePanel : Panel
 				OnFindDefaultButton();
 				break;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				break;
 		}
 	}

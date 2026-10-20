@@ -56,12 +56,12 @@ class ScrollableEditablePanel : EditablePanel
 		ScrollBar.SetValue(val);
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name == "ScrollBarSliderMoved") {
 			OnScrollBarSliderMoved();
 			return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 }

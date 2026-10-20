@@ -806,11 +806,11 @@ public class BaseHudChat : EditableHudElement
 		engine.ClientCmd_Unrestricted(buf[..writePtr]);
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "ChatEntryStopMessageMode": StopMessageMode(); break;
 			case "ChatEntrySend": Send(); break;
-			default: base.OnMessage(message, from); break;
+			default: base.OnMessage(message, sender); break;
 		}
 	}
 

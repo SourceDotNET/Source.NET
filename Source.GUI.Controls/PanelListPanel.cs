@@ -302,12 +302,12 @@ public class PanelListPanel : EditablePanel
 		InvalidateLayout();
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name.Equals("ScrollBarSliderMoved")) {
 			OnSliderMoved(message.GetInt("position", 0));
 			return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 }

@@ -871,13 +871,13 @@ public class PropertySheet : EditablePanel
 			CallParentFunction(new KeyValues("Command", "command", command));
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "TabPressed":
-				OnTabPressed((Panel)from!);
+				OnTabPressed((Panel)sender!);
 				return;
 			case "TextChanged":
-				OnTextChanged((Panel)from!, message.GetString("text", ""));
+				OnTextChanged((Panel)sender!, message.GetString("text", ""));
 				return;
 			case "OpenContextMenu":
 				OnOpenContextMenu(message);
@@ -895,7 +895,7 @@ public class PropertySheet : EditablePanel
 				OnFindDefaultButton();
 				return;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				return;
 		}
 	}

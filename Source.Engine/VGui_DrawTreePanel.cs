@@ -203,12 +203,12 @@ public class DrawTreeFrame : Frame
 			DrawTreeSelectedPanel = (Panel?)data.GetPtr("PanelPtr");
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name == "TreeViewItemSelected") {
 			RecalculateSelectedHighlight();
 			return;
 		}
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 
 	static readonly KeyValues KV_Command_PerformLayout = new("Command", "command", "performlayout");

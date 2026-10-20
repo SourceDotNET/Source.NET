@@ -153,12 +153,12 @@ public class OptionsSubMouse : PropertyPage
 		JoyPitchSensitivityPreLabel.SetEnabled(joystickEnabled);
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name.Equals("ControlModified"))
-			OnControlModified((Panel)from!);
+			OnControlModified((Panel)sender!);
 		else if (message.Name.Equals("CheckButtonChecked"))
-			OnControlModified((Panel)from!);
+			OnControlModified((Panel)sender!);
 		else
-			base.OnMessage(message, from);
+			base.OnMessage(message, sender);
 	}
 }

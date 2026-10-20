@@ -24,7 +24,7 @@ public class URLButton : Label
 		}
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "PressButton":
 				DoClick();
@@ -36,7 +36,7 @@ public class URLButton : Label
 				OnSetState(message.GetInt("state", 0));
 				return;
 			default:
-				base.OnMessage(message, from);
+				base.OnMessage(message, sender);
 				return;
 		}
 	}

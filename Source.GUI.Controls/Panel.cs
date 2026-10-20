@@ -3005,7 +3005,7 @@ public class Panel : IPanel
 
 	public bool IsConsoleStylePanel() => false; // todo
 
-	public virtual void OnMessage(KeyValues message, IPanel? from) {
+	public virtual void OnMessage(KeyValues message, IPanel? sender) {
 		switch (message.Name) {
 			case "KeyCodePressed": InternalKeyCodePressed((ButtonCode)message.GetInt("code")); break;
 			case "KeyCodeTyped": InternalKeyCodeTyped((ButtonCode)message.GetInt("code")); break;
@@ -3036,13 +3036,13 @@ public class Panel : IPanel
 #endif
 #if DEBUG
 			default:
-				DevMsg(3, $"Unhandled message '{message.Name}' from {from}");
+				DevMsg(3, $"Unhandled message '{message.Name}' from {sender}");
 				break;
 #endif
 		}
 		if (vgui_print_messages.GetBool())
 			if (vgui_print_messages.GetInt() == 2 || (!message.Name.Contains("Ticked") && !message.Name.Contains("Moved")))
-				Msg($"Message from {from} to {this}: {message.Name}\n");
+				Msg($"Message from {sender} to {this}: {message.Name}\n");
 	}
 
 	public virtual void OnTextChanged(Panel from) {
@@ -3062,8 +3062,8 @@ public class Panel : IPanel
 
 	public virtual void OnMove() { }
 
-	public void SendMessage(KeyValues parms, IPanel? from) {
-		OnMessage(parms, from);
+	public void SendMessage(KeyValues parms, IPanel? sender) {
+		OnMessage(parms, sender);
 	}
 
 	public void SetAllowKeyBindingChainToParent(bool state) {

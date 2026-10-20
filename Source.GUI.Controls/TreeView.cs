@@ -34,12 +34,12 @@ class TreeNodeText : TextEntry
 		GetParent()!.InvalidateLayout();
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name == "TextChanged") {
-			OnTextChanged((Panel)from!);
+			OnTextChanged((Panel)sender!);
 			return;
 		}
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 
 	public override bool IsKeyRebound(ButtonCode code, KeyModifier modifiers) {
@@ -947,12 +947,12 @@ public class TreeNode : Panel
 		return count;
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name == "LabelChanged") {
 			OnLabelChanged(message);
 			return;
 		}
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 }
 
@@ -1691,12 +1691,12 @@ public class TreeView : Panel
 	virtual public void GenerateChildrenOfNode(int itemIndex) { }
 	virtual public void GenerateContextMenu(int itemIndex, int x, int y) { }
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
+	public override void OnMessage(KeyValues message, IPanel? sender) {
 		if (message.Name == "SliderMoved") {
 			OnSliderMoved(message.GetInt("position", 0));
 			return;
 		}
 
-		base.OnMessage(message, from);
+		base.OnMessage(message, sender);
 	}
 }
