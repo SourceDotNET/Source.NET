@@ -1015,10 +1015,8 @@ public class EngineVGui(
 			}
 		}
 
-#if WIN32
-		if (code == ButtonCode.KeyBackquote && (IsAltKeyDown() || IsCtrlKeyDown()))
+		if (IsWindows && code == ButtonCode.KeyBackquote && (IsAltKeyDown() || IsCtrlKeyDown()))
 			return true;
-#endif
 
 		if (down && code == ButtonCode.KeyEscape && !clientDLL.HandleUiToggle()) {
 			if (IsGameUIVisible()) {

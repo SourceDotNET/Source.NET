@@ -274,17 +274,9 @@ public class KeyValues : IEnumerable<KeyValues>
 			return !bNot;
 
 		if (str.Contains("$WINDOWS", StringComparison.OrdinalIgnoreCase))
-#if WIN32
-			return !bNot;
-#else
-			return bNot;
-#endif
+			return IsWindows ? !bNot : bNot;
 		if (str.Contains("$OSX", StringComparison.OrdinalIgnoreCase))
-#if OSX
-			return !bNot;
-#else
-			return bNot;
-#endif
+			return IsOSX ? !bNot : bNot;
 		if (str.Contains("$LINUX", StringComparison.OrdinalIgnoreCase))
 #if LINUX
 			return !bNot;
@@ -292,11 +284,7 @@ public class KeyValues : IEnumerable<KeyValues>
 			return bNot;
 #endif
 		if (str.Contains("$POSIX", StringComparison.OrdinalIgnoreCase))
-#if OSX || LINUX
-			return !bNot;
-#else
-			return bNot;
-#endif
+			return IsPosix ? !bNot : bNot;
 
 		return false;
 	}

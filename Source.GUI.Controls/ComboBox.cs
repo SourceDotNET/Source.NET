@@ -18,11 +18,10 @@ class ComboBoxButton : Button
 		SetFont(scheme.GetFont("Marlett", IsProportional()));
 		SetContentAlignment(Alignment.West);
 
-#if OSX
-		SetTextInset(-3, 0);
-#else
-		SetTextInset(QuickPropScale(3), 0);
-#endif
+		if (IsOSX)
+			SetTextInset(-3, 0);
+		else
+			SetTextInset(QuickPropScale(3), 0);
 		SetDefaultBorder(scheme.GetBorder("ScrollBarButtonBorder"));
 
 		SetDefaultColor(GetSchemeColor("ComboBoxButton.ArrowColor", scheme), GetSchemeColor("ComboBoxButton.BgColor", scheme));
