@@ -300,9 +300,6 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 	}
 
 	private ITexture? CreatePowerOfTwoFBTexture() {
-		if (IsX360())
-			return null;
-
 		return materials.CreateNamedRenderTargetTextureEx2(
 			"_rt_PowerOfTwoFB",
 			1024, 1024, RenderTargetSizeMode.Default,
@@ -388,10 +385,6 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 			strcpy(textureName, MaterialDefines.FULL_FRAME_FRAMEBUFFER);
 
 		CreateRenderTargetFlags rtFlags = extraFlags | CreateRenderTargetFlags.HDR;
-		if (IsX360()) {
-			// just make the system memory texture only
-			rtFlags |= CreateRenderTargetFlags.NoEDRAM;
-		}
 		return materials.CreateNamedRenderTargetTextureEx2(
 			textureName.SliceNullTerminatedString(),
 			1, 1, RenderTargetSizeMode.FullFrameBuffer, materials.GetBackBufferFormat(),
@@ -401,14 +394,7 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 	}
 
 	private ITexture? CreateFullFrameDepthTexture() {
-		if (IsX360()) {
-			return materials.CreateNamedRenderTargetTextureEx2("_rt_FullFrameDepth", 1, 1,
-				RenderTargetSizeMode.FullFrameBuffer, materials.GetShadowDepthTextureFormat(), MaterialRenderTargetDepth.None,
-				TextureFlags.ClampS | TextureFlags.ClampT | TextureFlags.PointSample,
-				CreateRenderTargetFlags.NoEDRAM);
-		}
-		else
-			materials.AddTextureAlias("_rt_FullFrameDepth", "_rt_PowerOfTwoFB");
+		materials.AddTextureAlias("_rt_FullFrameDepth", "_rt_PowerOfTwoFB");
 
 		return null;
 	}
