@@ -120,9 +120,9 @@ public class RadioButton : ToggleButton
 				Panel? radioParent = GetParent();
 				if (radioParent != null) {
 					for (int i = 0; i < radioParent.GetChildCount(); i++) {
-						RadioButton? child = (RadioButton)radioParent.GetChild(i);
-						if (child != null && child != this)
-							child.PostMessage(radioParent, msg.MakeCopy());
+						Panel child = radioParent.GetChild(i);
+						if (child != this)
+							PostMessage(child, msg.MakeCopy());
 					}
 				}
 
