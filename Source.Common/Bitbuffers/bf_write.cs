@@ -631,11 +631,9 @@ public unsafe class bf_write : BitBuffer
 
 		if (!str.IsEmpty) {
 			var i = 0;
-			if (str.Length != 0) {
-				do {
-					WriteChar(str[i]);
-					i++;
-				} while (i < str.Length && str[i] != '\0'); // Stop at any null terminator
+			while (i < str.Length && str[i] != '\0') { // Stop at any null terminator
+				WriteByte((byte)str[i]);
+				i++;
 			}
 			if (nullTerminate)
 				WriteChar(0); // null terminate
