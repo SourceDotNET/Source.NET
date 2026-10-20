@@ -718,7 +718,7 @@ public class GameServer : BaseServer
 #elif LINUX
 		ev.SetString( "os", "LINUX" );
 #elif OSX
-		ev.etString( "os", "OSX" );
+		ev.SetString( "os", "OSX" );
 #else
 #error Please define your platform
 #endif
