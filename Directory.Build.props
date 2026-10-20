@@ -49,8 +49,15 @@
 	</PropertyGroup>
 
 	<PropertyGroup>
-		<Platforms>x64</Platforms>
-		<PlatformTarget>x64</PlatformTarget>
+		<HostArchitecture>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)</HostArchitecture>
+		<Platforms Condition="'$(HostArchitecture)' == 'Arm64'">x64;arm64</Platforms>
+		<Platforms Condition="'$(HostArchitecture)' != 'Arm64'">x64</Platforms>
+		<PlatformTarget Condition="'$(PlatformTarget)' == '' And '$(HostArchitecture)' == 'Arm64'">arm64</PlatformTarget>
+		<PlatformTarget Condition="'$(PlatformTarget)' == ''">x64</PlatformTarget>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="$(MSBuildProjectName.StartsWith('Source.CodeAnalysis'))">
+		<PlatformTarget>AnyCPU</PlatformTarget>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="!$(MSBuildProjectName.StartsWith('Source.CodeAnalysis'))">
