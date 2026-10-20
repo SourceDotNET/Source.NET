@@ -444,6 +444,19 @@ public struct PropTypeFns
 	}
 	#endregion
 	#region SendPropType.String
+	static bool AreBitsDifferent(bf_read buf1, bf_read buf2, int bits) {
+		int dwords = bits >> 5;
+		bool diff = false;
+		for (int i = 0; i < dwords; i++)
+			diff |= buf1.ReadUBitLong(32) != buf2.ReadUBitLong(32);
+
+		int remainingBits = bits - (dwords << 5);
+		if (remainingBits > 0)
+			diff |= buf1.ReadUBitLong(remainingBits) != buf2.ReadUBitLong(remainingBits);
+
+		return diff;
+	}
+
 	public static int String_CompareDeltas(SendProp prop, bf_read p1, bf_read p2) {
 		int len1 = (int)p1.ReadUBitLong(Constants.DT_MAX_STRING_BITS);
 		int len2 = (int)p2.ReadUBitLong(Constants.DT_MAX_STRING_BITS);
@@ -452,7 +465,7 @@ public struct PropTypeFns
 			if (len1 == 0)
 				return 0;
 
-			return p1.CompareBits(p2, len1 * 8) ? 1 : 0;
+			return AreBitsDifferent(p1, p2, len1 * 8) ? 1 : 0;
 		}
 		else {
 			p1.SeekRelative(len1 * 8);

@@ -750,6 +750,8 @@ public unsafe class bf_read : BitBuffer
 	public uint ReadUBitLong(uint bits) => ReadUBitLong((int)bits); // macro
 
 	public uint ReadUBitLong(int bits) {
+		Assert(bits > 0 && bits <= 32);
+
 		if (BitsLeft < bits) {
 			curBit = dataBits;
 			TriggerOverflow();
