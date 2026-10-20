@@ -525,8 +525,8 @@ public unsafe class bf_read : BitBuffer
 		// Read the two DWORDs according to network endian
 		short endianIndex = 0x0100;
 		byte* idx = (byte*)&endianIndex;
-		pLongs[*idx++] = ReadUBitLong(sizeof(long) << 3);
-		pLongs[*idx] = ReadUBitLong(sizeof(long) << 3);
+		pLongs[*idx++] = ReadUBitLong(sizeof(int) << 3);
+		pLongs[*idx] = ReadUBitLong(sizeof(int) << 3);
 
 		return retval;
 	}
