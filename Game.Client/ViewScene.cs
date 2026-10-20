@@ -26,7 +26,7 @@ public static class ViewScene
 	public static void UpdateRefractTexture(int x, int y, int w, int h, bool forceUpdate = false) {
 		Assert(!DrawingShadowDepthView());
 
-		if (!IsRetail() && !r_updaterefracttexture.GetBool())
+		if (!r_updaterefracttexture.GetBool())
 			return;
 
 		using MatRenderContextPtr renderContext = new(materials);
