@@ -54,13 +54,13 @@ class PropFadeUIPanel : PerfUIChildPanel
 		LoadControlSettings("Resource/PerfPropFadeUIPanel.res");
 	}
 
-	public override void OnTextChanged(Panel from) {
-		if (from == Visualization) {
+	public override void OnTextChanged(Panel sender) {
+		if (sender == Visualization) {
 			OnVisualizationSelected();
 			return;
 		}
 
-		if (from == MinScreenArea || from == MaxScreenArea) {
+		if (sender == MinScreenArea || sender == MaxScreenArea) {
 			Span<char> buff = stackalloc char[256];
 
 			float? minArea, maxArea;
@@ -205,13 +205,13 @@ class OcclusionUIPanel : PerfUIChildPanel
 		}
 	}
 
-	public override void OnTextChanged(Panel from) {
-		if (from == Visualization) {
+	public override void OnTextChanged(Panel sender) {
+		if (sender == Visualization) {
 			OnVisualizationSelected();
 			return;
 		}
 
-		if (from == MinOccluderArea || from == MaxOccluderArea) {
+		if (sender == MinOccluderArea || sender == MaxOccluderArea) {
 			Span<char> buff = stackalloc char[256];
 
 			float? minArea, maxArea;
@@ -333,8 +333,8 @@ class PerfUIPanel : Frame
 		base.OnTick();
 	}
 
-	public override void OnTextChanged(Panel from) {
-		if (from == PerformanceTool)
+	public override void OnTextChanged(Panel sender) {
+		if (sender == PerformanceTool)
 			OnPerfToolSelected();
 	}
 
