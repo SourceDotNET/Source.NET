@@ -9,8 +9,22 @@ public delegate bool MessageBoxFn(ReadOnlySpan<char> title, ReadOnlySpan<char> i
 
 public static class Platform
 {
+	public const bool IsWindows
+#if WIN32
+		= true;
+#else
+		= false;
+#endif
+
 	public const bool IsOSX
 #if OSX
+		= true;
+#else
+		= false;
+#endif
+
+	public const bool IsPosix
+#if POSIX
 		= true;
 #else
 		= false;
