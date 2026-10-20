@@ -43,7 +43,7 @@ class DialogServerPassword : Frame
 	public override void OnCommand(ReadOnlySpan<char> command) {
 		bool close = false;
 
-		if (command == "Connect") {
+		if (stricmp(command, "Connect") == 0) {
 			KeyValues msg = new("JoinServerWithPassword");
 			Span<char> buffer = stackalloc char[64];
 			PasswordEntry.GetText(buffer);
@@ -52,7 +52,7 @@ class DialogServerPassword : Frame
 			PostActionSignal(msg);
 			close = true;
 		}
-		else if (command == "Close")
+		else if (stricmp(command, "Close") == 0)
 			close = true;
 		else
 			base.OnCommand(command);

@@ -506,7 +506,7 @@ class OptionsSubVideoAdvancedDlg : Frame
 	}
 
 	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command == "OK") {
+		if (stricmp(command, "OK") == 0) {
 			if (RequiresRestart()) {
 				QueryBox box = new("#GameUI_SettingRequiresDisconnect_Title", "#GameUI_SettingRequiresDisconnect_Info");
 				box.AddActionSignalTarget(this);
