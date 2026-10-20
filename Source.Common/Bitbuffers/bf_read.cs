@@ -468,7 +468,7 @@ public unsafe class bf_read : BitBuffer
 		uint fractval = ReadUBitLong(NORMAL_FRACTIONAL_BITS);
 
 		// Calculate the correct floating point value
-		float value = fractval * NORMAL_RESOLUTION;
+		float value = (float)(fractval * NORMAL_RESOLUTION);
 
 		// Fixup the sign if negative.
 		if (signbit > 0)
