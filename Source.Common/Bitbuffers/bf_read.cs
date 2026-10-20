@@ -399,7 +399,7 @@ public unsafe class bf_read : BitBuffer
 		if (flags == 0)
 			return 0;
 
-		return ReadUBitLong(ReadBitCoordMP_numbits_table[flags - 1]) * 4 + flags;
+		return ReadUBitLong(ReadBitCoordBits_numbits_table[flags - 1]) * 4 + flags;
 	}
 
 	enum ReadBitCoordMPBitsFlags { INBOUNDS = 1, INTVAL = 2 };
