@@ -229,8 +229,8 @@ public partial class
 		if (weapon != null) {
 			BasePlayer? player = ToBasePlayer(weapon.GetOwner());
 			if (player != null) {
-				// recipients.SetOnly(player.GetClientIndex());
-				return data;
+				recipients.SetOnly(player.EntIndex() - 1);
+				return instance;
 			}
 		}
 
@@ -241,8 +241,8 @@ public partial class
 		if (weapon != null) {
 			BasePlayer? player = ToBasePlayer(weapon.GetOwner());
 			if (player != null) {
-				// recipients.SetOnly(player.GetClientIndex());
-				return data;
+				recipients.SetOnly(player.EntIndex() - 1);
+				return instance;
 			}
 		}
 
