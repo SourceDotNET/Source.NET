@@ -541,11 +541,11 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 		return CommandContext;
 	}
 
-	public override void Dispose() {
-		base.Dispose();
+	public override void Term() {
 		if (this == localPlayer) {
 			localPlayer = null;
 		}
+		base.Term();
 	}
 
 	public float GetStepSize() => Local.StepSize;
