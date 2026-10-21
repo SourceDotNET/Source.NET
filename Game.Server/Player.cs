@@ -2248,6 +2248,11 @@ public partial class BasePlayer : BaseCombatCharacter
 
 		// todo
 
+		for (int i = 0; i < WeaponCount(); i++) {
+			if (GetWeapon(i) != null)
+				GetWeapon(i)!.UpdateClientData(this);
+		}
+
 		// g_pGameRules.UpdateClientData(this);
 	}
 

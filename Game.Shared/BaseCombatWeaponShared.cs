@@ -381,16 +381,7 @@ public partial class
 	public virtual int DrawOverriddenViewmodel(BaseViewModel viewmodel, StudioFlags flags) => 0;
 	public virtual void ViewModelDrawn(BaseViewModel viewmodelflags) { }
 	public virtual int UpdateClientData(BasePlayer player) {
-		WeaponState iNewState = WeaponState.IsCarriedByPlayer;
-
-		if (player.GetActiveWeapon() == this) {
-			if (player.OnTarget)
-				iNewState = WeaponState.IsOnTarget;
-			else
-				iNewState = WeaponState.IsActive;
-		}
-		else
-			iNewState = WeaponState.IsCarriedByPlayer;
+		WeaponState iNewState = player.GetActiveWeapon() == this ? WeaponState.IsActive : WeaponState.IsCarriedByPlayer;
 
 		if (State != (int)iNewState) {
 			int iOldState = State;
