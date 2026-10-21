@@ -107,7 +107,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 		base.ResetLatched();
 	}
-	public bool IsRagdoll() => Ragdoll != null && RenderFX == (byte)RenderFx.Ragdoll;
+	public override bool IsRagdoll() => Ragdoll != null && RenderFX == (byte)RenderFx.Ragdoll;
 
 	public override ShadowType ShadowCastType() {
 		StudioHdr? studioHdr = GetModelPtr();

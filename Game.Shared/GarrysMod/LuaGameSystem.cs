@@ -1,3 +1,4 @@
+
 #if CLIENT_DLL || GAME_DLL
 using Game.Shared;
 
@@ -41,7 +42,8 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 			gGM.LoadGamemode(Gamemode, false);
 			gGM.SetGamemode(Gamemode, true);
 		}
-		RecacheMaterials();
+		// Currently breaking things, uncomment once the path is fully implemented.
+		// RecacheMaterials();
 	}
 
 	static void RecacheMaterials() {

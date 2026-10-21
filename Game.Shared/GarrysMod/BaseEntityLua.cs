@@ -49,6 +49,7 @@ public partial class
 	public virtual bool IsWeapon() => false;
 	public virtual bool IsVehicle() => false;
 	public virtual bool IsRagdollProp() => false;
+	public virtual bool IsRagdoll() => false;
 	public virtual bool IsJeep() => false;
 	public virtual void PostLuaSpawn() { }
 	public virtual ReadOnlySpan<char> GetLuaScriptName() => null;
