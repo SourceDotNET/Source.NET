@@ -562,7 +562,7 @@ public partial class BaseAnimating : BaseEntity
 		return false;
 	}
 
-	public bool IsRagdoll() => RenderFX == (byte)RenderFx.Ragdoll;
+	public override bool IsRagdoll() => RenderFX == (byte)RenderFx.Ragdoll;
 
 	public override void Teleport(Vector3? newPosition, QAngle? newAngles, Vector3? newVelocity) {
 		base.Teleport(newPosition, newAngles, newVelocity);

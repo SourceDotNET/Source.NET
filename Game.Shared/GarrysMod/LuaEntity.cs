@@ -629,6 +629,13 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__IsRagdoll(ILuaInterface lua) {
+		BaseEntity? ent = Get_Entity(1, true);
+		lua.PushBool(ent != null && ent.IsRagdoll());
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Entity__IsScripted(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		ReadOnlySpan<char> name = ent.GetLuaScriptName();
