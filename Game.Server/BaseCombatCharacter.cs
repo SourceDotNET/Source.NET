@@ -266,6 +266,28 @@ public partial class BaseCombatCharacter : BaseFlex
 
 		return instance;
 	}
+	public override void SetTransmit(CheckTransmitInfo info, bool always) {
+		if (info.TransmitEdict.Get(EntIndex()) != 0)
+			return;
+
+		base.SetTransmit(info, always);
+
+		if (info.ClientEnt == Edict()) {
+			for (int i = 0; i < MAX_WEAPONS; i++) {
+				BaseCombatWeapon? weapon = MyWeapons[i].Get();
+				if (weapon == null)
+					continue;
+
+				weapon.SetTransmit(info, always);
+			}
+		}
+		else {
+			BaseCombatWeapon? activeWeapon = ActiveWeapon.Get();
+			if (activeWeapon != null && !activeWeapon.IsEffectActive(EntityEffects.NoDraw))
+				activeWeapon.SetTransmit(info, always);
+		}
+	}
+
 	public void ClearLastKnownArea() {
 		// TODO
 	}

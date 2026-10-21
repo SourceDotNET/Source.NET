@@ -1327,7 +1327,7 @@ public partial class
 
 		Owner = EHANDLE.FromEntity(owner);
 #if !CLIENT_DLL
-		// DispatchUpdateTransmitState(); todo
+		DispatchUpdateTransmitState();
 #else
 		UpdateVisibility();
 #endif
