@@ -328,39 +328,91 @@ public partial class
 	}
 
 	[NetworkName("m_iClip1")]
+#if CLIENT_DLL
 	public int iClip1;
+#else
+	[NetworkVar] public partial int iClip1 { get; set; }
+#endif
 	[NetworkName("m_iClip2")]
+#if CLIENT_DLL
 	public int iClip2;
+#else
+	[NetworkVar] public partial int iClip2 { get; set; }
+#endif
 	[NetworkName("m_iPrimaryAmmoType")]
+#if CLIENT_DLL
 	public int PrimaryAmmoType;
+#else
+	[NetworkVar] public partial int PrimaryAmmoType { get; set; }
+#endif
 	[NetworkName("m_iSecondaryAmmoType")]
+#if CLIENT_DLL
 	public int SecondaryAmmoType;
+#else
+	[NetworkVar] public partial int SecondaryAmmoType { get; set; }
+#endif
 	/// <summary>
 	/// View model index (entity offset)
 	/// </summary>
 	[NetworkName("m_nViewModelIndex")]
+#if CLIENT_DLL
 	public int nViewModelIndex;
+#else
+	[NetworkVar] public partial int nViewModelIndex { get; set; }
+#endif
 	/// <summary>
 	/// View model index (art)
 	/// </summary>
 	[NetworkName("m_iViewModelIndex")]
+#if CLIENT_DLL
 	public int iViewModelIndex;
+#else
+	[NetworkVar] public partial int iViewModelIndex { get; set; }
+#endif
 	[NetworkName("m_iWorldModelIndex")]
+#if CLIENT_DLL
 	public int WorldModelIndex;
+#else
+	[NetworkVar] public partial int WorldModelIndex { get; set; }
+#endif
 	[NetworkName("m_bFlipViewModel")]
+#if CLIENT_DLL
 	public bool FlipViewModel;
+#else
+	[NetworkVar] public partial bool FlipViewModel { get; set; }
+#endif
 
 	[NetworkName("m_flNextPrimaryAttack")]
+#if CLIENT_DLL
 	public TimeUnit_t NextPrimaryAttack;
+#else
+	[NetworkVar] public partial TimeUnit_t NextPrimaryAttack { get; set; }
+#endif
 	[NetworkName("m_flNextSecondaryAttack")]
+#if CLIENT_DLL
 	public TimeUnit_t NextSecondaryAttack;
+#else
+	[NetworkVar] public partial TimeUnit_t NextSecondaryAttack { get; set; }
+#endif
 	[NetworkName("m_flTimeWeaponIdle")]
+#if CLIENT_DLL
 	public TimeUnit_t TimeWeaponIdle;
+#else
+	[NetworkVar] public partial TimeUnit_t TimeWeaponIdle { get; set; }
+#endif
 
 	[NetworkName("m_iState")]
+#if CLIENT_DLL
 	public int State;
+#else
+	[NetworkVar] public partial int State { get; set; }
+#endif
 	[NetworkName("m_hOwner")]
+#if CLIENT_DLL
 	public EHANDLE Owner = new();
+#else
+	[NetworkVar] public partial EHANDLE Owner { get; set; }
+#endif
 
 	Activity Activity;
 	int IdealSequence;
@@ -1273,7 +1325,7 @@ public partial class
 			SetContextThink(null, 0, HIDEWEAPON_THINK_CONTEXT);
 		}
 
-		Owner.Set(owner);
+		Owner = EHANDLE.FromEntity(owner);
 #if !CLIENT_DLL
 		// DispatchUpdateTransmitState(); todo
 #else

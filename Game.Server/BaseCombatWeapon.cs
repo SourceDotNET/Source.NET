@@ -34,6 +34,7 @@ public partial class BaseCombatWeapon : BaseAnimating
 	public override DataMap? GetDataDescMap() => DataDesc;
 
 	public BaseCombatWeapon() {
+		Owner = new();
 		OnBaseCombatWeaponCreated(this);
 	}
 
