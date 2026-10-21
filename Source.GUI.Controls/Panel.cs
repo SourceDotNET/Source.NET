@@ -310,6 +310,7 @@ public class Panel : IPanel
 	bool MouseInput;
 	bool KbInput;
 	bool TopmostPopup;
+	bool PopupStayAtBack;
 	[PanelAnimationVar("alpha", "255")] float Alpha;
 	IBorder? Border;
 	IScheme? Scheme;
@@ -1228,6 +1229,8 @@ public class Panel : IPanel
 	}
 
 	public bool IsTopmostPopup() => TopmostPopup;
+	public bool IsPopupStayAtBack() => PopupStayAtBack;
+	public void SetPopupStayAtBack(bool state) => PopupStayAtBack = state;
 
 	public bool IsVisible() {
 		return Visible;

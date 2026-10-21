@@ -1674,9 +1674,7 @@ public static partial class LuaVGUI
 
 	[LuaMethod]
 	static int Panel__SetPopupStayAtBack(ILuaInterface lua) {
-		Panel? panel = GetPanelOrError(lua);
-		if (panel != null && lua.GetBool(2))
-			Surface.MovePopupToBack(panel);
+		GetPanelOrError(lua)?.SetPopupStayAtBack(lua.GetBool(2));
 		return 0;
 	}
 

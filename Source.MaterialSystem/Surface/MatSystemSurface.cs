@@ -1071,6 +1071,9 @@ public class MatSystemSurface : IMatSystemSurface
 	}
 
 	public void MovePopupToFront(IPanel panel) {
+		if (panel.IsPopupStayAtBack())
+			return;
+
 		int index = PopupList.IndexOf(panel);
 		if (index == -1)
 			return;

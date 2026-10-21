@@ -853,7 +853,7 @@ public class Menu : Panel
 	}
 
 	public override void OnKillFocus(Panel? newPanel) {
-		if (newPanel == null || !HasParent(newPanel)) {
+		if (newPanel == null || !newPanel.HasParent(this)) {
 			if (!IsKeyboardInputEnabled() && newPanel == null)
 				return;
 

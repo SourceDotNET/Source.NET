@@ -713,9 +713,94 @@ public class RichText : Panel
 		return i;
 	}
 
-	//public override void OnKeyCodeTyped(ButtonCode code) // todo
-	//{
-	//}
+	public override void OnKeyCodeTyped(ButtonCode code) {
+		bool shift = Input.IsKeyDown(ButtonCode.KeyLShift) || Input.IsKeyDown(ButtonCode.KeyRShift);
+		bool ctrl = Input.IsKeyDown(ButtonCode.KeyLControl) || Input.IsKeyDown(ButtonCode.KeyRControl);
+		bool alt = Input.IsKeyDown(ButtonCode.KeyLAlt) || Input.IsKeyDown(ButtonCode.KeyRAlt);
+		bool winkey = Input.IsKeyDown(ButtonCode.KeyLWin) || Input.IsKeyDown(ButtonCode.KeyRWin);
+		bool fallThrough = false;
+
+		if (ctrl || (winkey && IsOSX)) {
+			switch (code) {
+				case ButtonCode.KeyA:
+					CursorPos = 0;
+					Select[0] = 0;
+					Select[1] = TextStream.Count;
+					return;
+
+				case ButtonCode.KeyInsert:
+				case ButtonCode.KeyC:
+				case ButtonCode.KeyX:
+					CopySelected();
+					return;
+
+				case ButtonCode.KeyPageUp:
+				case ButtonCode.KeyHome:
+					GotoTextStart();
+					break;
+
+				case ButtonCode.KeyPageDown:
+				case ButtonCode.KeyEnd:
+					GotoTextEnd();
+					break;
+
+				default:
+					fallThrough = true;
+					break;
+			}
+		}
+		else if (alt)
+			fallThrough = true;
+		else {
+			switch (code) {
+				case ButtonCode.KeyTab:
+				case ButtonCode.KeyLShift:
+				case ButtonCode.KeyRShift:
+				case ButtonCode.KeyEscape:
+				case ButtonCode.KeyEnter:
+					fallThrough = true;
+					break;
+
+				case ButtonCode.KeyDelete:
+					if (shift)
+						CopySelected();
+					break;
+
+				case ButtonCode.KeyHome:
+					GotoTextStart();
+					break;
+
+				case ButtonCode.KeyEnd:
+					GotoTextEnd();
+					break;
+
+				case ButtonCode.KeyPageUp:
+					if (VertScrollBar.IsVisible()) {
+						int window = VertScrollBar.GetRangeWindow();
+						int newval = VertScrollBar.GetValue();
+						VertScrollBar.SetValue(newval - window - 1);
+					}
+					break;
+
+				case ButtonCode.KeyPageDown:
+					if (VertScrollBar.IsVisible()) {
+						int window = VertScrollBar.GetRangeWindow();
+						int newval = VertScrollBar.GetValue();
+						VertScrollBar.SetValue(newval + window + 1);
+					}
+					break;
+
+				default:
+					return;
+			}
+		}
+
+		if (code != ButtonCode.KeyLControl && code != ButtonCode.KeyRControl)
+			Select[1] = CursorPos;
+
+		if (fallThrough)
+			base.OnKeyCodeTyped(code);
+	}
 
 	public bool GetSelectedRange(out int start, out int end) {
 		if (Select[0] == -1) {
@@ -966,6 +1051,7 @@ public class RichText : Panel
 		RequestFocus();
 	}
 
+	[UiMessage("DoCopySelected")]
 	public virtual void CopySelected() {
 		if (GetSelectedRange(out int x0, out int x1)) {
 			List<char> buf = [];
