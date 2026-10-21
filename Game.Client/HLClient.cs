@@ -549,7 +549,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 		// StopAllRumbleEffects();
 
-		// gHUD.LevelShutdown();
+		gHUD.LevelShutdown();
 
 #if GMOD_DLL
 		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
