@@ -3,32 +3,31 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TESpriteSpray>;
 [NetworkName("CTESpriteSpray")]
-public class C_TESpriteSpray : C_BaseTempEntity
+public partial class C_TESpriteSpray : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TESpriteSpray = new(DT_BaseTempEntity, [
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropVector(FIELD.OF(nameof(Direction))),
-		RecvPropInt(FIELD.OF(nameof(ModelIndex))),
-		RecvPropFloat(FIELD.OF(nameof(Noise))),
-		RecvPropInt(FIELD.OF(nameof(Speed))),
-		RecvPropInt(FIELD.OF(nameof(Count))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TESpriteSpray);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Direction)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(ModelIndex)) { Bits = 14 },
+		new(nameof(Noise)) { Bits = 8, Flags = PropFlags.RoundDown, Low = 0.0f, High = 2.56f },
+		new(nameof(Count)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Speed)) { Bits = 8, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_vecDirection")]
+	[NetworkVar("m_vecDirection")]
 	public Vector3 Direction;
-	[NetworkName("m_nModelIndex")]
+	[NetworkVar("m_nModelIndex")]
 	public int ModelIndex;
-	[NetworkName("m_fNoise")]
+	[NetworkVar("m_fNoise")]
 	public float Noise;
-	[NetworkName("m_nSpeed")]
-	public int Speed;
-	[NetworkName("m_nCount")]
+	[NetworkVar("m_nCount")]
 	public int Count;
+	[NetworkVar("m_nSpeed")]
+	public int Speed;
 }
 
 public static partial class TempEnts

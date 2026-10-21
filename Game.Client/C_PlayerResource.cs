@@ -10,42 +10,40 @@ using Source.Common.GarrysMod.Lua;
 
 using Game.Client.GarrysMod;
 
-using FIELD = Source.FIELD<C_PlayerResource>;
-
 public static class PlayerResourceGlobals
 {
 	public static C_PlayerResource? g_pPlayerResource;
 }
-[NetworkName("CPlayerResource")]
-public class C_PlayerResource : C_BaseEntity
+[NetworkName("CPlayerResource", NoBase = true)]
+public partial class C_PlayerResource : C_BaseEntity
 {
-	public static readonly RecvTable DT_PlayerResource = new([
-		RecvPropArray3(FIELD.OF_ARRAY(nameof(Ping)), RecvPropInt(FIELD.OF_ARRAYINDEX(nameof(Ping), 0))),
-		RecvPropArray3(FIELD.OF_ARRAY(nameof(Score)), RecvPropInt(FIELD.OF_ARRAYINDEX(nameof(Score), 0))),
-		RecvPropArray3(FIELD.OF_ARRAY(nameof(Deaths)), RecvPropInt(FIELD.OF_ARRAYINDEX(nameof(Deaths), 0))),
-		RecvPropArray3(FIELD.OF_ARRAY(nameof(Connected)), RecvPropInt(FIELD.OF_ARRAYINDEX(nameof(Connected), 0))),
-		RecvPropArray3(FIELD.OF_ARRAY(nameof(Team)), RecvPropInt(FIELD.OF_ARRAYINDEX(nameof(Team), 0))),
-		RecvPropArray3(FIELD.OF_ARRAY(nameof(Alive)), RecvPropInt(FIELD.OF_ARRAYINDEX(nameof(Alive), 0))),
-		RecvPropArray3(FIELD.OF_ARRAY(nameof(Health)), RecvPropInt(FIELD.OF_ARRAYINDEX(nameof(Health), 0))),
-		RecvPropArray3(FIELD.OF_ARRAY(nameof(Armor)), RecvPropInt(FIELD.OF_ARRAYINDEX(nameof(Armor)))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_PlayerResource);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Ping)) { Bits = 12, Flags = PropFlags.Unsigned },
+		new(nameof(Score)) { Bits = 32 },
+		new(nameof(Deaths)) { Bits = 32 },
+		new(nameof(Connected)) { Encoding = NetEncoding.Int, Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(Team)) { Bits = 16 },
+		new(nameof(Alive)) { Encoding = NetEncoding.Int, Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(Health)) { Bits = 32, Flags = PropFlags.VarInt | PropFlags.Unsigned | PropFlags.Normal },
+		new(nameof(Armor)) { Bits = 32, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_iPing")]
+	[NetworkVar("m_iPing")]
 	InlineArrayMaxPlayersPlusOne<int> Ping = new();
-	[NetworkName("m_iScore")]
+	[NetworkVar("m_iScore")]
 	InlineArrayMaxPlayersPlusOne<int> Score = new();
-	[NetworkName("m_iDeaths")]
+	[NetworkVar("m_iDeaths")]
 	InlineArrayMaxPlayersPlusOne<int> Deaths = new();
-	[NetworkName("m_bConnected")]
+	[NetworkVar("m_bConnected")]
 	InlineArrayMaxPlayersPlusOne<bool> Connected = new();
-	[NetworkName("m_iTeam")]
+	[NetworkVar("m_iTeam")]
 	InlineArrayMaxPlayersPlusOne<int> Team = new();
-	[NetworkName("m_bAlive")]
+	[NetworkVar("m_bAlive")]
 	InlineArrayMaxPlayersPlusOne<bool> Alive = new();
-	[NetworkName("m_iHealth")]
+	[NetworkVar("m_iHealth")]
 	new InlineArrayMaxPlayersPlusOne<int> Health = new();
-	[NetworkName("m_iArmor")]
+	[NetworkVar("m_iArmor")]
 	InlineArrayMaxPlayersPlusOne<int> Armor = new();
 
 	const string PLAYER_UNCONNECTED_NAME = "unconnected";

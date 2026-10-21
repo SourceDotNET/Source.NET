@@ -13,22 +13,6 @@ using Game.Shared;
 namespace Game.Server;
 #endif
 
-using Table =
-#if CLIENT_DLL
-	RecvTable;
-#else
-	SendTable;
-#endif
-
-using Class =
-#if CLIENT_DLL
-	ClientClass;
-#else
-	ServerClass;
-#endif
-
-using FIELD = Source.FIELD<BaseParticleEntity>;
-
 [NetworkName("CBaseParticleEntity")]
 public partial class
 #if CLIENT_DLL
@@ -37,8 +21,10 @@ public partial class
 	BaseParticleEntity : BaseEntity
 #endif
 {
-	public static Table DT_BaseParticleEntity = new(DT_BaseEntity, []);
-	public static readonly Class Class = new Class(DT_BaseParticleEntity);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 }
 
 #endif

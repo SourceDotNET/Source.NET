@@ -6,29 +6,28 @@ using Source.Common;
 using System.Numerics;
 
 namespace Game.Server;
-using FIELD = Source.FIELD<ShadowControl>;
 
 [LinkEntityToClass("shadow_control")]
-[NetworkName("CShadowControl")]
-public class ShadowControl : BaseEntity
+[NetworkName("CShadowControl", NoBase = true)]
+public partial class ShadowControl : BaseEntity
 {
-	public static readonly SendTable DT_ShadowControl = new([
-		SendPropVector(FIELD.OF(nameof(ShadowDirection)), -1, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(ShadowColor)), 32, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(ShadowMaxDist)), 0, PropFlags.NoScale),
-		SendPropBool(FIELD.OF(nameof(DisableShadows))),
-		SendPropBool(FIELD.OF(nameof(EnableLocalLightShadows))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_ShadowControl);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(ShadowDirection)) { Bits = -1, Flags = PropFlags.NoScale },
+		new(nameof(ShadowColor)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(ShadowMaxDist)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(DisableShadows),
+		nameof(EnableLocalLightShadows),
+	];
 
-	[NetworkName("m_shadowDirection")]
-	public Vector3 ShadowDirection;
-	[NetworkName("m_shadowColor")]
-	public Color ShadowColor;
-	[NetworkName("m_flShadowMaxDist")]
-	public float ShadowMaxDist;
-	[NetworkName("m_bDisableShadows")]
-	public bool DisableShadows;
-	[NetworkName("m_bEnableLocalLightShadows")]
-	public bool EnableLocalLightShadows;
+	[NetworkVar("m_shadowDirection")]
+	public partial Vector3 ShadowDirection { get; set; }
+	[NetworkVar("m_shadowColor")]
+	public partial Color ShadowColor { get; set; }
+	[NetworkVar("m_flShadowMaxDist")]
+	public partial float ShadowMaxDist { get; set; }
+	[NetworkVar("m_bDisableShadows")]
+	public partial bool DisableShadows { get; set; }
+	[NetworkVar("m_bEnableLocalLightShadows")]
+	public partial bool EnableLocalLightShadows { get; set; }
 }

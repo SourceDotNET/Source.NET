@@ -3,17 +3,21 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<EntityFlame>;
 [LinkEntityToClass("entityflame")]
 [LinkEntityToClass("env_entity_igniter")]
 [NetworkName("CEntityFlame")]
-public class EntityFlame : BaseEntity
+public partial class EntityFlame : BaseEntity
 {
-	public static readonly SendTable DT_EntityFlame = new(DT_BaseEntity, [
-		SendPropEHandle(FIELD.OF(nameof(EntAttached))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_EntityFlame);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(EntAttached),
+	];
 
-	[NetworkName("m_hEntAttached")]
-	public EHANDLE EntAttached = new();
+	public EntityFlame() {
+		EntAttached = new();
+	}
+
+
+	[NetworkVar("m_hEntAttached")]
+	public partial EHANDLE EntAttached { get; set; }
 }

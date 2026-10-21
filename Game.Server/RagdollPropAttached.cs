@@ -5,26 +5,24 @@ using System.Numerics;
 
 namespace Game.Server;
 
-using FIELD = FIELD<RagdollPropAttached>;
-
 [LinkEntityToClass("prop_ragdoll_attached")]
-[NetworkName("CRagdollPropAttached")]
-public class RagdollPropAttached : RagdollProp
+[NetworkName("CRagdollPropAttached", Table = "DT_Ragdoll_Attached")]
+public partial class RagdollPropAttached : RagdollProp
 {
-	[NetworkName("m_boneIndexAttached")]
-	public int BoneIndexAttached;
-	[NetworkName("m_ragdollAttachedObjectIndex")]
-	public int RagdollAttachedObjectIndex;
-	[NetworkName("m_attachmentPointBoneSpace")]
-	public Vector3 AttachmentPointBoneSpace;
-	[NetworkName("m_attachmentPointRagdollSpace")]
-	public Vector3 AttachmentPointRagdollSpace;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(BoneIndexAttached)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(RagdollAttachedObjectIndex)) { Bits = 6, Flags = PropFlags.Unsigned },
+		new(nameof(AttachmentPointBoneSpace)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(AttachmentPointRagdollSpace)) { Bits = 0, Flags = PropFlags.Coord },
+	];
 
-	public static readonly SendTable DT_Ragdoll_Attached = new(DT_Ragdoll, [
-		SendPropInt(FIELD.OF(nameof(BoneIndexAttached)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(RagdollAttachedObjectIndex)), 6, PropFlags.Unsigned),
-		SendPropVector(FIELD.OF(nameof(AttachmentPointBoneSpace)), 0, PropFlags.Coord),
-		SendPropVector(FIELD.OF(nameof(AttachmentPointRagdollSpace)), 0, PropFlags.Coord),
-	]);
-	public static new readonly ServerClass ServerClass = new ServerClass(DT_Ragdoll_Attached);
+	[NetworkVar("m_boneIndexAttached")]
+	public partial int BoneIndexAttached { get; set; }
+	[NetworkVar("m_ragdollAttachedObjectIndex")]
+	public partial int RagdollAttachedObjectIndex { get; set; }
+	[NetworkVar("m_attachmentPointBoneSpace")]
+	public partial Vector3 AttachmentPointBoneSpace { get; set; }
+	[NetworkVar("m_attachmentPointRagdollSpace")]
+	public partial Vector3 AttachmentPointRagdollSpace { get; set; }
 }

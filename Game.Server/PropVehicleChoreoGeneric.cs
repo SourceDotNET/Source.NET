@@ -5,59 +5,59 @@ using System.Numerics;
 
 namespace Game.Server;
 
-using FIELD = FIELD<PropVehicleChoreoGeneric>;
 
 [LinkEntityToClass("prop_vehicle_choreo_generic")]
 [NetworkName("CPropVehicleChoreoGeneric")]
-public class PropVehicleChoreoGeneric : DynamicProp
+public partial class PropVehicleChoreoGeneric : DynamicProp
 {
-	[NetworkName("m_hPlayer")]
-	public EHANDLE Player;
-	[NetworkName("m_bEnterAnimOn")]
-	public bool EnterAnimOn;
-	[NetworkName("m_bExitAnimOn")]
-	public bool ExitAnimOn;
-	[NetworkName("m_bForceEyesToAttachment")]
-	public bool ForceEyesToAttachment;
-	[NetworkName("m_vecEyeExitEndpoint")]
-	public Vector3 EyeExitEndpoint;
-	[NetworkName("m_vehicleView.bClampEyeAngles")]
-	public bool VehicleViewClampEyeAngles;
-	[NetworkName("m_vehicleView.flPitchCurveZero")]
-	public float VehicleViewPitchCurveZero;
-	[NetworkName("m_vehicleView.flPitchCurveLinear")]
-	public float VehicleViewPitchCurveLinear;
-	[NetworkName("m_vehicleView.flRollCurveZero")]
-	public float VehicleViewRollCurveZero;
-	[NetworkName("m_vehicleView.flRollCurveLinear")]
-	public float VehicleViewRollCurveLinear;
-	[NetworkName("m_vehicleView.flFOV")]
-	public float VehicleViewFOV;
-	[NetworkName("m_vehicleView.flYawMin")]
-	public float VehicleViewYawMin;
-	[NetworkName("m_vehicleView.flYawMax")]
-	public float VehicleViewYawMax;
-	[NetworkName("m_vehicleView.flPitchMin")]
-	public float VehicleViewPitchMin;
-	[NetworkName("m_vehicleView.flPitchMax")]
-	public float VehicleViewPitchMax;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Player),
+		nameof(EnterAnimOn),
+		nameof(ExitAnimOn),
+		nameof(ForceEyesToAttachment),
+		new(nameof(EyeExitEndpoint)) { Bits = 0, Flags = PropFlags.Coord },
+		nameof(VehicleViewClampEyeAngles),
+		new(nameof(VehicleViewPitchCurveZero)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewPitchCurveLinear)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewRollCurveZero)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewRollCurveLinear)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewFOV)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewYawMin)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewYawMax)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewPitchMin)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewPitchMax)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	public static readonly SendTable DT_PropVehicleChoreoGeneric = new(DT_DynamicProp, [
-		SendPropEHandle(FIELD.OF(nameof(Player))),
-		SendPropBool(FIELD.OF(nameof(EnterAnimOn))),
-		SendPropBool(FIELD.OF(nameof(ExitAnimOn))),
-		SendPropBool(FIELD.OF(nameof(ForceEyesToAttachment))),
-		SendPropVector(FIELD.OF(nameof(EyeExitEndpoint)), 0, PropFlags.Coord),
-		SendPropBool(FIELD.OF(nameof(VehicleViewClampEyeAngles))),
-		SendPropFloat(FIELD.OF(nameof(VehicleViewPitchCurveZero)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(VehicleViewPitchCurveLinear)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(VehicleViewRollCurveZero)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(VehicleViewRollCurveLinear)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(VehicleViewFOV)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(VehicleViewYawMin)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(VehicleViewYawMax)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(VehicleViewPitchMin)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(VehicleViewPitchMax)), 0, PropFlags.NoScale),
-	]);
-	public static new readonly ServerClass ServerClass = new ServerClass(DT_PropVehicleChoreoGeneric);
+	[NetworkVar("m_hPlayer")]
+	public partial EHANDLE Player { get; set; }
+	[NetworkVar("m_bEnterAnimOn")]
+	public partial bool EnterAnimOn { get; set; }
+	[NetworkVar("m_bExitAnimOn")]
+	public partial bool ExitAnimOn { get; set; }
+	[NetworkVar("m_bForceEyesToAttachment")]
+	public partial bool ForceEyesToAttachment { get; set; }
+	[NetworkVar("m_vecEyeExitEndpoint")]
+	public partial Vector3 EyeExitEndpoint { get; set; }
+	[NetworkVar("m_vehicleView.bClampEyeAngles")]
+	public partial bool VehicleViewClampEyeAngles { get; set; }
+	[NetworkVar("m_vehicleView.flPitchCurveZero")]
+	public partial float VehicleViewPitchCurveZero { get; set; }
+	[NetworkVar("m_vehicleView.flPitchCurveLinear")]
+	public partial float VehicleViewPitchCurveLinear { get; set; }
+	[NetworkVar("m_vehicleView.flRollCurveZero")]
+	public partial float VehicleViewRollCurveZero { get; set; }
+	[NetworkVar("m_vehicleView.flRollCurveLinear")]
+	public partial float VehicleViewRollCurveLinear { get; set; }
+	[NetworkVar("m_vehicleView.flFOV")]
+	public partial float VehicleViewFOV { get; set; }
+	[NetworkVar("m_vehicleView.flYawMin")]
+	public partial float VehicleViewYawMin { get; set; }
+	[NetworkVar("m_vehicleView.flYawMax")]
+	public partial float VehicleViewYawMax { get; set; }
+	[NetworkVar("m_vehicleView.flPitchMin")]
+	public partial float VehicleViewPitchMin { get; set; }
+	[NetworkVar("m_vehicleView.flPitchMax")]
+	public partial float VehicleViewPitchMax { get; set; }
+
 }

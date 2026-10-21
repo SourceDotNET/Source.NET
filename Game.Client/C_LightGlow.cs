@@ -4,42 +4,42 @@ using Source;
 using Source.Common;
 
 namespace Game.Client;
-using FIELD = FIELD<C_LightGlow>;
 
-[NetworkName("CLightGlow")]
-public class C_LightGlow : C_BaseEntity
+[NetworkName("CLightGlow", NoBase = true)]
+public partial class C_LightGlow : C_BaseEntity
 {
-	public static readonly RecvTable DT_LightGlow = new([
-		RecvPropInt(FIELD.OF(nameof(RenderColor)), 0, RecvProxy_IntToColor32),
-		RecvPropInt(FIELD.OF(nameof(HorizontalSize))),
-		RecvPropInt(FIELD.OF(nameof(VerticalSize))),
-		RecvPropInt(FIELD.OF(nameof(MinDist))),
-		RecvPropInt(FIELD.OF(nameof(MaxDist))),
-		RecvPropInt(FIELD.OF(nameof(OuterMaxDist))),
-		RecvPropInt(FIELD.OF(nameof(SpawnFlags))),
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropVector(FIELD.OF(nameof(Rotation))),
-		RecvPropEHandle(FIELD.OF(nameof(MoveParent))),
-		RecvPropFloat(FIELD.OF(nameof(GlowProxySize))),
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(RenderColor)) { Encoding = NetEncoding.Int, Proxy = typeof(Color32Proxy) },
+		nameof(HorizontalSize),
+		nameof(VerticalSize),
+		nameof(MinDist),
+		nameof(MaxDist),
+		nameof(OuterMaxDist),
+		nameof(SpawnFlags),
+		nameof(Origin),
+		nameof(Rotation),
+		new(nameof(NetworkMoveParent)) { Encoding = NetEncoding.Int, Proxy = typeof(MoveParentProxy) },
+		nameof(GlowProxySize),
 		// todo: RecvProxy_HDRColorScale
-		RecvPropFloat(FIELD.OF(nameof(HDRColorScale))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_LightGlow);
+		nameof(HDRColorScale),
+	];
 
-	[NetworkName("m_clrRender")]
+	[NetworkVar("m_clrRender")]
 	public Color RenderColor;
-	[NetworkName("m_nHorizontalSize")]
+	[NetworkVar("m_nHorizontalSize")]
 	public int HorizontalSize;
-	[NetworkName("m_nVerticalSize")]
+	[NetworkVar("m_nVerticalSize")]
 	public int VerticalSize;
-	[NetworkName("m_nMinDist")]
+	[NetworkVar("m_nMinDist")]
 	public int MinDist;
-	[NetworkName("m_nMaxDist")]
+	[NetworkVar("m_nMaxDist")]
 	public int MaxDist;
-	[NetworkName("m_nOuterMaxDist")]
+	[NetworkVar("m_nOuterMaxDist")]
 	public int OuterMaxDist;
-	[NetworkName("m_flGlowProxySize")]
+	[NetworkVar("m_flGlowProxySize")]
 	public float GlowProxySize;
+	[NetworkVar("HDRColorScale")]
 	public float HDRColorScale;
 }
 

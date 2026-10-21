@@ -10,6 +10,10 @@ namespace Game.Client;
 
 public partial class C_BaseCombatWeapon : C_BaseAnimating
 {
+	public C_BaseCombatWeapon() {
+		Owner = new();
+	}
+
 	public override bool IsBaseCombatWeapon() => true;
 	public override GarrysMod.LuaClass Lua_GetLuaClass() => GarrysMod.LuaEntity.LC_Weapon;
 	public bool Dropped;

@@ -4,17 +4,16 @@ using Source;
 
 namespace Game.Server;
 
-using FIELD = FIELD<RagdollManager>;
-
 [LinkEntityToClass("game_ragdoll_manager")]
-[NetworkName("CRagdollManager")]
-public class RagdollManager : BaseEntity
+[NetworkName("CRagdollManager", NoBase = true)]
+public partial class RagdollManager : BaseEntity
 {
-	[NetworkName("m_iCurrentMaxRagdollCount")]
-	public int CurrentMaxRagdollCount;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(CurrentMaxRagdollCount)) { Bits = 6 },
+	];
 
-	public static readonly SendTable DT_RagdollManager = new([
-		SendPropInt(FIELD.OF(nameof(CurrentMaxRagdollCount)), 6),
-	]);
-	public static new readonly ServerClass ServerClass = new ServerClass(DT_RagdollManager);
+	[NetworkVar("m_iCurrentMaxRagdollCount")]
+	public partial int CurrentMaxRagdollCount { get; set; }
+
 }

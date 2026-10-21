@@ -1,4 +1,5 @@
 using Source.Common;
+using Source.Common.Mathematics;
 using Source;
 
 using Game.Shared;
@@ -6,33 +7,35 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
 
-using FIELD = FIELD<RagdollProp>;
 [LinkEntityToClass("physics_prop_ragdoll")]
 [LinkEntityToClass("prop_ragdoll")]
-[NetworkName("CRagdollProp")]
-public class RagdollProp : BaseAnimating
+[NetworkName("CRagdollProp", Table = "DT_Ragdoll")]
+public partial class RagdollProp : BaseAnimating
 {
+	public RagdollProp() {
+		HUnragdoll = new();
+	}
+
 	const int RAGDOLL_MAX_ELEMENTS = 32;
-	public static readonly SendTable DT_Ragdoll = new(DT_BaseAnimating, [
-		.. Enumerable.Range(0, RAGDOLL_MAX_ELEMENTS).Select(i => SendPropVector(FIELD.OF_ARRAYINDEX(nameof(RagPos), i), -1, PropFlags.Coord)),
-		.. Enumerable.Range(0, RAGDOLL_MAX_ELEMENTS).Select(i => SendPropQAngles(FIELD.OF_ARRAYINDEX(nameof(RagAngles), i), 13, PropFlags.RoundDown)),
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(RagPos)) { Encoding = NetEncoding.Elements, Count = RAGDOLL_MAX_ELEMENTS, Bits = -1, Flags = PropFlags.Coord },
+		new(nameof(RagAngles)) { Encoding = NetEncoding.Elements, Count = RAGDOLL_MAX_ELEMENTS, Bits = 13, Flags = PropFlags.RoundDown },
+		nameof(HUnragdoll),
+		new(nameof(BlendWeight)) { Bits = 8, Flags = PropFlags.RoundDown, Low = 0.0f, High = 1.0f },
+		new(nameof(OverlaySequence)) { Bits = 11 },
+	];
 
-		SendPropEHandle(FIELD.OF(nameof(HUnragdoll))),
-		SendPropFloat(FIELD.OF(nameof(BlendWeight)), 8, PropFlags.RoundDown, 0.0f, 1.0f),
-		SendPropInt(FIELD.OF(nameof(OverlaySequence)), 11, 0),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_Ragdoll);
-
-	[NetworkName("m_ragPos[ {0} ]")]
-	public InlineArray32<Vector3> RagPos;
-	[NetworkName("m_ragAngles[ {0} ]")]
-	public InlineArray32<Vector3> RagAngles;
-	[NetworkName("m_hUnragdoll")]
-	public EHANDLE HUnragdoll = new();
-	[NetworkName("m_flBlendWeight")]
-	public float BlendWeight;
-	[NetworkName("m_nOverlaySequence")]
-	public int OverlaySequence;
+	[NetworkVar("m_ragPos[ {0} ]")]
+	public partial ref readonly InlineArray32<Vector3> RagPos { get; }
+	[NetworkVar("m_ragAngles[ {0} ]")]
+	public partial ref readonly InlineArray32<QAngle> RagAngles { get; }
+	[NetworkVar("m_hUnragdoll")]
+	public partial EHANDLE HUnragdoll { get; set; }
+	[NetworkVar("m_flBlendWeight")]
+	public partial float BlendWeight { get; set; }
+	[NetworkVar("m_nOverlaySequence")]
+	public partial int OverlaySequence { get; set; }
 
 	readonly Ragdoll ragdoll = new();
 	public Ragdoll GetRagdoll() => ragdoll;

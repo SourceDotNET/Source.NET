@@ -3,21 +3,20 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_NPC_AntlionGuard>;
 [NetworkName("CNPC_AntlionGuard")]
-public class C_NPC_AntlionGuard : C_AI_BaseNPC
+public partial class C_NPC_AntlionGuard : C_AI_BaseNPC
 {
-	public static readonly RecvTable DT_NPC_AntlionGuard = new(DT_AI_BaseNPC, [
-		RecvPropBool(FIELD.OF(nameof(CavernBreed))),
-		RecvPropBool(FIELD.OF(nameof(InCavern))),
-		RecvPropInt(FIELD.OF(nameof(BleedingLevel))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_NPC_AntlionGuard);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(CavernBreed),
+		nameof(InCavern),
+		new(nameof(BleedingLevel)) { Bits = 2, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_bCavernBreed")]
+	[NetworkVar("m_bCavernBreed")]
 	public bool CavernBreed;
-	[NetworkName("m_bInCavern")]
+	[NetworkVar("m_bInCavern")]
 	public bool InCavern;
-	[NetworkName("m_iBleedingLevel")]
+	[NetworkVar("m_iBleedingLevel")]
 	public int BleedingLevel;
 }

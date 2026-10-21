@@ -3,22 +3,21 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEBeamRingPoint>;
 [NetworkName("CTEBeamRingPoint")]
-public class C_TEBeamRingPoint : C_BaseBeam
+public partial class C_TEBeamRingPoint : C_BaseBeam
 {
-	public static readonly RecvTable DT_TEBeamRingPoint = new(DT_BaseBeam, [
-		RecvPropVector(FIELD.OF(nameof(Center))),
-		RecvPropFloat(FIELD.OF(nameof(LStartRadius))),
-		RecvPropFloat(FIELD.OF(nameof(LEndRadius))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEBeamRingPoint);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Center)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(LStartRadius)) { Bits = 16, Flags = PropFlags.RoundUp, Low = 0.0f, High = 4096.0f },
+		new(nameof(LEndRadius)) { Bits = 16, Flags = PropFlags.RoundUp, Low = 0.0f, High = 4096.0f },
+	];
 
-	[NetworkName("m_vecCenter")]
+	[NetworkVar("m_vecCenter")]
 	public Vector3 Center;
-	[NetworkName("m_flStartRadius")]
+	[NetworkVar("m_flStartRadius")]
 	public float LStartRadius;
-	[NetworkName("m_flEndRadius")]
+	[NetworkVar("m_flEndRadius")]
 	public float LEndRadius;
 }
 

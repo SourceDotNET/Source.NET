@@ -3,24 +3,23 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEProjectedDecal>;
 [NetworkName("CTEProjectedDecal")]
-public class TEProjectedDecal(ReadOnlySpan<char> name) : BaseTempEntity(name)
+public partial class TEProjectedDecal(ReadOnlySpan<char> name) : BaseTempEntity(name)
 {
-	public static readonly SendTable DT_TEProjectedDecal = new(DT_BaseTempEntity, [
-		SendPropVector(FIELD.OF(nameof(Origin)), 0, PropFlags.Coord),
-		SendPropQAngles(FIELD.OF(nameof(Rotation)), 10, PropFlags.RoundDown),
-		SendPropFloat(FIELD.OF(nameof(LDistance)), 10, PropFlags.RoundUp),
-		SendPropInt(FIELD.OF(nameof(Index)), 9, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEProjectedDecal);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Rotation)) { Encoding = NetEncoding.QAngles, Bits = 10, Flags = PropFlags.RoundDown },
+		new(nameof(LDistance)) { Bits = 10, Flags = PropFlags.RoundUp },
+		new(nameof(Index)) { Bits = 9, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_angRotation")]
+	[NetworkVar("m_angRotation")]
 	public Vector3 Rotation;
-	[NetworkName("m_flDistance")]
+	[NetworkVar("m_flDistance")]
 	public float LDistance;
-	[NetworkName("m_nIndex")]
+	[NetworkVar("m_nIndex")]
 	public int Index;
 }

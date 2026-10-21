@@ -3,18 +3,17 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEWorldDecal>;
 [NetworkName("CTEWorldDecal")]
-public class TEWorldDecal(ReadOnlySpan<char> name) : BaseTempEntity(name)
+public partial class TEWorldDecal(ReadOnlySpan<char> name) : BaseTempEntity(name)
 {
-	public static readonly SendTable DT_TEWorldDecal = new(DT_BaseTempEntity, [
-		SendPropVector(FIELD.OF(nameof(Origin)), 0, PropFlags.Coord),
-		SendPropInt(FIELD.OF(nameof(Index)), 9, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEWorldDecal);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Index)) { Bits = 9, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_nIndex")]
+	[NetworkVar("m_nIndex")]
 	public int Index;
 }

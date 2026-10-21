@@ -3,30 +3,29 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_Plasma>;
 [NetworkName("CPlasma")]
-public class C_Plasma : C_BaseEntity
+public partial class C_Plasma : C_BaseEntity
 {
-	public static readonly RecvTable DT_Plasma = new(DT_BaseEntity, [
-		RecvPropFloat(FIELD.OF(nameof(Scale))),
-		RecvPropFloat(FIELD.OF(nameof(ScaleTime))),
-		RecvPropInt(FIELD.OF(nameof(Flags))),
-		RecvPropInt(FIELD.OF(nameof(PlasmaModelIndex))),
-		RecvPropInt(FIELD.OF(nameof(PlasmaModelIndex2))),
-		RecvPropInt(FIELD.OF(nameof(GlowModelIndex))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_Plasma);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Scale)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ScaleTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Flags)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(PlasmaModelIndex)) { Bits = 14 },
+		new(nameof(PlasmaModelIndex2)) { Bits = 14 },
+		new(nameof(GlowModelIndex)) { Bits = 14 },
+	];
 
-	[NetworkName("m_flScale")]
+	[NetworkVar("m_flScale")]
 	public float Scale;
-	[NetworkName("m_flScaleTime")]
+	[NetworkVar("m_flScaleTime")]
 	public float ScaleTime;
-	[NetworkName("m_nFlags")]
+	[NetworkVar("m_nFlags")]
 	public int Flags;
-	[NetworkName("m_nPlasmaModelIndex")]
+	[NetworkVar("m_nPlasmaModelIndex")]
 	public int PlasmaModelIndex;
-	[NetworkName("m_nPlasmaModelIndex2")]
+	[NetworkVar("m_nPlasmaModelIndex2")]
 	public int PlasmaModelIndex2;
-	[NetworkName("m_nGlowModelIndex")]
+	[NetworkVar("m_nGlowModelIndex")]
 	public int GlowModelIndex;
 }

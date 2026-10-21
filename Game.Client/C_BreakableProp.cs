@@ -6,8 +6,10 @@ using Source.Common;
 namespace Game.Client;
 
 [NetworkName("CBreakableProp")]
-public class C_BreakableProp : C_BaseAnimating
+public partial class C_BreakableProp : C_BaseAnimating
 {
-	public static readonly RecvTable DT_BreakableProp = new(DT_BaseAnimating, []);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_BreakableProp);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 }

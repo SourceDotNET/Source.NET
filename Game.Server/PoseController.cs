@@ -3,47 +3,46 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<PoseController>;
 [LinkEntityToClass("point_posecontroller")]
 [NetworkName("CPoseController")]
-public class PoseController : BaseEntity
+public partial class PoseController : BaseEntity
 {
-	public static readonly SendTable DT_PoseController = new(DT_BaseEntity, [
-		SendPropArray3(FIELD.OF_ARRAY(nameof(HProps)), SendPropEHandle(FIELD.OF_ARRAYINDEX(nameof(HProps), 0))),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(ChPoseIndex)), SendPropInt(FIELD.OF_ARRAYINDEX(nameof(ChPoseIndex), 0), 5, PropFlags.Unsigned)),
-		SendPropBool(FIELD.OF(nameof(PoseValueParity))),
-		SendPropFloat(FIELD.OF(nameof(PoseValue)), 11, 0, 0.0f, 1.0f),
-		SendPropFloat(FIELD.OF(nameof(InterpolationTime)), 11, 0, 0.0f, 10.0f),
-		SendPropBool(FIELD.OF(nameof(InterpolationWrap))),
-		SendPropFloat(FIELD.OF(nameof(CycleFrequency)), 11, 0, -10.0f, 10.0f),
-		SendPropInt(FIELD.OF(nameof(FModType)), 3, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(FModTimeOffset)), 11, 0, -1.0f, 1.0f),
-		SendPropFloat(FIELD.OF(nameof(FModRate)), 11, 0, -10.0f, 10.0f),
-		SendPropFloat(FIELD.OF(nameof(FModAmplitude)), 11, 0, 0.0f, 10.0f),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PoseController);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(HProps),
+		new(nameof(ChPoseIndex)) { Bits = 5, Flags = PropFlags.Unsigned },
+		nameof(PoseValueParity),
+		new(nameof(PoseValue)) { Bits = 11, Low = 0.0f, High = 1.0f },
+		new(nameof(InterpolationTime)) { Bits = 11, Low = 0.0f, High = 10.0f },
+		nameof(InterpolationWrap),
+		new(nameof(CycleFrequency)) { Bits = 11, Low = -10.0f, High = 10.0f },
+		new(nameof(FModType)) { Bits = 3, Flags = PropFlags.Unsigned },
+		new(nameof(FModTimeOffset)) { Bits = 11, Low = -1.0f, High = 1.0f },
+		new(nameof(FModRate)) { Bits = 11, Low = -10.0f, High = 10.0f },
+		new(nameof(FModAmplitude)) { Bits = 11, Low = 0.0f, High = 10.0f },
+	];
 
 	public const int MAX_POSE_CONTROLLED_PROPS = 4;
-	[NetworkName("m_hProps")]
-	public InlineArray4<EHANDLE> HProps;
-	[NetworkName("m_chPoseIndex")]
-	public InlineArray4<byte> ChPoseIndex;
-	[NetworkName("m_bPoseValueParity")]
-	public bool PoseValueParity;
-	[NetworkName("m_fPoseValue")]
-	public float PoseValue;
-	[NetworkName("m_fInterpolationTime")]
-	public float InterpolationTime;
-	[NetworkName("m_bInterpolationWrap")]
-	public bool InterpolationWrap;
-	[NetworkName("m_fCycleFrequency")]
-	public float CycleFrequency;
-	[NetworkName("m_nFModType")]
-	public int FModType;
-	[NetworkName("m_fFModTimeOffset")]
-	public float FModTimeOffset;
-	[NetworkName("m_fFModRate")]
-	public float FModRate;
-	[NetworkName("m_fFModAmplitude")]
-	public float FModAmplitude;
+	[NetworkVar("m_hProps")]
+	public partial ref readonly InlineArray4<EHANDLE> HProps { get; }
+	[NetworkVar("m_chPoseIndex")]
+	public partial ref readonly InlineArray4<byte> ChPoseIndex { get; }
+	[NetworkVar("m_bPoseValueParity")]
+	public partial bool PoseValueParity { get; set; }
+	[NetworkVar("m_fPoseValue")]
+	public partial float PoseValue { get; set; }
+	[NetworkVar("m_fInterpolationTime")]
+	public partial float InterpolationTime { get; set; }
+	[NetworkVar("m_bInterpolationWrap")]
+	public partial bool InterpolationWrap { get; set; }
+	[NetworkVar("m_fCycleFrequency")]
+	public partial float CycleFrequency { get; set; }
+	[NetworkVar("m_nFModType")]
+	public partial int FModType { get; set; }
+	[NetworkVar("m_fFModTimeOffset")]
+	public partial float FModTimeOffset { get; set; }
+	[NetworkVar("m_fFModRate")]
+	public partial float FModRate { get; set; }
+	[NetworkVar("m_fFModAmplitude")]
+	public partial float FModAmplitude { get; set; }
 }

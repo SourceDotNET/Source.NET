@@ -6,45 +6,44 @@ using Source.Common.Engine;
 
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEHL2MPFireBullets>;
-[NetworkName("CTEHL2MPFireBullets")]
-public class C_TEHL2MPFireBullets : C_BaseTempEntity
+[NetworkName("CTEHL2MPFireBullets", NoBase = true)]
+public partial class C_TEHL2MPFireBullets : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEHL2MPFireBullets = new([
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropVector(FIELD.OF(nameof(Dir))),
-		RecvPropInt(FIELD.OF(nameof(AmmoID))),
-		RecvPropInt(FIELD.OF(nameof(Seed))),
-		RecvPropInt(FIELD.OF(nameof(Shots))),
-		RecvPropInt(FIELD.OF(nameof(Player))),
-		RecvPropFloat(FIELD.OF(nameof(Spread))),
-		RecvPropInt(FIELD.OF(nameof(DoImpacts))),
-		RecvPropInt(FIELD.OF(nameof(DoTracers))),
-		RecvPropString(FIELD.OF(nameof(TracerType))),
-		RecvPropFloat(FIELD.OF(nameof(SpreadY))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEHL2MPFireBullets);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Dir)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(AmmoID)) { Bits = 5, Flags = PropFlags.Unsigned },
+		new(nameof(Seed)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Shots)) { Bits = 5, Flags = PropFlags.Unsigned },
+		new(nameof(Player)) { Bits = 6, Flags = PropFlags.Unsigned },
+		new(nameof(Spread)) { Bits = 10, Low = 0, High = 1 },
+		new(nameof(DoImpacts)) { Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(DoTracers)) { Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(TracerType)) { Encoding = NetEncoding.String },
+		new(nameof(SpreadY)) { Bits = 10, Low = 0, High = 1 },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_vecDir")]
+	[NetworkVar("m_vecDir")]
 	public Vector3 Dir;
-	[NetworkName("m_iAmmoID")]
+	[NetworkVar("m_iAmmoID")]
 	public int AmmoID;
-	[NetworkName("m_iSeed")]
+	[NetworkVar("m_iSeed")]
 	public int Seed;
-	[NetworkName("m_iShots")]
+	[NetworkVar("m_iShots")]
 	public int Shots;
-	[NetworkName("m_iPlayer")]
+	[NetworkVar("m_iPlayer")]
 	public int Player;
-	[NetworkName("m_flSpread")]
+	[NetworkVar("m_flSpread")]
 	public float Spread;
-	[NetworkName("m_bDoImpacts")]
+	[NetworkVar("m_bDoImpacts")]
 	public int DoImpacts;
-	[NetworkName("m_bDoTracers")]
+	[NetworkVar("m_bDoTracers")]
 	public int DoTracers;
-	[NetworkName("m_TracerType")]
+	[NetworkVar("m_TracerType")]
 	public InlineArray512<char> TracerType;
-	[NetworkName("m_flSpreadY")]
+	[NetworkVar("m_flSpreadY")]
 	public float SpreadY;
 }

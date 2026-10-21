@@ -17,7 +17,6 @@ using System.Runtime.CompilerServices;
 
 namespace Game.Server;
 
-using FIELD = FIELD<AI_BaseNPC>;
 using DEFINE = DEFINE<AI_BaseNPC>;
 
 /// <summary>
@@ -316,7 +315,7 @@ public ref struct TriggerTraceEnum(ref Ray ray, in TakeDamageInfo info, in Vecto
 }
 
 [NetworkName("CAI_BaseNPC")]
-public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
+public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 {
 	[Flags]
 	public enum SF
@@ -348,16 +347,16 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return name;
 	}
 
-	public static readonly SendTable DT_AI_BaseNPC = new(DT_BaseCombatCharacter, [
-		SendPropInt(FIELD.OF(nameof(LifeState)), 3, PropFlags.Unsigned),
-		SendPropBool(FIELD.OF(nameof(PerformAvoidance))),
-		SendPropBool(FIELD.OF(nameof(IsMovingValue))),
-		SendPropBool(FIELD.OF(nameof(FadeCorpse))),
-		SendPropInt(FIELD.OF(nameof(DeathPose)), 12),
-		SendPropInt(FIELD.OF(nameof(DeathFrame)), 5),
-		SendPropBool(FIELD.OF(nameof(ImportantRagdoll))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_AI_BaseNPC);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(LifeState)) { Bits = 3, Flags = PropFlags.Unsigned },
+		nameof(PerformAvoidance),
+		nameof(IsMovingValue),
+		nameof(FadeCorpse),
+		new(nameof(DeathPose)) { Bits = 12 },
+		new(nameof(DeathFrame)) { Bits = 5 },
+		nameof(ImportantRagdoll),
+	];
 
 	public static readonly new DataMap DataDesc = new(typeof(AI_BaseNPC), BaseEntity.DataDesc, [
 		DEFINE.KEYFIELD(nameof(SpawnEquipment), FieldType.String, "additionalequipment"),
@@ -383,21 +382,21 @@ public class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
-	[NetworkName("m_bPerformAvoidance")]
-	public bool PerformAvoidance;
-	[NetworkName("m_bIsMoving")]
-	public bool IsMovingValue;
-	[NetworkName("m_bFadeCorpse")]
-	public bool FadeCorpse;
-	[NetworkName("m_iDeathPose")]
-	public int DeathPose;
-	[NetworkName("m_iDeathFrame")]
-	public int DeathFrame;
+	[NetworkVar("m_bPerformAvoidance")]
+	public partial bool PerformAvoidance { get; set; }
+	[NetworkVar("m_bIsMoving")]
+	public partial bool IsMovingValue { get; set; }
+	[NetworkVar("m_bFadeCorpse")]
+	public partial bool FadeCorpse { get; set; }
+	[NetworkVar("m_iDeathPose")]
+	public partial int DeathPose { get; set; }
+	[NetworkVar("m_iDeathFrame")]
+	public partial int DeathFrame { get; set; }
 	public bool SpeedModActive;
 	public int SpeedModRadius;
 	public int SpeedModSpeed;
-	[NetworkName("m_bImportanRagdoll")]
-	public bool ImportantRagdoll;
+	[NetworkVar("m_bImportanRagdoll")]
+	public partial bool ImportantRagdoll { get; set; }
 	public float TimePingEffect;
 
 	public static TimeUnit_t TimeLastSpawn;

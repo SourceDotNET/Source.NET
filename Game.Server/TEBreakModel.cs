@@ -6,41 +6,38 @@ using Source.Common.Mathematics;
 
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEBreakModel>;
 [NetworkName("CTEBreakModel")]
-public class TEBreakModel(ReadOnlySpan<char> name) : BaseTempEntity(name)
+public partial class TEBreakModel(ReadOnlySpan<char> name) : BaseTempEntity(name)
 {
-	public static readonly SendTable DT_TEBreakModel = new(DT_BaseTempEntity, [
-		SendPropVector(FIELD.OF(nameof(Origin)), 0, PropFlags.Coord),
-		SendPropAngle(FIELD.OF_VECTORELEM(nameof(Rotation), 0), 13, PropFlags.RoundDown),
-		SendPropAngle(FIELD.OF_VECTORELEM(nameof(Rotation), 1), 13, PropFlags.RoundDown),
-		SendPropAngle(FIELD.OF_VECTORELEM(nameof(Rotation), 2), 13, PropFlags.RoundDown),
-		SendPropVector(FIELD.OF(nameof(Size)), 0, PropFlags.Coord),
-		SendPropVector(FIELD.OF(nameof(Velocity)), 0, PropFlags.Coord),
-		SendPropInt(FIELD.OF(nameof(ModelIndex)), 14, 0),
-		SendPropInt(FIELD.OF(nameof(Randomization)), 9, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Count)), 8, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(Time)), 10, 0, 0, 102.4f),
-		SendPropInt(FIELD.OF(nameof(Flags)), 8, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEBreakModel);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Rotation)) { Encoding = NetEncoding.VectorElements, Bits = 13, Flags = PropFlags.RoundDown },
+		new(nameof(Size)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Velocity)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(ModelIndex)) { Bits = 14 },
+		new(nameof(Randomization)) { Bits = 9, Flags = PropFlags.Unsigned },
+		new(nameof(Count)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Time)) { Bits = 10, Low = 0.0f, High = 102.4f },
+		new(nameof(Flags)) { Bits = 8, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_angRotation")]
+	[NetworkVar("m_angRotation")]
 	public QAngle Rotation;
-	[NetworkName("m_vecSize")]
+	[NetworkVar("m_vecSize")]
 	public Vector3 Size;
-	[NetworkName("m_vecVelocity")]
+	[NetworkVar("m_vecVelocity")]
 	public Vector3 Velocity;
-	[NetworkName("m_nModelIndex")]
+	[NetworkVar("m_nModelIndex")]
 	public int ModelIndex;
-	[NetworkName("m_nRandomization")]
+	[NetworkVar("m_nRandomization")]
 	public int Randomization;
-	[NetworkName("m_nCount")]
+	[NetworkVar("m_nCount")]
 	public int Count;
-	[NetworkName("m_fTime")]
+	[NetworkVar("m_fTime")]
 	public float Time;
-	[NetworkName("m_nFlags")]
+	[NetworkVar("m_nFlags")]
 	public int Flags;
 }

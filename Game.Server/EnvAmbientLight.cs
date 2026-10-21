@@ -3,16 +3,15 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<EnvAmbientLight>;
 [LinkEntityToClass("env_ambient_light")]
 [NetworkName("CEnvAmbientLight")]
-public class EnvAmbientLight : SpatialEntity
+public partial class EnvAmbientLight : SpatialEntity
 {
-	public static readonly SendTable DT_EnvAmbientLight = new(DT_SpatialEntity, [
-		SendPropVector(FIELD.OF(nameof(Color)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_EnvAmbientLight);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Color)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_vecColor")]
-	public Vector3 Color;
+	[NetworkVar("m_vecColor")]
+	public partial Vector3 Color { get; set; }
 }

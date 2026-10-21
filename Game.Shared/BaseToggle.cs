@@ -5,38 +5,22 @@ using Source.Common.Mathematics;
 
 using System.Numerics;
 namespace Game.Shared;
-using FIELD = Source.FIELD<BaseToggle>;
 [NetworkName("CBaseToggle")]
-public class BaseToggle : BaseEntity
+public partial class BaseToggle : BaseEntity
 {
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_BaseToggle = new(DT_BaseEntity, [
-#if CLIENT_DLL
-		RecvPropVector(FIELD.OF(nameof(FinalDest))),
-		RecvPropInt(FIELD.OF(nameof(MovementType))),
-		RecvPropFloat(FIELD.OF(nameof(MoveTargetTime)))
-#else
-		SendPropVector(FIELD.OF(nameof(FinalDest)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(MovementType)), 4),
-		SendPropFloat(FIELD.OF(nameof(MoveTargetTime)), 0, PropFlags.NoScale)
-#endif
-		]);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseToggle);
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseToggle);
-#endif
-	[NetworkName("m_vecFinalDest")]
-	public Vector3 FinalDest;
-	[NetworkName("m_movementType")]
-	public int MovementType;
-	[NetworkName("m_flMoveTargetTime")]
-	public TimeUnit_t MoveTargetTime;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(FinalDest)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MovementType)) { Bits = 4 },
+		new(nameof(MoveTargetTime)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale },
+	];
+
+	[NetworkVar("m_vecFinalDest")]
+	public partial Vector3 FinalDest { get; set; }
+	[NetworkVar("m_movementType")]
+	public partial int MovementType { get; set; }
+	[NetworkVar("m_flMoveTargetTime")]
+	public partial TimeUnit_t MoveTargetTime { get; set; }
 
 #if GAME_DLL
 	public ToggleState ToggleState;

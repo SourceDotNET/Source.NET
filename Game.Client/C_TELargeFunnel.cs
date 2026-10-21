@@ -3,17 +3,16 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TELargeFunnel>;
 [NetworkName("CTELargeFunnel")]
-public class C_TELargeFunnel : C_TEParticleSystem
+public partial class C_TELargeFunnel : C_TEParticleSystem
 {
-	public static readonly RecvTable DT_TELargeFunnel = new(DT_TEParticleSystem, [
-		RecvPropInt(FIELD.OF(nameof(Reversed))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TELargeFunnel);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Reversed)) { Bits = 2, Flags = PropFlags.Unsigned },
+	];
 
 	public int ModelIndex;
-	[NetworkName("m_nReversed")]
+	[NetworkVar("m_nReversed")]
 	public int Reversed;
 }
 

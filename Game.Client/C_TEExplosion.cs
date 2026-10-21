@@ -3,29 +3,28 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEExplosion>;
 [NetworkName("CTEExplosion")]
-public class C_TEExplosion : C_TEParticleSystem
+public partial class C_TEExplosion : C_TEParticleSystem
 {
-	public static readonly RecvTable DT_TEExplosion = new(DT_TEParticleSystem, [
-		RecvPropFloat(FIELD.OF(nameof(Scale))),
-		RecvPropInt(FIELD.OF(nameof(Flags))),
-		RecvPropInt(FIELD.OF(nameof(Radius))),
-		RecvPropInt(FIELD.OF(nameof(Magnitude))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEExplosion);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Scale)) { Bits = 9, Low = 0.0f, High = 51.2f },
+		new(nameof(Flags)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Radius)) { Bits = 16, Flags = PropFlags.Unsigned },
+		new(nameof(Magnitude)) { Bits = 16, Flags = PropFlags.Unsigned },
+	];
 
 	public int ModelIndex;
-	[NetworkName("m_fScale")]
+	[NetworkVar("m_fScale")]
 	public float Scale;
 	public int FrameRate;
-	[NetworkName("m_nFlags")]
+	[NetworkVar("m_nFlags")]
 	public int Flags;
 	public Vector3 Normal;
 	public int ChMaterialType;
-	[NetworkName("m_nRadius")]
+	[NetworkVar("m_nRadius")]
 	public int Radius;
-	[NetworkName("m_nMagnitude")]
+	[NetworkVar("m_nMagnitude")]
 	public int Magnitude;
 }
 

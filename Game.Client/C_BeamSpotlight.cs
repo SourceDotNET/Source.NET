@@ -3,37 +3,36 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_BeamSpotlight>;
 [LinkEntityToClass("beam_spotlight")]
 [NetworkName("CBeamSpotlight")]
-public class C_BeamSpotlight : C_BaseEntity
+public partial class C_BeamSpotlight : C_BaseEntity
 {
-	public static readonly RecvTable DT_BeamSpotlight = new(DT_BaseEntity, [
-		RecvPropInt(FIELD.OF(nameof(HaloIndex))),
-		RecvPropInt(FIELD.OF(nameof(SpotlightOn))),
-		RecvPropInt(FIELD.OF(nameof(HasDynamicLight))),
-		RecvPropFloat(FIELD.OF(nameof(SpotlightMaxLength))),
-		RecvPropFloat(FIELD.OF(nameof(SpotlightGoalWidth))),
-		RecvPropFloat(FIELD.OF(nameof(HDRColorScale))),
-		RecvPropFloat(FIELD.OF(nameof(RotationSpeed))),
-		RecvPropInt(FIELD.OF(nameof(RotationAxis))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_BeamSpotlight);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(HaloIndex)) { Bits = 16, Flags = PropFlags.Unsigned },
+		new(nameof(SpotlightOn)) { Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(HasDynamicLight)) { Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(SpotlightMaxLength)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(SpotlightGoalWidth)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(HDRColorScale)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(RotationAxis)) { Bits = 2, Flags = PropFlags.Unsigned },
+		new(nameof(RotationSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_nHaloIndex")]
+	[NetworkVar("m_nHaloIndex")]
 	public int HaloIndex;
-	[NetworkName("m_bSpotlightOn")]
+	[NetworkVar("m_bSpotlightOn")]
 	public int SpotlightOn;
-	[NetworkName("m_bHasDynamicLight")]
+	[NetworkVar("m_bHasDynamicLight")]
 	public int HasDynamicLight;
-	[NetworkName("m_flSpotlightMaxLength")]
+	[NetworkVar("m_flSpotlightMaxLength")]
 	public float SpotlightMaxLength;
-	[NetworkName("m_flSpotlightGoalWidth")]
+	[NetworkVar("m_flSpotlightGoalWidth")]
 	public float SpotlightGoalWidth;
-	[NetworkName("m_flHDRColorScale")]
+	[NetworkVar("m_flHDRColorScale")]
 	public float HDRColorScale;
-	[NetworkName("m_flRotationSpeed")]
-	public float RotationSpeed;
-	[NetworkName("m_nRotationAxis")]
+	[NetworkVar("m_nRotationAxis")]
 	public int RotationAxis;
+	[NetworkVar("m_flRotationSpeed")]
+	public float RotationSpeed;
 }

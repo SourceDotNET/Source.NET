@@ -3,24 +3,23 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_EnvQuadraticBeam>;
-[NetworkName("CEnvQuadraticBeam")]
-public class C_EnvQuadraticBeam : C_BaseEntity
+[NetworkName("CEnvQuadraticBeam", Table = "DT_QuadraticBeam")]
+public partial class C_EnvQuadraticBeam : C_BaseEntity
 {
-	public static readonly RecvTable DT_QuadraticBeam = new(DT_BaseEntity, [
-		RecvPropVector(FIELD.OF(nameof(TargetPosition))),
-		RecvPropVector(FIELD.OF(nameof(ControlPosition))),
-		RecvPropFloat(FIELD.OF(nameof(ScrollRate))),
-		RecvPropFloat(FIELD.OF(nameof(Width))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_QuadraticBeam);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(TargetPosition)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(ControlPosition)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(ScrollRate)) { Bits = 8, Low = -4, High = 4 },
+		new(nameof(Width)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_targetPosition")]
+	[NetworkVar("m_targetPosition")]
 	public Vector3 TargetPosition;
-	[NetworkName("m_controlPosition")]
+	[NetworkVar("m_controlPosition")]
 	public Vector3 ControlPosition;
-	[NetworkName("m_scrollRate")]
+	[NetworkVar("m_scrollRate")]
 	public float ScrollRate;
-	[NetworkName("m_flWidth")]
+	[NetworkVar("m_flWidth")]
 	public float Width;
 }

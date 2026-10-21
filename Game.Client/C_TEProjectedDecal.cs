@@ -4,25 +4,24 @@ using Game.Shared;
 using System.Numerics;
 using Source.Common.Mathematics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEProjectedDecal>;
 [NetworkName("CTEProjectedDecal")]
-public class C_TEProjectedDecal : C_BaseTempEntity
+public partial class C_TEProjectedDecal : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEProjectedDecal = new(DT_BaseTempEntity, [
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropVector(FIELD.OF(nameof(Rotation))),
-		RecvPropFloat(FIELD.OF(nameof(LDistance))),
-		RecvPropInt(FIELD.OF(nameof(Index))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEProjectedDecal);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Rotation)) { Bits = 10, Flags = PropFlags.RoundDown },
+		new(nameof(LDistance)) { Bits = 10, Flags = PropFlags.RoundUp },
+		new(nameof(Index)) { Bits = 9, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_angRotation")]
+	[NetworkVar("m_angRotation")]
 	public Vector3 Rotation;
-	[NetworkName("m_flDistance")]
+	[NetworkVar("m_flDistance")]
 	public float LDistance;
-	[NetworkName("m_nIndex")]
+	[NetworkVar("m_nIndex")]
 	public int Index;
 }
 

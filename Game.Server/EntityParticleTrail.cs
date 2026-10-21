@@ -4,40 +4,47 @@ using Source;
 
 namespace Game.Server;
 
-using FIELD = FIELD<EntityParticleTrail>;
-
-public class EntityParticleTrailInfo
+public partial class EntityParticleTrailInfo
 {
-	[NetworkName("m_flLifetime")]
-	public float Lifetime;
-	[NetworkName("m_flStartSize")]
-	public float StartSize;
-	[NetworkName("m_flEndSize")]
-	public float EndSize;
+	[NetworkTable("DT_EntityParticleTrailInfo")]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Lifetime)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(StartSize)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(EndSize)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	public static readonly SendTable DT_EntityParticleTrailInfo = new("DT_EntityParticleTrailInfo", [
-		SendPropFloat(Source.FIELD<EntityParticleTrailInfo>.OF(nameof(Lifetime)), 0, PropFlags.NoScale),
-		SendPropFloat(Source.FIELD<EntityParticleTrailInfo>.OF(nameof(StartSize)), 0, PropFlags.NoScale),
-		SendPropFloat(Source.FIELD<EntityParticleTrailInfo>.OF(nameof(EndSize)), 0, PropFlags.NoScale),
-	]);
+	public BaseEntity? Outer;
+	public void NetworkStateChanged() => Outer?.NetworkStateChanged();
+	public void NetworkStateChanged(IFieldAccessor field) => Outer?.NetworkStateChanged();
+
+	[NetworkVar("m_flLifetime")]
+	public partial float Lifetime { get; set; }
+	[NetworkVar("m_flStartSize")]
+	public partial float StartSize { get; set; }
+	[NetworkVar("m_flEndSize")]
+	public partial float EndSize { get; set; }
 }
 
 // Datatable-accurate stub (gmod DT_EntityParticleTrail, baseclass DT_BaseParticleEntity).
 [LinkEntityToClass("env_particle_trail")]
 [NetworkName("CEntityParticleTrail")]
-public class EntityParticleTrail : BaseParticleEntity
+public partial class EntityParticleTrail : BaseParticleEntity
 {
-	[NetworkName("m_iMaterialName")]
-	public int MaterialName;
-	[NetworkName("m_Info")]
-	public EntityParticleTrailInfo Info = new();
-	[NetworkName("m_hConstraintEntity")]
-	public EHANDLE ConstraintEntity;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(MaterialName)) { Bits = 10, Flags = PropFlags.Unsigned },
+		new(nameof(Info)) { Encoding = NetEncoding.DataTable, DataTable = "DT_EntityParticleTrailInfo" },
+		nameof(ConstraintEntity),
+	];
 
-	public static readonly SendTable DT_EntityParticleTrail = new(DT_BaseParticleEntity, [
-		SendPropInt(FIELD.OF(nameof(MaterialName)), 10, PropFlags.Unsigned),
-		SendPropDataTable("m_Info", FIELD.OF(nameof(Info)), EntityParticleTrailInfo.DT_EntityParticleTrailInfo),
-		SendPropEHandle(FIELD.OF(nameof(ConstraintEntity))),
-	]);
-	public static new readonly ServerClass ServerClass = new ServerClass(DT_EntityParticleTrail);
+	[NetworkVar("m_iMaterialName")]
+	public partial int MaterialName { get; set; }
+	[NetworkVar("m_Info")]
+	public readonly EntityParticleTrailInfo Info = new();
+	[NetworkVar("m_hConstraintEntity")]
+	public partial EHANDLE ConstraintEntity { get; set; }
+
+	public EntityParticleTrail() {
+		Info.Outer = this;
+	}
 }

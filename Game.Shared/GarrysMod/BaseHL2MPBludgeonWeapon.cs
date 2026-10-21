@@ -6,28 +6,12 @@ using Source.Common.Mathematics;
 
 using System.Numerics;
 namespace Game.Shared.GarrysMod;
-using FIELD = Source.FIELD<BaseHL2MPBludgeonWeapon>;
 [NetworkName("CBaseHL2MPBludgeonWeapon")]
-public class BaseHL2MPBludgeonWeapon : BaseHL2MPCombatWeapon
+public partial class BaseHL2MPBludgeonWeapon : BaseHL2MPCombatWeapon
 {
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_BaseHL2MPBludgeonWeapon = new(DT_BaseHL2MPCombatWeapon, [
-#if CLIENT_DLL
-
-#else
-
-#endif
-		]);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseHL2MPBludgeonWeapon);
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseHL2MPBludgeonWeapon);
-#endif
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
 
 	const int BLUDGEON_HULL_DIM = 16;
 

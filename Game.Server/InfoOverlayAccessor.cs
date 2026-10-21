@@ -4,17 +4,16 @@ using Source;
 using Source.Common;
 
 namespace Game.Server;
-using FIELD = FIELD<InfoOverlayAccessor>;
 [LinkEntityToClass("info_overlay_accessor")]
-[NetworkName("CInfoOverlayAccessor")]
+[NetworkName("CInfoOverlayAccessor", NoBase = true)]
 public partial class InfoOverlayAccessor : BaseEntity
 {
-	public static readonly SendTable DT_InfoOverlayAccessor = new([
-		SendPropInt(FIELD.OF(nameof(TextureFrameIndex)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(OverlayID)), 32, PropFlags.Unsigned)
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_InfoOverlayAccessor);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(TextureFrameIndex)) { Encoding = NetEncoding.Int, Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(OverlayID)) { Bits = 32, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_iOverlayID")]
-	public int OverlayID;
+	[NetworkVar("m_iOverlayID")]
+	public partial int OverlayID { get; set; }
 }

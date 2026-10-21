@@ -14,9 +14,6 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-#if CLIENT_DLL || GAME_DLL
-using FIELD = Source.FIELD<Game.Shared.AnimationLayerRef>;
-#endif
 namespace Game.Shared;
 
 #if CLIENT_DLL || GAME_DLL
@@ -38,15 +35,15 @@ public record struct AnimationLayer
 	public bool SequenceFinished;
 	public bool Looping;
 
-	[NetworkName("m_nSequence")]
+	[NetworkVar("m_nSequence")]
 	public int Sequence;
-	[NetworkName("m_flCycle")]
+	[NetworkVar("m_flCycle")]
 	public TimeUnit_t Cycle;
-	[NetworkName("m_flPrevCycle")]
+	[NetworkVar("m_flPrevCycle")]
 	public float PrevCycle;
-	[NetworkName("m_flWeight")]
+	[NetworkVar("m_flWeight")]
 	public float Weight;
-	[NetworkName("m_nOrder")]
+	[NetworkVar("m_nOrder")]
 	public int Order;
 
 	public TimeUnit_t PlaybackRate;
@@ -267,9 +264,18 @@ public record struct AnimationLayer
 /// <summary>
 /// Because of FieldILAccess, these must be class instances. So this is basically just a wrapper around the AnimationLayer struct.
 /// </summary>
-public class AnimationLayerRef
+public partial class AnimationLayerRef
 {
-	[NetworkName("")]
+	[NetworkTable("DT_Animationlayer")]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Struct.Sequence)) { Bits = SharedDefs.ANIMATION_SEQUENCE_BITS, Flags = PropFlags.Unsigned },
+		new(nameof(Struct.Cycle)) { Encoding = NetEncoding.Float, Bits = SharedDefs.ANIMATION_CYCLE_BITS, Flags = PropFlags.RoundDown, Low = 0.0f, High = 1.0f },
+		new(nameof(Struct.PrevCycle)) { Bits = SharedDefs.ANIMATION_CYCLE_BITS, Flags = PropFlags.RoundDown, Low = 0.0f, High = 1.0f },
+		new(nameof(Struct.Weight)) { Bits = AnimationLayerRef.WEIGHT_BITS, Low = 0.0f, High = 1.0f },
+		new(nameof(Struct.Order)) { Bits = AnimationLayerRef.ORDER_BITS, Flags = PropFlags.Unsigned },
+	];
+
+	[NetworkVar("")]
 	public AnimationLayer Struct;
 	public static DynamicAccessor Accessor = Source.FIELD<AnimationLayerRef>.OF(nameof(Struct));
 
@@ -318,25 +324,6 @@ public class AnimationLayerRef
 
 	public const int ORDER_BITS = 4;
 	public const int WEIGHT_BITS = 8;
-
-	const string PREFIX_PROPS = $"{nameof(Struct)}.";
-#if CLIENT_DLL
-	public static readonly RecvTable DT_Animationlayer = new(nameof(DT_Animationlayer), [
-		RecvPropInt(FIELD.OF(PREFIX_PROPS + nameof(AnimationLayer.Sequence))),
-		RecvPropFloat(FIELD.OF(PREFIX_PROPS + nameof(AnimationLayer.Cycle))),
-		RecvPropFloat(FIELD.OF(PREFIX_PROPS + nameof(AnimationLayer.PrevCycle))),
-		RecvPropFloat(FIELD.OF(PREFIX_PROPS + nameof(AnimationLayer.Weight))),
-		RecvPropInt(FIELD.OF(PREFIX_PROPS + nameof(AnimationLayer.Order))),
-	]);
-#else
-	public static readonly SendTable DT_Animationlayer = new(nameof(DT_Animationlayer), [
-		SendPropInt(FIELD.OF(PREFIX_PROPS + nameof(AnimationLayer.Sequence)), ANIMATION_SEQUENCE_BITS, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(PREFIX_PROPS + nameof(AnimationLayer.Cycle)), ANIMATION_CYCLE_BITS, PropFlags.RoundDown, 0.0f, 1.0f),
-		SendPropFloat(FIELD.OF(PREFIX_PROPS + nameof(AnimationLayer.PrevCycle)), ANIMATION_CYCLE_BITS, PropFlags.RoundDown, 0.0f, 1.0f),
-		SendPropFloat(FIELD.OF(PREFIX_PROPS + nameof(AnimationLayer.Weight)), WEIGHT_BITS, 0, 0.0f, 1.0f),
-		SendPropInt(FIELD.OF(PREFIX_PROPS + nameof(AnimationLayer.Order)), ORDER_BITS, PropFlags.Unsigned),
-	]);
-#endif
 }
 
 #endif

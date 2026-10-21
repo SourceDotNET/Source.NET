@@ -9,35 +9,34 @@ using System.Numerics;
 
 namespace Game.Client;
 
-using FIELD = FIELD<C_DynamicLight>;
 
 [NetworkName("CDynamicLight")]
-public class C_DynamicLight : C_BaseEntity
+public partial class C_DynamicLight : C_BaseEntity
 {
-	public static readonly RecvTable DT_DynamicLight = new(DT_BaseEntity, [
-		RecvPropInt(FIELD.OF(nameof(Flags))),
-		RecvPropInt(FIELD.OF(nameof(LightStyle))),
-		RecvPropFloat(FIELD.OF(nameof(Radius))),
-		RecvPropInt(FIELD.OF(nameof(Exponent))),
-		RecvPropFloat(FIELD.OF(nameof(InnerAngle))),
-		RecvPropFloat(FIELD.OF(nameof(OuterAngle))),
-		RecvPropFloat(FIELD.OF(nameof(SpotRadius))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_DynamicLight);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Flags)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(LightStyle)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(Radius)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Exponent)) { Bits = 8 },
+		new(nameof(InnerAngle)) { Bits = 8, Low = 0.0f, High = 360.0f },
+		new(nameof(OuterAngle)) { Bits = 8, Low = 0.0f, High = 360.0f },
+		new(nameof(SpotRadius)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_Flags")]
+	[NetworkVar("m_Flags")]
 	public int Flags;
-	[NetworkName("m_LightStyle")]
+	[NetworkVar("m_LightStyle")]
 	public int LightStyle;
-	[NetworkName("m_Radius")]
+	[NetworkVar("m_Radius")]
 	public float Radius;
-	[NetworkName("m_Exponent")]
+	[NetworkVar("m_Exponent")]
 	public int Exponent;
-	[NetworkName("m_InnerAngle")]
+	[NetworkVar("m_InnerAngle")]
 	public float InnerAngle;
-	[NetworkName("m_OuterAngle")]
+	[NetworkVar("m_OuterAngle")]
 	public float OuterAngle;
-	[NetworkName("m_SpotRadius")]
+	[NetworkVar("m_SpotRadius")]
 	public float SpotRadius;
 
 	DLight? DynamicLight;

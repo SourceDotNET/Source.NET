@@ -3,19 +3,18 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<FleshEffectTarget>;
 [LinkEntityToClass("point_flesh_effect_target")]
 [NetworkName("CFleshEffectTarget")]
-public class FleshEffectTarget : BaseEntity
+public partial class FleshEffectTarget : BaseEntity
 {
-	public static readonly SendTable DT_FleshEffectTarget = new(DT_BaseEntity, [
-		SendPropFloat(FIELD.OF(nameof(Radius)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(ScaleTime)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_FleshEffectTarget);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Radius)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ScaleTime)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_flRadius")]
-	public float Radius;
-	[NetworkName("m_flScaleTime")]
-	public float ScaleTime;
+	[NetworkVar("m_flRadius")]
+	public partial float Radius { get; set; }
+	[NetworkVar("m_flScaleTime")]
+	public partial float ScaleTime { get; set; }
 }

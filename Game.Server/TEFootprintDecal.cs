@@ -3,25 +3,24 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEFootprintDecal>;
 [NetworkName("CTEFootprintDecal")]
-public class TEFootprintDecal(ReadOnlySpan<char> name) : BaseTempEntity(name)
+public partial class TEFootprintDecal(ReadOnlySpan<char> name) : BaseTempEntity(name)
 {
-	public static readonly SendTable DT_TEFootprintDecal = new(DT_BaseTempEntity, [
-		SendPropVector(FIELD.OF(nameof(Origin)), 0, PropFlags.Coord),
-		SendPropVector(FIELD.OF(nameof(Direction)), 0, PropFlags.Coord),
-		SendPropInt(FIELD.OF(nameof(Entity)), 11, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Index)), 8, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEFootprintDecal);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Direction)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Entity)) { Bits = 11, Flags = PropFlags.Unsigned },
+		new(nameof(Index)) { Bits = 8, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_vecDirection")]
+	[NetworkVar("m_vecDirection")]
 	public Vector3 Direction;
-	[NetworkName("m_nEntity")]
+	[NetworkVar("m_nEntity")]
 	public int Entity;
-	[NetworkName("m_nIndex")]
+	[NetworkVar("m_nIndex")]
 	public int Index;
 	public int ChMaterialType;
 }

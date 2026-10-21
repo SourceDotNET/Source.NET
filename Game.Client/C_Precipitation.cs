@@ -3,27 +3,26 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_Precipitation>;
 [NetworkName("CPrecipitation")]
-public class C_Precipitation : C_BaseEntity
+public partial class C_Precipitation : C_BaseEntity
 {
-	public static readonly RecvTable DT_Precipitation = new(DT_BaseEntity, [
-		RecvPropInt(FIELD.OF(nameof(PrecipType))),
-		RecvPropString(FIELD.OF(nameof(ParticleNameClose))),
-		RecvPropString(FIELD.OF(nameof(ParticleNameInner))),
-		RecvPropString(FIELD.OF(nameof(ParticleNameOuter))),
-		RecvPropFloat(FIELD.OF(nameof(ParticleDist))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_Precipitation);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(PrecipType)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(ParticleNameClose)) { Encoding = NetEncoding.String },
+		new(nameof(ParticleNameInner)) { Encoding = NetEncoding.String },
+		new(nameof(ParticleNameOuter)) { Encoding = NetEncoding.String },
+		new(nameof(ParticleDist)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_nPrecipType")]
+	[NetworkVar("m_nPrecipType")]
 	public int PrecipType;
-	[NetworkName("m_sParticleNameClose")]
+	[NetworkVar("m_sParticleNameClose")]
 	public InlineArray512<char> ParticleNameClose;
-	[NetworkName("m_sParticleNameInner")]
+	[NetworkVar("m_sParticleNameInner")]
 	public InlineArray512<char> ParticleNameInner;
-	[NetworkName("m_sParticleNameOuter")]
+	[NetworkVar("m_sParticleNameOuter")]
 	public InlineArray512<char> ParticleNameOuter;
-	[NetworkName("m_flParticleDist")]
+	[NetworkVar("m_flParticleDist")]
 	public float ParticleDist;
 }

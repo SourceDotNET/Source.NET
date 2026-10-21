@@ -161,18 +161,82 @@ public class DirtySpatialPartitionEntityList() : AutoGameSystem("DirtySpatialPar
 	readonly ThreadLocal<int> ReadLockCount = new();
 }
 
-public class CollisionProperty : ICollideable
+public partial class CollisionProperty : ICollideable
 {
+	[NetworkTable("DT_CollisionProperty")]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(MinsPreScaled)) { Bits = 0, Flags = PropFlags.NoScale, Proxy = typeof(OBBMinsPreScaledProxy) },
+		new(nameof(MaxsPreScaled)) { Bits = 0, Flags = PropFlags.NoScale, Proxy = typeof(OBBMaxPreScaledProxy) },
+		new(nameof(Mins)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Maxs)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(SolidType)) { Bits = 3, Flags = PropFlags.Unsigned, Proxy = typeof(SolidTypeProxy) },
+		new(nameof(SolidFlags)) { Bits = (int)Source.SolidFlags.MaxBits, Flags = PropFlags.Unsigned, Proxy = typeof(SolidFlagsProxy) },
+		new(nameof(SurroundType)) { Bits = (int)SurroundingBoundsType.BitCount, Flags = PropFlags.Unsigned, Proxy = typeof(IntDirtySurroundProxy) },
+		new(nameof(TriggerBloat)) { Bits = 0, Flags = PropFlags.Unsigned, Proxy = typeof(IntDirtySurroundProxy) },
+		new(nameof(SpecifiedSurroundingMinsPreScaled)) { Bits = 0, Flags = PropFlags.NoScale, Proxy = typeof(VectorDirtySurroundProxy) },
+		new(nameof(SpecifiedSurroundingMaxsPreScaled)) { Bits = 0, Flags = PropFlags.NoScale, Proxy = typeof(VectorDirtySurroundProxy) },
+		new(nameof(SpecifiedSurroundingMins)) { Bits = 0, Flags = PropFlags.NoScale, Proxy = typeof(VectorDirtySurroundProxy) },
+		new(nameof(SpecifiedSurroundingMaxs)) { Bits = 0, Flags = PropFlags.NoScale, Proxy = typeof(VectorDirtySurroundProxy) },
+	];
+
+	[PredictionTable]
+	public static readonly PredictionField[] Prediction = [
+		nameof(MinsPreScaled),
+		nameof(MaxsPreScaled),
+		nameof(Mins),
+		nameof(Maxs),
+		nameof(SolidType),
+		nameof(SolidFlags),
+		nameof(TriggerBloat),
+	];
+
+	public static class OBBMinsPreScaledProxy
+	{
 #if CLIENT_DLL
-	public static readonly DataMap PredMap = new(typeof(CollisionProperty), [
-		DEFINE.PRED_FIELD(nameof(MinsPreScaled), FieldType.Vector, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD(nameof(MaxsPreScaled), FieldType.Vector, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD(nameof(Mins), FieldType.Vector, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD(nameof(Maxs), FieldType.Vector, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD(nameof(SolidType), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD(nameof(SolidFlags), FieldType.Short, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD(nameof(TriggerBloat), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-	]);
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) => RecvProxy_OBBMinsPreScaled(in data, instance, field);
+#endif
+	}
+
+	public static class OBBMaxPreScaledProxy
+	{
+#if CLIENT_DLL
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) => RecvProxy_OBBMaxPreScaled(in data, instance, field);
+#endif
+	}
+
+	public static class SolidTypeProxy
+	{
+#if CLIENT_DLL
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) => RecvProxy_Solid(in data, instance, field);
+#else
+		public static void Send(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID) => SendProxy_Solid(prop, instance, field, ref outData, element, objectID);
+#endif
+	}
+
+	public static class SolidFlagsProxy
+	{
+#if CLIENT_DLL
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) => RecvProxy_SolidFlags(in data, instance, field);
+#else
+		public static void Send(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID) => SendProxy_SolidFlags(prop, instance, field, ref outData, element, objectID);
+#endif
+	}
+
+	public static class IntDirtySurroundProxy
+	{
+#if CLIENT_DLL
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) => RecvProxy_IntDirtySurround(in data, instance, field);
+#endif
+	}
+
+	public static class VectorDirtySurroundProxy
+	{
+#if CLIENT_DLL
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) => RecvProxy_VectorDirtySurround(in data, instance, field);
+#endif
+	}
+
+#if CLIENT_DLL
 	private static void RecvProxy_VectorDirtySurround(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
 		Vector3 vecold = field.GetValue<Vector3>(instance);
 		Vector3 vecnew = data.Value.Vector;
@@ -240,36 +304,41 @@ public class CollisionProperty : ICollideable
 	}
 #endif
 
-	[NetworkName("m_vecMinsPreScaled")]
-	public Vector3 MinsPreScaled;
-	[NetworkName("m_vecMaxsPreScaled")]
-	public Vector3 MaxsPreScaled;
-	[NetworkName("m_vecMins")]
-	public Vector3 Mins;
-	[NetworkName("m_vecMaxs")]
-	public Vector3 Maxs;
+#if !CLIENT_DLL
+	public void NetworkStateChanged() => Outer?.NetworkStateChanged();
+	public void NetworkStateChanged(IFieldAccessor field) => Outer?.NetworkStateChanged();
+#endif
+
+	[NetworkVar("m_vecMinsPreScaled")]
+	public partial ref readonly Vector3 MinsPreScaled { get; }
+	[NetworkVar("m_vecMaxsPreScaled")]
+	public partial ref readonly Vector3 MaxsPreScaled { get; }
+	[NetworkVar("m_vecMins")]
+	public partial ref readonly Vector3 Mins { get; }
+	[NetworkVar("m_vecMaxs")]
+	public partial ref readonly Vector3 Maxs { get; }
 	public Vector3 Size;
 	float Radius;
-	[NetworkName("m_usSolidFlags")]
-	public ushort SolidFlags;
+	[NetworkVar("m_nSolidType")]
+	public partial byte SolidType { get; set; }
+	[NetworkVar("m_usSolidFlags")]
+	public partial ushort SolidFlags { get; set; }
 	SpatialPartitionHandle_t Partition = PARTITION_INVALID_HANDLE;
-	[NetworkName("m_nSurroundType")]
-	byte SurroundType;
-	[NetworkName("m_nSolidType")]
-	public byte SolidType;
+	[NetworkVar("m_nSurroundType")]
+	partial byte SurroundType { get; set; }
 
-	[NetworkName("m_triggerBloat")]
-	public byte TriggerBloat;
+	[NetworkVar("m_triggerBloat")]
+	public partial byte TriggerBloat { get; set; }
 	Vector3 SurroundingMins;
 	Vector3 SurroundingMaxs;
-	[NetworkName("m_vecSpecifiedSurroundingMinsPreScaled")]
-	Vector3 SpecifiedSurroundingMinsPreScaled;
-	[NetworkName("m_vecSpecifiedSurroundingMaxsPreScaled")]
-	Vector3 SpecifiedSurroundingMaxsPreScaled;
-	[NetworkName("m_vecSpecifiedSurroundingMins")]
-	Vector3 SpecifiedSurroundingMins;
-	[NetworkName("m_vecSpecifiedSurroundingMaxs")]
-	Vector3 SpecifiedSurroundingMaxs;
+	[NetworkVar("m_vecSpecifiedSurroundingMinsPreScaled")]
+	partial ref readonly Vector3 SpecifiedSurroundingMinsPreScaled { get; }
+	[NetworkVar("m_vecSpecifiedSurroundingMaxsPreScaled")]
+	partial ref readonly Vector3 SpecifiedSurroundingMaxsPreScaled { get; }
+	[NetworkVar("m_vecSpecifiedSurroundingMins")]
+	partial ref readonly Vector3 SpecifiedSurroundingMins { get; }
+	[NetworkVar("m_vecSpecifiedSurroundingMaxs")]
+	partial ref readonly Vector3 SpecifiedSurroundingMaxs { get; }
 
 	public void UseTriggerBounds(bool enable, float bloat) {
 		Assert(bloat <= 127.0f);
@@ -534,8 +603,8 @@ public class CollisionProperty : ICollideable
 
 	public void SetCollisionBounds(in Vector3 mins, in Vector3 maxs) {
 		if (MinsPreScaled != mins || MaxsPreScaled != maxs) {
-			MinsPreScaled = mins;
-			MaxsPreScaled = maxs;
+			MinsPreScaledForModify() = mins;
+			MaxsPreScaledForModify() = maxs;
 		}
 
 		bool dirty = false;
@@ -545,15 +614,15 @@ public class CollisionProperty : ICollideable
 			Vector3 newMins = mins * scale;
 			Vector3 newMaxs = maxs * scale;
 			if (Mins != newMins || Maxs != newMaxs) {
-				Mins = newMins;
-				Maxs = newMaxs;
+				MinsForModify() = newMins;
+				MaxsForModify() = newMaxs;
 				dirty = true;
 			}
 		}
 		else {
 			if (Mins != mins || Maxs != maxs) {
-				Mins = mins;
-				Maxs = maxs;
+				MinsForModify() = mins;
+				MaxsForModify() = maxs;
 				dirty = true;
 			}
 		}
@@ -879,10 +948,10 @@ public class CollisionProperty : ICollideable
 	public void Init(BaseEntity entity) {
 		Outer = entity;
 
-		MinsPreScaled.Init();
-		MaxsPreScaled.Init();
-		Mins.Init();
-		Maxs.Init();
+		MinsPreScaledForModify() = default;
+		MaxsPreScaledForModify() = default;
+		MinsForModify() = default;
+		MaxsForModify() = default;
 		Radius = 0.0f;
 		TriggerBloat = 0;
 		SolidFlags = 0;
@@ -891,48 +960,13 @@ public class CollisionProperty : ICollideable
 		SurroundType = (int)SurroundingBoundsType.UseOBBCollisionBounds;
 		SurroundingMins = vec3_origin;
 		SurroundingMaxs = vec3_origin;
-		SpecifiedSurroundingMinsPreScaled.Init();
-		SpecifiedSurroundingMaxsPreScaled.Init();
-		SpecifiedSurroundingMins.Init();
-		SpecifiedSurroundingMaxs.Init();
+		SpecifiedSurroundingMinsPreScaledForModify() = default;
+		SpecifiedSurroundingMaxsPreScaledForModify() = default;
+		SpecifiedSurroundingMinsForModify() = default;
+		SpecifiedSurroundingMaxsForModify() = default;
 	}
 
 	BaseEntity Outer = null!;
 	public BaseEntity GetOuter() => Outer;
-
-#if CLIENT_DLL
-	public static RecvTable DT_CollisionProperty = new(nameof(DT_CollisionProperty), [
-		RecvPropVector(FIELD.OF(nameof(MinsPreScaled)), 0, RecvProxy_OBBMinsPreScaled),
-		RecvPropVector(FIELD.OF(nameof(MaxsPreScaled)), 0, RecvProxy_OBBMaxPreScaled),
-		RecvPropVector(FIELD.OF(nameof(Mins)), 0),
-		RecvPropVector(FIELD.OF(nameof(Maxs)), 0),
-		RecvPropInt(FIELD.OF(nameof(SolidType)), 0, RecvProxy_Solid),
-		RecvPropInt(FIELD.OF(nameof(SolidFlags)), 0, RecvProxy_SolidFlags),
-		RecvPropInt(FIELD.OF(nameof(SurroundType)), 0, RecvProxy_IntDirtySurround),
-		RecvPropInt(FIELD.OF(nameof(TriggerBloat)), 0, RecvProxy_IntDirtySurround),
-		RecvPropVector(FIELD.OF(nameof(SpecifiedSurroundingMinsPreScaled)), 0, RecvProxy_VectorDirtySurround),
-		RecvPropVector(FIELD.OF(nameof(SpecifiedSurroundingMaxsPreScaled)), 0, RecvProxy_VectorDirtySurround),
-		RecvPropVector(FIELD.OF(nameof(SpecifiedSurroundingMins)), 0, RecvProxy_VectorDirtySurround),
-		RecvPropVector(FIELD.OF(nameof(SpecifiedSurroundingMaxs)), 0, RecvProxy_VectorDirtySurround),
-	]);
-
-#else
-	public static SendTable DT_CollisionProperty = new(nameof(DT_CollisionProperty), [
-		SendPropVector(FIELD.OF(nameof(MinsPreScaled)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(MaxsPreScaled)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(Mins)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(Maxs)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(SolidType)), 3, PropFlags.Unsigned, SendProxy_Solid),
-		SendPropInt(FIELD.OF(nameof(SolidFlags)), (int)Source.SolidFlags.MaxBits, PropFlags.Unsigned, SendProxy_SolidFlags),
-		SendPropInt(FIELD.OF(nameof(SurroundType)), (int)SurroundingBoundsType.BitCount, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(TriggerBloat)), 0, PropFlags.Unsigned),
-		SendPropVector(FIELD.OF(nameof(SpecifiedSurroundingMinsPreScaled)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(SpecifiedSurroundingMaxsPreScaled)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(SpecifiedSurroundingMins)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(SpecifiedSurroundingMaxs)), 0, PropFlags.NoScale),
-	]);
-
-
-#endif
 }
 #endif

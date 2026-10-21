@@ -5,49 +5,48 @@ using Source.Common;
 
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_Func_Dust>;
 
-[NetworkName("CFunc_Dust")]
-public class C_Func_Dust : C_BaseEntity
+[NetworkName("CFunc_Dust", NoBase = true)]
+public partial class C_Func_Dust : C_BaseEntity
 {
-	public static readonly RecvTable DT_Func_Dust = new([
-		RecvPropInt(FIELD.OF(nameof(Color))),
-		RecvPropInt(FIELD.OF(nameof(SpawnRate))),
-		RecvPropInt(FIELD.OF(nameof(SpeedMax))),
-		RecvPropFloat(FIELD.OF(nameof(SizeMin))),
-		RecvPropFloat(FIELD.OF(nameof(SizeMax))),
-		RecvPropInt(FIELD.OF(nameof(DistMax))),
-		RecvPropInt(FIELD.OF(nameof(LifetimeMin))),
-		RecvPropInt(FIELD.OF(nameof(LifetimeMax))),
-		RecvPropInt(FIELD.OF(nameof(DustFlags))),
-		RecvPropInt(FIELD.OF(nameof(ModelIndex))),
-		RecvPropFloat(FIELD.OF(nameof(FallSpeed))),
-		RecvPropBool(FIELD.OF(nameof(AffectedByWind))),
-		RecvPropDataTable("m_Collision", CollisionProperty.DT_CollisionProperty, 0, RECV_GET_OBJECT_AT_FIELD(FIELD.OF(nameof(Collision))))
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_Func_Dust);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Color)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(SpawnRate)) { Bits = 12, Flags = PropFlags.Unsigned },
+		new(nameof(SizeMin)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(SizeMax)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(LifetimeMin)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(LifetimeMax)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(DustFlags)) { Bits = 3, Flags = PropFlags.Unsigned },
+		new(nameof(SpeedMax)) { Bits = 12, Flags = PropFlags.Unsigned },
+		new(nameof(DistMax)) { Bits = 16, Flags = PropFlags.Unsigned },
+		new(nameof(ModelIndex)) { Encoding = NetEncoding.ModelIndex },
+		new(nameof(FallSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(AffectedByWind),
+		new(nameof(Collision)) { Encoding = NetEncoding.DataTable, DataTable = "DT_CollisionProperty" },
+	];
 
-	[NetworkName("m_Color")]
+	[NetworkVar("m_Color")]
 	public Color Color;
-	[NetworkName("m_SpawnRate")]
+	[NetworkVar("m_SpawnRate")]
 	public int SpawnRate;
-	[NetworkName("m_SpeedMax")]
-	public int SpeedMax;
-	[NetworkName("m_flSizeMin")]
+	[NetworkVar("m_flSizeMin")]
 	public float SizeMin;
-	[NetworkName("m_flSizeMax")]
+	[NetworkVar("m_flSizeMax")]
 	public float SizeMax;
-	[NetworkName("m_DistMax")]
-	public int DistMax;
-	[NetworkName("m_LifetimeMin")]
+	[NetworkVar("m_LifetimeMin")]
 	public int LifetimeMin;
-	[NetworkName("m_LifetimeMax")]
+	[NetworkVar("m_LifetimeMax")]
 	public int LifetimeMax;
-	[NetworkName("m_DustFlags")]
+	[NetworkVar("m_DustFlags")]
 	public int DustFlags;
-	[NetworkName("m_FallSpeed")]
+	[NetworkVar("m_SpeedMax")]
+	public int SpeedMax;
+	[NetworkVar("m_DistMax")]
+	public int DistMax;
+	[NetworkVar("m_FallSpeed")]
 	public float FallSpeed;
-	[NetworkName("m_bAffectedByWind")]
+	[NetworkVar("m_bAffectedByWind")]
 	public bool AffectedByWind;
 }
 

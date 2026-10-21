@@ -8,8 +8,8 @@ using System.Runtime.CompilerServices;
 
 namespace Game.Client;
 
-[NetworkName("CBaseTempEntity")]
-public class C_BaseTempEntity : IClientUnknown, IClientNetworkable
+[NetworkName("CBaseTempEntity", NoBase = true)]
+public partial class C_BaseTempEntity : IClientUnknown, IClientNetworkable
 {
 	public static C_BaseTempEntity? GetDynamicList() => s_DynamicEntities;
 	public static C_BaseTempEntity? GetList() => s_TempEntities;
@@ -41,13 +41,7 @@ public class C_BaseTempEntity : IClientUnknown, IClientNetworkable
 	private static C_BaseTempEntity? s_TempEntities;
 	private static C_BaseTempEntity? s_DynamicEntities;
 
-	public static readonly RecvTable DT_BaseTempEntity = new([]);
-	public static readonly ClientClass ClientClass = new ClientClass(DT_BaseTempEntity);
-
 	public int EntIndex() => 0;
-	public ClientClass GetClientClass() {
-		throw new NotImplementedException();
-	}
 
 	public IClientNetworkable GetClientNetworkable() => this;
 	public IClientRenderable GetClientRenderable() => null!;

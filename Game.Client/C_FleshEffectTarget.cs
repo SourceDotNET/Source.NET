@@ -3,18 +3,17 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_FleshEffectTarget>;
 [NetworkName("CFleshEffectTarget")]
-public class C_FleshEffectTarget : C_BaseEntity
+public partial class C_FleshEffectTarget : C_BaseEntity
 {
-	public static readonly RecvTable DT_FleshEffectTarget = new(DT_BaseEntity, [
-		RecvPropFloat(FIELD.OF(nameof(Radius))),
-		RecvPropFloat(FIELD.OF(nameof(ScaleTime))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_FleshEffectTarget);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Radius)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ScaleTime)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_flRadius")]
+	[NetworkVar("m_flRadius")]
 	public float Radius;
-	[NetworkName("m_flScaleTime")]
+	[NetworkVar("m_flScaleTime")]
 	public float ScaleTime;
 }

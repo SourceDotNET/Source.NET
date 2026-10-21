@@ -3,25 +3,24 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<BoneManipulate>;
 [LinkEntityToClass("manipulate_bone")]
 [NetworkName("CBoneManipulate")]
-public class BoneManipulate : BaseEntity
+public partial class BoneManipulate : BaseEntity
 {
-	public static readonly SendTable DT_BoneManipulate = new(DT_BaseEntity, [
-		SendPropArray3(FIELD.OF_ARRAY(nameof(BonePos)), SendPropVector(null!, 0, PropFlags.NoScale)),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(BoneAng)), SendPropVector(null!, 0, PropFlags.NoScale)),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(BoneScale)), SendPropVector(null!, 0, PropFlags.NoScale)),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(BoneJiggle)), SendPropInt((IFieldAccessor)null!, 4, PropFlags.Unsigned, sizeOfVar: sizeof(int))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BoneManipulate);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(BonePos)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(BoneAng)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(BoneScale)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(BoneJiggle)) { Bits = 4, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_BonePos")]
-	public InlineArrayMaxStudioBones<Vector3> BonePos;
-	[NetworkName("m_BoneAng")]
-	public InlineArrayMaxStudioBones<Vector3> BoneAng;
-	[NetworkName("m_BoneScale")]
-	public InlineArrayMaxStudioBones<Vector3> BoneScale;
-	[NetworkName("m_BoneJiggle")]
-	public InlineArrayMaxStudioBones<int> BoneJiggle;
+	[NetworkVar("m_BonePos")]
+	public partial ref readonly InlineArrayMaxStudioBones<Vector3> BonePos { get; }
+	[NetworkVar("m_BoneAng")]
+	public partial ref readonly InlineArrayMaxStudioBones<Vector3> BoneAng { get; }
+	[NetworkVar("m_BoneScale")]
+	public partial ref readonly InlineArrayMaxStudioBones<Vector3> BoneScale { get; }
+	[NetworkVar("m_BoneJiggle")]
+	public partial ref readonly InlineArrayMaxStudioBones<int> BoneJiggle { get; }
 }

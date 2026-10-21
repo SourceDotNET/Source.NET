@@ -4,6 +4,7 @@ using System.Numerics;
 
 using Source.Common;
 using Source.Common.Commands;
+using Source.Common.Engine;
 using Source.Common.Mathematics;
 using Source.Common.Physics;
 using Source;
@@ -12,24 +13,29 @@ using Game.Shared.HL2;
 namespace Game.Server.HL2;
 
 using DEFINE = Source.DEFINE<HL2_Player>;
-using FIELD = Source.FIELD<HL2_Player>;
 
 [PrecacheRegister("player")]
 [NetworkName("CHL2_Player")]
-public class HL2_Player : BaseMultiplayerPlayer
+public partial class HL2_Player : BaseMultiplayerPlayer
 {
-	public static readonly SendTable DT_HL2_Player = new(DT_BasePlayer, [
-		SendPropDataTable("m_HL2Local", FIELD.OF(nameof(HL2Local)), HL2PlayerLocalData.DT_HL2Local, SendProxy_SendLocalDataTable),
-		SendPropBool(FIELD.OF(nameof(m_bIsSprinting)))
-	]);
-	public static new readonly ServerClass ServerClass = new ServerClass(DT_HL2_Player);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(HL2Local)) { Encoding = NetEncoding.DataTable, DataTable = "DT_HL2Local", Proxy = typeof(HL2LocalDataProxy) },
+		nameof(m_bIsSprinting),
+	];
+
+	public static class HL2LocalDataProxy
+	{
+		public static object? Send(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID)
+			=> SendProxy_SendLocalDataTable(prop, instance, data, recipients, objectID);
+	}
 
 	public static readonly new DataMap DataDesc = new(typeof(HL2_Player), BasePlayer.DataDesc, [
 		DEFINE.INPUTFUNC(FieldType.Void, "ForceDropPhysObjects", nameof(InputForceDropPhysObjects), (INPUTFUNCPTR)((self, data) => ((HL2_Player)self).InputForceDropPhysObjects(data))),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
-	[NetworkName("m_HL2Local")]
+	[NetworkVar("m_HL2Local")]
 	public readonly HL2PlayerLocalData HL2Local = new();
 
 #if HL2MP
@@ -50,12 +56,15 @@ public class HL2_Player : BaseMultiplayerPlayer
 	bool SprintEnabled;
 	Class_T ControlClass;
 
-	[NetworkName("m_fIsSprinting")]
-	public bool m_bIsSprinting;
+	[NetworkVar("m_fIsSprinting")]
+	public partial bool m_bIsSprinting { get; set; }
 	public bool m_bIsWalking;
 	public bool m_bPlayUseDenySound;
 
-	public HL2_Player() => SprintEnabled = true;
+	public HL2_Player() {
+		HL2Local.Outer = this;
+		SprintEnabled = true;
+	}
 
 	public ref LadderMove GetLadderMove() => ref HL2Local.LadderMove;
 

@@ -3,23 +3,22 @@
 using Source.Common;
 
 namespace Game.Server;
-using FIELD = Source.FIELD<TEPlayerAnimEvent>;
 
-[NetworkName("CTEPlayerAnimEvent")]
-public class TEPlayerAnimEvent(ReadOnlySpan<char> name) : BaseTempEntity(name)
+[NetworkName("CTEPlayerAnimEvent", NoBase = true)]
+public partial class TEPlayerAnimEvent(ReadOnlySpan<char> name) : BaseTempEntity(name)
 {
-	public static readonly SendTable DT_TEPlayerAnimEvent = new([
-		SendPropEHandle(FIELD.OF(nameof(Player))),
-		SendPropInt(FIELD.OF(nameof(Event)), 6, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Data)), 32)
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEPlayerAnimEvent);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		nameof(Player),
+		new(nameof(Event)) { Bits = 6, Flags = PropFlags.Unsigned },
+		new(nameof(Data)) { Bits = 32 },
+	];
 
-	[NetworkName("m_hPlayer")]
+	[NetworkVar("m_hPlayer")]
 	public EHANDLE Player = new();
-	[NetworkName("m_iEvent")]
+	[NetworkVar("m_iEvent")]
 	public int Event;
-	[NetworkName("m_nData")]
+	[NetworkVar("m_nData")]
 	public int Data;
 
 	public static readonly TEPlayerAnimEvent g_TEPlayerAnimEvent = new("PlayerAnimEvent");

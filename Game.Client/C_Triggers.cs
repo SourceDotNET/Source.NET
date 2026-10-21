@@ -4,18 +4,18 @@ using Source.Common;
 using Source;
 
 namespace Game.Client;
-using FIELD_BT = FIELD<C_BaseTrigger>;
 
 // I don't know if this is correct, but they have a datatable, so...
 
 [NetworkName("CBaseTrigger")]
-public class C_BaseTrigger : BaseToggle
+public partial class C_BaseTrigger : BaseToggle
 {
-	public static readonly RecvTable DT_BaseTrigger = new(DT_BaseToggle, [
-		RecvPropBool(FIELD_BT.OF(nameof(ClientSidePredicted))),
-		RecvPropInt(FIELD_BT.OF(nameof(SpawnFlags)))
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseTrigger);
-	[NetworkName("m_bClientSidePredicted")]
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(ClientSidePredicted),
+		new(nameof(SpawnFlags)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.NoScale },
+	];
+
+	[NetworkVar("m_bClientSidePredicted")]
 	public bool ClientSidePredicted;
 }

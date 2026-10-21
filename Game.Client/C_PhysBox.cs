@@ -5,8 +5,10 @@ using Source.Common;
 
 namespace Game.Client;
 [NetworkName("CPhysBox")]
-public class C_PhysBox : C_BaseEntity
+public partial class C_PhysBox : C_BaseEntity
 {
-	public static readonly RecvTable DT_PhysBox = new(DT_BaseEntity, []);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_PhysBox);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 }

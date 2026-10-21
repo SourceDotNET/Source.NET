@@ -423,7 +423,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_bool[index] = value;
+			ent.GMOD_boolForModify()[index] = value;
 		}
 		return 0;
 	}
@@ -445,7 +445,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_float[index] = value;
+			ent.GMOD_floatForModify()[index] = value;
 		}
 		return 0;
 	}
@@ -467,7 +467,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_int[index] = value;
+			ent.GMOD_intForModify()[index] = value;
 		}
 		return 0;
 	}
@@ -489,7 +489,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_Vector[index] = value;
+			ent.GMOD_VectorForModify()[index] = value;
 		}
 		return 0;
 	}
@@ -511,7 +511,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_QAngle[index] = value;
+			ent.GMOD_QAngleForModify()[index] = value;
 		}
 		return 0;
 	}
@@ -536,7 +536,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_EHANDLE[index].Set(value);
+			ent.GMOD_EHANDLEForModify()[index].Set(value);
 		}
 		return 0;
 	}
@@ -558,25 +558,25 @@ public static partial class LuaEntity
 #if GAME_DLL
 				ent.NetworkStateChanged();
 #endif
-				strcpy(ent.GMOD_String0, value);
+				strcpy(ent.GMOD_String0ForModify(), value);
 				break;
 			case 1:
 #if GAME_DLL
 				ent.NetworkStateChanged();
 #endif
-				strcpy(ent.GMOD_String1, value);
+				strcpy(ent.GMOD_String1ForModify(), value);
 				break;
 			case 2:
 #if GAME_DLL
 				ent.NetworkStateChanged();
 #endif
-				strcpy(ent.GMOD_String2, value);
+				strcpy(ent.GMOD_String2ForModify(), value);
 				break;
 			case 3:
 #if GAME_DLL
 				ent.NetworkStateChanged();
 #endif
-				strcpy(ent.GMOD_String3, value);
+				strcpy(ent.GMOD_String3ForModify(), value);
 				break;
 		}
 		return 0;

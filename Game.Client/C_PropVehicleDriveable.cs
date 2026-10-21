@@ -5,52 +5,51 @@ using Source.Common;
 using System.Numerics;
 
 namespace Game.Client;
-using FIELD = Source.FIELD<C_PropVehicleDriveable>;
 
 [NetworkName("CPropVehicleDriveable")]
-public class C_PropVehicleDriveable : C_BaseAnimating
+public partial class C_PropVehicleDriveable : C_BaseAnimating
 {
-	public static readonly RecvTable DT_PropVehicleDriveable = new(DT_BaseAnimating, [
-		RecvPropEHandle(FIELD.OF(nameof(Player))),
-		RecvPropInt(FIELD.OF(nameof(Speed))),
-		RecvPropInt(FIELD.OF(nameof(RPM))),
-		RecvPropFloat(FIELD.OF(nameof(Throttle))),
-		RecvPropInt(FIELD.OF(nameof(BoostTimeLeft))),
-		RecvPropBool(FIELD.OF(nameof(HasBoost))),
-		RecvPropBool(FIELD.OF(nameof(EnterAnimOn))),
-		RecvPropBool(FIELD.OF(nameof(ExitAnimOn))),
-		RecvPropBool(FIELD.OF(nameof(UnableToFire))),
-		RecvPropVector(FIELD.OF(nameof(EyeExitEndpoint))),
-		RecvPropBool(FIELD.OF(nameof(HasGun))),
-		RecvPropVector(FIELD.OF(nameof(GunCrosshair))),
-		RecvPropBool(FIELD.OF(nameof(Locked))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_PropVehicleDriveable);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Player),
+		nameof(Speed),
+		new(nameof(RPM)) { Bits = 13 },
+		new(nameof(Throttle)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(BoostTimeLeft)) { Bits = 8 },
+		nameof(HasBoost),
+		nameof(EnterAnimOn),
+		nameof(ExitAnimOn),
+		nameof(UnableToFire),
+		new(nameof(EyeExitEndpoint)) { Bits = 0, Flags = PropFlags.Coord },
+		nameof(HasGun),
+		new(nameof(GunCrosshair)) { Bits = 0, Flags = PropFlags.Coord },
+		nameof(Locked),
+	];
 
-	[NetworkName("m_hPlayer")]
+	[NetworkVar("m_hPlayer")]
 	public EHANDLE Player = new();
-	[NetworkName("m_nRPM")]
+	[NetworkVar("m_nRPM")]
 	public int RPM;
-	[NetworkName("m_flThrottle")]
+	[NetworkVar("m_flThrottle")]
 	public float Throttle;
-	[NetworkName("m_nBoostTimeLeft")]
+	[NetworkVar("m_nBoostTimeLeft")]
 	public int BoostTimeLeft;
-	[NetworkName("m_nHasBoost")]
+	[NetworkVar("m_nHasBoost")]
 	public bool HasBoost;
 	public bool ScannerDisabledWeapons;
 	public bool ScannerDisabledVehicle;
-	[NetworkName("m_bEnterAnimOn")]
+	[NetworkVar("m_bEnterAnimOn")]
 	public bool EnterAnimOn;
-	[NetworkName("m_bExitAnimOn")]
+	[NetworkVar("m_bExitAnimOn")]
 	public bool ExitAnimOn;
-	[NetworkName("m_bUnableToFire")]
+	[NetworkVar("m_bUnableToFire")]
 	public bool UnableToFire;
-	[NetworkName("m_vecEyeExitEndpoint")]
+	[NetworkVar("m_vecEyeExitEndpoint")]
 	public Vector3 EyeExitEndpoint;
-	[NetworkName("m_bHasGun")]
+	[NetworkVar("m_bHasGun")]
 	public bool HasGun;
-	[NetworkName("m_vecGunCrosshair")]
+	[NetworkVar("m_vecGunCrosshair")]
 	public Vector3 GunCrosshair;
-	[NetworkName("m_bLocked")]
+	[NetworkVar("m_bLocked")]
 	public bool Locked;
 }

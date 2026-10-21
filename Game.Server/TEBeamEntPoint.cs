@@ -3,24 +3,23 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEBeamEntPoint>;
 [NetworkName("CTEBeamEntPoint")]
-public class TEBeamEntPoint(ReadOnlySpan<char> name) : BaseBeam(name)
+public partial class TEBeamEntPoint(ReadOnlySpan<char> name) : BaseBeam(name)
 {
-	public static readonly SendTable DT_TEBeamEntPoint = new(DT_BaseBeam, [
-		SendPropInt(FIELD.OF(nameof(StartEntity)), 24, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(EndEntity)), 24, PropFlags.Unsigned),
-		SendPropVector(FIELD.OF(nameof(StartPoint)), 0, PropFlags.Coord),
-		SendPropVector(FIELD.OF(nameof(EndPoint)), 0, PropFlags.Coord),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEBeamEntPoint);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(StartEntity)) { Bits = 24, Flags = PropFlags.Unsigned },
+		new(nameof(EndEntity)) { Bits = 24, Flags = PropFlags.Unsigned },
+		new(nameof(StartPoint)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(EndPoint)) { Bits = 0, Flags = PropFlags.Coord },
+	];
 
-	[NetworkName("m_nStartEntity")]
+	[NetworkVar("m_nStartEntity")]
 	public int StartEntity;
-	[NetworkName("m_nEndEntity")]
+	[NetworkVar("m_nEndEntity")]
 	public int EndEntity;
-	[NetworkName("m_vecStartPoint")]
+	[NetworkVar("m_vecStartPoint")]
 	public Vector3 StartPoint;
-	[NetworkName("m_vecEndPoint")]
+	[NetworkVar("m_vecEndPoint")]
 	public Vector3 EndPoint;
 }

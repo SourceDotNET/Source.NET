@@ -3,29 +3,28 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<FlexManipulate>;
 [LinkEntityToClass("manipulate_flex")]
 [NetworkName("CFlexManipulate")]
-public class FlexManipulate : BaseEntity
+public partial class FlexManipulate : BaseEntity
 {
-	public static readonly SendTable DT_FlexManipulate = new(DT_BaseEntity, [
-		SendPropFloat(FIELD.OF(nameof(ExScale)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(EyesLocalTarget)), 0, PropFlags.NoScale),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(FlexWeights)), SendPropFloat(null!, 0, PropFlags.NoScale)),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_FlexManipulate);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(ExScale)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(EyesLocalTarget)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FlexWeights)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_flexScale")]
-	public float ExScale;
-	[NetworkName("m_EyesLocalTarget")]
-	public Vector3 EyesLocalTarget;
-	[NetworkName("m_iFlexWeights")]
-	public InlineArray96<float> FlexWeights;
+	[NetworkVar("m_flexScale")]
+	public partial float ExScale { get; set; }
+	[NetworkVar("m_EyesLocalTarget")]
+	public partial Vector3 EyesLocalTarget { get; set; }
+	[NetworkVar("m_iFlexWeights")]
+	public partial ref readonly InlineArray96<float> FlexWeights { get; }
 
 	public void SetFlexWeight(byte index, float weight) {
 		if (index < 96 && FlexWeights[index] != weight) {
 			NetworkStateChanged();
-			FlexWeights[index] = weight;
+			FlexWeightsForModify()[index] = weight;
 		}
 	}
 }

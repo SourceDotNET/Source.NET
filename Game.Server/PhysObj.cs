@@ -15,16 +15,18 @@ namespace Game.Server;
 
 [LinkEntityToClass("func_physbox")]
 [NetworkName("CPhysBox")]
-public class PhysBox : Breakable
+public partial class PhysBox : Breakable
 {
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 	[Flags]
 	public enum SF
 	{
 		EnableOnPhyscannon = 0x20000,
 	}
 
-	public static readonly SendTable DT_PhysBox = new(DT_BaseEntity, []);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PhysBox);
 }
 
 [LinkEntityToClass("env_physimpact")]

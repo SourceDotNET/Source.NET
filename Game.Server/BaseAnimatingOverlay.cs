@@ -7,24 +7,24 @@ using System.Numerics;
 
 namespace Game.Server;
 
-using FIELD = Source.FIELD<BaseAnimatingOverlay>;
-
 [NetworkName("CBaseAnimatingOverlay")]
-public class BaseAnimatingOverlay : BaseAnimating
+public partial class BaseAnimatingOverlay : BaseAnimating
 {
 	public const int MAX_OVERLAYS = 15;
 
 	internal static readonly ConVar ai_sequence_debug = new("ai_sequence_debug", "0");
 
-	public static readonly SendTable DT_OverlayVars = new(nameof(DT_OverlayVars), [
-		SendPropList<AnimationLayerRef>(FIELD.OF(nameof(AnimOverlay)), MAX_OVERLAYS, SendPropDataTable(null, AnimationLayerRef.DT_Animationlayer))
-	]);
+	[NetworkTable("DT_OverlayVars")]
+	public static readonly NetworkProp[] OverlayVarsProps = [
+		new(nameof(AnimOverlay)) { Encoding = NetEncoding.List, Count = MAX_OVERLAYS, DataTable = "DT_Animationlayer" },
+	];
 
-	public static readonly SendTable DT_BaseAnimatingOverlay = new(DT_BaseAnimating, [
-		SendPropDataTable("overlay_vars", 0, DT_OverlayVars)
-	]); public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseAnimatingOverlay);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(OverlayVarsProps)) { Name = "overlay_vars" },
+	];
 
-	[NetworkName("m_AnimOverlay")]
+	[NetworkVar("m_AnimOverlay")]
 	readonly List<AnimationLayerRef> AnimOverlay = [];
 
 	public AnimationLayerRef GetAnimOverlay(int i) {

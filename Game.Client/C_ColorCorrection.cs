@@ -8,46 +8,45 @@ using System.Security.Cryptography.X509Certificates;
 using Source.Common.MaterialSystem;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_ColorCorrection>;
 
 [NetworkName("CColorCorrection")]
-public class C_ColorCorrection : C_BaseEntity
+public partial class C_ColorCorrection : C_BaseEntity
 {
-	public static readonly RecvTable DT_ColorCorrection = new([
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropFloat(FIELD.OF(nameof(MinFalloff))),
-		RecvPropFloat(FIELD.OF(nameof(MaxFalloff))),
-		RecvPropFloat(FIELD.OF(nameof(CurWeight))),
-		RecvPropFloat(FIELD.OF(nameof(MaxWeight))),
-		RecvPropFloat(FIELD.OF(nameof(FadeInDuration))),
-		RecvPropFloat(FIELD.OF(nameof(FadeOutDuration))),
-		RecvPropString(FIELD.OF(nameof(NetLookupFilename))),
-		RecvPropBool(FIELD.OF(nameof(Enabled))),
-		RecvPropBool(FIELD.OF(nameof(ClientSide))),
-		RecvPropBool(FIELD.OF(nameof(Exclusive))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_ColorCorrection);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Origin)) { Encoding = NetEncoding.Vector, Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MinFalloff)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MaxFalloff)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(CurWeight)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MaxWeight)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeInDuration)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeOutDuration)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(NetLookupFilename)) { Encoding = NetEncoding.String },
+		nameof(Enabled),
+		nameof(ClientSide),
+		nameof(Exclusive),
+	];
 
 
-	[NetworkName("m_MinFalloff")]
+	[NetworkVar("m_minFalloff")]
 	public float MinFalloff;
-	[NetworkName("m_MaxFalloff")]
+	[NetworkVar("m_maxFalloff")]
 	public float MaxFalloff;
-	[NetworkName("m_flCurWeight")]
+	[NetworkVar("m_flCurWeight")]
 	public float CurWeight;
-	[NetworkName("m_flMaxWeight")]
+	[NetworkVar("m_flMaxWeight")]
 	public float MaxWeight;
-	[NetworkName("m_flFadeInDuration")]
+	[NetworkVar("m_flFadeInDuration")]
 	public float FadeInDuration;
-	[NetworkName("m_flFadeOutDuration")]
+	[NetworkVar("m_flFadeOutDuration")]
 	public float FadeOutDuration;
-	[NetworkName("m_netlookupFilename")]
+	[NetworkVar("m_netLookupFilename")]
 	public InlineArrayMaxPath<char> NetLookupFilename;
-	[NetworkName("m_bEnabled")]
+	[NetworkVar("m_bEnabled")]
 	public bool Enabled;
-	[NetworkName("m_bClientSide")]
+	[NetworkVar("m_bClientSide")]
 	public bool ClientSide;
-	[NetworkName("m_bExclusive")]
+	[NetworkVar("m_bExclusive")]
 	public bool Exclusive;
 }
 

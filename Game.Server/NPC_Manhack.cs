@@ -3,22 +3,21 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<NPC_Manhack>;
 [LinkEntityToClass("npc_manhack")]
 [NetworkName("CNPC_Manhack")]
-public class NPC_Manhack : AI_BaseNPC
+public partial class NPC_Manhack : AI_BaseNPC
 {
-	public static readonly SendTable DT_NPC_Manhack = new(DT_AI_BaseNPC, [
-		SendPropInt(FIELD.OF(nameof(EnginePitch1)), 8, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(EnginePitch1Time)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(EnginePitch2)), 8, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_NPC_Manhack);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(EnginePitch1)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(EnginePitch1Time)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(EnginePitch2)) { Bits = 8, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_nEnginePitch1")]
-	public int EnginePitch1;
-	[NetworkName("m_flEnginePitch1Time")]
-	public float EnginePitch1Time;
-	[NetworkName("m_nEnginePitch2")]
-	public int EnginePitch2;
+	[NetworkVar("m_nEnginePitch1")]
+	public partial int EnginePitch1 { get; set; }
+	[NetworkVar("m_flEnginePitch1Time")]
+	public partial float EnginePitch1Time { get; set; }
+	[NetworkVar("m_nEnginePitch2")]
+	public partial int EnginePitch2 { get; set; }
 }

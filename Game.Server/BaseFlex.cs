@@ -14,37 +14,34 @@ using System.Numerics;
 
 namespace Game.Server;
 
-using FIELD = Source.FIELD<BaseFlex>;
 using EventType = Game.Shared.ChoreoEvent.EventType;
 
 [LinkEntityToClass("funCBaseFlex")]
 [NetworkName("CBaseFlex")]
-public class BaseFlex : BaseAnimatingOverlay
+public partial class BaseFlex : BaseAnimatingOverlay
 {
-	public static readonly SendTable DT_BaseFlex = new(DT_BaseAnimatingOverlay, [
-		SendPropArray3  (FIELD.OF_ARRAY(nameof(FlexWeight)), SendPropFloat(FIELD.OF_ARRAY(nameof(FlexWeight)), 12, PropFlags.RoundDown, 0.0f, 1.0f )),
-		SendPropInt     (FIELD.OF(nameof(BlinkToggle)), 1, PropFlags.Unsigned ),
-		SendPropVector  (FIELD.OF(nameof(ViewTarget)), -1, PropFlags.Coord),
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(FlexWeight)) { Bits = 12, Flags = PropFlags.RoundDown, Low = 0.0f, High = 1.0f },
+		new(nameof(BlinkToggle)) { Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(ViewTarget)) { Bits = -1, Flags = PropFlags.Coord },
 
-		SendPropFloat   ( FIELD.OF_VECTORELEM(nameof(ViewOffset), 0), 0, PropFlags.NoScale ),
-		SendPropFloat   ( FIELD.OF_VECTORELEM(nameof(ViewOffset), 1), 0, PropFlags.NoScale ),
-		SendPropFloat   ( FIELD.OF_VECTORELEM(nameof(ViewOffset), 2), 0, PropFlags.NoScale ),
+		new(nameof(ViewOffset)) { Encoding = NetEncoding.VectorElements, Bits = 0, Flags = PropFlags.NoScale },
 
-		SendPropVector  ( FIELD.OF(nameof(Lean)), -1, PropFlags.Coord ),
-		SendPropVector  ( FIELD.OF(nameof(Shift)), -1, PropFlags.Coord ),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseFlex);
+		new(nameof(Lean)) { Bits = -1, Flags = PropFlags.Coord },
+		new(nameof(Shift)) { Bits = -1, Flags = PropFlags.Coord },
+	];
 
-	[NetworkName("m_flexWeight")]
-	public InlineArray96<float> FlexWeight;
-	[NetworkName("m_blinktoggle")]
-	public int BlinkToggle;
-	[NetworkName("m_viewtarget")]
-	public Vector3 ViewTarget;
-	[NetworkName("m_vecLean")]
-	public Vector3 Lean;
-	[NetworkName("m_vecShift")]
-	public Vector3 Shift;
+	[NetworkVar("m_flexWeight")]
+	public partial ref readonly InlineArray96<float> FlexWeight { get; }
+	[NetworkVar("m_blinktoggle")]
+	public partial int BlinkToggle { get; set; }
+	[NetworkVar("m_viewtarget")]
+	public partial Vector3 ViewTarget { get; set; }
+	[NetworkVar("m_vecLean")]
+	public partial Vector3 Lean { get; set; }
+	[NetworkVar("m_vecShift")]
+	public partial Vector3 Shift { get; set; }
 
 	public override void SetModel(ReadOnlySpan<char> modelName) {
 		base.SetModel(modelName);
@@ -66,7 +63,7 @@ public class BaseFlex : BaseAnimatingOverlay
 				value = Math.Clamp(value, 0.0f, 1.0f);
 			}
 
-			FlexWeight[(int)index] = value;
+			FlexWeightForModify()[(int)index] = value;
 		}
 	}
 

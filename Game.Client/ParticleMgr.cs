@@ -8,10 +8,10 @@ namespace Game.Client;
 
 public struct ParticleLightInfo
 {
-	[NetworkName("m_vPos")]
+	[NetworkVar("m_vPos")]
 	public Vector3 Pos;
-	[NetworkName("m_vColor")]
+	[NetworkVar("m_vColor")]
 	public Vector3 Color;
-	[NetworkName("m_flIntensity")]
+	[NetworkVar("m_flIntensity")]
 	public float Intensity;
 }

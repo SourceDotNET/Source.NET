@@ -3,19 +3,18 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<EnvScreenEffect>;
 [LinkEntityToClass("env_screeneffect")]
 [NetworkName("CEnvScreenEffect")]
-public class EnvScreenEffect : BaseEntity
+public partial class EnvScreenEffect : BaseEntity
 {
-	public static readonly SendTable DT_EnvScreenEffect = new(DT_BaseEntity, [
-		SendPropFloat(FIELD.OF(nameof(Duration)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(Type)), 12, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_EnvScreenEffect);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Duration)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Type)) { Bits = 12, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_flDuration")]
-	public float Duration;
-	[NetworkName("m_nType")]
-	public int Type;
+	[NetworkVar("m_flDuration")]
+	public partial float Duration { get; set; }
+	[NetworkVar("m_nType")]
+	public partial int Type { get; set; }
 }

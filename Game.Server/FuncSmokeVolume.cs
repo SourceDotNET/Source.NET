@@ -9,42 +9,40 @@ using System;
 namespace Game.Server;
 
 
-using FIELD = FIELD<FuncSmokeVolume>;
-
 [LinkEntityToClass("func_smokevolume")]
 [NetworkName("CFuncSmokeVolume")]
-public class FuncSmokeVolume : BaseParticleEntity
+public partial class FuncSmokeVolume : BaseParticleEntity
 {
-	public static readonly SendTable DT_FuncSmokeVolume = new(DT_BaseParticleEntity, [
-		SendPropInt(FIELD.OF(nameof(Color1)), 32, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Color2)), 32, PropFlags.Unsigned),
-		SendPropString(FIELD.OF(nameof(MaterialName))),
-		SendPropFloat(FIELD.OF(nameof(ParticleDrawWidth)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(ParticleSpacingDistance)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(DensityRampSpeed)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(RotationSpeed)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(MovementSpeed)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(Density)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(SpawnFlags)), 8, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_FuncSmokeVolume);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Color1)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(Color2)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(MaterialName)) { Encoding = NetEncoding.String },
+		new(nameof(ParticleDrawWidth)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ParticleSpacingDistance)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(DensityRampSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(RotationSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MovementSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Density)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(SpawnFlags)) { Encoding = NetEncoding.Int, Bits = 8, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_Color1")]
-	public Color Color1;
-	[NetworkName("m_Color2")]
-	public Color Color2;
-	[NetworkName("m_MaterialName")]
-	public InlineArray255<char> MaterialName;
-	[NetworkName("m_ParticleDrawWidth")]
-	public float ParticleDrawWidth;
-	[NetworkName("m_ParticleSpacingDistance")]
-	public float ParticleSpacingDistance;
-	[NetworkName("m_DensityRampSpeed")]
-	public float DensityRampSpeed;
-	[NetworkName("m_RotationSpeed")]
-	public float RotationSpeed;
-	[NetworkName("m_MovementSpeed")]
-	public float MovementSpeed;
-	[NetworkName("m_Density")]
-	public float Density;
+	[NetworkVar("m_Color1")]
+	public partial Color Color1 { get; set; }
+	[NetworkVar("m_Color2")]
+	public partial Color Color2 { get; set; }
+	[NetworkVar("m_MaterialName")]
+	public partial ref readonly InlineArray255<char> MaterialName { get; }
+	[NetworkVar("m_ParticleDrawWidth")]
+	public partial float ParticleDrawWidth { get; set; }
+	[NetworkVar("m_ParticleSpacingDistance")]
+	public partial float ParticleSpacingDistance { get; set; }
+	[NetworkVar("m_DensityRampSpeed")]
+	public partial float DensityRampSpeed { get; set; }
+	[NetworkVar("m_RotationSpeed")]
+	public partial float RotationSpeed { get; set; }
+	[NetworkVar("m_MovementSpeed")]
+	public partial float MovementSpeed { get; set; }
+	[NetworkVar("m_Density")]
+	public partial float Density { get; set; }
 }

@@ -3,58 +3,57 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_SmokeStack>;
 [NetworkName("CSmokeStack")]
-public class C_SmokeStack : C_BaseParticleEntity
+public partial class C_SmokeStack : C_BaseParticleEntity
 {
-	public static readonly RecvTable DT_SmokeStack = new(DT_BaseParticleEntity, [
-		RecvPropFloat(FIELD.OF(nameof(SpreadSpeed))),
-		RecvPropFloat(FIELD.OF(nameof(Speed))),
-		RecvPropFloat(FIELD.OF(nameof(StartSize))),
-		RecvPropFloat(FIELD.OF(nameof(EndSize))),
-		RecvPropFloat(FIELD.OF(nameof(Rate))),
-		RecvPropFloat(FIELD.OF(nameof(JetLength))),
-		RecvPropBool(FIELD.OF(nameof(Emit))),
-		RecvPropFloat(FIELD.OF(nameof(BaseSpread))),
-		RecvPropFloat(FIELD.OF(nameof(RollSpeed))),
-		RecvPropVector(FIELD.OF("DirLight.Pos")),
-		RecvPropVector(FIELD.OF("DirLight.Color")),
-		RecvPropFloat(FIELD.OF("DirLight.Intensity")),
-		RecvPropVector(FIELD.OF("AmbientLight.Pos")),
-		RecvPropVector(FIELD.OF("AmbientLight.Color")),
-		RecvPropFloat(FIELD.OF("AmbientLight.Intensity")),
-		RecvPropVector(FIELD.OF(nameof(Wind))),
-		RecvPropFloat(FIELD.OF(nameof(Twist))),
-		RecvPropIntWithMinusOneFlag(FIELD.OF(nameof(MaterialModel))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_SmokeStack);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(SpreadSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Speed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(StartSize)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(EndSize)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Rate)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(JetLength)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(Emit),
+		new(nameof(BaseSpread)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Twist)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(RollSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MaterialModel)) { Bits = 16, Encoding = NetEncoding.IntWithMinusOneFlag },
+		new(nameof(AmbientLight.Pos)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(AmbientLight.Color)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(AmbientLight.Intensity)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(DirLight.Pos)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(DirLight.Color)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(DirLight.Intensity)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Wind)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_SpreadSpeed")]
+	[NetworkVar("m_SpreadSpeed")]
 	public float SpreadSpeed;
-	[NetworkName("m_Speed")]
+	[NetworkVar("m_Speed")]
 	public new float Speed;
-	[NetworkName("m_StartSize")]
+	[NetworkVar("m_StartSize")]
 	public float StartSize;
-	[NetworkName("m_EndSize")]
+	[NetworkVar("m_EndSize")]
 	public float EndSize;
-	[NetworkName("m_Rate")]
+	[NetworkVar("m_Rate")]
 	public float Rate;
-	[NetworkName("m_JetLength")]
+	[NetworkVar("m_JetLength")]
 	public float JetLength;
-	[NetworkName("m_bEmit")]
+	[NetworkVar("m_bEmit")]
 	public bool Emit;
-	[NetworkName("m_flBaseSpread")]
+	[NetworkVar("m_flBaseSpread")]
 	public float BaseSpread;
-	[NetworkName("m_flRollSpeed")]
+	[NetworkVar("m_flRollSpeed")]
 	public float RollSpeed;
-	[NetworkName("m_AmbientLight")]
+	[NetworkVar("m_AmbientLight")]
 	public ParticleLightInfo AmbientLight;
-	[NetworkName("m_DirLight")]
+	[NetworkVar("m_DirLight")]
 	public ParticleLightInfo DirLight;
-	[NetworkName("m_vWind")]
+	[NetworkVar("m_vWind")]
 	public Vector3 Wind;
-	[NetworkName("m_flTwist")]
+	[NetworkVar("m_flTwist")]
 	public float Twist;
-	[NetworkName("m_iMaterialModel")]
+	[NetworkVar("m_iMaterialModel")]
 	public int MaterialModel;
 }

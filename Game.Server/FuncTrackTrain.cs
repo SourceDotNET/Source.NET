@@ -29,8 +29,12 @@ public enum TrainOrientationType
 
 [LinkEntityToClass("func_tracktrain")]
 [NetworkName("CFuncTrackTrain")]
-public class FuncTrackTrain : BaseEntity
+public partial class FuncTrackTrain : BaseEntity
 {
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 	[Flags]
 	public enum SF
 	{
@@ -55,8 +59,6 @@ public class FuncTrackTrain : BaseEntity
 
 	const float TRAIN_MAXSPEED = 1000;
 
-	public static readonly SendTable DT_FuncTrackTrain = new(DT_BaseEntity, []);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_FuncTrackTrain);
 
 	public static readonly new DataMap DataDesc = new(typeof(FuncTrackTrain), BaseEntity.DataDesc, [
 		DEFINE.KEYFIELD(nameof(Length), FieldType.Float, "wheels"),

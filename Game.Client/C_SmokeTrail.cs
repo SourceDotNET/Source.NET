@@ -3,57 +3,56 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_SmokeTrail>;
-[NetworkName("SmokeTrail")]
-public class C_SmokeTrail : C_BaseParticleEntity
+[NetworkName("SmokeTrail", Table = "DT_SmokeTrail")]
+public partial class C_SmokeTrail : C_BaseParticleEntity
 {
-	public static readonly RecvTable DT_SmokeTrail = new(DT_BaseParticleEntity, [
-		RecvPropFloat(FIELD.OF(nameof(SpawnRate))),
-		RecvPropVector(FIELD.OF(nameof(StartColor))),
-		RecvPropVector(FIELD.OF(nameof(EndColor))),
-		RecvPropFloat(FIELD.OF(nameof(ParticleLifetime))),
-		RecvPropFloat(FIELD.OF(nameof(StopEmitTime))),
-		RecvPropFloat(FIELD.OF(nameof(MinSpeed))),
-		RecvPropFloat(FIELD.OF(nameof(MaxSpeed))),
-		RecvPropFloat(FIELD.OF(nameof(MinDirectedSpeed))),
-		RecvPropFloat(FIELD.OF(nameof(MaxDirectedSpeed))),
-		RecvPropFloat(FIELD.OF(nameof(StartSize))),
-		RecvPropFloat(FIELD.OF(nameof(EndSize))),
-		RecvPropFloat(FIELD.OF(nameof(SpawnRadius))),
-		RecvPropBool(FIELD.OF(nameof(Emit))),
-		RecvPropInt(FIELD.OF(nameof(Attachment))),
-		RecvPropFloat(FIELD.OF(nameof(Opacity))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_SmokeTrail);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(SpawnRate)) { Bits = 8, Low = 1.0f, High = 1024.0f },
+		new(nameof(StartColor)) { Bits = 8, Low = 0.0f, High = 1.0f },
+		new(nameof(EndColor)) { Bits = 8, Low = 0.0f, High = 1.0f },
+		new(nameof(ParticleLifetime)) { Bits = 16, Flags = PropFlags.RoundUp, Low = 0.1f, High = 100.0f },
+		new(nameof(StopEmitTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MinSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MaxSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MinDirectedSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MaxDirectedSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(StartSize)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(EndSize)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(SpawnRadius)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(Emit),
+		new(nameof(Attachment)) { Bits = 12 },
+		new(nameof(Opacity)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_SpawnRate")]
+	[NetworkVar("m_SpawnRate")]
 	public float SpawnRate;
-	[NetworkName("m_StartColor")]
+	[NetworkVar("m_StartColor")]
 	public Vector3 StartColor;
-	[NetworkName("m_EndColor")]
+	[NetworkVar("m_EndColor")]
 	public Vector3 EndColor;
-	[NetworkName("m_ParticleLifetime")]
+	[NetworkVar("m_ParticleLifetime")]
 	public float ParticleLifetime;
-	[NetworkName("m_StopEmitTime")]
+	[NetworkVar("m_StopEmitTime")]
 	public float StopEmitTime;
-	[NetworkName("m_MinSpeed")]
+	[NetworkVar("m_MinSpeed")]
 	public float MinSpeed;
-	[NetworkName("m_MaxSpeed")]
+	[NetworkVar("m_MaxSpeed")]
 	public float MaxSpeed;
-	[NetworkName("m_MinDirectedSpeed")]
+	[NetworkVar("m_MinDirectedSpeed")]
 	public float MinDirectedSpeed;
-	[NetworkName("m_MaxDirectedSpeed")]
+	[NetworkVar("m_MaxDirectedSpeed")]
 	public float MaxDirectedSpeed;
-	[NetworkName("m_StartSize")]
+	[NetworkVar("m_StartSize")]
 	public float StartSize;
-	[NetworkName("m_EndSize")]
+	[NetworkVar("m_EndSize")]
 	public float EndSize;
-	[NetworkName("m_SpawnRadius")]
+	[NetworkVar("m_SpawnRadius")]
 	public float SpawnRadius;
-	[NetworkName("m_bEmit")]
+	[NetworkVar("m_bEmit")]
 	public bool Emit;
-	[NetworkName("m_nAttachment")]
+	[NetworkVar("m_nAttachment")]
 	public int Attachment;
-	[NetworkName("m_Opacity")]
+	[NetworkVar("m_Opacity")]
 	public float Opacity;
 }

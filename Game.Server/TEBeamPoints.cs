@@ -3,18 +3,17 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEBeamPoints>;
 [NetworkName("CTEBeamPoints")]
-public class TEBeamPoints(ReadOnlySpan<char> name) : BaseBeam(name)
+public partial class TEBeamPoints(ReadOnlySpan<char> name) : BaseBeam(name)
 {
-	public static readonly SendTable DT_TEBeamPoints = new(DT_BaseBeam, [
-		SendPropVector(FIELD.OF(nameof(StartPoint)), 0, PropFlags.Coord),
-		SendPropVector(FIELD.OF(nameof(EndPoint)), 0, PropFlags.Coord),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEBeamPoints);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(StartPoint)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(EndPoint)) { Bits = 0, Flags = PropFlags.Coord },
+	];
 
-	[NetworkName("m_vecStartPoint")]
+	[NetworkVar("m_vecStartPoint")]
 	public Vector3 StartPoint;
-	[NetworkName("m_vecEndPoint")]
+	[NetworkVar("m_vecEndPoint")]
 	public Vector3 EndPoint;
 }

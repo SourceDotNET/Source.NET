@@ -12,28 +12,27 @@ using System.Drawing;
 using System.Numerics;
 using System.Text;
 
-using FIELD = Source.FIELD<Game.Client.HL2.C_PropCombineBall>;
 namespace Game.Client.HL2;
 
 [NetworkName("CPropCombineBall")]
-public class C_PropCombineBall : C_BaseAnimating
+public partial class C_PropCombineBall : C_BaseAnimating
 {
-	public static readonly RecvTable DT_PropCombineBall = new(DT_BaseAnimating, [
-		RecvPropBool(FIELD.OF(nameof(Emit))),
-		RecvPropFloat(FIELD.OF(nameof(Radius))),
-		RecvPropBool(FIELD.OF(nameof(Held))),
-		RecvPropBool(FIELD.OF(nameof(Launched))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_PropCombineBall);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Emit),
+		new(nameof(Radius)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(Held),
+		nameof(Launched),
+	];
 
 	public Vector3 LastOrigin;
-	[NetworkName("m_bEmit")]
+	[NetworkVar("m_bEmit")]
 	public bool Emit;
-	[NetworkName("m_flRadius")]
+	[NetworkVar("m_flRadius")]
 	public float Radius;
-	[NetworkName("m_bHeld")]
+	[NetworkVar("m_bHeld")]
 	public bool Held;
-	[NetworkName("m_bLaunched")]
+	[NetworkVar("m_bLaunched")]
 	public bool Launched;
 
 	IMaterial? FlickerMaterial;

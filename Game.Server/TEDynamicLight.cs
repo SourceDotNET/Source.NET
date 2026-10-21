@@ -3,36 +3,35 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEDynamicLight>;
 [NetworkName("CTEDynamicLight")]
-public class TEDynamicLight(ReadOnlySpan<char> name) : BaseTempEntity(name)
+public partial class TEDynamicLight(ReadOnlySpan<char> name) : BaseTempEntity(name)
 {
-	public static readonly SendTable DT_TEDynamicLight = new(DT_BaseTempEntity, [
-		SendPropVector(FIELD.OF(nameof(Origin)), 0, PropFlags.Coord),
-		SendPropInt(FIELD.OF(nameof(R)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(G)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(B)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Exponent)), 8, 0),
-		SendPropFloat(FIELD.OF(nameof(Radius)), 8, PropFlags.RoundUp, 0, 2560.0f),
-		SendPropFloat(FIELD.OF(nameof(Time)), 8, PropFlags.RoundDown, 0, 25.6f),
-		SendPropFloat(FIELD.OF(nameof(Decay)), 8, PropFlags.RoundDown, 0, 2560.0f),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEDynamicLight);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(R)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(G)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(B)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Exponent)) { Bits = 8 },
+		new(nameof(Radius)) { Bits = 8, Flags = PropFlags.RoundUp, Low = 0, High = 2560.0f },
+		new(nameof(Time)) { Bits = 8, Flags = PropFlags.RoundDown, Low = 0, High = 25.6f },
+		new(nameof(Decay)) { Bits = 8, Flags = PropFlags.RoundDown, Low = 0, High = 2560.0f },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("r")]
+	[NetworkVar("r")]
 	public int R;
-	[NetworkName("g")]
+	[NetworkVar("g")]
 	public int G;
-	[NetworkName("b")]
+	[NetworkVar("b")]
 	public int B;
-	[NetworkName("exponent")]
+	[NetworkVar("exponent")]
 	public int Exponent;
-	[NetworkName("m_fRadius")]
+	[NetworkVar("m_fRadius")]
 	public float Radius;
-	[NetworkName("m_fTime")]
+	[NetworkVar("m_fTime")]
 	public float Time;
-	[NetworkName("m_fDecay")]
+	[NetworkVar("m_fDecay")]
 	public float Decay;
 }

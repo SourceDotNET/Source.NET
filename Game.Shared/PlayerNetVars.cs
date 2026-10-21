@@ -12,45 +12,45 @@ public static class PlayerNetVars
 
 public struct FogParams()
 {
-	[NetworkName("dirPrimary")]
+	[NetworkVar("dirPrimary")]
 	public Vector3 DirPrimary;
-	[NetworkName("colorPrimary")]
+	[NetworkVar("colorPrimary")]
 	public Color ColorPrimary;
-	[NetworkName("colorSecondary")]
+	[NetworkVar("colorSecondary")]
 	public Color ColorSecondary;
-	[NetworkName("colorPrimaryHDR")]
+	[NetworkVar("colorPrimaryHDR")]
 	public Color ColorPrimaryHDR;
-	[NetworkName("colorSecondaryHDR")]
+	[NetworkVar("colorSecondaryHDR")]
 	public Color ColorSecondaryHDR;
-	[NetworkName("colorPrimaryLerpTo")]
+	[NetworkVar("colorPrimaryLerpTo")]
 	public Color ColorPrimaryLerpTo;
-	[NetworkName("colorSecondaryLerpTo")]
+	[NetworkVar("colorSecondaryLerpTo")]
 	public Color ColorSecondaryLerpTo;
-	[NetworkName("start")]
+	[NetworkVar("start")]
 	public float Start;
-	[NetworkName("end")]
+	[NetworkVar("end")]
 	public float End;
-	[NetworkName("farz")]
+	[NetworkVar("farz")]
 	public float FarZ;
-	[NetworkName("maxdensity")]
+	[NetworkVar("maxdensity")]
 	public float MaxDensity;
-	[NetworkName("startLerpTo")]
+	[NetworkVar("startLerpTo")]
 	public float StartLerpTo;
-	[NetworkName("endLerpTo")]
+	[NetworkVar("endLerpTo")]
 	public float EndLerpTo;
-	[NetworkName("maxdensityLerpTo")]
+	[NetworkVar("maxdensityLerpTo")]
 	public float MaxDensityLerpTo;
-	[NetworkName("lerptime")]
+	[NetworkVar("lerptime")]
 	public TimeUnit_t LerpTime;
-	[NetworkName("duration")]
+	[NetworkVar("duration")]
 	public TimeUnit_t Duration;
-	[NetworkName("enable")]
+	[NetworkVar("enable")]
 	public bool Enable;
-	[NetworkName("blend")]
+	[NetworkVar("blend")]
 	public bool Blend;
-	[NetworkName("radial")]
+	[NetworkVar("radial")]
 	public bool Radial;
-	[NetworkName("HDRColorScale")]
+	[NetworkVar("HDRColorScale")]
 	public float HDRColorScale;
 }
 
@@ -58,7 +58,7 @@ public struct FogParams()
 public struct FogPlayerParams()
 {
 #if CLIENT_DLL || GAME_DLL
-	[NetworkName("m_hCtrl")]
+	[NetworkVar("m_hCtrl")]
 	public Handle<BaseEntity> Ctrl = new();
 	#endif
 	public TimeUnit_t TransitionTime = -1;
@@ -76,25 +76,25 @@ public struct FogPlayerParams()
 
 public struct Sky3DParams()
 {
-	[NetworkName("scale")]
+	[NetworkVar("scale")]
 	public int Scale;
-	[NetworkName("origin")]
+	[NetworkVar("origin")]
 	public Vector3 Origin;
-	[NetworkName("area")]
+	[NetworkVar("area")]
 	public int Area;
 
-	[NetworkName("fog")]
+	[NetworkVar("fog")]
 	public FogParams Fog = new();
 }
 
 public struct AudioParams()
 {
-	[NetworkName("localSound")]
+	[NetworkVar("localSound")]
 	public InlineArrayNumLocalAudioSounds<Vector3> LocalSound;
-	[NetworkName("soundscapeIndex")]
+	[NetworkVar("soundscapeIndex")]
 	public int SoundscapeIndex;
-	[NetworkName("localBits")]
+	[NetworkVar("localBits")]
 	public int LocalBits;
-	[NetworkName("ent")]
+	[NetworkVar("ent")]
 	public EHANDLE Ent = new();
 }

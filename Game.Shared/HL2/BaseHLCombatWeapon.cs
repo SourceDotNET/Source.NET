@@ -20,19 +20,11 @@ public static class HLCombatWeaponGlobals
 
 [LinkEntityToClass("basehlcombatweapon")]
 [NetworkName("CBaseHLCombatWeapon")]
-public class BaseHLCombatWeapon : BaseCombatWeapon
+public partial class BaseHLCombatWeapon : BaseCombatWeapon
 {
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_BaseHLCombatWeapon = new(DT_BaseCombatWeapon, []);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseHLCombatWeapon);
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseHLCombatWeapon);
-#endif
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 }
 #endif

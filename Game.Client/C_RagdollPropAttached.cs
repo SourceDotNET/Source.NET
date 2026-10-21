@@ -4,25 +4,23 @@ using System.Numerics;
 
 namespace Game.Client;
 
-using FIELD = FIELD<C_RagdollPropAttached>;
-
-[NetworkName("CRagdollPropAttached")]
-public class C_RagdollPropAttached : C_RagdollProp
+[NetworkName("CRagdollPropAttached", Table = "DT_Ragdoll_Attached")]
+public partial class C_RagdollPropAttached : C_RagdollProp
 {
-	[NetworkName("m_boneIndexAttached")]
-	public int BoneIndexAttached;
-	[NetworkName("m_ragdollAttachedObjectIndex")]
-	public int RagdollAttachedObjectIndex;
-	[NetworkName("m_attachmentPointBoneSpace")]
-	public Vector3 AttachmentPointBoneSpace;
-	[NetworkName("m_attachmentPointRagdollSpace")]
-	public Vector3 AttachmentPointRagdollSpace;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(BoneIndexAttached)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(RagdollAttachedObjectIndex)) { Bits = 6, Flags = PropFlags.Unsigned },
+		new(nameof(AttachmentPointBoneSpace)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(AttachmentPointRagdollSpace)) { Bits = 0, Flags = PropFlags.Coord },
+	];
 
-	public static readonly RecvTable DT_Ragdoll_Attached = new(DT_Ragdoll, [
-		RecvPropInt(FIELD.OF(nameof(BoneIndexAttached))),
-		RecvPropInt(FIELD.OF(nameof(RagdollAttachedObjectIndex))),
-		RecvPropVector(FIELD.OF(nameof(AttachmentPointBoneSpace))),
-		RecvPropVector(FIELD.OF(nameof(AttachmentPointRagdollSpace))),
-	]);
-	public static new readonly ClientClass ClientClass = new ClientClass(DT_Ragdoll_Attached);
+	[NetworkVar("m_boneIndexAttached")]
+	public int BoneIndexAttached;
+	[NetworkVar("m_ragdollAttachedObjectIndex")]
+	public int RagdollAttachedObjectIndex;
+	[NetworkVar("m_attachmentPointBoneSpace")]
+	public Vector3 AttachmentPointBoneSpace;
+	[NetworkVar("m_attachmentPointRagdollSpace")]
+	public Vector3 AttachmentPointRagdollSpace;
 }

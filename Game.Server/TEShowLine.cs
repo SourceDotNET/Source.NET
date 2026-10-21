@@ -3,15 +3,14 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEShowLine>;
 [NetworkName("CTEShowLine")]
-public class TEShowLine(ReadOnlySpan<char> name) : TEParticleSystem(name)
+public partial class TEShowLine(ReadOnlySpan<char> name) : TEParticleSystem(name)
 {
-	public static readonly SendTable DT_TEShowLine = new(DT_TEParticleSystem, [
-		SendPropVector(FIELD.OF(nameof(End)), 0, PropFlags.Coord),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEShowLine);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(End)) { Bits = 0, Flags = PropFlags.Coord },
+	];
 
-	[NetworkName("m_vecEnd")]
+	[NetworkVar("m_vecEnd")]
 	public Vector3 End;
 }

@@ -7,29 +7,21 @@ using static Game.Client.GarrysMod.GarrysMod;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
-using FIELD = Source.FIELD<Game.Client.GarrysMod.ScriptedEntity>;
 #else
 namespace Game.Server.GarrysMod;
-
-using FIELD = Source.FIELD<Game.Server.GarrysMod.ScriptedEntity>;
 #endif
 
-public class ScriptedEntity
+public partial class ScriptedEntity
 {
-#if CLIENT_DLL
-	public static readonly RecvTable DT_ScriptedEntity = new(nameof(DT_ScriptedEntity), [
-		RecvPropString(FIELD.OF(nameof(ScriptName)))
-	]);
-#else
-	public static readonly SendTable DT_ScriptedEntity = new(nameof(DT_ScriptedEntity), [
-		SendPropString(FIELD.OF(nameof(ScriptName)))
-	]);
-#endif
+	[NetworkTable("DT_ScriptedEntity")]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(ScriptName)) { Encoding = NetEncoding.String },
+	];
 
 	public bool Started;
 	public int EntityType;
 	public BaseEntity? ParentEntity;
-	[NetworkName("m_strScriptName")]
+	[NetworkVar("m_strScriptName")]
 	public InlineArray64<char> ScriptName;
 #if GAME_DLL
 	public string? ScriptNamePooled;

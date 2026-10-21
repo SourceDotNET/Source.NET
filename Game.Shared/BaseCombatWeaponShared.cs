@@ -45,23 +45,7 @@ using System.Runtime.CompilerServices;
 
 using Source.Common.Audio;
 
-using Table =
-#if CLIENT_DLL
-	RecvTable;
-#else
-	SendTable;
-#endif
-
-using Class =
-#if CLIENT_DLL
-	ClientClass;
-#else
-	ServerClass;
-#endif
 #if CLIENT_DLL || GAME_DLL
-using FIELD = Source.FIELD<BaseCombatWeapon>;
-using DEFINE = Source.DEFINE<BaseCombatWeapon>;
-
 using Microsoft.VisualBasic;
 
 using System.Reflection;
@@ -130,133 +114,115 @@ public partial class
 	SHUT_UP_ABOUT_GAME_SHARED_INTELLISENSE
 #endif
 {
-#if CLIENT_DLL
-	public static readonly new DataMap PredMap = new(typeof(C_BaseCombatWeapon), C_BaseAnimating.PredMap, [
-	DEFINE.PRED_FIELD(nameof(NextThinkTick), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-	DEFINE.PRED_FIELD(nameof(Owner), FieldType.EHandle, FieldTypeDescFlags.InSendTable ),
-	DEFINE.PRED_FIELD(nameof(State), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-	DEFINE.PRED_FIELD(nameof(iViewModelIndex), FieldType.Integer, FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.ModelIndex ),
-	DEFINE.PRED_FIELD(nameof(WorldModelIndex), FieldType.Integer, FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.ModelIndex ),
-	DEFINE.PRED_FIELD_TOL(nameof(NextPrimaryAttack), FieldType.Double, FieldTypeDescFlags.InSendTable, TD_MSECTOLERANCE ),
-	DEFINE.PRED_FIELD_TOL(nameof(NextSecondaryAttack), FieldType.Double, FieldTypeDescFlags.InSendTable, TD_MSECTOLERANCE ),
-	DEFINE.PRED_FIELD_TOL(nameof(TimeWeaponIdle), FieldType.Double, FieldTypeDescFlags.InSendTable, TD_MSECTOLERANCE ),
-	DEFINE.PRED_FIELD(nameof(PrimaryAmmoType), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-	DEFINE.PRED_FIELD(nameof(SecondaryAmmoType), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-	DEFINE.PRED_FIELD(nameof(iClip1), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-	DEFINE.PRED_FIELD(nameof(iClip2), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-	DEFINE.PRED_FIELD(nameof(nViewModelIndex), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-	DEFINE.FIELD(nameof(InReload), FieldType.Boolean ),
-	DEFINE.FIELD(nameof(FireOnEmpty), FieldType.Boolean ),
-	DEFINE.FIELD(nameof(FiringWholeClip), FieldType.Boolean ),
-	DEFINE.FIELD(nameof(NextEmptySoundTime), FieldType.Float ),
-	DEFINE.FIELD(nameof(Activity), FieldType.Integer ),
-	DEFINE.FIELD(nameof(FireDuration), FieldType.Float ),
-	DEFINE.FIELD(nameof(FiresUnderwater), FieldType.Boolean ),
-	DEFINE.FIELD(nameof(AltFiresUnderwater), FieldType.Boolean ),
-	DEFINE.FIELD(nameof(MinRange1), FieldType.Float ),
-	DEFINE.FIELD(nameof(MinRange2), FieldType.Float ),
-	DEFINE.FIELD(nameof(MaxRange1), FieldType.Float ),
-	DEFINE.FIELD(nameof(MaxRange2), FieldType.Float ),
-	DEFINE.FIELD(nameof(ReloadsSingly), FieldType.Boolean ),
-	DEFINE.FIELD(nameof(Removable), FieldType.Boolean ),
-	DEFINE.FIELD(nameof(PrimaryAmmoCount), FieldType.Integer ),
-	DEFINE.FIELD(nameof(SecondaryAmmoCount), FieldType.Integer ),
-]); public override DataMap? GetPredDescMap() => PredMap;
-#endif
-#if !CLIENT_DLL && !GAME_DLL // God intellisense is annoying me. Fixme when we can get Intellisense to shut up about Game.Shared (it never gets built)
-	public static readonly Table DT_BaseAnimating = new();
-#endif
-	public static readonly Table DT_LocalWeaponData = new(nameof(DT_LocalWeaponData), [
-#if CLIENT_DLL
-		RecvPropIntWithMinusOneFlag(FIELD.OF(nameof(iClip1))),
-		RecvPropIntWithMinusOneFlag(FIELD.OF(nameof(iClip2))),
-		RecvPropInt(FIELD.OF(nameof(PrimaryAmmoType))),
-		RecvPropInt(FIELD.OF(nameof(SecondaryAmmoType))),
-		RecvPropInt(FIELD.OF(nameof(nViewModelIndex))),
-		RecvPropBool(FIELD.OF(nameof(FlipViewModel))),
-#elif GAME_DLL
-		SendPropIntWithMinusOneFlag(FIELD.OF(nameof(iClip1)), 16),
-		SendPropIntWithMinusOneFlag(FIELD.OF(nameof(iClip2)), 16),
-		SendPropInt(FIELD.OF(nameof(PrimaryAmmoType)), 9),
-		SendPropInt(FIELD.OF(nameof(SecondaryAmmoType)), 9),
-		SendPropInt(FIELD.OF(nameof(nViewModelIndex)), BaseViewModel.VIEWMODEL_INDEX_BITS, PropFlags.Unsigned),
-		SendPropBool(FIELD.OF(nameof(FlipViewModel))),
-#endif
-	]);
+	[NetworkTable("DT_LocalWeaponData")]
+	public static readonly NetworkProp[] LocalWeaponDataProps = [
+		new(nameof(iClip1)) { Encoding = NetEncoding.IntWithMinusOneFlag, Bits = 16 },
+		new(nameof(iClip2)) { Encoding = NetEncoding.IntWithMinusOneFlag, Bits = 16 },
+		new(nameof(PrimaryAmmoType)) { Bits = 9 },
+		new(nameof(SecondaryAmmoType)) { Bits = 9 },
+		new(nameof(nViewModelIndex)) { Bits = BaseViewModel.VIEWMODEL_INDEX_BITS, Flags = PropFlags.Unsigned },
+		nameof(FlipViewModel),
+	];
 
-	public static readonly Table DT_LocalActiveWeaponData = new(nameof(DT_LocalActiveWeaponData), [
-#if CLIENT_DLL
-		RecvPropTime64(FIELD.OF(nameof(NextPrimaryAttack))),
-		RecvPropTime64(FIELD.OF(nameof(NextSecondaryAttack))),
-		RecvPropInt(FIELD.OF(nameof(NextThinkTick))),
-		RecvPropTime64(FIELD.OF(nameof(TimeWeaponIdle))),
-#elif GAME_DLL
-		SendPropTime64(FIELD.OF(nameof(NextPrimaryAttack))),
-		SendPropTime64(FIELD.OF(nameof(NextSecondaryAttack))),
-		SendPropInt(FIELD.OF(nameof(NextThinkTick))),
-		SendPropTime64(FIELD.OF(nameof(TimeWeaponIdle))),
-#endif
-	]);
+	[NetworkTable("DT_LocalActiveWeaponData")]
+	public static readonly NetworkProp[] LocalActiveWeaponDataProps = [
+		nameof(NextPrimaryAttack),
+		nameof(NextSecondaryAttack),
+		nameof(NextThinkTick),
+		nameof(TimeWeaponIdle),
+	];
 
-	public static readonly Table DT_BaseCombatWeapon = new(DT_BaseAnimating, [
-#if CLIENT_DLL
-		RecvPropDataTable("LocalWeaponData", DT_LocalWeaponData),
-		RecvPropDataTable("LocalActiveWeaponData", DT_LocalActiveWeaponData),
-		RecvPropInt(FIELD.OF(nameof(iViewModelIndex))),
-		RecvPropInt(FIELD.OF(nameof(WorldModelIndex))),
-		RecvPropInt(FIELD.OF(nameof(State)), 0, RecvProxy_WeaponState),
-		RecvPropEHandle(FIELD.OF(nameof(Owner))),
-#elif GAME_DLL
-		SendPropDataTable("LocalWeaponData", DT_LocalWeaponData, SendProxy_SendLocalWeaponDataTable),
-		SendPropDataTable("LocalActiveWeaponData", DT_LocalActiveWeaponData, SendProxy_SendActiveLocalWeaponDataTable ),
-		SendPropModelIndex(FIELD.OF(nameof(iViewModelIndex))),
-		SendPropModelIndex(FIELD.OF(nameof(WorldModelIndex))),
-		SendPropInt(FIELD.OF(nameof(State)), 4, PropFlags.Unsigned),
-		SendPropEHandle(FIELD.OF(nameof(Owner))),
-#endif
-	]);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(LocalWeaponDataProps)) { Proxy = typeof(BaseCombatWeapon.LocalWeaponDataProxy) },
+		new(nameof(LocalActiveWeaponDataProps)) { Proxy = typeof(BaseCombatWeapon.LocalActiveWeaponDataProxy) },
+		new(nameof(iViewModelIndex)) { Encoding = NetEncoding.ModelIndex },
+		new(nameof(WorldModelIndex)) { Encoding = NetEncoding.ModelIndex },
+		new(nameof(State)) { Bits = 4, Flags = PropFlags.Unsigned, Proxy = typeof(WeaponStateProxy) },
+		nameof(Owner),
+	];
 
-#if CLIENT_DLL
-	private static void RecvProxy_WeaponState(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
-		BaseCombatWeapon weapon = (BaseCombatWeapon)instance;
-		weapon.State = data.Value.Int;
-		weapon.UpdateVisibility();
-	}
-#else
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(iClip1),
+		nameof(iClip2),
+		nameof(PrimaryAmmoType),
+		nameof(SecondaryAmmoType),
+		nameof(nViewModelIndex),
+		new(nameof(NextPrimaryAttack)) { Tolerance = TD_MSECTOLERANCE },
+		new(nameof(NextSecondaryAttack)) { Tolerance = TD_MSECTOLERANCE },
+		new(nameof(TimeWeaponIdle)) { Tolerance = TD_MSECTOLERANCE },
+		new(nameof(iViewModelIndex)) { Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.ModelIndex },
+		new(nameof(WorldModelIndex)) { Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.ModelIndex },
+		nameof(State),
+		nameof(Owner),
+		nameof(Activity),
+		nameof(Removable),
+		nameof(PrimaryAmmoCount),
+		nameof(SecondaryAmmoCount),
+		nameof(FiresUnderwater),
+		nameof(AltFiresUnderwater),
+		nameof(MinRange1),
+		nameof(MinRange2),
+		nameof(MaxRange1),
+		nameof(MaxRange2),
+		nameof(ReloadsSingly),
+		nameof(FireDuration),
+		nameof(InReload),
+		nameof(FireOnEmpty),
+		nameof(FiringWholeClip),
+		nameof(NextEmptySoundTime),
+		nameof(NextThinkTick),
+	];
 
-	private static object? SendProxy_SendLocalWeaponDataTable(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID) {
-		BaseCombatWeapon weapon = (BaseCombatWeapon)instance;
-		if (weapon != null) {
-			BasePlayer? player = ToBasePlayer(weapon.GetOwner());
-			if (player != null) {
-				recipients.SetOnly(player.EntIndex() - 1);
-				return instance;
-			}
+#if CLIENT_DLL || GAME_DLL
+	public static class WeaponStateProxy
+	{
+#if CLIENT_DLL
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+			BaseCombatWeapon weapon = (BaseCombatWeapon)instance;
+			weapon.State = data.Value.Int;
+			weapon.UpdateVisibility();
 		}
-
-		return null;
+#endif
 	}
-	private static object? SendProxy_SendActiveLocalWeaponDataTable(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID) {
-		BaseCombatWeapon weapon = (BaseCombatWeapon)instance;
-		if (weapon != null) {
-			BasePlayer? player = ToBasePlayer(weapon.GetOwner());
-			if (player != null) {
-				recipients.SetOnly(player.EntIndex() - 1);
-				return instance;
+
+	public static class LocalWeaponDataProxy
+	{
+#if GAME_DLL
+		public static object? Send(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID) {
+			BaseCombatWeapon weapon = (BaseCombatWeapon)instance;
+			if (weapon != null) {
+				BasePlayer? player = ToBasePlayer(weapon.GetOwner());
+				if (player != null) {
+					recipients.SetOnly(player.EntIndex() - 1);
+					return instance;
+				}
 			}
-		}
 
-		return null;
+			return null;
+		}
+#endif
+	}
+
+	public static class LocalActiveWeaponDataProxy
+	{
+#if GAME_DLL
+		public static object? Send(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID) {
+			BaseCombatWeapon weapon = (BaseCombatWeapon)instance;
+			if (weapon != null) {
+				BasePlayer? player = ToBasePlayer(weapon.GetOwner());
+				if (player != null) {
+					recipients.SetOnly(player.EntIndex() - 1);
+					return instance;
+				}
+			}
+
+			return null;
+		}
+#endif
 	}
 #endif
-	public static readonly new Class
-#if CLIENT_DLL
-		ClientClass
-#else
-		ServerClass
-#endif
-		= new Class(DT_BaseCombatWeapon);
-
 
 	public virtual bool CanBePickedUpByNPCs() => true;
 
@@ -327,92 +293,40 @@ public partial class
 		public float Value;
 	}
 
-	[NetworkName("m_iClip1")]
-#if CLIENT_DLL
-	public int iClip1;
-#else
-	[NetworkVar] public partial int iClip1 { get; set; }
-#endif
-	[NetworkName("m_iClip2")]
-#if CLIENT_DLL
-	public int iClip2;
-#else
-	[NetworkVar] public partial int iClip2 { get; set; }
-#endif
-	[NetworkName("m_iPrimaryAmmoType")]
-#if CLIENT_DLL
-	public int PrimaryAmmoType;
-#else
-	[NetworkVar] public partial int PrimaryAmmoType { get; set; }
-#endif
-	[NetworkName("m_iSecondaryAmmoType")]
-#if CLIENT_DLL
-	public int SecondaryAmmoType;
-#else
-	[NetworkVar] public partial int SecondaryAmmoType { get; set; }
-#endif
+	[NetworkVar("m_iClip1")]
+	public partial int iClip1 { get; set; }
+	[NetworkVar("m_iClip2")]
+	public partial int iClip2 { get; set; }
+	[NetworkVar("m_iPrimaryAmmoType")]
+	public partial int PrimaryAmmoType { get; set; }
+	[NetworkVar("m_iSecondaryAmmoType")]
+	public partial int SecondaryAmmoType { get; set; }
 	/// <summary>
 	/// View model index (entity offset)
 	/// </summary>
-	[NetworkName("m_nViewModelIndex")]
-#if CLIENT_DLL
-	public int nViewModelIndex;
-#else
-	[NetworkVar] public partial int nViewModelIndex { get; set; }
-#endif
+	[NetworkVar("m_nViewModelIndex")]
+	public partial int nViewModelIndex { get; set; }
+	[NetworkVar("m_bFlipViewModel")]
+	public partial bool FlipViewModel { get; set; }
+
+	[NetworkVar("m_flNextPrimaryAttack")]
+	public partial TimeUnit_t NextPrimaryAttack { get; set; }
+	[NetworkVar("m_flNextSecondaryAttack")]
+	public partial TimeUnit_t NextSecondaryAttack { get; set; }
+	[NetworkVar("m_flTimeWeaponIdle")]
+	public partial TimeUnit_t TimeWeaponIdle { get; set; }
+
 	/// <summary>
 	/// View model index (art)
 	/// </summary>
-	[NetworkName("m_iViewModelIndex")]
-#if CLIENT_DLL
-	public int iViewModelIndex;
-#else
-	[NetworkVar] public partial int iViewModelIndex { get; set; }
-#endif
-	[NetworkName("m_iWorldModelIndex")]
-#if CLIENT_DLL
-	public int WorldModelIndex;
-#else
-	[NetworkVar] public partial int WorldModelIndex { get; set; }
-#endif
-	[NetworkName("m_bFlipViewModel")]
-#if CLIENT_DLL
-	public bool FlipViewModel;
-#else
-	[NetworkVar] public partial bool FlipViewModel { get; set; }
-#endif
-
-	[NetworkName("m_flNextPrimaryAttack")]
-#if CLIENT_DLL
-	public TimeUnit_t NextPrimaryAttack;
-#else
-	[NetworkVar] public partial TimeUnit_t NextPrimaryAttack { get; set; }
-#endif
-	[NetworkName("m_flNextSecondaryAttack")]
-#if CLIENT_DLL
-	public TimeUnit_t NextSecondaryAttack;
-#else
-	[NetworkVar] public partial TimeUnit_t NextSecondaryAttack { get; set; }
-#endif
-	[NetworkName("m_flTimeWeaponIdle")]
-#if CLIENT_DLL
-	public TimeUnit_t TimeWeaponIdle;
-#else
-	[NetworkVar] public partial TimeUnit_t TimeWeaponIdle { get; set; }
-#endif
-
-	[NetworkName("m_iState")]
-#if CLIENT_DLL
-	public int State;
-#else
-	[NetworkVar] public partial int State { get; set; }
-#endif
-	[NetworkName("m_hOwner")]
-#if CLIENT_DLL
-	public EHANDLE Owner = new();
-#else
-	[NetworkVar] public partial EHANDLE Owner { get; set; }
-#endif
+	[NetworkVar("m_iViewModelIndex")]
+	public partial int iViewModelIndex { get; set; }
+	[NetworkVar("m_iWorldModelIndex")]
+	public partial int WorldModelIndex { get; set; }
+	[NetworkVar("m_iState")]
+	public partial int State { get; set; }
+	[NetworkVar("m_hOwner")]
+	public partial EHANDLE Owner { get; set; }
 
 	Activity Activity;
 	int IdealSequence;

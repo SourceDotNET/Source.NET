@@ -4,17 +4,14 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
 
-using FIELD = FIELD<C_TEParticleSystem>;
 [NetworkName("CTEParticleSystem")]
-public class C_TEParticleSystem : C_BaseTempEntity
+public partial class C_TEParticleSystem : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEParticleSystem = new(DT_BaseTempEntity, [
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Origin), 0)),
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Origin), 1)),
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Origin), 2)),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEParticleSystem);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Encoding = NetEncoding.VectorElements, Bits = 0, Flags = PropFlags.Coord | PropFlags.NoScale | PropFlags.IsAVectorElem },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
 }

@@ -183,8 +183,8 @@ public partial class
 
 	public bool IsAlive() => LifeState == (int)Source.LifeState.Alive;
 
-	[NetworkName("m_bIsPlayerSimulated")]
-	protected bool b_IsPlayerSimulated;
+	[NetworkVar("m_bIsPlayerSimulated")]
+	protected partial bool b_IsPlayerSimulated { get; set; }
 	public bool IsPlayerSimulated() => b_IsPlayerSimulated;
 
 	public void AddFlag(EntityFlags flag) => flags |= (int)flag;

@@ -4,17 +4,16 @@ using Source.Common;
 
 using System.Numerics;
 namespace Game.Client; 
-using FIELD = Source.FIELD<C_TEEffectDispatch>;
 
 [NetworkName("CTEEffectDispatch")]
-public class C_TEEffectDispatch : C_BaseTempEntity
+public partial class C_TEEffectDispatch : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEEffectDispatch = new(DT_BaseTempEntity, [
-		RecvPropDataTable("m_EffectData", FIELD.OF(nameof(EffectData)), EffectData.DT_EffectData, 0, RECV_GET_OBJECT_AT_FIELD(FIELD.OF(nameof(EffectData)))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEEffectDispatch);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(EffectData)) { Encoding = NetEncoding.DataTable, DataTable = "DT_EffectData" },
+	];
 
-	[NetworkName("m_EffectData")]
+	[NetworkVar("m_EffectData")]
 	public readonly EffectData EffectData = new();
 }
 

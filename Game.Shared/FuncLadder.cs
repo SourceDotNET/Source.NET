@@ -15,11 +15,18 @@ using System.Numerics;
 
 namespace Game.Shared;
 
-using FIELD = Source.FIELD<FuncLadder>;
 [LinkEntityToClass("func_useableladder")]
 [NetworkName("CFuncLadder")]
 public partial class FuncLadder : BaseEntity
 {
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(PlayerMountPositionTop)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(PlayerMountPositionBottom)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(LadderDir)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(FakeLadder),
+	];
+
 	static readonly List<FuncLadder> s_Ladders = [];
 
 	public FuncLadder() {
@@ -33,40 +40,15 @@ public partial class FuncLadder : BaseEntity
 	public static int GetLadderCount() => s_Ladders.Count;
 	public static FuncLadder? GetLadder(int index) => (index < 0 || index >= s_Ladders.Count) ? null : s_Ladders[index];
 
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_FuncLadder = new(DT_BaseEntity, [
-#if CLIENT_DLL
-			RecvPropVector(FIELD.OF(nameof(PlayerMountPositionTop))),
-			RecvPropVector(FIELD.OF(nameof(PlayerMountPositionBottom))),
-			RecvPropVector(FIELD.OF(nameof(LadderDir))),
-			RecvPropBool(FIELD.OF(nameof(FakeLadder))),
-#else
-			SendPropVector(FIELD.OF(nameof(PlayerMountPositionTop)), 0, PropFlags.NoScale),
-			SendPropVector(FIELD.OF(nameof(PlayerMountPositionBottom)), 0, PropFlags.NoScale),
-			SendPropVector(FIELD.OF(nameof(LadderDir)), 0, PropFlags.NoScale),
-			SendPropBool(FIELD.OF(nameof(FakeLadder))),
-#endif
-		]);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_FuncLadder);
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_FuncLadder);
-#endif
-
-	[NetworkName("m_vecPlayerMountPositionTop")]
-	public Vector3 PlayerMountPositionTop;
-	[NetworkName("m_vecPlayerMountPositionBottom")]
-	public Vector3 PlayerMountPositionBottom;
-	[NetworkName("m_vecLadderDir")]
-	public Vector3 LadderDir;
+	[NetworkVar("m_vecPlayerMountPositionTop")]
+	public partial Vector3 PlayerMountPositionTop { get; set; }
+	[NetworkVar("m_vecPlayerMountPositionBottom")]
+	public partial Vector3 PlayerMountPositionBottom { get; set; }
+	[NetworkVar("m_vecLadderDir")]
+	public partial Vector3 LadderDir { get; set; }
 	readonly List<InfoLadderDismountHandle> Dismounts = [];
-	[NetworkName("m_bFakeLadder")]
-	public bool FakeLadder;
+	[NetworkVar("m_bFakeLadder")]
+	public partial bool FakeLadder { get; set; }
 	public bool Disabled;
 
 	public void InputEnable(ref InputData inputdata) {
