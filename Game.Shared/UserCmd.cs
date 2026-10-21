@@ -1,5 +1,6 @@
 using Source;
 using Source.Common.Bitbuffers;
+using Source.Common.Hashing;
 using Source.Common.Mathematics;
 
 using System.Numerics;
@@ -207,6 +208,8 @@ public struct UserCmd
 			if (buf.ReadOneBit() != 0)
 				move.WeaponSubtype = (int)buf.ReadUBitLong(WEAPON_SUBTYPE_BITS);
 		}
+
+		move.RandomSeed = (int)(MD5Value.PseudoRandom((uint)move.CommandNumber) & 0x7fffffff);
 
 		if (buf.ReadOneBit() != 0)
 			move.MouseDeltaX = buf.ReadShort();
