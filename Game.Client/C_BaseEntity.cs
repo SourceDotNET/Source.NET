@@ -2863,11 +2863,14 @@ public partial class C_BaseEntity : IClientEntity
 		return InterpolateResult.Continue;
 	}
 
-	void PhysicsStep() { }
-	void PhysicsPusher() { }
-	void PhysicsNone() { }
-	void PhysicsRigidChild() { }
-	void PhysicsNoclip() { }
+	void PhysicsStep() {
+		PhysicsRunThink(ThinkMethods.FireAllButBase);
+		PhysicsRunThink(ThinkMethods.FireBaseOnly);
+	}
+	void PhysicsPusher() => PhysicsRunThink();
+	void PhysicsNone() => PhysicsRunThink();
+	void PhysicsRigidChild() => PhysicsRunThink();
+	void PhysicsNoclip() => PhysicsRunThink();
 	void PhysicsStepRunTimestep(TimeUnit_t timestep) { }
 	void PhysicsToss() { }
 	void PhysicsCustom() { }
