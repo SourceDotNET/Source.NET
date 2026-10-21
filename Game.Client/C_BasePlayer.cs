@@ -815,7 +815,7 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	public override BaseCombatWeapon? GetActiveWeapon() {
 		BasePlayer fromPlayer = this;
 
-		if (fromPlayer == GetLocalPlayer()) {// observer mode todo
+		if (fromPlayer == GetLocalPlayer() && GetObserverMode() == Shared.ObserverMode.InEye) {
 			C_BaseEntity? target = ObserverTarget.Get();
 
 			if (target != null && target.IsPlayer())
