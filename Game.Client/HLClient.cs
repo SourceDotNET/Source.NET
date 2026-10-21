@@ -549,9 +549,11 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 		// StopAllRumbleEffects();
 
-		// gHUD.LevelShutdown();
+		gHUD.LevelShutdown();
 
-		// todo
+#if GMOD_DLL
+		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
+#endif
 	}
 
 	public LookupProxyInterfaceFn GetMaterialProxyInterfaceFn() {

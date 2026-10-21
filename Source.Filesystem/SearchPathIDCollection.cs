@@ -27,9 +27,9 @@ public class SearchPathIDCollection : Dictionary<ulong, SearchPathCollection>
 		return true;
 	}
 
-	public bool Remove(in ReadOnlySpan<char> pathID) {
-		ulong hashID = pathID.Hash();
+	public bool Remove(in ReadOnlySpan<char> pathID) => Remove(pathID.Hash());
 
+	public new bool Remove(ulong hashID) {
 		base.Remove(hashID);
 		searchPathNames.Remove(hashID);
 		return pathOrder.Remove(hashID);
