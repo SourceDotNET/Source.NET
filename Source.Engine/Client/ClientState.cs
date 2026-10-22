@@ -486,13 +486,13 @@ IModelLoader modelloader, ICommandLine commandLine,
 
 	}
 	protected override bool ProcessPacketEntities(SVC_PacketEntities msg) {
+		CL.PreprocessEntities();
+
 		if (!msg.IsDelta)
 			ClientSidePrediction.OnReceivedUncompressedPacket();
 		else {
 			if (DeltaTick == -1)
 				return true;
-
-			CL.PreprocessEntities();
 		}
 
 		if (CL.LocalNetworkBackdoor != null) {

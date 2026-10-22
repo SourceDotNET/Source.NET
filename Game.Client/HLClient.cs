@@ -86,14 +86,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		garrysmod.LevelInit(mapname);
 #endif
 
-		if (gpGlobals.MaxClients > 1) {
-			if (cl_predict.GetInt() == 0)
-				engine.ClientCmd("cl_predict 1");
-		}
-		else {
-			if (cl_predict.GetInt() != 0)
-				engine.ClientCmd("cl_predict 0");
-		}
+		engine.ClientCmd(gpGlobals.MaxClients < 2 ? "cl_predict 0" : "cl_predict 1");
 	}
 
 	public void LevelInitPostEntity() {

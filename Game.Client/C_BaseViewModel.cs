@@ -153,11 +153,17 @@ public partial class C_BaseViewModel
 	public override void PostDataUpdate(DataUpdateType updateType) {
 		base.PostDataUpdate(updateType);
 		OnLatchInterpolatedVariables(LatchFlags.LatchAnimationVar);
+#if GMOD_DLL
+		UpdateAnimationParity();
+		OldAnimationParity = AnimationParity;
+#endif
 	}
 
 	public override bool Interpolate(TimeUnit_t currentTime) {
 		StudioHdr? studioHdr = GetModelPtr();
+#if !GMOD_DLL
 		UpdateAnimationParity();
+#endif
 		bool bret = base.Interpolate(currentTime);
 
 		// Hack to extrapolate cycle counter for view model
@@ -184,6 +190,16 @@ public partial class C_BaseViewModel
 			else
 				dt = MathLib.Fmodf(dt, 1.0);
 		}
+#if GMOD_DLL
+		else if (dt < -1.0) {
+			if (!IsSequenceLooping(GetSequence()))
+				dt = 0.0;
+			else
+				dt = -MathLib.Fmodf(-dt, 1.0);
+		}
+		if (dt < 0.0)
+			dt = 1.0 - Math.Abs(dt);
+#endif
 		SetCycle(dt);
 		return bret;
 	}

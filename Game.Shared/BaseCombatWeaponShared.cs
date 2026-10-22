@@ -1080,7 +1080,7 @@ public partial class
 		return true;
 	}
 #if !CLIENT_DLL
-	bool SoundsEnabled;
+	bool SoundsEnabled = true;
 #endif
 	public virtual bool HasWeaponIdleTimeElapsed() => gpGlobals.CurTime > TimeWeaponIdle;
 	public virtual TimeUnit_t GetWeaponIdleTime(TimeUnit_t time) => TimeWeaponIdle;
