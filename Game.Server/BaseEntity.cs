@@ -563,6 +563,9 @@ public partial class BaseEntity : IServerEntity
 		new(nameof(b_IsPlayerSimulated)) { Encoding = NetEncoding.Int, Bits = 1, Flags = PropFlags.Unsigned },
 	];
 
+	[PredictionTable]
+	public static readonly PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly NetworkProp[] Props = [
 		new(nameof(AnimTimeMustBeFirstProps)) { Proxy = typeof(BaseEntity.ClientSideAnimationProxy) },

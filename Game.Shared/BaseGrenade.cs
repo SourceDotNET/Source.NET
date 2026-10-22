@@ -22,6 +22,15 @@ public partial class BaseGrenade : BaseProjectile
 		new(nameof(Flags)) { Bits = 16, Flags = PropFlags.Unsigned },
 	];
 
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(Thrower),
+		nameof(IsLive),
+		nameof(DmgRadius),
+		nameof(Damage),
+		new(nameof(Velocity)) { Tolerance = 0.5f },
+	];
+
 	public BaseGrenade() {
 		Thrower = new();
 	}

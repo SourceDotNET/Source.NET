@@ -22,6 +22,11 @@ public partial class C_ColorCorrectionVolume : C_BaseEntity
 	public float MaxWeight;
 	[NetworkVar("m_FadeDuration")]
 	public float FadeDuration;
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(Weight),
+	];
+
 	[NetworkVar("m_Weight")]
 	public float Weight;
 	[NetworkVar("m_lookupFilename")]

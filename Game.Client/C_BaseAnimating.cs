@@ -911,7 +911,12 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	public static readonly new PredictionField[] Prediction = [
 		nameof(Skin),
 		nameof(Body),
+		new(nameof(Sequence)) { Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.NoErrorCheck },
+		new(nameof(PlaybackRate)) { Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.NoErrorCheck },
+		new(nameof(Cycle)) { Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.NoErrorCheck },
+		new(nameof(EncodedController)) { Tolerance = 0.02f },
 		nameof(PrevSequence),
+		new(nameof(NewSequenceParity)) { Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.NoErrorCheck },
 		new(nameof(ResetEventsParity)) { Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.NoErrorCheck },
 		nameof(MuzzleFlashParity),
 	];

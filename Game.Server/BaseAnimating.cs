@@ -50,7 +50,7 @@ public partial class BaseAnimating : BaseEntity
 	public const int ANIMATION_PLAYBACKRATE_BITS = 8;
 
 	[PredictionTable]
-	public static readonly PredictionField[] Prediction = [];
+	public static readonly new PredictionField[] Prediction = [];
 
 	[NetworkTable("DT_ServerAnimationData")]
 	public static readonly NetworkProp[] ServerAnimationDataProps = [

@@ -43,6 +43,11 @@ public partial class C_HL2MP_Player : C_BaseHLPlayer
 
 	[PredictionTable]
 	public static readonly new PredictionField[] Prediction = [
+		new(nameof(Cycle)) { Flags = FieldTypeDescFlags.Override | FieldTypeDescFlags.Private | FieldTypeDescFlags.NoErrorCheck },
+		new(nameof(Sequence)) { Flags = FieldTypeDescFlags.Override | FieldTypeDescFlags.Private | FieldTypeDescFlags.NoErrorCheck },
+		new(nameof(PlaybackRate)) { Flags = FieldTypeDescFlags.Override | FieldTypeDescFlags.Private | FieldTypeDescFlags.NoErrorCheck },
+		new(nameof(EncodedController)) { Flags = FieldTypeDescFlags.Override | FieldTypeDescFlags.Private, Tolerance = 0.02f },
+		new(nameof(NewSequenceParity)) { Flags = FieldTypeDescFlags.Override | FieldTypeDescFlags.Private | FieldTypeDescFlags.NoErrorCheck },
 		nameof(IsWalking),
 	];
 

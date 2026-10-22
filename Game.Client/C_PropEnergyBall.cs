@@ -14,6 +14,12 @@ public partial class C_PropEnergyBall : C_PropCombineBall
 		new(nameof(TimeTillDeath)) { Bits = 0, Flags = PropFlags.NoScale },
 	];
 
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(IsInfiniteLife),
+		nameof(TimeTillDeath),
+	];
+
 	[NetworkVar("m_bIsInfiniteLife")]
 	public bool IsInfiniteLife;
 	[NetworkVar("m_fTimeTillDeath")]

@@ -28,6 +28,14 @@ public partial class
 		new(nameof(PhysBone)) { Bits = 12 },
 	];
 
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(IsOn),
+		nameof(TargetEnt),
+		nameof(HoldPos),
+		nameof(PhysBone),
+	];
+
 #if CLIENT_DLL
 	public C_PhysBeam() {
 		TargetEnt = new();

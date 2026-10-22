@@ -57,10 +57,10 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	public static readonly new PredictionField[] Prediction = [
 		new(nameof(Local)) { Embedded = true },
 		new(nameof(pl)) { Embedded = true },
-		nameof(FOV),
+		new(nameof(FOV)) { Tolerance = 50.0f },
 		nameof(ZoomOwner),
-		new(nameof(FOVTime)) { Type = FieldType.Double },
-		nameof(FOVStart),
+		new(nameof(FOVTime)) { Type = FieldType.Double, Tolerance = 5.0f },
+		new(nameof(FOVStart)) { Tolerance = 50.0f },
 		nameof(Vehicle),
 		new(nameof(Maxspeed)) { Type = FieldType.Float, Tolerance = 0.5f },
 		new(nameof(Health)) { Type = FieldType.Integer },

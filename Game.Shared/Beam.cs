@@ -87,6 +87,31 @@ public partial class
 #endif
 	];
 
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(BeamType),
+		nameof(NumBeamEnts),
+		nameof(AttachEntity),
+		nameof(AttachIndex),
+		nameof(HaloIndex),
+		nameof(HaloScale),
+		nameof(Width),
+		nameof(EndWidth),
+		nameof(FadeLength),
+		nameof(Amplitude),
+		nameof(StartFrame),
+		nameof(Speed),
+		nameof(RenderFX),
+		nameof(RenderMode),
+		nameof(FrameRate),
+		nameof(Frame),
+		new(nameof(RenderColor)) { Type = FieldType.Integer },
+		nameof(MinDXLevel),
+		new(nameof(EndPos)) { Tolerance = 0.125f },
+		new(nameof(ModelIndex)) { Type = FieldType.Short, Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.ModelIndex },
+		new(nameof(Origin)) { Tolerance = 0.125f },
+	];
+
 	public static class BeamScrollSpeedProxy
 	{
 #if CLIENT_DLL

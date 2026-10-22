@@ -41,6 +41,18 @@ public partial class Sprite : BaseEntity
 		nameof(WorldSpaceScale),
 	];
 
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(AttachedToEntity),
+		nameof(Attachment),
+		nameof(ScaleTime),
+		nameof(SpriteScale),
+		nameof(SpriteFramerate),
+		nameof(Frame),
+		nameof(BrightnessTime),
+		nameof(Brightness),
+	];
+
 	public Sprite() {
 		AttachedToEntity = new();
 	}
