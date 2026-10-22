@@ -45,7 +45,7 @@ public class BaseProp : BaseAnimating
 		SetNextThink(TICK_NEVER_THINK);
 
 		AnimTime = gpGlobals.CurTime;
-		PlaybackRate = 0.0;
+		PlaybackRate = 0.0f;
 		SetCycle(0);
 	}
 	public override void Precache() { }

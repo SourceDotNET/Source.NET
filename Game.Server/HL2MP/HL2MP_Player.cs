@@ -491,7 +491,7 @@ public partial class HL2MP_Player : HL2_Player
 			if (GetSequence() == animDesired)
 				return;
 
-			PlaybackRate = 1.0;
+			PlaybackRate = 1.0f;
 			ResetSequence(animDesired);
 			SetCycle(0);
 			return;

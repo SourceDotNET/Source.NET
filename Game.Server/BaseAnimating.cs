@@ -122,7 +122,7 @@ public partial class BaseAnimating : BaseEntity
 	public partial ref readonly InlineArrayMaxStudioBoneCtrls<float> EncodedController { get; }
 	public InlineArrayMaxStudioBoneCtrls<float> OldEncodedController;
 	[NetworkVar("m_nSequence")] public partial int Sequence { get; set; }
-	[NetworkVar("m_flPlaybackRate")] public partial TimeUnit_t PlaybackRate { get; set; }
+	[NetworkVar("m_flPlaybackRate")] public partial float PlaybackRate { get; set; }
 	[NetworkVar("m_bClientSideAnimation")]
 	public partial bool ClientSideAnimation { get; set; }
 	[NetworkVar("m_bClientSideFrameReset")]
@@ -163,7 +163,7 @@ public partial class BaseAnimating : BaseEntity
 	public partial float FadeMaxDist { get; set; }
 	[NetworkVar("m_flFadeScale")]
 	public partial float FadeScale { get; set; }
-	[NetworkVar("m_flCycle")] public partial TimeUnit_t Cycle { get; set; }
+	[NetworkVar("m_flCycle")] public partial float Cycle { get; set; }
 	[NetworkVar("m_OverrideViewTarget")]
 	public partial Vector3 OverrideViewTarget { get; set; }
 
@@ -350,7 +350,7 @@ public partial class BaseAnimating : BaseEntity
 	}
 
 	public TimeUnit_t GetPlaybackRate() => PlaybackRate;
-	public void SetPlaybackRate(TimeUnit_t rate) => PlaybackRate = rate;
+	public void SetPlaybackRate(TimeUnit_t rate) => PlaybackRate = (float)rate;
 
 	public bool IsSequenceFinished() => SequenceFinished;
 	public bool IsDissolving() => (GetFlags() & EntityFlags.Dissolving) != 0;
@@ -1181,7 +1181,7 @@ public partial class BaseAnimating : BaseEntity
 	public bool SequenceFinished;
 	public TimeUnit_t LastEventCheck;
 	public TimeUnit_t GetCycle() => Cycle;
-	public void SetCycle(TimeUnit_t cycle) => Cycle = cycle;
+	public void SetCycle(TimeUnit_t cycle) => Cycle = (float)cycle;
 
 	public void SetFadeDistance(float minFadeDist, float maxFadeDist) {
 		FadeMinDist = minFadeDist;
@@ -1282,7 +1282,7 @@ public partial class BaseAnimating : BaseEntity
 		GroundSpeed = GetSequenceGroundSpeed(studioHdr, GetSequence()) * GetModelScale();
 		SequenceLoops = ((Animation.GetSequenceFlags(studioHdr, GetSequence()) & StudioAnimSeqFlags.Looping) != 0);
 		// m_flAnimTime = gpGlobals.time;
-		PlaybackRate = 1.0;
+		PlaybackRate = 1.0f;
 		SequenceFinished = false;
 		LastEventCheck = 0;
 

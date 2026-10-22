@@ -50,20 +50,20 @@ public partial class Sprite : BaseEntity
 	[NetworkVar("m_nAttachment")]
 	public partial int Attachment { get; set; }
 	[NetworkVar("m_flScaleTime")]
-	public partial TimeUnit_t ScaleTime { get; set; }
+	public partial float ScaleTime { get; set; }
 	// todo: RecvProxy_SpriteScale
 	[NetworkVar("m_flSpriteScale")]
 	public partial float SpriteScale { get; set; }
 	[NetworkVar("m_flSpriteFramerate")]
-	public partial TimeUnit_t SpriteFramerate { get; set; }
+	public partial float SpriteFramerate { get; set; }
 	[NetworkVar("m_flGlowProxySize")]
 	public partial float GlowProxySize { get; set; }
 	[NetworkVar("m_flHDRColorScale")]
 	public partial float HDRColorScale { get; set; }
 	[NetworkVar("m_flFrame")]
-	public partial TimeUnit_t Frame { get; set; }
+	public partial float Frame { get; set; }
 	[NetworkVar("m_flBrightnessTime")]
-	public partial TimeUnit_t BrightnessTime { get; set; }
+	public partial float BrightnessTime { get; set; }
 	[NetworkVar("m_nBrightness")]
 	public partial int Brightness { get; set; }
 	[NetworkVar("m_bWorldSpaceScale")]

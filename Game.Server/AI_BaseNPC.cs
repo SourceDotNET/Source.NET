@@ -5612,7 +5612,7 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 						if (Cine.Get() == null)
 							ClearSchedule("Waiting for script, but lost script!");
 
-						PlaybackRate = 1.0;
+						PlaybackRate = 1.0f;
 					}
 					else if (cine == null) {
 						DevMsg("Cine died!\n");

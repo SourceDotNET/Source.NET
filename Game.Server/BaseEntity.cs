@@ -1992,7 +1992,7 @@ public partial class BaseEntity : IServerEntity
 	[NetworkVar("m_hGroundEntity")]
 	public partial EHANDLE GroundEntity { get; set; }
 	[NetworkVar("m_lifeState")]
-	public partial int LifeState { get; set; }
+	public partial byte LifeState { get; set; }
 	[NetworkVar("m_vecBaseVelocity")]
 	public partial Vector3 BaseVelocity { get; set; }
 	[NetworkVar("m_nNextThinkTick")]

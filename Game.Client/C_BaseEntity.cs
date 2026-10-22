@@ -199,12 +199,6 @@ public partial class C_BaseEntity : IClientEntity
 		nameof(CreationTime),
 		new(nameof(Velocity)) { Encoding = NetEncoding.VectorElements, Proxy = typeof(LocalVelocityProxy) },
 		new(nameof(GMOD_DataTable)) { Encoding = NetEncoding.GModTable },
-		nameof(GMOD_bool),
-		nameof(GMOD_float),
-		nameof(GMOD_int),
-		nameof(GMOD_Vector),
-		nameof(GMOD_QAngle),
-		nameof(GMOD_EHANDLE),
 		new(nameof(GMOD_String0)) { Encoding = NetEncoding.String },
 		new(nameof(GMOD_String1)) { Encoding = NetEncoding.String },
 		new(nameof(GMOD_String2)) { Encoding = NetEncoding.String },
@@ -218,7 +212,7 @@ public partial class C_BaseEntity : IClientEntity
 		nameof(Gravity),
 		new(nameof(NetworkOrigin)) { Tolerance = coordTolerance },
 		new(nameof(NetworkAngles)) { Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.NoErrorCheck },
-		new(nameof(ModelIndex)) { Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.ModelIndex },
+		new(nameof(ModelIndex)) { Type = FieldType.Short, Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.ModelIndex },
 		nameof(RenderMode),
 		nameof(RenderFX),
 		nameof(TeamNum),
@@ -913,7 +907,7 @@ public partial class C_BaseEntity : IClientEntity
 	[NetworkVar("m_hGroundEntity")]
 	public EHANDLE GroundEntity = new();
 	[NetworkVar("m_lifeState")]
-	public int LifeState;
+	public byte LifeState;
 	[NetworkVar("m_vecBaseVelocity")]
 	public Vector3 BaseVelocity;
 	[NetworkVar("m_nNextThinkTick")]

@@ -559,7 +559,7 @@ public partial class
 	public float MaxRange1;
 	public float MaxRange2;
 	public bool ReloadsSingly;
-	public TimeUnit_t FireDuration;
+	public float FireDuration;
 
 	public virtual void FinishReload() {
 		BaseCombatCharacter? owner = GetOwner();
@@ -658,7 +658,7 @@ public partial class
 	public virtual void HandleFireOnEmpty() {
 		if (FireOnEmpty) {
 			ReloadOrSwitchWeapons();
-			FireDuration = 0.0;
+			FireDuration = 0.0f;
 		}
 		else {
 			if (NextEmptySoundTime < gpGlobals.CurTime) {
@@ -680,7 +680,7 @@ public partial class
 		//Track the duration of the fire
 		//FIXME: Check for IN_ATTACK2 as well?
 		//FIXME: What if we're calling ItemBusyFrame?
-		FireDuration = (owner.Buttons & InButtons.Attack) != 0 ? (FireDuration + gpGlobals.FrameTime) : 0.0f;
+		FireDuration = (owner.Buttons & InButtons.Attack) != 0 ? (FireDuration + (float)gpGlobals.FrameTime) : 0.0f;
 
 		if (UsesClipsForAmmo1()) {
 			CheckReload();
@@ -768,7 +768,7 @@ public partial class
 		if ((owner.Buttons & InButtons.Reload) != 0 && NextPrimaryAttack <= gpGlobals.CurTime && UsesClipsForAmmo1() && !InReload) {
 			// reload when reload is pressed, or if no buttons are down and weapon is empty.
 			Reload();
-			FireDuration = 0.0;
+			FireDuration = 0.0f;
 		}
 
 		// -----------------------

@@ -57,16 +57,16 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	public static readonly new PredictionField[] Prediction = [
 		new(nameof(Local)) { Embedded = true },
 		new(nameof(pl)) { Embedded = true },
-		new(nameof(FOV)) { Type = FieldType.Integer },
+		nameof(FOV),
 		nameof(ZoomOwner),
 		new(nameof(FOVTime)) { Type = FieldType.Double },
-		new(nameof(FOVStart)) { Type = FieldType.Integer },
+		nameof(FOVStart),
 		nameof(Vehicle),
 		new(nameof(Maxspeed)) { Type = FieldType.Float, Tolerance = 0.5f },
 		new(nameof(Health)) { Type = FieldType.Integer },
 		new(nameof(NextThinkTick)) { Type = FieldType.Integer },
-		new(nameof(LifeState)) { Type = FieldType.Integer },
-		new(nameof(WaterLevel)) { Type = FieldType.Integer, Flags = FieldTypeDescFlags.InSendTable },
+		nameof(LifeState),
+		new(nameof(WaterLevel)) { Flags = FieldTypeDescFlags.InSendTable },
 		new(nameof(BaseVelocity)) { Type = FieldType.Vector, Tolerance = 0.05f },
 		new(nameof(Buttons)) { Type = FieldType.Integer },
 		new(nameof(WaterJumpTime)) { Type = FieldType.Float },
@@ -82,11 +82,11 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 		nameof(GroundEntity),
 		nameof(ViewModel),
 		new(nameof(SurfaceFriction)) { Type = FieldType.Float },
-		new(nameof(ButtonsArray)) { Type = FieldType.Integer },
+		nameof(ButtonsArray),
 		nameof(UseWeaponsInVehicle),
 	];
 
-	public int ButtonsArray;
+	public Source.InlineArray5<byte> ButtonsArray;
 
 	public override bool IsPlayer() => true;
 	public override Mask PhysicsSolidMaskForEntity() => Mask.PlayerSolid;
@@ -634,9 +634,9 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	[NetworkVar("m_iObserverMode")]
 	public int ObserverMode;
 	[NetworkVar("m_iFOV")]
-	public int FOV;
+	public float FOV;
 	[NetworkVar("m_iFOVStart")]
-	public int FOVStart;
+	public float FOVStart;
 	[NetworkVar("m_flFOVTime")]
 	public TimeUnit_t FOVTime;
 	[NetworkVar("m_iDefaultFOV")]

@@ -683,7 +683,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 	public void SetCycle(TimeUnit_t cycle) {
 		if (cycle != Cycle) {
-			Cycle = cycle;
+			Cycle = (float)cycle;
 			InvalidatePhysicsRecursive(InvalidatePhysicsBits.AnimationChanged);
 
 		}
@@ -1213,12 +1213,12 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 			UpdateVisibility();
 		}
 	}
-	TimeUnit_t OldCycle;
+	float OldCycle;
 	int OldSequence;
 	float OldModelScale;
 
 	public override void PreDataUpdate(DataUpdateType updateType) {
-		OldCycle = GetCycle();
+		OldCycle = (float)GetCycle();
 		OldSequence = GetSequence();
 		OldModelScale = GetModelScale();
 
@@ -1968,7 +1968,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	[NetworkVar("m_flFadeScale")]
 	public float FadeScale;
 	[NetworkVar("m_flCycle")]
-	public TimeUnit_t Cycle;
+	public float Cycle;
 	public readonly InterpolatedVar<float> iv_Cycle;
 	public readonly InterpolatedVarArray<float> iv_flPoseParameter;
 

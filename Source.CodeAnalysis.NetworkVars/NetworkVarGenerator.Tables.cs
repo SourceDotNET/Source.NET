@@ -453,7 +453,7 @@ namespace Source.CodeAnalysis.NetworkVars
 						hasFlags = true;
 						flagsText = "(global::Source.Common.FieldTypeDescFlags)256";
 					}
-					string flags = flagsText ?? (predArray || tolerance is float ? "0" : "global::Source.Common.FieldTypeDescFlags.Save");
+					string flags = flagsText ?? (tolerance is float ? "0" : "global::Source.Common.FieldTypeDescFlags.Save");
 					predicted.Add(PredictionDescription(fieldType, member, (predArray ? predLength : 1).ToString(CultureInfo.InvariantCulture), flags, "null",
 						tolerance is float tol ? tol.ToString("R", CultureInfo.InvariantCulture) + "f" : "0"));
 

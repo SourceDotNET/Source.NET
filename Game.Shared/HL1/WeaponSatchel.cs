@@ -26,12 +26,12 @@ public partial class WeaponSatchel : BaseHL1MPCombatWeapon
 	[NetworkVar("m_iRadioViewIndex")]
 	public partial int RadioViewIndex { get; set; }
 	[NetworkVar("m_iRadioWorldIndex")]
-	public partial float RadioWorldIndex { get; set; }
+	public partial int RadioWorldIndex { get; set; }
 	[NetworkVar("m_iSatchelViewIndex")]
-	public partial float SatchelViewIndex { get; set; }
+	public partial int SatchelViewIndex { get; set; }
 	[NetworkVar("m_iSatchelWorldIndex")]
-	public partial float SatchelWorldIndex { get; set; }
+	public partial int SatchelWorldIndex { get; set; }
 	[NetworkVar("m_iChargeReady")]
-	public partial float ChargeReady { get; set; }
+	public partial int ChargeReady { get; set; }
 }
 #endif

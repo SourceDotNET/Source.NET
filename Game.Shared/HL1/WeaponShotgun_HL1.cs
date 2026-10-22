@@ -20,6 +20,6 @@ public partial class WeaponShotgun_HL1 : BaseHL1MPCombatWeapon
 	[NetworkVar("m_flPumpTime")]
 	public partial float PumpTime { get; set; }
 	[NetworkVar("m_fInSpecialReload")]
-	public partial float InSpecialReload { get; set; }
+	public partial int InSpecialReload { get; set; }
 }
 #endif
