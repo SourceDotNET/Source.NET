@@ -163,6 +163,9 @@
     <Project Path="Source.Common.Tests/Source.Common.Tests.csproj">
       <Platform Project="x64" />
     </Project>
+    <Project Path="Game.Server.Tests/Game.Server.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
   </Folder>
   <Folder Name="/8. Assets/">
     <Project Path="Game.Assets/Game.Assets.csproj">
