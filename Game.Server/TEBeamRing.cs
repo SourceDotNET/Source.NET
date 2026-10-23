@@ -3,18 +3,17 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEBeamRing>;
 [NetworkName("CTEBeamRing")]
-public class TEBeamRing(ReadOnlySpan<char> name) : BaseBeam(name)
+public partial class TEBeamRing(ReadOnlySpan<char> name) : BaseBeam(name)
 {
-	public static readonly SendTable DT_TEBeamRing = new(DT_BaseBeam, [
-		SendPropInt(FIELD.OF(nameof(StartEntity)), 13, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(EndEntity)), 13, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEBeamRing);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(StartEntity)) { Bits = 13, Flags = PropFlags.Unsigned },
+		new(nameof(EndEntity)) { Bits = 13, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_nStartEntity")]
+	[NetworkVar("m_nStartEntity")]
 	public int StartEntity;
-	[NetworkName("m_nEndEntity")]
+	[NetworkVar("m_nEndEntity")]
 	public int EndEntity;
 }

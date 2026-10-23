@@ -1,45 +1,46 @@
 ﻿using Game.Shared;
 
+using Game.Shared;
+
 using Source;
 using Source.Common;
 
 namespace Game.Client;
-using FIELD = FIELD<C_FuncSmokeVolume>;
 
 [NetworkName("CFuncSmokeVolume")]
-public class C_FuncSmokeVolume : C_BaseParticleEntity
+public partial class C_FuncSmokeVolume : C_BaseParticleEntity
 {
-	public static readonly RecvTable DT_FuncSmokeVolume = new(DT_BaseParticleEntity, [
-		RecvPropInt(FIELD.OF(nameof(Color1)), 0, RecvProxy_IntToColor32),
-		RecvPropInt(FIELD.OF(nameof(Color2)), 0, RecvProxy_IntToColor32),
-		RecvPropString(FIELD.OF(nameof(MaterialName))),
-		RecvPropFloat(FIELD.OF(nameof(ParticleDrawWidth))),
-		RecvPropFloat(FIELD.OF(nameof(ParticleSpacingDistance))),
-		RecvPropFloat(FIELD.OF(nameof(DensityRampSpeed))),
-		RecvPropFloat(FIELD.OF(nameof(RotationSpeed))),
-		RecvPropFloat(FIELD.OF(nameof(MovementSpeed))),
-		RecvPropFloat(FIELD.OF(nameof(Density))),
-		RecvPropInt(FIELD.OF(nameof(SpawnFlags))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_FuncSmokeVolume);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Color1)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned, Proxy = typeof(Color32Proxy) },
+		new(nameof(Color2)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned, Proxy = typeof(Color32Proxy) },
+		new(nameof(MaterialName)) { Encoding = NetEncoding.String },
+		new(nameof(ParticleDrawWidth)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ParticleSpacingDistance)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(DensityRampSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(RotationSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MovementSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Density)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(SpawnFlags)) { Encoding = NetEncoding.Int, Bits = 8, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_Color1")]
+	[NetworkVar("m_Color1")]
 	public Color Color1;
-	[NetworkName("m_Color2")]
+	[NetworkVar("m_Color2")]
 	public Color Color2;
-	[NetworkName("m_MaterialName")]
+	[NetworkVar("m_MaterialName")]
 	public InlineArray255<char> MaterialName;
-	[NetworkName("m_ParticleDrawWidth")]
+	[NetworkVar("m_ParticleDrawWidth")]
 	public float ParticleDrawWidth;
-	[NetworkName("m_ParticleSpacingDistance")]
+	[NetworkVar("m_ParticleSpacingDistance")]
 	public float ParticleSpacingDistance;
-	[NetworkName("m_DensityRampSpeed")]
+	[NetworkVar("m_DensityRampSpeed")]
 	public float DensityRampSpeed;
-	[NetworkName("m_RotationSpeed")]
+	[NetworkVar("m_RotationSpeed")]
 	public float RotationSpeed;
-	[NetworkName("m_MovementSpeed")]
+	[NetworkVar("m_MovementSpeed")]
 	public float MovementSpeed;
-	[NetworkName("m_Density")]
+	[NetworkVar("m_Density")]
 	public float Density;
 }
 

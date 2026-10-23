@@ -11,8 +11,6 @@ using System.Numerics;
 
 namespace Game.Server;
 
-using FIELD = Source.FIELD<World>;
-
 
 public static class WorldGlobals
 {
@@ -20,23 +18,23 @@ public static class WorldGlobals
 }
 
 [LinkEntityToClass("worldspawn")]
-[NetworkName("CWorld")]
-public class World : BaseEntity
+[NetworkName("CWorld", Table = "DT_WORLD")]
+public partial class World : BaseEntity
 {
 	public static World? g_WorldEntity { get; private set; }
 	public override int RequiredEdictIndex() => 0;
-	public static SendTable DT_WORLD = new([
-		SendPropDataTable("baseclass", DT_BaseEntity),
 
-		SendPropVector(FIELD.OF(nameof(WorldMins)), -1, PropFlags.Coord),
-		SendPropVector(FIELD.OF(nameof(WorldMaxs)), -1, PropFlags.Coord),
-		SendPropInt(FIELD.OF(nameof(StartDark)), 1, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(MaxOccludeeArea)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(MinOccluderArea)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(MaxPropScreenSpaceWidth)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(MinPropScreenSpaceWidth)), 0, PropFlags.NoScale),
-		SendPropStringT(FIELD.OF(nameof(DetailSpriteMaterial))),
-	]);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(WorldMins)) { Bits = -1, Flags = PropFlags.Coord },
+		new(nameof(WorldMaxs)) { Bits = -1, Flags = PropFlags.Coord },
+		nameof(StartDark),
+		new(nameof(MaxOccludeeArea)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MinOccluderArea)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MaxPropScreenSpaceWidth)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MinPropScreenSpaceWidth)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(DetailSpriteMaterial)) { Encoding = NetEncoding.String },
+	];
 
 	public World() {
 		AddEFlags(EFL.NoAutoEdictAttach | EFL.KeepOnRecreateEntities);
@@ -175,23 +173,22 @@ public class World : BaseEntity
 		GlobalEntity.Add("is_pc", gpGlobals.MapName, GlobalEState.On);
 	}
 
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_WORLD);
 	float WaveHeight;
-	[NetworkName("m_WorldMins")]
-	Vector3 WorldMins;
-	[NetworkName("m_WorldMaxs")]
-	Vector3 WorldMaxs;
-	[NetworkName("m_bStartDark")]
-	bool StartDark;
-	[NetworkName("m_flMaxOccludeeArea")]
-	float MaxOccludeeArea;
-	[NetworkName("m_flMinOccluderArea")]
-	float MinOccluderArea;
-	[NetworkName("m_flMaxPropScreenSpaceWidth")]
-	float MaxPropScreenSpaceWidth;
-	[NetworkName("m_flMinPropScreenSpaceWidth")]
-	float MinPropScreenSpaceWidth;
-	[NetworkName("m_iszDetailSpriteMaterial")]
-	string? DetailSpriteMaterial;
+	[NetworkVar("m_WorldMins")]
+	private partial Vector3 WorldMins { get; set; }
+	[NetworkVar("m_WorldMaxs")]
+	private partial Vector3 WorldMaxs { get; set; }
+	[NetworkVar("m_bStartDark")]
+	private partial bool StartDark { get; set; }
+	[NetworkVar("m_flMaxOccludeeArea")]
+	private partial float MaxOccludeeArea { get; set; }
+	[NetworkVar("m_flMinOccluderArea")]
+	private partial float MinOccluderArea { get; set; }
+	[NetworkVar("m_flMaxPropScreenSpaceWidth")]
+	private partial float MaxPropScreenSpaceWidth { get; set; }
+	[NetworkVar("m_flMinPropScreenSpaceWidth")]
+	private partial float MinPropScreenSpaceWidth { get; set; }
+	[NetworkVar("m_iszDetailSpriteMaterial")]
+	private partial string? DetailSpriteMaterial { get; set; }
 	bool ColdWorld;
 }

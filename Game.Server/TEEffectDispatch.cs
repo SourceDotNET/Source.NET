@@ -5,17 +5,16 @@ using Source.Common;
 using System.Numerics;
 
 namespace Game.Server;
-using FIELD = Source.FIELD<TEEffectDispatch>;
 
 [NetworkName("CTEEffectDispatch")]
-public class TEEffectDispatch(ReadOnlySpan<char> name) : BaseTempEntity(name)
+public partial class TEEffectDispatch(ReadOnlySpan<char> name) : BaseTempEntity(name)
 {
-	public static readonly SendTable DT_TEEffectDispatch = new(DT_BaseTempEntity, [
-		SendPropDataTable("m_EffectData", FIELD.OF(nameof(EffectData)), EffectData.DT_EffectData),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEEffectDispatch);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(EffectData)) { Encoding = NetEncoding.DataTable, DataTable = "DT_EffectData" },
+	];
 
-	[NetworkName("m_EffectData")]
+	[NetworkVar("m_EffectData")]
 	public EffectData EffectData = new();
 }
 

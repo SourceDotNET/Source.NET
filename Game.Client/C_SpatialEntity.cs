@@ -4,26 +4,24 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
 
-using FIELD = FIELD<C_SpatialEntity>;
-
 [NetworkName("CSpatialEntity")]
-public class C_SpatialEntity : C_BaseEntity
+public partial class C_SpatialEntity : C_BaseEntity
 {
-	public static readonly RecvTable DT_SpatialEntity = new([
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropFloat(FIELD.OF(nameof(MinFalloff))),
-		RecvPropFloat(FIELD.OF(nameof(MaxFalloff))),
-		RecvPropFloat(FIELD.OF(nameof(CurWeight))),
-		RecvPropBool(FIELD.OF(nameof(Enabled))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_SpatialEntity);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Origin)) { Encoding = NetEncoding.Vector, Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MinFalloff)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(MaxFalloff)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(CurWeight)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(Enabled),
+	];
 
-	[NetworkName("m_MinFalloff")]
+	[NetworkVar("m_minFalloff")]
 	public float MinFalloff;
-	[NetworkName("m_MaxFalloff")]
+	[NetworkVar("m_maxFalloff")]
 	public float MaxFalloff;
-	[NetworkName("m_flCurWeight")]
+	[NetworkVar("m_flCurWeight")]
 	public float CurWeight;
-	[NetworkName("m_bEnabled")]
+	[NetworkVar("m_bEnabled")]
 	public bool Enabled;
 }

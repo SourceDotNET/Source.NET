@@ -8,27 +8,11 @@ using Source.Common;
 #if CLIENT_DLL
 namespace Game.Client;
 using Game.Client.GarrysMod;
-using FIELD = Source.FIELD<C_WeaponSWEP>;
 #else
 namespace Game.Server;
 
 using Game.Server.GarrysMod;
 
-using FIELD = Source.FIELD<WeaponSWEP>;
-#endif
-
-using Table =
-#if CLIENT_DLL
-	RecvTable;
-#else
-	SendTable;
-#endif
-
-using Class =
-#if CLIENT_DLL
-	ClientClass;
-#else
-	ServerClass;
 #endif
 
 [LinkEntityToClass("weapon_swep")]
@@ -40,32 +24,16 @@ public partial class
 	WeaponSWEP : BaseHL2MPCombatWeapon
 #endif
 {
-	public static readonly Table DT_WeaponSWEP = new(DT_BaseHL2MPCombatWeapon, [
-#if CLIENT_DLL
-		RecvPropDataTable("m_ScriptedEntity", FIELD.OF(nameof(ScriptedEntity)), ScriptedEntity.DT_ScriptedEntity, 0, RECV_GET_OBJECT_AT_FIELD(FIELD.OF(nameof(ScriptedEntity)))),
-		RecvPropString(FIELD.OF(nameof(HoldType)))
-#elif GAME_DLL
-		SendPropDataTable("m_ScriptedEntity", FIELD.OF(nameof(ScriptedEntity)), ScriptedEntity.DT_ScriptedEntity),
-		SendPropString(FIELD.OF(nameof(HoldType)))
-#endif
-	]);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(ScriptedEntity)) { Encoding = NetEncoding.DataTable, DataTable = "DT_ScriptedEntity" },
+		new(nameof(HoldType)) { Encoding = NetEncoding.String },
+	];
 
-	public static readonly new Class
-#if CLIENT_DLL
-		ClientClass
-#else
-		ServerClass
-#endif
-		= new Class(DT_WeaponSWEP);
-
-#if CLIENT_DLL
-	public static readonly new DataMap PredMap = new([], typeof(C_WeaponSWEP), BaseHL2MPCombatWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
-#endif
-
-	[NetworkName("m_strHoldType")]
-	public InlineArray80<char> HoldType;
-
+	[NetworkVar("m_ScriptedEntity")]
 	public readonly ScriptedEntity ScriptedEntity = new();
+	[NetworkVar("m_strHoldType")]
+	public partial ref readonly InlineArray80<char> HoldType { get; }
 
 #if CLIENT_DLL
 	public C_WeaponSWEP() {
@@ -243,7 +211,7 @@ public partial class
 #if GAME_DLL
 		NetworkStateChanged();
 #endif
-		strcpy(HoldType, holdType);
+		strcpy(HoldTypeForModify(), holdType);
 	}
 
 #if CLIENT_DLL

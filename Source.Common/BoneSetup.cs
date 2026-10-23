@@ -166,11 +166,11 @@ public ref partial struct BoneSetup
 
 	StudioHdr studioHdr;
 	int boneMask;
-	Span<float> poseParameter;
+	ReadOnlySpan<float> poseParameter;
 
 	public StudioHdr GetStudioHdr() => studioHdr;
 
-	public BoneSetup(StudioHdr studioHdr, int boneMask, Span<float> poseParameter) {
+	public BoneSetup(StudioHdr studioHdr, int boneMask, ReadOnlySpan<float> poseParameter) {
 		this.studioHdr = studioHdr;
 		this.boneMask = boneMask;
 		this.poseParameter = poseParameter;
@@ -241,7 +241,7 @@ public ref partial struct BoneSetup
 		MStudioAnimDesc anim = studioHdr.Animdesc(baseanim);
 		return (anim.Flags & StudioAnimSeqFlags.AllZeros) != 0;
 	}
-	private static bool CalcPoseSingle(StudioHdr studioHdr, Span<Vector3> pos, Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, Span<float> poseParameter, int boneMask, double time) {
+	private static bool CalcPoseSingle(StudioHdr studioHdr, Span<Vector3> pos, Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, ReadOnlySpan<float> poseParameter, int boneMask, double time) {
 		bool bResult = true;
 
 		Vector3[] pos2 = VectorPool.Alloc();

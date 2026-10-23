@@ -3,21 +3,20 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEEnergySplash>;
-[NetworkName("CTEEnergySplash")]
-public class TEEnergySplash(ReadOnlySpan<char> name) : BaseTempEntity(name)
+[NetworkName("CTEEnergySplash", NoBase = true)]
+public partial class TEEnergySplash(ReadOnlySpan<char> name) : BaseTempEntity(name)
 {
-	public static readonly SendTable DT_TEEnergySplash = new([
-		SendPropVector(FIELD.OF(nameof(Pos)), 0, PropFlags.Coord),
-		SendPropVector(FIELD.OF(nameof(Dir)), 0, PropFlags.Coord),
-		SendPropInt(FIELD.OF(nameof(Explosive)), 1, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEEnergySplash);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Pos)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Dir)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Explosive)) { Bits = 1, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecPos")]
+	[NetworkVar("m_vecPos")]
 	public Vector3 Pos;
-	[NetworkName("m_vecDir")]
+	[NetworkVar("m_vecDir")]
 	public Vector3 Dir;
-	[NetworkName("m_bExplosive")]
+	[NetworkVar("m_bExplosive")]
 	public int Explosive;
 }

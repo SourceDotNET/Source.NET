@@ -55,7 +55,9 @@ public class HL2GameMovement : GameMovement
 		if (ladder == null && oldLadder != null)
 			oldLadder.PlayerGotOff(GetHL2Player());
 
-		GetHL2Player().HL2Local.Ladder.Set(ladder);
+		var ladderHandle = GetHL2Player().HL2Local.Ladder;
+		ladderHandle.Set(ladder);
+		GetHL2Player().HL2Local.Ladder = ladderHandle;
 	}
 
 	protected override int GetCheckInterval(IntervalType type) => type == IntervalType.Ladder ? 1 : base.GetCheckInterval(type);

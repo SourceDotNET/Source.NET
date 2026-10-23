@@ -3,25 +3,24 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<NPC_RollerMine>;
 [LinkEntityToClass("npc_rollermine")]
-[NetworkName("CNPC_RollerMine")]
-public class NPC_RollerMine : AI_BaseNPC
+[NetworkName("CNPC_RollerMine", Table = "DT_RollerMine")]
+public partial class NPC_RollerMine : AI_BaseNPC
 {
-	public static readonly SendTable DT_RollerMine = new(DT_AI_BaseNPC, [
-		SendPropBool(FIELD.OF(nameof(IsOpen))),
-		SendPropFloat(FIELD.OF(nameof(ActiveTime)), 0, PropFlags.NoScale),
-		SendPropBool(FIELD.OF(nameof(HackedByAlyx))),
-		SendPropBool(FIELD.OF(nameof(PowerDown))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_RollerMine);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(IsOpen),
+		new(nameof(ActiveTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(HackedByAlyx),
+		nameof(PowerDown),
+	];
 
-	[NetworkName("m_bIsOpen")]
-	public bool IsOpen;
-	[NetworkName("m_flActiveTime")]
-	public float ActiveTime;
-	[NetworkName("m_bHackedByAlyx")]
-	public bool HackedByAlyx;
-	[NetworkName("m_bPowerDown")]
-	public bool PowerDown;
+	[NetworkVar("m_bIsOpen")]
+	public partial bool IsOpen { get; set; }
+	[NetworkVar("m_flActiveTime")]
+	public partial float ActiveTime { get; set; }
+	[NetworkVar("m_bHackedByAlyx")]
+	public partial bool HackedByAlyx { get; set; }
+	[NetworkVar("m_bPowerDown")]
+	public partial bool PowerDown { get; set; }
 }

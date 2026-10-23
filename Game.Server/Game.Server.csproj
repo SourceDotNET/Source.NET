@@ -17,8 +17,6 @@
 		                  OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		<ProjectReference Include="..\Source.CodeAnalysis.BitVec\Source.CodeAnalysis.BitVec.csproj"
 		                  OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-		<ProjectReference Include="..\Source.CodeAnalysis.NetworkClasses\Source.CodeAnalysis.NetworkClasses.csproj"
-		                  OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Include="..\Game.Shared\*.cs" Link="Shared\%(Filename)%(Extension)" />

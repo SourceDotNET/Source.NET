@@ -570,7 +570,7 @@ public class GameClient : BaseClient
 		if (IsFakeClient())
 			return;
 
-		PlayerState pl = SV.ServerGameClients!.GetPlayerState(Edict);
+		PlayerEngineState pl = SV.ServerGameClients!.GetPlayerState(Edict);
 		Assert(pl != null);
 
 		if (pl != null && pl.FixAngle != (int)FixAngle.None) {

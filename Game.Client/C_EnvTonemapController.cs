@@ -5,34 +5,34 @@ using Game.Shared;
 
 using Source.Common;
 
-using FIELD = Source.FIELD<C_EnvTonemapController>;
 
 [NetworkName("CEnvTonemapController")]
-public class C_EnvTonemapController : C_BaseEntity
+public partial class C_EnvTonemapController : C_BaseEntity
 {
-	public static readonly RecvTable DT_EnvTonemapController = new(DT_BaseEntity, [
-		RecvPropBool(FIELD.OF(nameof(UseCustomAutoExposureMin))),
-		RecvPropBool(FIELD.OF(nameof(UseCustomAutoExposureMax))),
-		RecvPropBool(FIELD.OF(nameof(UseCustomBloomScale))),
-		RecvPropFloat(FIELD.OF(nameof(CustomAutoExposureMin))),
-		RecvPropFloat(FIELD.OF(nameof(CustomAutoExposureMax))),
-		RecvPropFloat(FIELD.OF(nameof(CustomBloomScale))),
-		RecvPropFloat(FIELD.OF(nameof(CustomBloomScaleMinimum))),
-	]); public static readonly new ClientClass ClientClass = new ClientClass(DT_EnvTonemapController);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(UseCustomAutoExposureMin),
+		nameof(UseCustomAutoExposureMax),
+		nameof(UseCustomBloomScale),
+		new(nameof(CustomAutoExposureMin)) { Bits = 0, Flags = PropFlags.NoScale, Low = 0, High = 0 },
+		new(nameof(CustomAutoExposureMax)) { Bits = 0, Flags = PropFlags.NoScale, Low = 0, High = 0 },
+		new(nameof(CustomBloomScale)) { Bits = 0, Flags = PropFlags.NoScale, Low = 0, High = 0 },
+		new(nameof(CustomBloomScaleMinimum)) { Bits = 0, Flags = PropFlags.NoScale, Low = 0, High = 0 },
+	];
 
-	[NetworkName("m_bUseCustomAutoExposureMin")]
+	[NetworkVar("m_bUseCustomAutoExposureMin")]
 	public bool UseCustomAutoExposureMin;
-	[NetworkName("m_bUseCustomAutoExposureMax")]
+	[NetworkVar("m_bUseCustomAutoExposureMax")]
 	public bool UseCustomAutoExposureMax;
-	[NetworkName("m_bUseCustomBloomScale")]
+	[NetworkVar("m_bUseCustomBloomScale")]
 	public bool UseCustomBloomScale;
-	[NetworkName("m_flCustomAutoExposureMin")]
+	[NetworkVar("m_flCustomAutoExposureMin")]
 	public float CustomAutoExposureMin;
-	[NetworkName("m_flCustomAutoExposureMax")]
+	[NetworkVar("m_flCustomAutoExposureMax")]
 	public float CustomAutoExposureMax;
-	[NetworkName("m_flCustomBloomScale")]
+	[NetworkVar("m_flCustomBloomScale")]
 	public float CustomBloomScale;
-	[NetworkName("m_flCustomBloomScaleMinimum")]
+	[NetworkVar("m_flCustomBloomScaleMinimum")]
 	public float CustomBloomScaleMinimum;
 
 	static EHANDLE g_hTonemapControllerInUse = new();

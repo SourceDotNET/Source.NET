@@ -37,7 +37,7 @@ namespace Source.CodeAnalysis.NetworkVars
 			List
 		}
 
-		private static void InitializeFieldAccessors(IncrementalGeneratorInitializationContext context, IncrementalValueProvider<ImmutableArray<PropertyModel?>> properties) {
+		private static void InitializeFieldAccessors(IncrementalGeneratorInitializationContext context, IncrementalValueProvider<ImmutableArray<PropertyModel?>> properties, IncrementalValueProvider<ImmutableArray<TableModel?>> tables) {
 			IncrementalValueProvider<ImmutableArray<FieldAccessorModel?>> accessors = context.SyntaxProvider
 				.CreateSyntaxProvider(
 					predicate: static (node, _) => IsInvocationNamed(node, FieldMethods),
@@ -59,8 +59,8 @@ namespace Source.CodeAnalysis.NetworkVars
 				.Where(static m => m != null)
 				.Collect();
 
-			context.RegisterSourceOutput(accessors.Combine(conversions).Combine(properties).Combine(predictionMaps),
-				static (spc, data) => EmitFieldAccessors(spc, data.Left.Left.Left, data.Left.Left.Right, data.Left.Right, data.Right));
+			context.RegisterSourceOutput(accessors.Combine(conversions).Combine(properties).Combine(predictionMaps).Combine(tables),
+				static (spc, data) => EmitFieldAccessors(spc, data.Left.Left.Left.Left, data.Left.Left.Left.Right, data.Left.Left.Right, data.Left.Right, data.Right));
 		}
 
 		private static bool IsInvocationNamed(SyntaxNode node, HashSet<string> names) {
@@ -329,9 +329,8 @@ namespace Source.CodeAnalysis.NetworkVars
 		}
 
 		private static IPropertySymbol? FindNetworkVarProperty(ITypeSymbol type, string backingName) {
-			if (!backingName.StartsWith("__nv_", StringComparison.Ordinal))
-				return null;
-			return FindMember(type, backingName.Substring(5)) is IPropertySymbol prop && HasAttribute(prop, AttributeMetadataName) ? prop : null;
+			string name = backingName.StartsWith("__nv_", StringComparison.Ordinal) ? backingName.Substring(5) : backingName;
+			return FindMember(type, name) is IPropertySymbol prop && HasAttribute(prop, AttributeMetadataName) ? prop : null;
 		}
 
 		private static IFieldSymbol? FindDataMapField(ITypeSymbol type, string name) {
@@ -533,6 +532,10 @@ namespace Source.CodeAnalysis.NetworkVars
 			=> symbol.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == attributeName);
 
 		private static string? GetNetworkNameAttribute(ISymbol symbol) {
+			AttributeData? networkVar = symbol.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == AttributeMetadataName);
+			if (networkVar != null && networkVar.ConstructorArguments.Length == 1 && networkVar.ConstructorArguments[0].Value is string networkVarName)
+				return networkVarName;
+
 			AttributeData? attribute = symbol.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == NetworkNameAttributeName);
 			if (attribute == null || attribute.ConstructorArguments.Length != 1)
 				return null;
@@ -550,7 +553,15 @@ namespace Source.CodeAnalysis.NetworkVars
 
 		private static string EscapeFormat(string value) => value.Replace("{", "{{").Replace("}", "}}");
 
-		private static void EmitFieldAccessors(SourceProductionContext spc, ImmutableArray<FieldAccessorModel?> models, ImmutableArray<string?> valueConversions, ImmutableArray<PropertyModel?> properties, ImmutableArray<PredictionMapModel?> predictionMaps) {
+		private static void EmitFieldAccessors(SourceProductionContext spc, ImmutableArray<FieldAccessorModel?> models, ImmutableArray<string?> valueConversions, ImmutableArray<PropertyModel?> properties, ImmutableArray<PredictionMapModel?> predictionMaps, ImmutableArray<TableModel?> tables) {
+			foreach (TableModel? table in tables) {
+				if (table == null)
+					continue;
+				models = models.AddRange(table.Accessors);
+				if (table.Map != null)
+					predictionMaps = predictionMaps.Add(table.Map);
+			}
+
 			var unique = new SortedDictionary<string, FieldAccessorModel>(StringComparer.Ordinal);
 			var conversions = new SortedSet<string>(StringComparer.Ordinal);
 

@@ -4,25 +4,24 @@ using Source;
 using Source.Common;
 
 namespace Game.Server.HL2;
-using FIELD = Source.FIELD<InfoTeleporterCountdown>;
 [LinkEntityToClass("info_teleporter_countdown")]
 [NetworkName("CInfoTeleporterCountdown")]
 public partial class InfoTeleporterCountdown : BaseEntity
 {
-	public static readonly SendTable DT_InfoTeleporterCountdown = new(DT_BaseEntity, [
-		SendPropBool(FIELD.OF(nameof(CountdownStarted))),
-		SendPropBool(FIELD.OF(nameof(Disabled))),
-		SendPropFloat(FIELD.OF(nameof(StartTime)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(TimeRemaining)), 0, PropFlags.NoScale)
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_InfoTeleporterCountdown);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(CountdownStarted),
+		nameof(Disabled),
+		new(nameof(StartTime)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(TimeRemaining)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_bCountdownStarted")]
-	public bool CountdownStarted;
-	[NetworkName("m_bDisabled")]
-	public bool Disabled;
-	[NetworkName("m_flStartTime")]
-	public TimeUnit_t StartTime;
-	[NetworkName("m_flTimeRemaining")]
-	public TimeUnit_t TimeRemaining;
+	[NetworkVar("m_bCountdownStarted")]
+	public partial bool CountdownStarted { get; set; }
+	[NetworkVar("m_bDisabled")]
+	public partial bool Disabled { get; set; }
+	[NetworkVar("m_flStartTime")]
+	public partial TimeUnit_t StartTime { get; set; }
+	[NetworkVar("m_flTimeRemaining")]
+	public partial TimeUnit_t TimeRemaining { get; set; }
 }

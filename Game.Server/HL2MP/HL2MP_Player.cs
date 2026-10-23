@@ -11,49 +11,55 @@ using System.Numerics;
 
 namespace Game.Server.HL2MP;
 
-using FIELD = FIELD<HL2MP_Player>;
-using FIELD_RD = FIELD<HL2MPRagdoll>;
-
 [NetworkName("CHL2MP_Player")]
 public partial class HL2MP_Player : HL2_Player
 {
-	public static readonly SendTable DT_HL2MPLocalPlayerExclusive = new(nameof(DT_HL2MPLocalPlayerExclusive), [
-		SendPropVector(BaseEntity.NetworkVarFields.Origin, 0, PropFlags.NoScale|PropFlags.ChangesOften, 0.0f, Constants.HIGH_DEFAULT),
+	[NetworkTable("DT_HL2MPLocalPlayerExclusive")]
+	public static readonly new NetworkProp[] LocalPlayerExclusiveProps = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.NoScale | PropFlags.ChangesOften, Low = 0.0f, High = Constants.HIGH_DEFAULT },
+		new(nameof(AngEyeAngles)) { Encoding = NetEncoding.VectorElements, Count = 2, Bits = 11, Flags = PropFlags.ChangesOften | PropFlags.RoundDown },
+	];
 
-		SendPropAngle(FIELD.OF_VECTORELEM(nameof(AngEyeAngles), 0), 11, PropFlags.ChangesOften | PropFlags.RoundDown, 0, 360f ),
-		SendPropAngle(FIELD.OF_VECTORELEM(nameof(AngEyeAngles), 1), 11, PropFlags.ChangesOften | PropFlags.RoundDown, 0, 360f ),
-	]);
+	[NetworkTable("DT_HL2MPNonLocalPlayerExclusive")]
+	public static readonly NetworkProp[] NonLocalPlayerExclusiveProps = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.CoordMPLowPrecision | PropFlags.ChangesOften, Low = 0.0f, High = Constants.HIGH_DEFAULT },
+		new(nameof(AngEyeAngles)) { Encoding = NetEncoding.VectorElements, Count = 2, Bits = 11, Flags = PropFlags.ChangesOften | PropFlags.RoundDown },
+	];
 
-	public static readonly SendTable DT_HL2MPNonLocalPlayerExclusive = new(nameof(DT_HL2MPNonLocalPlayerExclusive), [
-		SendPropVector(BaseEntity.NetworkVarFields.Origin, 0, PropFlags.CoordMPLowPrecision|PropFlags.ChangesOften, 0.0f, Constants.HIGH_DEFAULT),
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(PoseParameter)) { Exclude = true },
+		new(nameof(PlaybackRate)) { Exclude = true },
+		new(nameof(Sequence)) { Exclude = true },
+		new(nameof(Rotation)) { Exclude = true },
+		new("overlay_vars") { Exclude = true, DataTable = "DT_BaseAnimatingOverlay" },
 
-		SendPropAngle(FIELD.OF_VECTORELEM(nameof(AngEyeAngles), 0), 11, PropFlags.ChangesOften | PropFlags.RoundDown, 0, 360f),
-		SendPropAngle(FIELD.OF_VECTORELEM(nameof(AngEyeAngles), 1), 11, PropFlags.ChangesOften | PropFlags.RoundDown, 0, 360f),
+		new(nameof(Origin)) { Exclude = true },
+		new(nameof(Cycle)) { Exclude = true, DataTable = "DT_ServerAnimationData" },
+		new(nameof(AnimTime)) { Exclude = true, DataTable = "DT_AnimTimeMustBeFirst" },
+		new(nameof(FlexWeight)) { Exclude = true },
+		new(nameof(BlinkToggle)) { Exclude = true },
+		new("m_viewtarget") { Exclude = true, DataTable = "DT_BaseFlex" },
 
-	]);
+		new(nameof(LocalPlayerExclusiveProps)) { Name = "hl2mplocaldata", Proxy = typeof(HL2MPLocalDataProxy) },
+		new(nameof(NonLocalPlayerExclusiveProps)) { Name = "hl2mpnonlocaldata", Proxy = typeof(HL2MPNonLocalDataProxy) },
 
-	public static readonly SendTable DT_HL2MP_Player = new(DT_HL2_Player, [
-		SendPropExclude(nameof(DT_BaseAnimating), "m_flPoseParameter"),
-		SendPropExclude(nameof(DT_BaseAnimating), "m_flPlaybackRate"),
-		SendPropExclude(nameof(DT_BaseAnimating), "m_nSequence"),
-		SendPropExclude(nameof(DT_BaseEntity), "m_angRotation"),
-		SendPropExclude(nameof(DT_BaseAnimatingOverlay), "overlay_vars"),
+		nameof(Ragdoll),
+		new(nameof(SpawnInterpCounter)) { Bits = 4 },
+		nameof(IsWalking),
+	];
 
-		SendPropExclude(nameof(DT_BaseEntity), "m_vecOrigin"),
-		SendPropExclude(nameof(DT_ServerAnimationData), "m_flCycle"),
-		SendPropExclude(nameof(DT_AnimTimeMustBeFirst), "m_flAnimTime"),
-		SendPropExclude(nameof(DT_BaseFlex), "m_flexWeight"),
-		SendPropExclude(nameof(DT_BaseFlex), "m_blinktoggle"),
-		SendPropExclude(nameof(DT_BaseFlex), "m_viewtarget"),
+	public static class HL2MPLocalDataProxy
+	{
+		public static object? Send(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID)
+			=> SendProxy_SendLocalDataTable(prop, instance, data, recipients, objectID);
+	}
 
-		SendPropDataTable("hl2mplocaldata", DT_HL2MPLocalPlayerExclusive, SendProxy_SendLocalDataTable ),
-		SendPropDataTable("hl2mpnonlocaldata", DT_HL2MPNonLocalPlayerExclusive, SendProxy_SendNonLocalDataTable ),
-
-		SendPropEHandle(FIELD.OF(nameof(Ragdoll))),
-		SendPropInt(FIELD.OF(nameof(SpawnInterpCounter)), 4),
-		SendPropBool(FIELD.OF(nameof(IsWalking))),
-	]);
-	public static new readonly ServerClass ServerClass = new ServerClass(DT_HL2MP_Player);
+	public static class HL2MPNonLocalDataProxy
+	{
+		public static object? Send(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID)
+			=> SendProxy_SendNonLocalDataTable(prop, instance, data, recipients, objectID);
+	}
 
 	public const TimeUnit_t MODEL_CHANGE_INTERVAL = 5.0;
 	public const TimeUnit_t TEAM_CHANGE_INTERVAL = 5.0;
@@ -91,15 +97,15 @@ public partial class HL2MP_Player : HL2_Player
 
 	public int ModelType;
 
-	[NetworkName("m_angEyeAngles")]
-	public QAngle AngEyeAngles;
-	[NetworkName("m_hRagdoll")]
-	public EHANDLE Ragdoll = new();
-	[NetworkName("m_iSpawnInterpCounter")]
-	public int SpawnInterpCounter;
+	[NetworkVar("m_angEyeAngles")]
+	public partial QAngle AngEyeAngles { get; set; }
+	[NetworkVar("m_hRagdoll")]
+	public partial EHANDLE Ragdoll { get; set; }
+	[NetworkVar("m_iSpawnInterpCounter")]
+	public partial int SpawnInterpCounter { get; set; }
 	public int PlayerSoundType;
-	[NetworkName("m_fIsWalking")]
-	public bool IsWalking;
+	[NetworkVar("m_fIsWalking")]
+	public partial bool IsWalking { get; set; }
 
 	public readonly HL2MPPlayerAnimState PlayerAnimState;
 
@@ -108,6 +114,7 @@ public partial class HL2MP_Player : HL2_Player
 	TimeUnit_t SlamProtectTime;
 
 	public HL2MP_Player() {
+		Ragdoll = new();
 		PlayerAnimState = HL2MPPlayerAnimState.CreateHL2MPPlayerAnimState(this);
 		AngEyeAngles.Init();
 
@@ -121,7 +128,7 @@ public partial class HL2MP_Player : HL2_Player
 	public override void UpdateOnRemove() {
 		if (Ragdoll.Get() != null) {
 			Util.RemoveImmediate(Ragdoll.Get());
-			Ragdoll.Set(null);
+			Ragdoll = EHANDLE.FromEntity(null);
 		}
 
 		base.UpdateOnRemove();
@@ -484,7 +491,7 @@ public partial class HL2MP_Player : HL2_Player
 			if (GetSequence() == animDesired)
 				return;
 
-			PlaybackRate = 1.0;
+			PlaybackRate = 1.0f;
 			ResetSequence(animDesired);
 			SetCycle(0);
 			return;
@@ -589,7 +596,7 @@ public partial class HL2MP_Player : HL2_Player
 			vm.SetIndex(index);
 			Util.DispatchSpawn(vm);
 			vm.FollowEntity(this, false);
-			ViewModel[index].Set(vm);
+			ViewModelForModify()[index].Set(vm);
 		}
 	}
 
@@ -749,23 +756,27 @@ public partial class HL2MP_Player : HL2_Player
 }
 
 [LinkEntityToClass("hl2mp_ragdoll")]
-[NetworkName("CHL2MPRagdoll")]
-public class HL2MPRagdoll : BaseAnimatingOverlay
+[NetworkName("CHL2MPRagdoll", NoBase = true)]
+public partial class HL2MPRagdoll : BaseAnimatingOverlay
 {
-	public static readonly SendTable DT_HL2MPRagdoll = new([
-		SendPropVector(FIELD_RD.OF(nameof(RagdollOrigin)), 0, PropFlags.Coord),
-		SendPropEHandle(FIELD_RD.OF(nameof(Player))),
-		SendPropInt(FIELD_RD.OF(nameof(ModelIndex)), 14),
-		SendPropInt(FIELD_RD.OF(nameof(ForceBone)), 8),
-		SendPropVector(FIELD_RD.OF(nameof(Force)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD_RD.OF(nameof(RagdollVelocity)), 0, PropFlags.NoScale)
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_HL2MPRagdoll);
+	public HL2MPRagdoll() {
+		Player = new();
+	}
 
-	[NetworkName("m_vecRagdollOrigin")]
-	public Vector3 RagdollOrigin;
-	[NetworkName("m_hPlayer")]
-	public EHANDLE Player = new();
-	[NetworkName("m_vecRagdollVelocity")]
-	public Vector3 RagdollVelocity;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(RagdollOrigin)) { Bits = 0, Flags = PropFlags.Coord },
+		nameof(Player),
+		new(nameof(ModelIndex)) { Bits = 14 },
+		new(nameof(ForceBone)) { Bits = 8 },
+		new(nameof(Force)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(RagdollVelocity)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
+
+	[NetworkVar("m_vecRagdollOrigin")]
+	public partial Vector3 RagdollOrigin { get; set; }
+	[NetworkVar("m_hPlayer")]
+	public partial EHANDLE Player { get; set; }
+	[NetworkVar("m_vecRagdollVelocity")]
+	public partial Vector3 RagdollVelocity { get; set; }
 }

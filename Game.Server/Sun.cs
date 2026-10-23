@@ -6,40 +6,40 @@ using Source.Common;
 using System.Numerics;
 
 namespace Game.Server;
-using FIELD = Source.FIELD<Sun>;
 
 [LinkEntityToClass("env_sun")]
-[NetworkName("CSun")]
-public class Sun : BaseEntity
+[NetworkName("CSun", NoBase = true)]
+public partial class Sun : BaseEntity
 {
-	public static readonly SendTable DT_Sun = new([
-		SendPropInt(FIELD.OF(nameof(Render)), 32, PropFlags.Unsigned, SendProxy_Color32ToInt),
-		SendPropInt(FIELD.OF(nameof(Overlay)), 32, PropFlags.Unsigned, SendProxy_Color32ToInt),
-		SendPropVector(FIELD.OF(nameof(Direction)), 0, PropFlags.Normal),
-		SendPropInt(FIELD.OF(nameof(On)), 1, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Size)), 10, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(OverlaySize)), 10, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Material)), 32, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(OverlayMaterial)), 32, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(HDRColorScale)), 0, PropFlags.NoScale, 0.0f, 100.0f),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_Sun);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Render)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned, Proxy = typeof(Color32Proxy) },
+		new(nameof(Overlay)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned, Proxy = typeof(Color32Proxy) },
+		new(nameof(Direction)) { Bits = 0, Flags = PropFlags.Normal },
+		new(nameof(On)) { Encoding = NetEncoding.Int, Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(Size)) { Bits = 10, Flags = PropFlags.Unsigned },
+		new(nameof(OverlaySize)) { Bits = 10, Flags = PropFlags.Unsigned },
+		new(nameof(Material)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(OverlayMaterial)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(HDRColorScale)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale, Low = 0.0f, High = 100.0f },
+	];
 
-	[NetworkName("m_clrRender")]
-	public Color Render;
-	[NetworkName("m_clrOverlay")]
-	public Color Overlay;
-	[NetworkName("m_vDirection")]
-	public Vector3 Direction;
-	[NetworkName("m_bOn")]
-	public bool On;
-	[NetworkName("m_nSize")]
-	public int Size;
-	[NetworkName("m_nOverlaySize")]
-	public int OverlaySize;
-	[NetworkName("m_nMaterial")]
-	public int Material;
-	[NetworkName("m_nOverlayMaterial")]
-	public int OverlayMaterial;
-	public int HDRColorScale;
+	[NetworkVar("m_clrRender")]
+	public partial Color Render { get; set; }
+	[NetworkVar("m_clrOverlay")]
+	public partial Color Overlay { get; set; }
+	[NetworkVar("m_vDirection")]
+	public partial Vector3 Direction { get; set; }
+	[NetworkVar("m_bOn")]
+	public partial bool On { get; set; }
+	[NetworkVar("m_nSize")]
+	public partial int Size { get; set; }
+	[NetworkVar("m_nOverlaySize")]
+	public partial int OverlaySize { get; set; }
+	[NetworkVar("m_nMaterial")]
+	public partial int Material { get; set; }
+	[NetworkVar("m_nOverlayMaterial")]
+	public partial int OverlayMaterial { get; set; }
+	[NetworkVar("HDRColorScale")]
+	public partial int HDRColorScale { get; set; }
 }

@@ -3,27 +3,26 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_CitadelEnergyCore>;
 [NetworkName("CCitadelEnergyCore")]
-public class C_CitadelEnergyCore : C_BaseEntity
+public partial class C_CitadelEnergyCore : C_BaseEntity
 {
-	public static readonly RecvTable DT_CitadelEnergyCore = new(DT_BaseEntity, [
-		RecvPropFloat(FIELD.OF(nameof(Scale))),
-		RecvPropInt(FIELD.OF(nameof(State))),
-		RecvPropFloat(FIELD.OF(nameof(Duration))),
-		RecvPropFloat(FIELD.OF(nameof(StartTime))),
-		RecvPropInt(FIELD.OF(nameof(Spawnflags))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_CitadelEnergyCore);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Scale)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(State)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Duration)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(StartTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Spawnflags)) { Bits = 32, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_flScale")]
+	[NetworkVar("m_flScale")]
 	public float Scale;
-	[NetworkName("m_nState")]
+	[NetworkVar("m_nState")]
 	public int State;
-	[NetworkName("m_flDuration")]
+	[NetworkVar("m_flDuration")]
 	public float Duration;
-	[NetworkName("m_flStartTime")]
+	[NetworkVar("m_flStartTime")]
 	public float StartTime;
-	[NetworkName("m_spawnflags")]
+	[NetworkVar("m_spawnflags")]
 	public int Spawnflags;
 }

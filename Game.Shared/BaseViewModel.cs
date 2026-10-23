@@ -18,7 +18,6 @@ using System;
 using System.Numerics;
 
 using DEFINE = Source.DEFINE<BaseViewModel>;
-using FIELD = Source.FIELD<BaseViewModel>;
 
 [LinkEntityToClass("viewmodel")]
 [NetworkName("CBaseViewModel")]
@@ -40,51 +39,40 @@ public partial class
 
 	public const int VIEWMODEL_INDEX_BITS = 4;
 
-	public static readonly
+	[NetworkTable(NoBase = true)]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(ModelIndex)) { Encoding = NetEncoding.ModelIndex },
+		new(nameof(Body)) { Bits = 32, Side = NetworkSide.Server },
+		new(nameof(Skin)) { Bits = 10 },
+		new(nameof(Body)) { Side = NetworkSide.Client },
+		new(nameof(Sequence)) { Bits = 12, Flags = PropFlags.Unsigned, Proxy = typeof(ViewModelSequenceProxy) },
+		new(nameof(_ViewModelIndex)) { Bits = VIEWMODEL_INDEX_BITS, Flags = PropFlags.Unsigned },
+		new(nameof(PlaybackRate)) { Encoding = NetEncoding.Float, Bits = 8, Flags = PropFlags.RoundUp, Low = -4.0f, High = 12.0f },
+		new(nameof(Effects)) { Bits = 10, Flags = PropFlags.Unsigned },
+		new(nameof(AnimationParity)) { Bits = 3, Flags = PropFlags.Unsigned },
+		new(nameof(Weapon)) { Proxy = typeof(ViewModelWeaponProxy) },
+		nameof(Owner),
+
+		new(nameof(NewSequenceParity)) { Bits = (int)EntityEffects.ParityBits, Flags = PropFlags.Unsigned },
+		new(nameof(ResetEventsParity)) { Bits = (int)EntityEffects.ParityBits, Flags = PropFlags.Unsigned },
+		new(nameof(MuzzleFlashParity)) { Bits = (int)EntityEffects.MuzzleflashBits, Flags = PropFlags.Unsigned },
+
+		new(nameof(PoseParameter)) { Encoding = NetEncoding.Array, Bits = 8, Flags = 0, Low = 0.0f, High = 1.0f },
+	];
+
+	public static class ViewModelSequenceProxy
+	{
 #if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) => RecvProxy_SequenceNum(in data, instance, field);
 #endif
-		DT_BaseViewModel = new([
+	}
+
+	public static class ViewModelWeaponProxy
+	{
 #if CLIENT_DLL
-			RecvPropInt(FIELD.OF(nameof(ModelIndex))),
-			RecvPropInt(FIELD.OF(nameof(Body))),
-			RecvPropInt(FIELD.OF(nameof(Skin))),
-			RecvPropInt(FIELD.OF(nameof(Sequence)), 0, RecvProxy_SequenceNum),
-			RecvPropInt(FIELD.OF(nameof(_ViewModelIndex))),
-			RecvPropFloat(FIELD.OF(nameof(PlaybackRate))),
-			RecvPropInt(FIELD.OF(nameof(Effects))),
-			RecvPropInt(FIELD.OF(nameof(AnimationParity))),
-			RecvPropEHandle(FIELD.OF(nameof(Weapon)), RecvProxy_Weapon),
-			RecvPropEHandle(FIELD.OF(nameof(Owner))),
-
-			RecvPropInt(FIELD.OF(nameof(NewSequenceParity))),
-			RecvPropInt(FIELD.OF(nameof(ResetEventsParity))),
-			RecvPropInt(FIELD.OF(nameof(MuzzleFlashParity))),
-
-			RecvPropFloat(FIELD.OF_ARRAYINDEX(nameof(PoseParameter), 0)),
-			RecvPropArray(FIELD.OF_ARRAY(nameof(PoseParameter))),
-#else
-			SendPropModelIndex(FIELD.OF(nameof(ModelIndex))),
-			SendPropInt(FIELD.OF(nameof(Body)), 32),
-			SendPropInt(FIELD.OF(nameof(Skin)), 10),
-			SendPropInt(FIELD.OF(nameof(Sequence)), 12, PropFlags.Unsigned),
-			SendPropInt(FIELD.OF(nameof(_ViewModelIndex)), VIEWMODEL_INDEX_BITS, PropFlags.Unsigned),
-			SendPropFloat(FIELD.OF(nameof(PlaybackRate)), 8, PropFlags.RoundUp, -4.0f, 12.0f),
-			SendPropInt(FIELD.OF(nameof(Effects)), 10, PropFlags.Unsigned),
-			SendPropInt(FIELD.OF(nameof(AnimationParity)), 3, PropFlags.Unsigned),
-			SendPropEHandle(FIELD.OF(nameof(Weapon))),
-			SendPropEHandle(FIELD.OF(nameof(Owner))),
-
-			SendPropInt(FIELD.OF(nameof(NewSequenceParity)), (int)EntityEffects.ParityBits, PropFlags.Unsigned ),
-			SendPropInt(FIELD.OF(nameof(ResetEventsParity)), (int)EntityEffects.ParityBits, PropFlags.Unsigned ),
-			SendPropInt(FIELD.OF(nameof(MuzzleFlashParity)), (int)EntityEffects.MuzzleflashBits, PropFlags.Unsigned ),
-
-			SendPropFloat(FIELD.OF_SENDINFO_ARRAY(nameof(PoseParameter)), 8, 0, 0.0f, 1.0f),
-			SendPropArray(FIELD.OF_ARRAY(nameof(PoseParameter))),
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) => RecvProxy_Weapon(in data, instance, field);
 #endif
-		]);
+	}
 
 	TimeUnit_t TimeWeaponIdle;
 	Activity Activity;
@@ -111,24 +99,14 @@ public partial class
 			model.SetCycle(0);
 		}
 	}
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseViewModel);
-#else
-#pragma warning disable CS0109 // Member does not hide an inherited member; new keyword is not required
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseViewModel);
-#pragma warning restore CS0109 // Member does not hide an inherited member; new keyword is not required
 #endif
-	[NetworkName("m_nViewModelIndex")]
-	public int _ViewModelIndex;
-	[NetworkName("m_hOwner")]
-	public EHANDLE Owner = new();
-	[NetworkName("m_hWeapon")]
-	public Handle<BaseCombatWeapon> Weapon = new();
-	[NetworkName("m_nAnimationParity")]
-#if CLIENT_DLL
-	public int AnimationParity;
-#else
-	[NetworkVar] public partial int AnimationParity { get; set; }
-#endif
+	[NetworkVar("m_nViewModelIndex")]
+	public partial int _ViewModelIndex { get; set; }
+	[NetworkVar("m_hOwner")]
+	public partial EHANDLE Owner { get; set; }
+	[NetworkVar("m_hWeapon")]
+	public partial Handle<BaseCombatWeapon> Weapon { get; set; }
+	[NetworkVar("m_nAnimationParity")] public partial int AnimationParity { get; set; }
 
 	public BaseCombatWeapon? GetOwningWeapon() => Weapon.Get();
 
@@ -140,7 +118,7 @@ public partial class
 		SetSolid(SolidType.None);
 	}
 
-	public void SetOwner(BaseEntity? entity) => Owner.Set(entity);
+	public void SetOwner(BaseEntity? entity) => Owner = EHANDLE.FromEntity(entity);
 
 	public void SetIndex(int index) {
 		_ViewModelIndex = index;
@@ -248,6 +226,8 @@ public partial class
 	BaseViewModel
 #endif
 		() {
+		Owner = new();
+		Weapon = new();
 #if CLIENT_DLL
 		OldAnimationParity = 0;
 		EntClientFlags |= EntClientFlags.AlwaysInterpolate;
@@ -270,7 +250,7 @@ public partial class
 
 
 	public void SetWeaponModel(ReadOnlySpan<char> modelname, BaseCombatWeapon? weapon = null) {
-		Weapon.Set(weapon);
+		Weapon = Handle<BaseCombatWeapon>.FromEntity(weapon);
 
 #if CLIENT_DLL
 		SetModel(modelname);

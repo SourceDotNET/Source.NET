@@ -3,24 +3,23 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEConcussiveExplosion>;
 [NetworkName("CTEConcussiveExplosion")]
-public class TEConcussiveExplosion(ReadOnlySpan<char> name) : TEParticleSystem(name)
+public partial class TEConcussiveExplosion(ReadOnlySpan<char> name) : TEParticleSystem(name)
 {
-	public static readonly SendTable DT_TEConcussiveExplosion = new(DT_TEParticleSystem, [
-		SendPropVector(FIELD.OF(nameof(Normal)), 0, PropFlags.Coord),
-		SendPropFloat(FIELD.OF(nameof(Scale)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(Radius)), 32, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Magnitude)), 32, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEConcussiveExplosion);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Normal)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Scale)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Radius)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(Magnitude)) { Bits = 32, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecNormal")]
+	[NetworkVar("m_vecNormal")]
 	public Vector3 Normal;
-	[NetworkName("m_flScale")]
+	[NetworkVar("m_flScale")]
 	public float Scale;
-	[NetworkName("m_nRadius")]
+	[NetworkVar("m_nRadius")]
 	public int Radius;
-	[NetworkName("m_nMagnitude")]
+	[NetworkVar("m_nMagnitude")]
 	public int Magnitude;
 }

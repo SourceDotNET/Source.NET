@@ -5,30 +5,21 @@ using Source.Common.Mathematics;
 using System.Numerics;
 namespace Game.Shared.GarrysMod;
 
-using FIELD = Source.FIELD<HL2MPMachineGun>;
 [NetworkName("CHL2MPMachineGun")]
-public class HL2MPMachineGun : BaseHL2MPCombatWeapon
+public partial class HL2MPMachineGun : BaseHL2MPCombatWeapon
 {
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_HL2MPMachineGun = new(DT_BaseHL2MPCombatWeapon, [
-#if CLIENT_DLL
-		RecvPropInt(FIELD.OF(nameof(ShotsFired))),
-#else
-		SendPropInt(FIELD.OF(nameof(ShotsFired)), 16),
-#endif
-		]);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_HL2MPMachineGun);
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_HL2MPMachineGun);
-#endif
-	[NetworkName("m_nShotsFired")]
-	public int ShotsFired;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(ShotsFired)) { Bits = 16 },
+	];
+
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(ShotsFired),
+	];
+
+	[NetworkVar("m_nShotsFired")]
+	public partial int ShotsFired { get; set; }
 
 	public void DoMachineGunKick(BasePlayer player, float dampEasy, float maxVerticleKickAngle, TimeUnit_t fireDurationTime, TimeUnit_t slideLimitTime) {
 		const float KICK_MIN_X = 0.2f;//Degrees

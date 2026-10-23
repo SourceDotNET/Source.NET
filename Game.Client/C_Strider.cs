@@ -3,23 +3,17 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_Strider>;
 [NetworkName("CNPC_Strider")]
-public class C_Strider : C_AI_BaseNPC
+public partial class C_Strider : C_AI_BaseNPC
 {
-	public static readonly RecvTable DT_NPC_Strider = new(DT_AI_BaseNPC, [
-		RecvPropVector(FIELD.OF(nameof(HitPos))),
-		RecvPropVector(FIELD.OF_ARRAYINDEX(nameof(IKTarget), 0)),
-		RecvPropVector(FIELD.OF_ARRAYINDEX(nameof(IKTarget), 1)),
-		RecvPropVector(FIELD.OF_ARRAYINDEX(nameof(IKTarget), 2)),
-		RecvPropVector(FIELD.OF_ARRAYINDEX(nameof(IKTarget), 3)),
-		RecvPropVector(FIELD.OF_ARRAYINDEX(nameof(IKTarget), 4)),
-		RecvPropVector(FIELD.OF_ARRAYINDEX(nameof(IKTarget), 5)),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_NPC_Strider);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(HitPos),
+		new(nameof(IKTarget)) { Encoding = NetEncoding.Elements },
+	];
 
-	[NetworkName("m_vecHitPos")]
+	[NetworkVar("m_vecHitPos")]
 	public Vector3 HitPos;
-	[NetworkName("m_vecIKTarget")]
+	[NetworkVar("m_vecIKTarget")]
 	public InlineArray6<Vector3> IKTarget;
 }

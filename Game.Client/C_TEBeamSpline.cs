@@ -6,23 +6,20 @@ using Source.Common;
 using System.Numerics;
 namespace Game.Client;
 
-using FIELD = FIELD<C_TEBeamSpline>;
 
-
-[NetworkName("CTEBeamSpline")]
-public class C_TEBeamSpline : C_BaseTempEntity
+[NetworkName("CTEBeamSpline", NoBase = true)]
+public partial class C_TEBeamSpline : C_BaseTempEntity
 {
 	public const int MAX_SPLINE_POINTS = 16;
-	public static readonly RecvTable DT_TEBeamSpline = new([
-		RecvPropInt(FIELD.OF(nameof(NumPoints))),
-		RecvPropVector(FIELD.OF_ARRAYINDEX(nameof(Points), 0)),
-		RecvPropArray(FIELD.OF_ARRAY(nameof(Points))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEBeamSpline).AsEvent<C_TEBeamSpline>();
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		nameof(NumPoints),
+		new(nameof(Points)) { Encoding = NetEncoding.Array },
+	];
 
-	[NetworkName("m_nPoints")]
+	[NetworkVar("m_nPoints")]
 	public int NumPoints;
-	[NetworkName("m_vecPoints")]
+	[NetworkVar("m_vecPoints")]
 	public InlineArrayMaxSplinePoints<Vector3> Points;
 
 	public override void PostDataUpdate(DataUpdateType updateType) {

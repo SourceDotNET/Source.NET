@@ -538,7 +538,7 @@ namespace Game.Server
 #endif
 
 			BaseEntity? oldGround = GroundEntity.Get();
-			GroundEntity.Set(ground);
+			GroundEntity = EHANDLE.FromEntity(ground);
 
 			// Just starting to touch
 			if (oldGround == null && ground != null)

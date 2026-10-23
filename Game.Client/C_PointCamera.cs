@@ -3,48 +3,47 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_PointCamera>;
 [NetworkName("CPointCamera")]
-public class C_PointCamera : C_BaseEntity
+public partial class C_PointCamera : C_BaseEntity
 {
-	public static readonly RecvTable DT_PointCamera = new(DT_BaseEntity, [
-		RecvPropFloat(FIELD.OF(nameof(FOV))),
-		RecvPropFloat(FIELD.OF(nameof(Resolution))),
-		RecvPropBool(FIELD.OF(nameof(FogEnable))),
-		RecvPropInt(FIELD.OF(nameof(FogColor))),
-		RecvPropInt(FIELD.OF(nameof(FogColorHDR))),
-		RecvPropFloat(FIELD.OF(nameof(FogStart))),
-		RecvPropFloat(FIELD.OF(nameof(FogEnd))),
-		RecvPropFloat(FIELD.OF(nameof(FogMaxDensity))),
-		RecvPropBool(FIELD.OF(nameof(FogRadial))),
-		RecvPropBool(FIELD.OF(nameof(Active))),
-		RecvPropBool(FIELD.OF(nameof(UseScreenAspectRatio))),
-		RecvPropBool(FIELD.OF(nameof(GlobalOverride))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_PointCamera);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(FOV)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Resolution)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(FogEnable),
+		new(nameof(FogColor)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(FogColorHDR)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(FogStart)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FogEnd)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FogMaxDensity)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(FogRadial),
+		nameof(Active),
+		nameof(UseScreenAspectRatio),
+		nameof(GlobalOverride),
+	];
 
-	[NetworkName("m_FOV")]
+	[NetworkVar("m_FOV")]
 	public float FOV;
-	[NetworkName("m_Resolution")]
+	[NetworkVar("m_Resolution")]
 	public float Resolution;
-	[NetworkName("m_bFogEnable")]
+	[NetworkVar("m_bFogEnable")]
 	public bool FogEnable;
-	[NetworkName("m_FogColor")]
+	[NetworkVar("m_FogColor")]
 	public int FogColor;
-	[NetworkName("m_FogColorHDR")]
+	[NetworkVar("m_FogColorHDR")]
 	public int FogColorHDR;
-	[NetworkName("m_flFogStart")]
+	[NetworkVar("m_flFogStart")]
 	public float FogStart;
-	[NetworkName("m_flFogEnd")]
+	[NetworkVar("m_flFogEnd")]
 	public float FogEnd;
-	[NetworkName("m_flFogMaxDensity")]
+	[NetworkVar("m_flFogMaxDensity")]
 	public float FogMaxDensity;
-	[NetworkName("m_bFogRadial")]
+	[NetworkVar("m_bFogRadial")]
 	public bool FogRadial;
-	[NetworkName("m_bActive")]
+	[NetworkVar("m_bActive")]
 	public bool Active;
-	[NetworkName("m_bUseScreenAspectRatio")]
+	[NetworkVar("m_bUseScreenAspectRatio")]
 	public bool UseScreenAspectRatio;
-	[NetworkName("m_bGlobalOverride")]
+	[NetworkVar("m_bGlobalOverride")]
 	public bool GlobalOverride;
 }

@@ -3,22 +3,21 @@ using Game.Shared;
 using Source.Common;
 
 namespace Game.Server.HL2;
-using FIELD = Source.FIELD<AlyxEmpEffect>;
 [LinkEntityToClass("env_alyxemp")]
 [NetworkName("CAlyxEmpEffect")]
 public partial class AlyxEmpEffect : BaseEntity
 {
-	public static readonly SendTable DT_AlyxEmpEffect = new(DT_BaseEntity, [
-		SendPropInt(FIELD.OF(nameof(State)), 8, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(Duration)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(StartTime)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_AlyxEmpEffect);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(State)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Duration)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(StartTime)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_nState")]
-	public int State;
-	[NetworkName("m_flDuration")]
-	public TimeUnit_t Duration;
-	[NetworkName("m_flStartTime")]
-	public TimeUnit_t StartTime;
+	[NetworkVar("m_nState")]
+	public partial int State { get; set; }
+	[NetworkVar("m_flDuration")]
+	public partial TimeUnit_t Duration { get; set; }
+	[NetworkVar("m_flStartTime")]
+	public partial TimeUnit_t StartTime { get; set; }
 }

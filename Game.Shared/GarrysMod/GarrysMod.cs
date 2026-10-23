@@ -83,6 +83,11 @@ public class GarrysMod : IGarrysMod
 #endif
 
 	public void InitializeMod(IServiceProvider services) {
+#if GAME_DLL
+		engine.ServerCommand("sv_timeout 180\n");
+		engine.ServerCommand("sv_allow_voice_from_file 0\n");
+		engine.ServerCommand("sv_client_predict 1\n");
+#endif
 #if !SWDS
 		get.IntroScreen()?.Update("Adding Custom Fonts", true);
 		// todo: AddCustomFonts

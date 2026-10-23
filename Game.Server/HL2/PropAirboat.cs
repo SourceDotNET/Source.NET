@@ -6,26 +6,25 @@ using Source.Common;
 using System.Numerics;
 
 namespace Game.Server.HL2;
-using FIELD = Source.FIELD<PropAirboat>;
 [LinkEntityToClass("prop_vehicle_airboat")]
 [NetworkName("CPropAirboat")]
-public class PropAirboat : PropVehicleDriveable
+public partial class PropAirboat : PropVehicleDriveable
 {
-	public static readonly SendTable DT_PropAirboat = new(DT_PropVehicleDriveable, [
-		SendPropBool(FIELD.OF(nameof(HeadlightIsOn))),
-		SendPropInt(FIELD.OF(nameof(AmmoCount)), 9),
-		SendPropInt(FIELD.OF(nameof(ExactWaterLevel)), 24),
-		SendPropInt(FIELD.OF(nameof(WaterLevel)), 2, PropFlags.Unsigned),
-		SendPropVector(FIELD.OF(nameof(PhysVelocity)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PropAirboat);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(HeadlightIsOn),
+		new(nameof(AmmoCount)) { Bits = 9 },
+		new(nameof(ExactWaterLevel)) { Bits = 24 },
+		new(nameof(WaterLevel)) { Encoding = NetEncoding.Int, Bits = 2, Flags = PropFlags.Unsigned },
+		new(nameof(PhysVelocity)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_bHeadlightIsOn")]
-	public bool HeadlightIsOn;
-	[NetworkName("m_nAmmoCount")]
-	public int AmmoCount;
-	[NetworkName("m_nExactWaterLevel")]
-	public int ExactWaterLevel;
-	[NetworkName("m_vecPhysVelocity")]
-	public Vector3 PhysVelocity;
+	[NetworkVar("m_bHeadlightIsOn")]
+	public partial bool HeadlightIsOn { get; set; }
+	[NetworkVar("m_nAmmoCount")]
+	public partial int AmmoCount { get; set; }
+	[NetworkVar("m_nExactWaterLevel")]
+	public partial int ExactWaterLevel { get; set; }
+	[NetworkVar("m_vecPhysVelocity")]
+	public partial Vector3 PhysVelocity { get; set; }
 }

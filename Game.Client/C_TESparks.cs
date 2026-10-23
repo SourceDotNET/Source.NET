@@ -3,22 +3,21 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TESparks>;
 [NetworkName("CTESparks")]
-public class C_TESparks : C_TEParticleSystem
+public partial class C_TESparks : C_TEParticleSystem
 {
-	public static readonly RecvTable DT_TESparks = new(DT_TEParticleSystem, [
-		RecvPropInt(FIELD.OF(nameof(Magnitude))),
-		RecvPropInt(FIELD.OF(nameof(TrailLength))),
-		RecvPropVector(FIELD.OF(nameof(Dir))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TESparks);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Magnitude)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(TrailLength)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(Dir)) { Bits = 0, Flags = PropFlags.Coord },
+	];
 
-	[NetworkName("m_nMagnitude")]
+	[NetworkVar("m_nMagnitude")]
 	public int Magnitude;
-	[NetworkName("m_nTrailLength")]
+	[NetworkVar("m_nTrailLength")]
 	public int TrailLength;
-	[NetworkName("m_vecDir")]
+	[NetworkVar("m_vecDir")]
 	public Vector3 Dir;
 }
 

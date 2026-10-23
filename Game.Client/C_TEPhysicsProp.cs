@@ -4,42 +4,39 @@ using Game.Shared;
 using System.Numerics;
 using Source.Common.Mathematics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEPhysicsProp>;
 [NetworkName("CTEPhysicsProp")]
-public class C_TEPhysicsProp : C_BaseTempEntity
+public partial class C_TEPhysicsProp : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEPhysicsProp = new(DT_BaseTempEntity, [
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Rotation), 0)),
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Rotation), 1)),
-		RecvPropFloat(FIELD.OF_VECTORELEM(nameof(Rotation), 2)),
-		RecvPropVector(FIELD.OF(nameof(Velocity))),
-		RecvPropInt(FIELD.OF(nameof(ModelIndex))),
-		RecvPropInt(FIELD.OF(nameof(Skin))),
-		RecvPropInt(FIELD.OF(nameof(Flags))),
-		RecvPropInt(FIELD.OF(nameof(Effects))),
-		RecvPropInt(FIELD.OF(nameof(ClrRender))),
-		RecvPropFloat(FIELD.OF(nameof(ModelScale))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEPhysicsProp);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		nameof(Origin),
+		new(nameof(Rotation)) { Encoding = NetEncoding.VectorElements },
+		nameof(Velocity),
+		nameof(ModelIndex),
+		nameof(Flags),
+		nameof(Skin),
+		nameof(Effects),
+		nameof(ClrRender),
+		nameof(ModelScale),
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_angRotation")]
+	[NetworkVar("m_angRotation")]
 	public QAngle Rotation;
-	[NetworkName("m_vecVelocity")]
+	[NetworkVar("m_vecVelocity")]
 	public Vector3 Velocity;
-	[NetworkName("m_nModelIndex")]
+	[NetworkVar("m_nModelIndex")]
 	public int ModelIndex;
-	[NetworkName("m_nSkin")]
+	[NetworkVar("m_nSkin")]
 	public int Skin;
-	[NetworkName("m_nFlags")]
+	[NetworkVar("m_nFlags")]
 	public int Flags;
-	[NetworkName("m_nEffects")]
+	[NetworkVar("m_nEffects")]
 	public int Effects;
-	[NetworkName("m_clrRender")]
+	[NetworkVar("m_clrRender")]
 	public int ClrRender;
-	[NetworkName("m_fModelScale")]
+	[NetworkVar("m_fModelScale")]
 	public float ModelScale;
 }
 

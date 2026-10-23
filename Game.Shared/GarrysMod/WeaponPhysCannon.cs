@@ -19,13 +19,16 @@ using System;
 using System.Numerics;
 namespace Game.Shared.GarrysMod;
 
-using FIELD = Source.FIELD<WeaponPhysCannon>;
 
 [LinkEntityToClass("weapon_physcannon")]
 [PrecacheWeaponRegister("weapon_physcannon")]
 [NetworkName("CWeaponPhysCannon")]
-public class WeaponPhysCannon : BaseHL2MPCombatWeapon
+public partial class WeaponPhysCannon : BaseHL2MPCombatWeapon
 {
+	public WeaponPhysCannon() {
+		AttachedObject = new();
+	}
+
 	public static bool PlayerHasMegaPhysCannon() => false;
 
 
@@ -163,56 +166,37 @@ public class WeaponPhysCannon : BaseHL2MPCombatWeapon
 
 #endif
 
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_WeaponPhysCannon = new(DT_BaseHL2MPCombatWeapon, [
-#if CLIENT_DLL
-			RecvPropBool(FIELD.OF(nameof(Active))),
-			RecvPropEHandle(FIELD.OF(nameof(AttachedObject))),
-			RecvPropVector(FIELD.OF(nameof(AttachedPositionObjectSpace))),
-			RecvPropFloat(FIELD.OF_VECTORELEM(nameof(AttachedAnglesPlayerSpace), 0)),
-			RecvPropFloat(FIELD.OF_VECTORELEM(nameof(AttachedAnglesPlayerSpace), 1)),
-			RecvPropFloat(FIELD.OF_VECTORELEM(nameof(AttachedAnglesPlayerSpace), 2)),
-			RecvPropInt(FIELD.OF(nameof(EffectState))),
-			RecvPropBool(FIELD.OF(nameof(Open))),
-			RecvPropBool(FIELD.OF(nameof(PhyscannonState))),
-#else
-			SendPropBool(FIELD.OF(nameof(Active))),
-			SendPropEHandle(FIELD.OF(nameof(AttachedObject))),
-			SendPropVector(FIELD.OF(nameof(AttachedPositionObjectSpace)), 0, PropFlags.Coord),
-			SendPropAngle(FIELD.OF_VECTORELEM(nameof(AttachedAnglesPlayerSpace), 0), 11, PropFlags.RoundDown),
-			SendPropAngle(FIELD.OF_VECTORELEM(nameof(AttachedAnglesPlayerSpace), 1), 11, PropFlags.RoundDown),
-			SendPropAngle(FIELD.OF_VECTORELEM(nameof(AttachedAnglesPlayerSpace), 2), 11, PropFlags.RoundDown),
-			SendPropInt(FIELD.OF(nameof(EffectState)), 4),
-			SendPropBool(FIELD.OF(nameof(Open))),
-			SendPropBool(FIELD.OF(nameof(PhyscannonState))),
-#endif
-		]);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponPhysCannon);
-	public static readonly new DataMap PredMap = new([], typeof(WeaponPhysCannon), BaseHL2MPCombatWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Active),
+		nameof(AttachedObject),
+		new(nameof(AttachedPositionObjectSpace)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(AttachedAnglesPlayerSpace)) { Encoding = NetEncoding.VectorElements, Bits = 11, Flags = PropFlags.RoundDown },
+		new(nameof(EffectState)) { Bits = 4 },
+		nameof(Open),
+		nameof(PhyscannonState),
+	];
 
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponPhysCannon);
-#endif
-	[NetworkName("m_bActive")]
-	public bool Active;
-	[NetworkName("m_hAttachedObject")]
-	public EHANDLE AttachedObject = new();
-	[NetworkName("m_attachedPositionObjectSpace")]
-	public Vector3 AttachedPositionObjectSpace;
-	[NetworkName("m_attachedAnglesPlayerSpace")]
-	public QAngle AttachedAnglesPlayerSpace;
-	[NetworkName("m_EffectState")]
-	public int EffectState;
-	[NetworkName("m_bOpen")]
-	public bool Open;
-	[NetworkName("m_bPhyscannonState")]
-	public bool PhyscannonState;
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(EffectState),
+		nameof(Open),
+	];
+
+	[NetworkVar("m_bActive")]
+	public partial bool Active { get; set; }
+	[NetworkVar("m_hAttachedObject")]
+	public partial EHANDLE AttachedObject { get; set; }
+	[NetworkVar("m_attachedPositionObjectSpace")]
+	public partial Vector3 AttachedPositionObjectSpace { get; set; }
+	[NetworkVar("m_attachedAnglesPlayerSpace")]
+	public partial QAngle AttachedAnglesPlayerSpace { get; set; }
+	[NetworkVar("m_EffectState")]
+	public partial int EffectState { get; set; }
+	[NetworkVar("m_bOpen")]
+	public partial bool Open { get; set; }
+	[NetworkVar("m_bPhyscannonState")]
+	public partial bool PhyscannonState { get; set; }
 #if CLIENT_DLL
 	public bool OldOpen;
 	public int OldEffectState;

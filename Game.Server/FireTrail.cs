@@ -3,19 +3,18 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<FireTrail>;
 [LinkEntityToClass("env_fire_trail")]
 [NetworkName("CFireTrail")]
-public class FireTrail : BaseParticleEntity
+public partial class FireTrail : BaseParticleEntity
 {
-	public static readonly SendTable DT_FireTrail = new(DT_BaseParticleEntity, [
-		SendPropInt(FIELD.OF(nameof(Attachment)), 32, 0),
-		SendPropFloat(FIELD.OF(nameof(Lifetime)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_FireTrail);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Attachment)) { Bits = 32 },
+		new(nameof(Lifetime)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_nAttachment")]
-	public int Attachment;
-	[NetworkName("m_flLifetime")]
-	public float Lifetime;
+	[NetworkVar("m_nAttachment")]
+	public partial int Attachment { get; set; }
+	[NetworkVar("m_flLifetime")]
+	public partial float Lifetime { get; set; }
 }

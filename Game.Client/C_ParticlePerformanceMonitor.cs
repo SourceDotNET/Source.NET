@@ -3,18 +3,17 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_ParticlePerformanceMonitor>;
 [NetworkName("CParticlePerformanceMonitor")]
-public class C_ParticlePerformanceMonitor : C_BaseEntity
+public partial class C_ParticlePerformanceMonitor : C_BaseEntity
 {
-	public static readonly RecvTable DT_ParticlePerformanceMonitor = new(DT_BaseEntity, [
-		RecvPropBool(FIELD.OF(nameof(DisplayPerf))),
-		RecvPropBool(FIELD.OF(nameof(MeasurePerf))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_ParticlePerformanceMonitor);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(MeasurePerf),
+		nameof(DisplayPerf),
+	];
 
-	[NetworkName("m_bDisplayPerf")]
-	public bool DisplayPerf;
-	[NetworkName("m_bMeasurePerf")]
+	[NetworkVar("m_bMeasurePerf")]
 	public bool MeasurePerf;
+	[NetworkVar("m_bDisplayPerf")]
+	public bool DisplayPerf;
 }

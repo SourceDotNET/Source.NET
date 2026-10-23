@@ -8,26 +8,26 @@ namespace Game.Client;
 #if GMOD_DLL
 using Game.Client.GarrysMod;
 #endif
-using DEFINE = Source.DEFINE<BaseViewModel>;
 
 public partial class C_BaseViewModel
 {
-	public static readonly new DataMap PredMap = new(typeof(C_BaseViewModel), C_BaseAnimating.PredMap, [
-		DEFINE.PRED_FIELD( nameof(ModelIndex), FieldType.Short, FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.ModelIndex ),
-		DEFINE.PRED_FIELD( nameof(Skin), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD( nameof(Body), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD( nameof(Sequence), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD( nameof(_ViewModelIndex), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD_TOL( nameof(PlaybackRate), FieldType.Float, FieldTypeDescFlags.InSendTable, 0.125f ),
-		DEFINE.PRED_FIELD( nameof(Effects), FieldType.Integer, FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.Override ),
-		DEFINE.PRED_FIELD( nameof(AnimationParity), FieldType.Integer, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD( nameof(Weapon), FieldType.EHandle, FieldTypeDescFlags.InSendTable ),
-		DEFINE.PRED_FIELD( nameof(AnimTime), FieldType.Float, 0 ),
-		DEFINE.FIELD( nameof(Owner), FieldType.EHandle ),
-		DEFINE.FIELD( nameof(TimeWeaponIdle), FieldType.Float ),
-		DEFINE.FIELD( nameof(Activity), FieldType.Integer ),
-		DEFINE.PRED_FIELD( nameof(Cycle), FieldType.Float, FieldTypeDescFlags.Private | FieldTypeDescFlags.Override | FieldTypeDescFlags.NoErrorCheck ),
-	]); public override DataMap? GetPredDescMap() => PredMap;
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		new(nameof(ModelIndex)) { Type = FieldType.Short, Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.ModelIndex },
+		new(nameof(Skin)) { Type = FieldType.Integer },
+		new(nameof(Body)) { Type = FieldType.Integer },
+		new(nameof(Sequence)) { Type = FieldType.Integer },
+		new(nameof(_ViewModelIndex)) { Type = FieldType.Integer },
+		new(nameof(PlaybackRate)) { Type = FieldType.Float, Tolerance = 0.125f },
+		new(nameof(Effects)) { Type = FieldType.Integer, Flags = FieldTypeDescFlags.InSendTable | FieldTypeDescFlags.Override },
+		new(nameof(AnimationParity)) { Type = FieldType.Integer },
+		nameof(Weapon),
+		new(nameof(AnimTime)) { Type = FieldType.Float, Flags = 0 },
+		new(nameof(Owner)) { Flags = FieldTypeDescFlags.Save },
+		new(nameof(TimeWeaponIdle)) { Type = FieldType.Float },
+		new(nameof(Activity)) { Type = FieldType.Integer },
+		new(nameof(Cycle)) { Type = FieldType.Float, Flags = FieldTypeDescFlags.Private | FieldTypeDescFlags.Override | FieldTypeDescFlags.NoErrorCheck },
+	];
 
 	int OldAnimationParity;
 #if GMOD_DLL
@@ -153,11 +153,17 @@ public partial class C_BaseViewModel
 	public override void PostDataUpdate(DataUpdateType updateType) {
 		base.PostDataUpdate(updateType);
 		OnLatchInterpolatedVariables(LatchFlags.LatchAnimationVar);
+#if GMOD_DLL
+		UpdateAnimationParity();
+		OldAnimationParity = AnimationParity;
+#endif
 	}
 
 	public override bool Interpolate(TimeUnit_t currentTime) {
 		StudioHdr? studioHdr = GetModelPtr();
+#if !GMOD_DLL
 		UpdateAnimationParity();
+#endif
 		bool bret = base.Interpolate(currentTime);
 
 		// Hack to extrapolate cycle counter for view model
@@ -184,6 +190,16 @@ public partial class C_BaseViewModel
 			else
 				dt = MathLib.Fmodf(dt, 1.0);
 		}
+#if GMOD_DLL
+		else if (dt < -1.0) {
+			if (!IsSequenceLooping(GetSequence()))
+				dt = 0.0;
+			else
+				dt = -MathLib.Fmodf(-dt, 1.0);
+		}
+		if (dt < 0.0)
+			dt = 1.0 - Math.Abs(dt);
+#endif
 		SetCycle(dt);
 		return bret;
 	}

@@ -59,8 +59,8 @@ public enum GameRulesPlayerRelationship
 	Neutral
 }
 
-[NetworkName("CGameRulesProxy")]
-public class
+[NetworkName("CGameRulesProxy", NoBase = true)]
+public partial class
 #if CLIENT_DLL
 	C_GameRulesProxy
 #else
@@ -68,28 +68,16 @@ public class
 #endif
 	: BaseEntity
 {
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 	public virtual GameRules GameRules => gameRules!;
 	GameRules? gameRules = null;
 
 	public static GameRulesProxy? s_GameRulesProxy;
 
 	public static void NotifyNetworkStateChanged() => s_GameRulesProxy?.NetworkStateChanged();
-
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_GameRulesProxy = new([]);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_GameRulesProxy);
-#else
-#pragma warning disable CS0109 // Member does not hide an inherited member; new keyword is not required
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_GameRulesProxy);
-#pragma warning restore CS0109 // Member does not hide an inherited member; new keyword is not required
-#endif
-
 }
 
 public abstract class

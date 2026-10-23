@@ -5,7 +5,6 @@ using System.Numerics;
 
 namespace Game.Server.NavMesh;
 
-
 class FuncNavCost : BaseEntity
 {
 	internal float GetCostMultiplier(BaseCombatCharacter who) {
@@ -34,11 +33,12 @@ class FuncNavBlocker : BaseEntity
 }
 
 [LinkEntityToClass("func_nav_avoidance_obstacle")]
-public class FuncNavObstruction : BaseEntity, INavAvoidanceObstacle
+public partial class FuncNavObstruction : BaseEntity, INavAvoidanceObstacle
 {
-	public static readonly SendTable DT_FuncNavObstruction = new([ // todo
+	[NetworkTable("DT_FuncNavObstruction")]
+	public static readonly new NetworkProp[] Props = [ // todo
 
-	]);
+	];
 
 	public bool Disabled;
 

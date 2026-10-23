@@ -12,7 +12,7 @@ using Game.Shared;
 
 [LinkEntityToClass("predicted_viewmodel")]
 [NetworkName("CPredictedViewModel")]
-public class
+public partial class
 #if CLIENT_DLL
 	C_PredictedViewModel
 #else
@@ -21,21 +21,9 @@ public class
 
 	: BaseViewModel
 {
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_PredictedViewModel = new(DT_BaseViewModel, []);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_PredictedViewModel);
-#else
-#pragma warning disable CS0109 // Member does not hide an inherited member; new keyword is not required
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PredictedViewModel);
-#pragma warning restore CS0109 // Member does not hide an inherited member; new keyword is not required
-#endif
-
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
 
 #if CLIENT_DLL
 	public override bool ShouldPredict() {

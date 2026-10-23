@@ -14,25 +14,8 @@ using System.Numerics;
 
 #if CLIENT_DLL
 namespace Game.Client;
-
-using FIELD = Source.FIELD<C_WeaponPhysGun>;
 #else
 namespace Game.Server;
-using FIELD = Source.FIELD<WeaponPhysGun>;
-#endif
-
-using Table =
-#if CLIENT_DLL
-	RecvTable;
-#else
-	SendTable;
-#endif
-
-using Class =
-#if CLIENT_DLL
-	ClientClass;
-#else
-	ServerClass;
 #endif
 
 
@@ -47,36 +30,25 @@ public partial class
 	WeaponPhysGun : BaseHL2MPCombatWeapon
 #endif
 {
-	public static readonly Table DT_WeaponPhysGun = new(DT_BaseHL2MPCombatWeapon, [
-#if CLIENT_DLL
-		RecvPropEHandle(FIELD.OF(nameof(PhysBeam))),
-		RecvPropVector(FIELD.OF(nameof(HitPosLocal))),
-		RecvPropEHandle(FIELD.OF(nameof(GrabbedEntity)))
-#elif GAME_DLL
-		SendPropEHandle(FIELD.OF(nameof(PhysBeam))),
-		SendPropVector(FIELD.OF(nameof(HitPosLocal)), 0, PropFlags.NoScale),
-		SendPropEHandle(FIELD.OF(nameof(GrabbedEntity)))
-#endif
-	]);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(PhysBeam),
+		new(nameof(HitPosLocal)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(GrabbedEntity),
+	];
 
-	public static readonly new Class
-#if CLIENT_DLL
-		ClientClass
-#else
-		ServerClass
-#endif
-		= new Class(DT_WeaponPhysGun);
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(HitPosLocal),
+		nameof(GrabbedEntity),
+	];
 
-#if CLIENT_DLL
-	public static readonly new DataMap PredMap = new([], typeof(C_WeaponPhysGun), BaseHL2MPCombatWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
-#endif
-
-	[NetworkName("m_hPhysBeam")]
-	public EHANDLE PhysBeam = new();
-	[NetworkName("m_vHitPosLocal")]
-	public Vector3 HitPosLocal;
-	[NetworkName("m_hGrabbedEntity")]
-	public EHANDLE GrabbedEntity = new();
+	[NetworkVar("m_hPhysBeam")]
+	public partial EHANDLE PhysBeam { get; set; }
+	[NetworkVar("m_vHitPosLocal")]
+	public partial Vector3 HitPosLocal { get; set; }
+	[NetworkVar("m_hGrabbedEntity")]
+	public partial EHANDLE GrabbedEntity { get; set; }
 
 	public override void Activate() {
 		base.Activate();
@@ -91,7 +63,8 @@ public partial class
 	WeaponPhysGun 
 #endif
 	() {
-
+		PhysBeam = new();
+		GrabbedEntity = new();
 	}
 	public override bool CanBePickedUpByNPCs() => false;
 	public EHANDLE CreatePhysBeam() {

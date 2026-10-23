@@ -171,12 +171,6 @@ public static class RecvPropHelpers
 	public static RecvProp RecvPropString(IFieldAccessor field, int bufferSize = -1, PropFlags flags = 0, RecvVarProxyFn? proxyFn = null) {
 		RecvProp ret = new();
 		proxyFn ??= RecvProxy_StringToString;
-		if (bufferSize == -1) {
-			// Try to see if this is inline. If it is then we can set the explicit size ourselves
-			var inlineArrayAttr = field.FieldType.GetCustomAttribute<InlineArrayAttribute>();
-			if (inlineArrayAttr != null)
-				bufferSize = inlineArrayAttr.Length;
-		}
 
 		ret.FieldInfo = field;
 		ret.RecvType = SendPropType.String;

@@ -3,55 +3,59 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<EnvProjectedTexture>;
 [LinkEntityToClass("env_projectedtexture")]
 [NetworkName("CEnvProjectedTexture")]
-public class EnvProjectedTexture : BaseEntity
+public partial class EnvProjectedTexture : BaseEntity
 {
-	public static readonly SendTable DT_EnvProjectedTexture = new(DT_BaseEntity, [
-		SendPropEHandle(FIELD.OF(nameof(HTargetEntity))),
-		SendPropBool(FIELD.OF(nameof(State))),
-		SendPropFloat(FIELD.OF(nameof(LightFOV)), 0, PropFlags.NoScale),
-		SendPropBool(FIELD.OF(nameof(EnableShadows))),
-		SendPropBool(FIELD.OF(nameof(LightOnlyTarget))),
-		SendPropBool(FIELD.OF(nameof(LightWorld))),
-		SendPropBool(FIELD.OF(nameof(CameraSpace))),
-		SendPropVector(FIELD.OF(nameof(LinearFloatLightColor)), 0, PropFlags.NoScale),
-		SendPropString(FIELD.OF(nameof(SpotlightTextureName))),
-		SendPropInt(FIELD.OF(nameof(SpotlightTextureFrame)), 14, 0),
-		SendPropFloat(FIELD.OF(nameof(NearZ)), 16, PropFlags.RoundDown, 0.0f, 500.0f),
-		SendPropFloat(FIELD.OF(nameof(FarZ)), 18, PropFlags.RoundDown, 0.0f, 56756.0f),
-		SendPropBool(FIELD.OF(nameof(ShadowQuality))),
-		SendPropInt(FIELD.OF(nameof(Style)), 8, 0),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_EnvProjectedTexture);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(HTargetEntity),
+		nameof(State),
+		new(nameof(LightFOV)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(EnableShadows),
+		nameof(LightOnlyTarget),
+		nameof(LightWorld),
+		nameof(CameraSpace),
+		new(nameof(LinearFloatLightColor)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(SpotlightTextureName)) { Encoding = NetEncoding.String },
+		new(nameof(SpotlightTextureFrame)) { Bits = 14 },
+		new(nameof(NearZ)) { Bits = 16, Flags = PropFlags.RoundDown, Low = 0.0f, High = 500.0f },
+		new(nameof(FarZ)) { Bits = 18, Flags = PropFlags.RoundDown, Low = 0.0f, High = 56756.0f },
+		nameof(ShadowQuality),
+		new(nameof(Style)) { Bits = 8 },
+	];
 
-	[NetworkName("m_hTargetEntity")]
-	public EHANDLE HTargetEntity = new();
-	[NetworkName("m_bState")]
-	public bool State;
-	[NetworkName("m_flLightFOV")]
-	public float LightFOV;
-	[NetworkName("m_bEnableShadows")]
-	public bool EnableShadows;
-	[NetworkName("m_bLightOnlyTarget")]
-	public bool LightOnlyTarget;
-	[NetworkName("m_bLightWorld")]
-	public bool LightWorld;
-	[NetworkName("m_bCameraSpace")]
-	public bool CameraSpace;
-	[NetworkName("m_LinearFloatLightColor")]
-	public Vector3 LinearFloatLightColor;
-	[NetworkName("m_SpotlightTextureName")]
-	public InlineArrayMaxPath<char> SpotlightTextureName;
-	[NetworkName("m_nSpotlightTextureFrame")]
-	public int SpotlightTextureFrame;
-	[NetworkName("m_flNearZ")]
-	public float NearZ;
-	[NetworkName("m_flFarZ")]
-	public float FarZ;
-	[NetworkName("m_nShadowQuality")]
-	public bool ShadowQuality;
-	[NetworkName("m_iStyle")]
-	public int Style;
+	public EnvProjectedTexture() {
+		HTargetEntity = new();
+	}
+
+
+	[NetworkVar("m_hTargetEntity")]
+	public partial EHANDLE HTargetEntity { get; set; }
+	[NetworkVar("m_bState")]
+	public partial bool State { get; set; }
+	[NetworkVar("m_flLightFOV")]
+	public partial float LightFOV { get; set; }
+	[NetworkVar("m_bEnableShadows")]
+	public partial bool EnableShadows { get; set; }
+	[NetworkVar("m_bLightOnlyTarget")]
+	public partial bool LightOnlyTarget { get; set; }
+	[NetworkVar("m_bLightWorld")]
+	public partial bool LightWorld { get; set; }
+	[NetworkVar("m_bCameraSpace")]
+	public partial bool CameraSpace { get; set; }
+	[NetworkVar("m_LinearFloatLightColor")]
+	public partial Vector3 LinearFloatLightColor { get; set; }
+	[NetworkVar("m_SpotlightTextureName")]
+	public partial ref readonly InlineArrayMaxPath<char> SpotlightTextureName { get; }
+	[NetworkVar("m_nSpotlightTextureFrame")]
+	public partial int SpotlightTextureFrame { get; set; }
+	[NetworkVar("m_flNearZ")]
+	public partial float NearZ { get; set; }
+	[NetworkVar("m_flFarZ")]
+	public partial float FarZ { get; set; }
+	[NetworkVar("m_nShadowQuality")]
+	public partial bool ShadowQuality { get; set; }
+	[NetworkVar("m_iStyle")]
+	public partial int Style { get; set; }
 }

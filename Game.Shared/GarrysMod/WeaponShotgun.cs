@@ -5,46 +5,35 @@ using Source.Common.Mathematics;
 using System.Numerics;
 namespace Game.Shared.GarrysMod;
 
-using FIELD = Source.FIELD<WeaponShotgun>;
-
 [LinkEntityToClass("weapon_shotgun")]
 [PrecacheWeaponRegister("weapon_shotgun")]
 [NetworkName("CWeaponShotgun")]
-public class WeaponShotgun : BaseHL2MPCombatWeapon
+public partial class WeaponShotgun : BaseHL2MPCombatWeapon
 {
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_WeaponShotgun = new(DT_BaseHL2MPCombatWeapon, [
-#if CLIENT_DLL
-			RecvPropBool(FIELD.OF(nameof(NeedPump))),
-			RecvPropBool(FIELD.OF(nameof(DelayedFire1))),
-			RecvPropBool(FIELD.OF(nameof(DelayedFire2))),
-			RecvPropBool(FIELD.OF(nameof(DelayedReload))),
-#else
-			SendPropBool(FIELD.OF(nameof(NeedPump))),
-			SendPropBool(FIELD.OF(nameof(DelayedFire1))),
-			SendPropBool(FIELD.OF(nameof(DelayedFire2))),
-			SendPropBool(FIELD.OF(nameof(DelayedReload))),
-#endif
-		]);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponShotgun);
-	public static readonly new DataMap PredMap = new([], typeof(WeaponShotgun), BaseHL2MPCombatWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponShotgun);
-#endif
-	[NetworkName("m_bNeedPump")]
-	public bool NeedPump;
-	[NetworkName("m_bDelayedFire1")]
-	public bool DelayedFire1;
-	[NetworkName("m_bDelayedFire2")]
-	public bool DelayedFire2;
-	[NetworkName("m_bDelayedReload")]
-	public bool DelayedReload;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(NeedPump),
+		nameof(DelayedFire1),
+		nameof(DelayedFire2),
+		nameof(DelayedReload),
+	];
+
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(NeedPump),
+		nameof(DelayedFire1),
+		nameof(DelayedFire2),
+		nameof(DelayedReload),
+	];
+
+	[NetworkVar("m_bNeedPump")]
+	public partial bool NeedPump { get; set; }
+	[NetworkVar("m_bDelayedFire1")]
+	public partial bool DelayedFire1 { get; set; }
+	[NetworkVar("m_bDelayedFire2")]
+	public partial bool DelayedFire2 { get; set; }
+	[NetworkVar("m_bDelayedReload")]
+	public partial bool DelayedReload { get; set; }
 	public WeaponShotgun() {
 		ReloadsSingly = true;
 

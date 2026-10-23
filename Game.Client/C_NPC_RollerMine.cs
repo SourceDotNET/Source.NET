@@ -3,24 +3,23 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_NPC_RollerMine>;
-[NetworkName("CNPC_RollerMine")]
-public class C_NPC_RollerMine : C_AI_BaseNPC
+[NetworkName("CNPC_RollerMine", Table = "DT_RollerMine")]
+public partial class C_NPC_RollerMine : C_AI_BaseNPC
 {
-	public static readonly RecvTable DT_RollerMine = new(DT_AI_BaseNPC, [
-		RecvPropBool(FIELD.OF(nameof(IsOpen))),
-		RecvPropFloat(FIELD.OF(nameof(ActiveTime))),
-		RecvPropBool(FIELD.OF(nameof(HackedByAlyx))),
-		RecvPropBool(FIELD.OF(nameof(PowerDown))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_RollerMine);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(IsOpen),
+		new(nameof(ActiveTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(HackedByAlyx),
+		nameof(PowerDown),
+	];
 
-	[NetworkName("m_bIsOpen")]
+	[NetworkVar("m_bIsOpen")]
 	public bool IsOpen;
-	[NetworkName("m_flActiveTime")]
+	[NetworkVar("m_flActiveTime")]
 	public float ActiveTime;
-	[NetworkName("m_bHackedByAlyx")]
+	[NetworkVar("m_bHackedByAlyx")]
 	public bool HackedByAlyx;
-	[NetworkName("m_bPowerDown")]
+	[NetworkVar("m_bPowerDown")]
 	public bool PowerDown;
 }

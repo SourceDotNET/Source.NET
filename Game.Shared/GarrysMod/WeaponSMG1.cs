@@ -2,32 +2,16 @@
 using Source.Common;
 namespace Game.Shared.GarrysMod;
 
-using FIELD = Source.FIELD<WeaponSMG1>;
 
 [LinkEntityToClass("weapon_smg1")]
 [PrecacheWeaponRegister("weapon_smg1")]
 [NetworkName("CWeaponSMG1")]
-public class WeaponSMG1 : HL2MPMachineGun
+public partial class WeaponSMG1 : HL2MPMachineGun
 {
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_WeaponSMG1 = new(DT_HL2MPMachineGun, [
-#if CLIENT_DLL
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
 
-#else
-
-#endif
-		]);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponSMG1);
-	public static readonly new DataMap PredMap = new([], typeof(WeaponSMG1), HL2MPMachineGun.PredMap); public override DataMap? GetPredDescMap() => PredMap;
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponSMG1);
-#endif
 	public override float GetFireRate() => 0.075f;
 	public override Activity GetPrimaryAttackActivity() {
 		if (ShotsFired < 2)

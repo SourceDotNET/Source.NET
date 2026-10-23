@@ -8,38 +8,23 @@ using Source.Common.Mathematics;
 
 using System.Numerics;
 namespace Game.Shared.GarrysMod;
-using FIELD = Source.FIELD<WeaponStunStick>;
 
 [LinkEntityToClass("weapon_stunstick")]
 [PrecacheWeaponRegister("weapon_stunstick")]
 [NetworkName("CWeaponStunStick")]
 public partial class WeaponStunStick : BaseHL2MPBludgeonWeapon
 {
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_WeaponStunStick = new(DT_BaseHL2MPBludgeonWeapon, [
-#if CLIENT_DLL
-		RecvPropBool(FIELD.OF(nameof(Active)))
-#else
-		SendPropBool(FIELD.OF(nameof(Active)))
-#endif
-		]);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponStunStick);
-	public static readonly new DataMap PredMap = new([], typeof(WeaponStunStick), BaseHL2MPBludgeonWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponStunStick);
-#endif
-	[NetworkName("m_bActive")]
-#if CLIENT_DLL
-	public bool Active;
-#else
-	[NetworkVar] public partial bool Active { get; set; }
-#endif
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Active),
+	];
+
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(Active),
+	];
+
+	[NetworkVar("m_bActive")] public partial bool Active { get; set; }
 
 	public const float STUNSTICK_RANGE = 75.0f;
 	public const float STUNSTICK_REFIRE = 0.8f;

@@ -3,21 +3,20 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEBeamRingPoint>;
 [NetworkName("CTEBeamRingPoint")]
-public class TEBeamRingPoint(ReadOnlySpan<char> name) : BaseBeam(name)
+public partial class TEBeamRingPoint(ReadOnlySpan<char> name) : BaseBeam(name)
 {
-	public static readonly SendTable DT_TEBeamRingPoint = new(DT_BaseBeam, [
-		SendPropVector(FIELD.OF(nameof(Center)), 0, PropFlags.Coord),
-		SendPropFloat(FIELD.OF(nameof(LStartRadius)), 16, PropFlags.RoundUp, 0.0f, 4096.0f),
-		SendPropFloat(FIELD.OF(nameof(LEndRadius)), 16, PropFlags.RoundUp, 0.0f, 4096.0f),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEBeamRingPoint);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Center)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(LStartRadius)) { Bits = 16, Flags = PropFlags.RoundUp, Low = 0.0f, High = 4096.0f },
+		new(nameof(LEndRadius)) { Bits = 16, Flags = PropFlags.RoundUp, Low = 0.0f, High = 4096.0f },
+	];
 
-	[NetworkName("m_vecCenter")]
+	[NetworkVar("m_vecCenter")]
 	public Vector3 Center;
-	[NetworkName("m_flStartRadius")]
+	[NetworkVar("m_flStartRadius")]
 	public float LStartRadius;
-	[NetworkName("m_flEndRadius")]
+	[NetworkVar("m_flEndRadius")]
 	public float LEndRadius;
 }

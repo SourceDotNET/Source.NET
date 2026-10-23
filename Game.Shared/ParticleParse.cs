@@ -23,16 +23,16 @@ public enum ParticleAttachment : byte
 
 public struct ParticleEffectsColors
 {
-	[NetworkName("m_vecColor1")]
+	[NetworkVar("m_vecColor1")]
 	public Vector3 Color1;
-	[NetworkName("m_vecColor2")]
+	[NetworkVar("m_vecColor2")]
 	public Vector3 Color2;
 }
 
 public struct ParticleEffectsControlPoint
 {
-	[NetworkName("m_eParticleAttachment")]
+	[NetworkVar("m_eParticleAttachment")]
 	public byte ParticleAttachment;
-	[NetworkName("m_vecOffset")]
+	[NetworkVar("m_vecOffset")]
 	public Vector3 Offset;
 }

@@ -3,19 +3,18 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEMetalSparks>;
-[NetworkName("CTEMetalSparks")]
-public class C_TEMetalSparks : C_BaseTempEntity
+[NetworkName("CTEMetalSparks", NoBase = true)]
+public partial class C_TEMetalSparks : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEMetalSparks = new([
-		RecvPropVector(FIELD.OF(nameof(Pos))),
-		RecvPropVector(FIELD.OF(nameof(Dir))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEMetalSparks);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Pos)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Dir)) { Bits = 0, Flags = PropFlags.Coord },
+	];
 
-	[NetworkName("m_vecPos")]
+	[NetworkVar("m_vecPos")]
 	public Vector3 Pos;
-	[NetworkName("m_vecDir")]
+	[NetworkVar("m_vecDir")]
 	public Vector3 Dir;
 }
 

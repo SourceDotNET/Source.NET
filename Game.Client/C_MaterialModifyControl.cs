@@ -3,48 +3,47 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_MaterialModifyControl>;
 [NetworkName("CMaterialModifyControl")]
-public class C_MaterialModifyControl : C_BaseEntity
+public partial class C_MaterialModifyControl : C_BaseEntity
 {
-	public static readonly RecvTable DT_MaterialModifyControl = new(DT_BaseEntity, [
-		RecvPropString(FIELD.OF(nameof(SzMaterialName))),
-		RecvPropString(FIELD.OF(nameof(SzMaterialVar))),
-		RecvPropString(FIELD.OF(nameof(SzMaterialVarValue))),
-		RecvPropInt(FIELD.OF(nameof(FrameStart))),
-		RecvPropInt(FIELD.OF(nameof(FrameEnd))),
-		RecvPropBool(FIELD.OF(nameof(Wrap))),
-		RecvPropFloat(FIELD.OF(nameof(Framerate))),
-		RecvPropBool(FIELD.OF(nameof(NewAnimCommandsSemaphore))),
-		RecvPropFloat(FIELD.OF(nameof(FloatLerpStartValue))),
-		RecvPropFloat(FIELD.OF(nameof(FloatLerpEndValue))),
-		RecvPropFloat(FIELD.OF(nameof(FloatLerpTransitionTime))),
-		RecvPropInt(FIELD.OF(nameof(ModifyMode))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_MaterialModifyControl);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(SzMaterialName)) { Encoding = NetEncoding.String },
+		new(nameof(SzMaterialVar)) { Encoding = NetEncoding.String },
+		new(nameof(SzMaterialVarValue)) { Encoding = NetEncoding.String },
+		new(nameof(FrameStart)) { Bits = 8 },
+		new(nameof(FrameEnd)) { Bits = 8 },
+		nameof(Wrap),
+		new(nameof(Framerate)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(NewAnimCommandsSemaphore),
+		new(nameof(FloatLerpStartValue)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FloatLerpEndValue)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FloatLerpTransitionTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ModifyMode)) { Bits = 2, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_szMaterialName")]
+	[NetworkVar("m_szMaterialName")]
 	public InlineArray255<char> SzMaterialName;
-	[NetworkName("m_szMaterialVar")]
+	[NetworkVar("m_szMaterialVar")]
 	public InlineArray255<char> SzMaterialVar;
-	[NetworkName("m_szMaterialVarValue")]
+	[NetworkVar("m_szMaterialVarValue")]
 	public InlineArray255<char> SzMaterialVarValue;
-	[NetworkName("m_iFrameStart")]
+	[NetworkVar("m_iFrameStart")]
 	public int FrameStart;
-	[NetworkName("m_iFrameEnd")]
+	[NetworkVar("m_iFrameEnd")]
 	public int FrameEnd;
-	[NetworkName("m_bWrap")]
+	[NetworkVar("m_bWrap")]
 	public bool Wrap;
-	[NetworkName("m_flFramerate")]
+	[NetworkVar("m_flFramerate")]
 	public float Framerate;
-	[NetworkName("m_bNewAnimCommandsSemaphore")]
+	[NetworkVar("m_bNewAnimCommandsSemaphore")]
 	public bool NewAnimCommandsSemaphore;
-	[NetworkName("m_flFloatLerpStartValue")]
+	[NetworkVar("m_flFloatLerpStartValue")]
 	public float FloatLerpStartValue;
-	[NetworkName("m_flFloatLerpEndValue")]
+	[NetworkVar("m_flFloatLerpEndValue")]
 	public float FloatLerpEndValue;
-	[NetworkName("m_flFloatLerpTransitionTime")]
+	[NetworkVar("m_flFloatLerpTransitionTime")]
 	public float FloatLerpTransitionTime;
-	[NetworkName("m_nModifyMode")]
+	[NetworkVar("m_nModifyMode")]
 	public int ModifyMode;
 }

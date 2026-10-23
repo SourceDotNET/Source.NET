@@ -4,13 +4,13 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
 
-using FIELD = FIELD<TriggerPlayerMovement>;
 [LinkEntityToClass("trigger_playermovement")]
 [NetworkName("CTriggerPlayerMovement")]
-public class TriggerPlayerMovement : BaseTrigger
+public partial class TriggerPlayerMovement : BaseTrigger
 {
-	public static readonly SendTable DT_TriggerPlayerMovement = new(DT_BaseTrigger, []);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TriggerPlayerMovement);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
 
 	[Flags]
 	public enum SF

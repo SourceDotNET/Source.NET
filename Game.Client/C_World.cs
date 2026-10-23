@@ -5,12 +5,10 @@ using Source.Common;
 
 using System.Numerics;
 
-using FIELD = Source.FIELD<Game.Client.C_World>;
-
 namespace Game.Client;
 
-[NetworkName("CWorld")]
-public class C_World : C_BaseEntity
+[NetworkName("CWorld", Table = "DT_WORLD")]
+public partial class C_World : C_BaseEntity
 {
 	[ImplementClientClassFactory]
 	public static C_World ClientWorldFactory(int entnum, int serialnum) {
@@ -23,18 +21,17 @@ public class C_World : C_BaseEntity
 
 	}
 
-	public static readonly RecvTable DT_WORLD = new(DT_BaseEntity, [
-		RecvPropVector(FIELD.OF(nameof(WorldMins))),
-		RecvPropVector(FIELD.OF(nameof(WorldMaxs))),
-		RecvPropInt(FIELD.OF(nameof(StartDark))),
-		RecvPropFloat(FIELD.OF(nameof(MaxOccludeeArea))),
-		RecvPropFloat(FIELD.OF(nameof(MinOccluderArea))),
-		RecvPropFloat(FIELD.OF(nameof(MaxPropScreenSpaceWidth))),
-		RecvPropFloat(FIELD.OF(nameof(MinPropScreenSpaceWidth))),
-		RecvPropString(FIELD.OF(nameof(DetailSpriteMaterial))),
-	]);
-
-	public static new readonly ClientClass ClientClass = new ClientClass(DT_WORLD);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(WorldMins),
+		nameof(WorldMaxs),
+		nameof(StartDark),
+		nameof(MaxOccludeeArea),
+		nameof(MinOccluderArea),
+		nameof(MaxPropScreenSpaceWidth),
+		nameof(MinPropScreenSpaceWidth),
+		nameof(DetailSpriteMaterial),
+	];
 
 	public override bool Init(int entNum, int serialNum) {
 		WaveHeight = 0.0f;
@@ -50,21 +47,21 @@ public class C_World : C_BaseEntity
 	}
 
 	float WaveHeight;
-	[NetworkName("m_WorldMins")]
+	[NetworkVar("m_WorldMins")]
 	Vector3 WorldMins;
-	[NetworkName("m_WorldMaxs")]
+	[NetworkVar("m_WorldMaxs")]
 	Vector3 WorldMaxs;
-	[NetworkName("m_bStartDark")]
+	[NetworkVar("m_bStartDark")]
 	bool StartDark;
-	[NetworkName("m_flMaxOccludeeArea")]
+	[NetworkVar("m_flMaxOccludeeArea")]
 	float MaxOccludeeArea;
-	[NetworkName("m_flMinOccluderArea")]
+	[NetworkVar("m_flMinOccluderArea")]
 	float MinOccluderArea;
-	[NetworkName("m_flMaxPropScreenSpaceWidth")]
+	[NetworkVar("m_flMaxPropScreenSpaceWidth")]
 	float MaxPropScreenSpaceWidth;
-	[NetworkName("m_flMinPropScreenSpaceWidth")]
+	[NetworkVar("m_flMinPropScreenSpaceWidth")]
 	float MinPropScreenSpaceWidth;
-	[NetworkName("m_iszDetailSpriteMaterial")]
+	[NetworkVar("m_iszDetailSpriteMaterial")]
 	InlineArray256<char> DetailSpriteMaterial;
 	bool ColdWorld;
 

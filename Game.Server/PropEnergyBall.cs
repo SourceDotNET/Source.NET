@@ -4,19 +4,18 @@ using Game.Shared;
 using System.Numerics;
 using Game.Server.HL2;
 namespace Game.Server;
-using FIELD = FIELD<PropEnergyBall>;
 [LinkEntityToClass("prop_energy_ball")]
 [NetworkName("CPropEnergyBall")]
-public class PropEnergyBall : PropCombineBall
+public partial class PropEnergyBall : PropCombineBall
 {
-	public static readonly SendTable DT_PropEnergyBall = new(DT_PropCombineBall, [
-		SendPropBool(FIELD.OF(nameof(IsInfiniteLife))),
-		SendPropFloat(FIELD.OF(nameof(TimeTillDeath)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PropEnergyBall);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(IsInfiniteLife),
+		new(nameof(TimeTillDeath)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_bIsInfiniteLife")]
-	public bool IsInfiniteLife;
-	[NetworkName("m_fTimeTillDeath")]
-	public float TimeTillDeath;
+	[NetworkVar("m_bIsInfiniteLife")]
+	public partial bool IsInfiniteLife { get; set; }
+	[NetworkVar("m_fTimeTillDeath")]
+	public partial float TimeTillDeath { get; set; }
 }

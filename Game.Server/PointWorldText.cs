@@ -3,37 +3,36 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<PointWorldText>;
 [LinkEntityToClass("point_worldtext")]
 [NetworkName("CPointWorldText")]
-public class PointWorldText : BaseEntity
+public partial class PointWorldText : BaseEntity
 {
-	public static readonly SendTable DT_PointWorldText = new(DT_BaseEntity, [
-		SendPropString(FIELD.OF(nameof(SzText))),
-		SendPropInt(FIELD.OF(nameof(ColTextColor)), 32, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(TextSize)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(TextSpacingX)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(TextSpacingY)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(Orientation)), 3, PropFlags.Unsigned),
-		SendPropBool(FIELD.OF(nameof(Rainbow))),
-		SendPropBool(FIELD.OF(nameof(TextEnabled))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PointWorldText);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(SzText)) { Encoding = NetEncoding.String },
+		new(nameof(ColTextColor)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(TextSize)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(TextSpacingX)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(TextSpacingY)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Orientation)) { Bits = 3, Flags = PropFlags.Unsigned },
+		nameof(Rainbow),
+		nameof(TextEnabled),
+	];
 
-	[NetworkName("m_szText")]
-	public InlineArray512<char> SzText;
-	[NetworkName("m_colTextColor")]
-	public int ColTextColor;
-	[NetworkName("m_flTextSize")]
-	public float TextSize;
-	[NetworkName("m_flTextSpacingX")]
-	public float TextSpacingX;
-	[NetworkName("m_flTextSpacingY")]
-	public float TextSpacingY;
-	[NetworkName("m_nOrientation")]
-	public int Orientation;
-	[NetworkName("m_bRainbow")]
-	public bool Rainbow;
-	[NetworkName("m_bTextEnabled")]
-	public bool TextEnabled;
+	[NetworkVar("m_szText")]
+	public partial ref readonly InlineArray512<char> SzText { get; }
+	[NetworkVar("m_colTextColor")]
+	public partial int ColTextColor { get; set; }
+	[NetworkVar("m_flTextSize")]
+	public partial float TextSize { get; set; }
+	[NetworkVar("m_flTextSpacingX")]
+	public partial float TextSpacingX { get; set; }
+	[NetworkVar("m_flTextSpacingY")]
+	public partial float TextSpacingY { get; set; }
+	[NetworkVar("m_nOrientation")]
+	public partial int Orientation { get; set; }
+	[NetworkVar("m_bRainbow")]
+	public partial bool Rainbow { get; set; }
+	[NetworkVar("m_bTextEnabled")]
+	public partial bool TextEnabled { get; set; }
 }

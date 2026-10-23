@@ -3,36 +3,35 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEBloodSprite>;
-[NetworkName("CTEBloodSprite")]
-public class C_TEBloodSprite
+[NetworkName("CTEBloodSprite", NoBase = true)]
+public partial class C_TEBloodSprite : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEBloodSprite = new([
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropVector(FIELD.OF(nameof(Direction))),
-		RecvPropInt(FIELD.OF(nameof(R))),
-		RecvPropInt(FIELD.OF(nameof(G))),
-		RecvPropInt(FIELD.OF(nameof(B))),
-		RecvPropInt(FIELD.OF(nameof(A))),
-		RecvPropInt(FIELD.OF(nameof(Size))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEBloodSprite);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		nameof(Origin),
+		nameof(Direction),
+		nameof(R),
+		nameof(G),
+		nameof(B),
+		nameof(A),
+		nameof(Size),
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_vecDirection")]
+	[NetworkVar("m_vecDirection")]
 	public Vector3 Direction;
-	[NetworkName("r")]
+	[NetworkVar("r")]
 	public int R;
-	[NetworkName("g")]
+	[NetworkVar("g")]
 	public int G;
-	[NetworkName("b")]
+	[NetworkVar("b")]
 	public int B;
-	[NetworkName("a")]
+	[NetworkVar("a")]
 	public int A;
 	public int SprayModel;
 	public int DropModel;
-	[NetworkName("m_nSize")]
+	[NetworkVar("m_nSize")]
 	public int Size;
 }
 

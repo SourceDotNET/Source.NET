@@ -5,9 +5,7 @@ using Source.Common;
 
 namespace Game.Server.NextBot;
 
-[NetworkName("NextBotCombatCharacter")]
-public class NextBotCombatCharacter : BaseCombatCharacter
+[NetworkName("NextBotCombatCharacter", Table = "DT_NextBot")]
+public partial class NextBotCombatCharacter : BaseCombatCharacter
 {
-	public static readonly SendTable DT_NextBot = new(DT_BaseCombatCharacter, []);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_NextBot);
 }

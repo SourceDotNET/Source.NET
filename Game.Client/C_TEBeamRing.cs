@@ -3,19 +3,18 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEBeamRing>;
 [NetworkName("CTEBeamRing")]
-public class C_TEBeamRing : C_BaseBeam
+public partial class C_TEBeamRing : C_BaseBeam
 {
-	public static readonly RecvTable DT_TEBeamRing = new(DT_BaseBeam, [
-		RecvPropInt(FIELD.OF(nameof(StartEntity))),
-		RecvPropInt(FIELD.OF(nameof(EndEntity))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEBeamRing);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(StartEntity)) { Bits = 13, Flags = PropFlags.Unsigned },
+		new(nameof(EndEntity)) { Bits = 13, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_nStartEntity")]
+	[NetworkVar("m_nStartEntity")]
 	public int StartEntity;
-	[NetworkName("m_nEndEntity")]
+	[NetworkVar("m_nEndEntity")]
 	public int EndEntity;
 }
 

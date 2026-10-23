@@ -3,19 +3,18 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<BoneFollower>;
 [LinkEntityToClass("phys_bone_follower")]
 [NetworkName("CBoneFollower")]
-public class BoneFollower : BaseEntity
+public partial class BoneFollower : BaseEntity
 {
-	public static readonly SendTable DT_BoneFollower = new(DT_BaseEntity, [
-		SendPropInt(FIELD.OF(nameof(ModelIndex)), 14, 0),
-		SendPropInt(FIELD.OF(nameof(SolidIndex)), 6, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BoneFollower);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(ModelIndex)) { Bits = 14 },
+		new(nameof(SolidIndex)) { Bits = 6, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_modelIndex")]
-	public new int ModelIndex;
-	[NetworkName("m_solidIndex")]
-	public int SolidIndex;
+	[NetworkVar("m_modelIndex")]
+	public new partial int ModelIndex { get; set; }
+	[NetworkVar("m_solidIndex")]
+	public partial int SolidIndex { get; set; }
 }

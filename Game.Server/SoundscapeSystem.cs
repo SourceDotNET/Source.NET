@@ -315,7 +315,7 @@ public class SoundscapeSystem(ReadOnlySpan<char> name) : AutoGameSystemPerFrame(
 				if (player != null && player.IsNetClient()) {
 					// check to see if this is the sound entity that is
 					// currently affecting this player
-					ref AudioParams audio = ref player.GetAudioParams();
+					ref readonly AudioParams audio = ref player.GetAudioParams();
 
 					// if we got this far, we're looking at an entity that is contending
 					// for current player sound. the closest entity to player wins.

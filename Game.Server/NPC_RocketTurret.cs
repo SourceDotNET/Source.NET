@@ -3,22 +3,21 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<NPC_RocketTurret>;
 [LinkEntityToClass("npc_rocket_turret")]
 [NetworkName("CNPC_RocketTurret")]
-public class NPC_RocketTurret : AI_BaseNPC
+public partial class NPC_RocketTurret : AI_BaseNPC
 {
-	public static readonly SendTable DT_NPC_RocketTurret = new(DT_AI_BaseNPC, [
-		SendPropInt(FIELD.OF(nameof(LaserState)), 2, 0),
-		SendPropInt(FIELD.OF(nameof(SiteHalo)), 16, PropFlags.Unsigned),
-		SendPropVector(FIELD.OF(nameof(CurrentAngles)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_NPC_RocketTurret);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(LaserState)) { Bits = 2 },
+		new(nameof(SiteHalo)) { Bits = 16, Flags = PropFlags.Unsigned },
+		new(nameof(CurrentAngles)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_iLaserState")]
-	public int LaserState;
-	[NetworkName("m_nSiteHalo")]
-	public int SiteHalo;
-	[NetworkName("m_vecCurrentAngles")]
-	public Vector3 CurrentAngles;
+	[NetworkVar("m_iLaserState")]
+	public partial int LaserState { get; set; }
+	[NetworkVar("m_nSiteHalo")]
+	public partial int SiteHalo { get; set; }
+	[NetworkVar("m_vecCurrentAngles")]
+	public partial Vector3 CurrentAngles { get; set; }
 }

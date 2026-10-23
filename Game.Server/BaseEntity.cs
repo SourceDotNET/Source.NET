@@ -549,9 +549,119 @@ public static class BaseEntity_ConCommands
 }
 
 [LinkEntityToClass("func_proprrespawnzone")]
-[NetworkName("CBaseEntity")]
+[NetworkName("CBaseEntity", NoBase = true)]
 public partial class BaseEntity : IServerEntity
 {
+	[NetworkTable("DT_AnimTimeMustBeFirst")]
+	public static readonly NetworkProp[] AnimTimeMustBeFirstProps = [
+		new(nameof(AnimTime)) { Encoding = NetEncoding.Int, Bits = 8, Flags = PropFlags.Unsigned | PropFlags.ChangesOften | PropFlags.EncodedAgainstTickCount, Proxy = typeof(AnimTimeProxy) },
+	];
+
+	[NetworkTable("DT_PredictableId")]
+	public static readonly NetworkProp[] PredictableIdProps = [
+		new(nameof(PredictableId)) { Encoding = NetEncoding.PredictableId },
+		new(nameof(b_IsPlayerSimulated)) { Encoding = NetEncoding.Int, Bits = 1, Flags = PropFlags.Unsigned },
+	];
+
+	[PredictionTable]
+	public static readonly PredictionField[] Prediction = [];
+
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(AnimTimeMustBeFirstProps)) { Proxy = typeof(BaseEntity.ClientSideAnimationProxy) },
+		new(nameof(SimulationTime)) { Encoding = NetEncoding.Int, Bits = SIMULATION_TIME_WINDOW_BITS, Flags = PropFlags.Unsigned | PropFlags.ChangesOften | PropFlags.EncodedAgainstTickCount, Proxy = typeof(SimulationTimeProxy) },
+		new(nameof(Origin)) { Bits = -1, Flags = PropFlags.Coord | PropFlags.ChangesOften, Low = 0.0f, High = Constants.HIGH_DEFAULT, Proxy = typeof(OriginProxy) },
+		new(nameof(InterpolationFrame)) { Bits = NOINTERP_PARITY_MAX_BITS, Flags = PropFlags.Unsigned },
+		new(nameof(ModelIndex)) { Encoding = NetEncoding.ModelIndex },
+		new(nameof(Collision)) { Encoding = NetEncoding.DataTable, DataTable = "DT_CollisionProperty" },
+		new(nameof(RenderFX)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(RenderMode)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Effects)) { Bits = (int)EntityEffects.MaxBits, Flags = PropFlags.Unsigned },
+		new(nameof(ColorRender)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(TeamNum)) { Bits = TEAMNUM_NUM_BITS },
+		new(nameof(CollisionGroup)) { Bits = 5, Flags = PropFlags.Unsigned },
+		new(nameof(Elasticity)) { Bits = 0, Flags = PropFlags.Coord | PropFlags.NoScale },
+		new(nameof(ShadowCastDistance)) { Bits = 12, Flags = PropFlags.Unsigned },
+		nameof(OwnerEntity),
+		nameof(EffectEntity),
+		nameof(MoveParent),
+		new(nameof(ParentAttachment)) { Bits = NUM_PARENTATTACHMENT_BITS, Flags = PropFlags.Unsigned },
+		new(nameof(MoveType)) { Bits = (int)Source.MoveType.MaxBits, Flags = PropFlags.Unsigned },
+		new(nameof(MoveCollide)) { Bits = (int)Source.MoveCollide.MaxBits, Flags = PropFlags.Unsigned },
+		new(nameof(Rotation)) { Bits = 24, Flags = PropFlags.ChangesOften | PropFlags.RoundDown, Proxy = typeof(AnglesProxy) },
+		new(nameof(TextureFrameIndex)) { Encoding = NetEncoding.Int, Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(PredictableIdProps)) { Name = "predictable_id", Proxy = typeof(BaseEntity.PredictableIdProxy) },
+		new(nameof(SimulatedEveryTick)) { Encoding = NetEncoding.Int, Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(AnimatedEveryTick)) { Encoding = NetEncoding.Int, Bits = 1, Flags = PropFlags.Unsigned },
+		nameof(AlternateSorting),
+		new(nameof(m_takedamage)) { Bits = 8 },
+		new(nameof(RealClassName)) { Bits = 16, Flags = PropFlags.Unsigned },
+		new(nameof(OverrideMaterial)) { Bits = 16, Flags = PropFlags.Unsigned, Proxy = typeof(OverrideMaterialProxy) },
+		new(nameof(OverrideSubMaterials)) { Encoding = NetEncoding.Array2, Bits = 16, Flags = PropFlags.Unsigned },
+		new(nameof(Health)) { Bits = 32, Flags = PropFlags.Normal | PropFlags.ChangesOften | PropFlags.VarInt },
+		new(nameof(MaxHealth)) { Bits = 32 },
+		new(nameof(SpawnFlags)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(GModFlags)) { Bits = 7 },
+		nameof(OnFire),
+		new(nameof(CreationTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Velocity)) { Encoding = NetEncoding.VectorElements, Bits = 0, Flags = PropFlags.NoScale | PropFlags.ChangesOften },
+		new(nameof(GMOD_DataTable)) { Encoding = NetEncoding.GModTable },
+		nameof(GMOD_bool),
+		nameof(GMOD_float),
+		nameof(GMOD_int),
+		nameof(GMOD_Vector),
+		new(nameof(GMOD_QAngle)) { Bits = 32, Flags = PropFlags.RoundDown },
+		nameof(GMOD_EHANDLE),
+		new(nameof(GMOD_String0)) { Encoding = NetEncoding.String },
+		new(nameof(GMOD_String1)) { Encoding = NetEncoding.String },
+		new(nameof(GMOD_String2)) { Encoding = NetEncoding.String },
+		new(nameof(GMOD_String3)) { Encoding = NetEncoding.String },
+		new(nameof(CreationID)) { Bits = 24 },
+		new(nameof(MapCreatedID)) { Bits = 16 },
+	];
+
+	public static class AnimTimeProxy
+	{
+		public static void Send(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID)
+			=> SendProxy_AnimTime(prop, instance, field, ref outData, element, objectID);
+	}
+
+	public static class SimulationTimeProxy
+	{
+		public static void Send(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID)
+			=> SendProxy_SimulationTime(prop, instance, field, ref outData, element, objectID);
+	}
+
+	public static class OriginProxy
+	{
+		public static void Send(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID)
+			=> SendProxy_Origin(prop, instance, field, ref outData, element, objectID);
+	}
+
+	public static class AnglesProxy
+	{
+		public static void Send(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID)
+			=> SendProxy_Angles(prop, instance, field, ref outData, element, objectID);
+	}
+
+	public static class OverrideMaterialProxy
+	{
+		public static void Send(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID)
+			=> SendProxy_OverrideMaterial(prop, instance, field, ref outData, element, objectID);
+	}
+
+	public static class ClientSideAnimationProxy
+	{
+		public static object? Send(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID)
+			=> SendProxy_ClientSideAnimation(prop, instance, data, recipients, objectID);
+	}
+
+	public static class PredictableIdProxy
+	{
+		public static object? Send(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID)
+			=> SendProxy_SendPredictableId(prop, instance, data, recipients, objectID);
+	}
+
 	public static Edict? g_pForceAttachEdict;
 
 	public delegate void BASEPTR(BaseEntity self);
@@ -682,9 +792,6 @@ public partial class BaseEntity : IServerEntity
 		outData.Int = addt;
 	}
 
-	public static SendTable DT_AnimTimeMustBeFirst = new(nameof(DT_AnimTimeMustBeFirst), [
-		SendPropInt (FIELD.OF(nameof(AnimTime)), 8, PropFlags.Unsigned|PropFlags.ChangesOften|PropFlags.EncodedAgainstTickCount, proxyFn: SendProxy_AnimTime),
-	]);
 
 	public virtual int Save(ISave save) { throw new NotImplementedException(); }
 	public virtual int Restore(IRestore save) { throw new NotImplementedException(); }
@@ -706,82 +813,16 @@ public partial class BaseEntity : IServerEntity
 		else
 			return null;
 	}
-	public static SendTable DT_PredictableId = new(nameof(DT_PredictableId), [
-		SendPropPredictableId(FIELD.OF(nameof(PredictableId))),
-		SendPropInt(FIELD.OF(nameof(b_IsPlayerSimulated)), 1, PropFlags.Unsigned)
-	]);
 
-	public static SendTable DT_BaseEntity = new([
-		SendPropDataTable("AnimTimeMustBeFirst", DT_AnimTimeMustBeFirst, SendProxy_ClientSideAnimation),
-
-		SendPropInt(FIELD.OF(nameof(SimulationTime)), SIMULATION_TIME_WINDOW_BITS, PropFlags.Unsigned | PropFlags.ChangesOften | PropFlags.EncodedAgainstTickCount, proxyFn: SendProxy_SimulationTime /* todo */),
-		SendPropVector(NetworkVarFields.Origin, -1, PropFlags.Coord | PropFlags.ChangesOften, 0, Constants.HIGH_DEFAULT, SendProxy_Origin),
-		SendPropInt(FIELD.OF(nameof(InterpolationFrame)), NOINTERP_PARITY_MAX_BITS, PropFlags.Unsigned),
-		SendPropModelIndex(FIELD.OF(nameof(ModelIndex))),
-		SendPropDataTable("m_Collision", FIELD.OF(nameof(Collision)), CollisionProperty.DT_CollisionProperty),
-		SendPropInt(FIELD.OF(nameof(RenderFX)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(RenderMode)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Effects)), (int)EntityEffects.MaxBits, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(ColorRender)), 32, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(TeamNum)), TEAMNUM_NUM_BITS, 0),
-		SendPropInt(FIELD.OF(nameof(CollisionGroup)), 5, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(Elasticity)), 0, PropFlags.Coord | PropFlags.NoScale),
-		SendPropFloat(NetworkVarFields.ShadowCastDistance, 12, PropFlags.Unsigned),
-		SendPropEHandle(FIELD.OF(nameof(OwnerEntity))),
-		SendPropEHandle(FIELD.OF(nameof(EffectEntity))),
-		SendPropEHandle(FIELD.OF(nameof(MoveParent))),
-		SendPropInt(FIELD.OF(nameof(ParentAttachment)), NUM_PARENTATTACHMENT_BITS, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(MoveType)), (int)Source.MoveType.MaxBits, PropFlags.Unsigned ),
-		SendPropInt(FIELD.OF(nameof(MoveCollide)), (int)Source.MoveCollide.MaxBits, PropFlags.Unsigned ),
-		SendPropQAngles (NetworkVarFields.Rotation, 24, PropFlags.ChangesOften | PropFlags.RoundDown, SendProxy_Angles ),
-		SendPropInt( FIELD.OF(nameof( TextureFrameIndex) ),     8, PropFlags.Unsigned ),
-		SendPropDataTable( "predictable_id", DT_PredictableId, SendProxy_SendPredictableId ),
-		SendPropInt(FIELD.OF(nameof(SimulatedEveryTick)),       1, PropFlags.Unsigned ),
-		SendPropInt(FIELD.OF(nameof(AnimatedEveryTick)),        1, PropFlags.Unsigned ),
-		SendPropBool( NetworkVarFields.AlternateSorting ),
-
-		// The rest of this is Garry's Mod specific in order
-		SendPropInt(FIELD.OF(nameof(m_takedamage)), 8),
-		SendPropInt(FIELD.OF(nameof(RealClassName)), 16, PropFlags.Unsigned),
-
-		SendPropInt(FIELD.OF(nameof(OverrideMaterial)), 16, PropFlags.Unsigned, SendProxy_OverrideMaterial),
-
-		SendPropInt(FIELD.OF_SENDINFO_ARRAY(nameof(OverrideSubMaterials)), 16, PropFlags.Unsigned),
-		SendPropArray2(null, 32, "m_OverrideSubMaterials"),
-
-		SendPropInt(FIELD.OF(nameof(Health)), 32, PropFlags.Normal | PropFlags.ChangesOften | PropFlags.VarInt),
-		SendPropInt(NetworkVarFields.MaxHealth, 32),
-		SendPropInt(FIELD.OF(nameof(SpawnFlags)), 32, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(GModFlags)), 7),
-		SendPropBool(FIELD.OF(nameof(OnFire))),
-		SendPropFloat(FIELD.OF(nameof(CreationTime)), 0, PropFlags.NoScale),
-
-		SendPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 0), 0, PropFlags.NoScale | PropFlags.ChangesOften),
-		SendPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 1), 0, PropFlags.NoScale | PropFlags.ChangesOften),
-		SendPropFloat(FIELD.OF_VECTORELEM(nameof(Velocity), 2), 0, PropFlags.NoScale | PropFlags.ChangesOften),
-
-		SendPropGModTable(FIELD.OF(nameof(GMOD_DataTable))),
-
-		// Addon exposed data tables
-		SendPropArray3(FIELD.OF_ARRAY(nameof(GMOD_bool)), SendPropBool(FIELD.OF_ARRAYINDEX(nameof(GMOD_bool), 0))),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(GMOD_float)), SendPropFloat(FIELD.OF_ARRAYINDEX(nameof(GMOD_float), 0))),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(GMOD_int)), SendPropInt(FIELD.OF_ARRAYINDEX(nameof(GMOD_int), 0))),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(GMOD_Vector)),SendPropVector(FIELD.OF_ARRAYINDEX(nameof(GMOD_Vector), 0))),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(GMOD_QAngle)), SendPropQAngles(FIELD.OF_ARRAYINDEX(nameof(GMOD_QAngle), 0), 32, PropFlags.RoundDown)),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(GMOD_EHANDLE)), SendPropEHandle(FIELD.OF_ARRAYINDEX(nameof(GMOD_EHANDLE), 0))),
-		SendPropString(FIELD.OF(nameof(GMOD_String0))),
-		SendPropString(FIELD.OF(nameof(GMOD_String1))),
-		SendPropString(FIELD.OF(nameof(GMOD_String2))),
-		SendPropString(FIELD.OF(nameof(GMOD_String3))),
-
-		// Creation IDs
-		SendPropInt(FIELD.OF(nameof(CreationID)), 24),
-		SendPropInt(FIELD.OF(nameof(MapCreatedID)), 16),
-	]);
 
 	public BaseEntity() : this(false) { }
 
 	public BaseEntity(bool serverOnly) {
+		GMOD_EHANDLEForModify() = new();
+		OwnerEntity = new();
+		EffectEntity = new();
+		MoveParent = new();
+		GroundEntity = new();
 		CollisionGroup = (int)Source.CollisionGroup.None;
 
 		CollisionProp().Init(this);
@@ -1851,146 +1892,135 @@ public partial class BaseEntity : IServerEntity
 		return ent;
 	}
 
-	[NetworkName("m_nRenderFX")]
-	public byte RenderFX;
-	[NetworkName("m_nRenderMode")]
-	public byte RenderMode;
+	[NetworkVar("m_flAnimTime")]
+	public partial TimeUnit_t AnimTime { get; set; }
+	[NetworkVar("m_flSimulationTime")]
+	public partial TimeUnit_t SimulationTime { get; set; }
+	[NetworkVar("m_vecOrigin")]
+	public partial Vector3 Origin { get; set; }
+	[NetworkVar("m_ubInterpolationFrame")]
+	public partial byte InterpolationFrame { get; set; }
+	[NetworkVar("m_nModelIndex")]
+	public partial int ModelIndex { get; set; }
+	[NetworkVar("m_Collision")]
+	public readonly CollisionProperty Collision = new();
+	[NetworkVar("m_nRenderFX")]
+	public partial byte RenderFX { get; set; }
+	[NetworkVar("m_nRenderMode")]
+	public partial byte RenderMode { get; set; }
+	[NetworkVar("m_fEffects")]
+	public partial int Effects { get; set; }
+	[NetworkVar("m_clrRender")]
+	public partial Source.Color ColorRender { get; set; }
+	[NetworkVar("m_iTeamNum")]
+	public partial int TeamNum { get; set; }
+	[NetworkVar("m_CollisionGroup")]
+	public partial int CollisionGroup { get; set; }
+	[NetworkVar("m_flElasticity")]
+	public partial float Elasticity { get; set; }
+	[NetworkVar("m_flShadowCastDistance")]
+	public partial float ShadowCastDistance { get; set; }
+	[NetworkVar("m_hOwnerEntity")]
+	public partial EHANDLE OwnerEntity { get; set; }
+	[NetworkVar("m_hEffectEntity")]
+	public partial EHANDLE EffectEntity { get; set; }
+	[NetworkVar("moveparent")]
+	public partial EHANDLE MoveParent { get; set; }
+	[NetworkVar("m_iParentAttachment")]
+	public partial byte ParentAttachment { get; set; }
+	[NetworkVar("movetype")]
+	public partial byte MoveType { get; set; }
+	[NetworkVar("movecollide")]
+	public partial byte MoveCollide { get; set; }
+	[NetworkVar("m_angRotation")]
+	public partial QAngle Rotation { get; set; }
+	[NetworkVar("m_iTextureFrameIndex")]
+	public partial bool TextureFrameIndex { get; set; }
+	[NetworkVar("m_PredictableID")]
+	public readonly PredictableId PredictableId = new();
+	[NetworkVar("m_bSimulatedEveryTick")]
+	public partial bool SimulatedEveryTick { get; set; }
+	[NetworkVar("m_bAnimatedEveryTick")]
+	public partial bool AnimatedEveryTick { get; set; }
+	[NetworkVar("m_bAlternateSorting")]
+	public partial bool AlternateSorting { get; set; }
+	[NetworkVar("m_takedamage")]
+	public partial byte m_takedamage { get; set; }
+	[NetworkVar("m_RealClassName")]
+	public partial ushort RealClassName { get; set; }
+	[NetworkVar("m_OverrideMaterial")]
+	public partial ushort OverrideMaterial { get; set; }
+	[NetworkVar("m_OverrideSubMaterials")]
+	public partial ref readonly InlineArray32<ushort> OverrideSubMaterials { get; }
+	[NetworkVar("m_iHealth")]
+	public partial int Health { get; set; }
+	[NetworkVar("m_iMaxHealth")]
+	public partial int MaxHealth { get; set; }
+	[NetworkVar("m_spawnflags")]
+	public partial int SpawnFlags { get; set; }
+	[NetworkVar("m_iGModFlags")]
+	public partial int GModFlags { get; set; }
+	[NetworkVar("m_bOnFire")]
+	public partial bool OnFire { get; set; }
+	[NetworkVar("m_CreationTime")]
+	public partial float CreationTime { get; set; }
+	[NetworkVar("m_vecVelocity")]
+	public partial Vector3 Velocity { get; set; }
+	[NetworkVar("m_GMOD_DataTable")]
+	public readonly IGMODDataTable GMOD_DataTable;
+	[NetworkVar("m_GMOD_bool")]
+	public partial ref readonly InlineArray32<bool> GMOD_bool { get; }
+	[NetworkVar("m_GMOD_float")]
+	public partial ref readonly InlineArray32<float> GMOD_float { get; }
+	[NetworkVar("m_GMOD_int")]
+	public partial ref readonly InlineArray32<int> GMOD_int { get; }
+	[NetworkVar("m_GMOD_Vector")]
+	public partial ref readonly InlineArray32<Vector3> GMOD_Vector { get; }
+	[NetworkVar("m_GMOD_QAngle")]
+	public partial ref readonly InlineArray32<QAngle> GMOD_QAngle { get; }
+	[NetworkVar("m_GMOD_EHANDLE")]
+	public partial ref readonly InlineArrayNew32<EHANDLE> GMOD_EHANDLE { get; }
+	[NetworkVar("m_GMOD_String0")]
+	public partial ref readonly InlineArray512<char> GMOD_String0 { get; }
+	[NetworkVar("m_GMOD_String1")]
+	public partial ref readonly InlineArray512<char> GMOD_String1 { get; }
+	[NetworkVar("m_GMOD_String2")]
+	public partial ref readonly InlineArray512<char> GMOD_String2 { get; }
+	[NetworkVar("m_GMOD_String3")]
+	public partial ref readonly InlineArray512<char> GMOD_String3 { get; }
+	[NetworkVar("m_iCreationID")]
+	public partial int CreationID { get; set; }
+	[NetworkVar("m_iMapCreatedID")]
+	public partial int MapCreatedID { get; set; }
+	[NetworkVar("m_hGroundEntity")]
+	public partial EHANDLE GroundEntity { get; set; }
+	[NetworkVar("m_lifeState")]
+	public partial byte LifeState { get; set; }
+	[NetworkVar("m_vecBaseVelocity")]
+	public partial Vector3 BaseVelocity { get; set; }
+	[NetworkVar("m_nNextThinkTick")]
+	public partial int NextThinkTick { get; set; }
+	[NetworkVar("m_nWaterLevel")]
+	public partial byte WaterLevel { get; set; }
+	[NetworkVar("m_vecViewOffset")]
+	public partial Vector3 ViewOffset { get; set; }
+	[NetworkVar("m_flFriction")]
+	public partial float Friction { get; set; }
+
 	public byte OldRenderMode;
-	[NetworkName("m_fEffects")]
-	public int Effects;
-	[NetworkName("m_clrRender")]
-	public Source.Color ColorRender;
-	[NetworkName("m_iTeamNum")]
-	public int TeamNum;
-	[NetworkName("m_CollisionGroup")]
-	public int CollisionGroup;
-	[NetworkName("m_flElasticity")]
-	public float Elasticity;
-	[NetworkName("m_flShadowCastDistance")]
-	[NetworkVar] public partial float ShadowCastDistance { get; set; }
-	[NetworkName("m_iParentAttachment")]
-	public byte ParentAttachment;
-	[NetworkName("movetype")]
-	public byte MoveType;
-	[NetworkName("movecollide")]
-	public byte MoveCollide;
 	public Vector3 AbsOrigin;
 	public QAngle AbsRotation;
-	[NetworkName("m_vecOrigin")]
-	[NetworkVar] public partial Vector3 Origin { get; set; }
-	[NetworkName("m_angRotation")]
-	[NetworkVar] public partial QAngle Rotation { get; set; }
-	[NetworkName("m_iTextureFrameIndex")]
-	public bool TextureFrameIndex;
-	[NetworkName("m_bSimulatedEveryTick")]
-	public bool SimulatedEveryTick;
-	[NetworkName("m_bAnimatedEveryTick")]
-	public bool AnimatedEveryTick;
-	[NetworkName("m_bAlternateSorting")]
-	[NetworkVar] public partial bool AlternateSorting { get; set; }
-
-	public byte m_takedamage;
-	[NetworkName("m_RealClassName")]
-	public ushort RealClassName;
-	[NetworkName("m_OverrideMaterial")]
-	public ushort OverrideMaterial;
-	[NetworkName("m_OverrideSubMaterials")]
-	public InlineArray32<ushort> OverrideSubMaterials;
-	[NetworkName("m_iHealth")]
-	public int Health;
-	[NetworkName("m_iMaxHealth")]
-	[NetworkVar] public partial int MaxHealth { get; set; }
-	[NetworkName("m_spawnflags")]
-	public int SpawnFlags;
-	[NetworkName("m_iGModFlags")]
-	public int GModFlags;
-	[NetworkName("m_bOnFire")]
-	public bool OnFire;
-	[NetworkName("m_CreationTime")]
-	public float CreationTime;
-	[NetworkName("m_vecVelocity")]
-	public Vector3 Velocity;
-	[NetworkName("m_iCreationID")]
-	public int CreationID;
-	[NetworkName("m_iMapCreatedID")]
-	public int MapCreatedID;
-
 	public readonly List<ThinkFunc> ThinkFunctions = [];
 	public int CurrentThinkContext = NO_THINK_CONTEXT;
-
-	[NetworkName("m_PredictableID")]
-	public readonly PredictableId PredictableId = new();
-
-	[NetworkName("m_GMOD_DataTable")]
-	public readonly IGMODDataTable GMOD_DataTable;
-
 	public float Speed;
-
-	[NetworkName("m_hOwnerEntity")]
-	public EHANDLE OwnerEntity = new();
-	[NetworkName("m_hEffectEntity")]
-	public EHANDLE EffectEntity = new();
-	[NetworkName("moveparent")]
-	public EHANDLE MoveParent = new();
 	public EHANDLE MoveChild = new();
 	public EHANDLE MovePeer = new();
-	[NetworkName("m_hGroundEntity")]
-	public EHANDLE GroundEntity = new();
-
 	public string? ModelName;
-
-	[NetworkName("m_lifeState")]
-	public int LifeState;
-	[NetworkName("m_vecBaseVelocity")]
-	public Vector3 BaseVelocity;
-	[NetworkName("m_nNextThinkTick")]
-	public int NextThinkTick;
 	public int LastThinkTick;
-	[NetworkName("m_nWaterLevel")]
-	public byte WaterLevel;
 	public byte WaterType;
-
-	[NetworkName("m_GMOD_bool")]
-	public InlineArray32<bool> GMOD_bool;
-	[NetworkName("m_GMOD_float")]
-	public InlineArray32<float> GMOD_float;
-	[NetworkName("m_GMOD_int")]
-	public InlineArray32<int> GMOD_int;
-	[NetworkName("m_GMOD_Vector")]
-	public InlineArray32<Vector3> GMOD_Vector;
-	[NetworkName("m_GMOD_QAngle")]
-	public InlineArray32<QAngle> GMOD_QAngle;
-	[NetworkName("m_GMOD_EHANDLE")]
-	public InlineArrayNew32<EHANDLE> GMOD_EHANDLE = new();
-	[NetworkName("m_GMOD_String0")]
-	public InlineArray512<char> GMOD_String0;
-	[NetworkName("m_GMOD_String1")]
-	public InlineArray512<char> GMOD_String1;
-	[NetworkName("m_GMOD_String2")]
-	public InlineArray512<char> GMOD_String2;
-	[NetworkName("m_GMOD_String3")]
-	public InlineArray512<char> GMOD_String3;
-
 	public int DataObjectTypes;
-
-	public static readonly ServerClass ServerClass = new ServerClass(DT_BaseEntity);
-
-	[NetworkName("m_flAnimTime")]
-	public TimeUnit_t AnimTime;
 	public TimeUnit_t PrevAnimTime;
-	[NetworkName("m_flSimulationTime")]
-	public TimeUnit_t SimulationTime;
-	[NetworkName("m_vecViewOffset")]
-	public Vector3 ViewOffset;
 	public Vector3 NetworkAngles;
-	[NetworkName("m_ubInterpolationFrame")]
-	public byte InterpolationFrame;
-	[NetworkName("m_nModelIndex")]
-	public int ModelIndex;
-	[NetworkName("m_Collision")]
-	public CollisionProperty Collision = new();
-	[NetworkName("m_flFriction")]
-	public float Friction;
 	public long SimulationTick;
 
 	public virtual Vector3 BodyTarget(in Vector3 posSrc, bool noisy) => WorldSpaceCenter();
@@ -2544,7 +2574,7 @@ public partial class BaseEntity : IServerEntity
 			return;
 		if (OwnerEntity.Get() != owner) {
 			NetworkStateChanged();
-			OwnerEntity.Set(owner);
+			OwnerEntity = EHANDLE.FromEntity(owner);
 		}
 		CollisionRulesChanged();
 		OnOwnerChanged();
@@ -2647,7 +2677,7 @@ public partial class BaseEntity : IServerEntity
 	public Vector3 AbsVelocity;
 	public QAngle AngVelocity;
 
-	public ref readonly Vector3 GetLocalVelocity() => ref Velocity;
+	public ref readonly Vector3 GetLocalVelocity() => ref __nv_Velocity;
 
 	public ref readonly Vector3 GetAbsVelocity() {
 		if (IsEFlagSet(EFL.DirtyAbsVelocity))
@@ -3166,13 +3196,13 @@ public partial class BaseEntity : IServerEntity
 			edict.NetworkSerialNumber = (short)(RefEHandle.GetSerialNumber() & ((1 << Constants.NUM_NETWORKED_EHANDLE_SERIAL_NUMBER_BITS) - 1));
 	}
 
-	[NetworkName("m_fFlags")]
-	protected int flags;
+	[NetworkVar("m_fFlags")]
+	protected partial int flags { get; set; }
 	EFL eflags;
 	public Matrix3x4 CoordinateFrame;
 
 
-	public ref readonly Vector3 GetBaseVelocity() => ref BaseVelocity;
+	public ref readonly Vector3 GetBaseVelocity() => ref __nv_BaseVelocity;
 	public void SetBaseVelocity(in Vector3 v) => BaseVelocity = v;
 
 	public void SetAbsOrigin(Vector3 vector3) {
@@ -3215,7 +3245,7 @@ public partial class BaseEntity : IServerEntity
 
 		return ref AbsOrigin;
 	}
-	public ref readonly Vector3 GetViewOffset() => ref ViewOffset;
+	public ref readonly Vector3 GetViewOffset() => ref __nv_ViewOffset;
 	public ref readonly QAngle GetAbsAngles() {
 		Assert(BaseEntity.IsAbsQueriesValid());
 

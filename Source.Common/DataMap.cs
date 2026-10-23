@@ -75,7 +75,9 @@ namespace Source.Common
 		public readonly FieldType FieldType;
 		public readonly string FieldName = "";
 		public readonly FieldInfo FieldInfo;
-		public DynamicAccessor Accessor => field ??= FieldAccessorRegistry.Create(FieldInfo.DeclaringType!, FieldInfo.Name, null);
+		DynamicAccessor? accessor;
+		public DynamicAccessor Accessor => accessor ??= FieldAccessorRegistry.TryCreate(FieldInfo.DeclaringType!, FieldInfo.Name, null)
+			?? FieldAccessorRegistry.Create(FieldInfo.DeclaringType!, FieldInfo.Name.StartsWith("__nv_", StringComparison.Ordinal) ? FieldInfo.Name[5..] : FieldInfo.Name, null);
 		public nuint PackedOffset = nuint.MaxValue;
 		public readonly ushort FieldSize;
 		public readonly FieldTypeDescFlags Flags;
@@ -98,6 +100,17 @@ namespace Source.Common
 			SaveRestoreOps = saveRestoreOps;
 			FieldTolerance = fieldTolerance;
 			InputFunc = inputFunc;
+		}
+
+		public TypeDescription(FieldType type, ReadOnlySpan<char> fieldName, DynamicAccessor accessor, ushort fieldSize, FieldTypeDescFlags flags, DataMap? td, double fieldTolerance) {
+			FieldType = type;
+			FieldName = new(fieldName);
+			FieldInfo = null!;
+			this.accessor = accessor;
+			FieldSize = fieldSize;
+			Flags |= flags;
+			TD = td;
+			FieldTolerance = fieldTolerance;
 		}
 	}
 
@@ -757,7 +770,7 @@ namespace Source
 		}
 
 		public static FieldInfo GetField_R(Type t, string name){
-			var f = t.GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+			var f = t.GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance) ?? t.GetField("__nv_" + name, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 			if (f != null)
 				return f;
 

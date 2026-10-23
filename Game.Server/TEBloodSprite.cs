@@ -3,35 +3,34 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEBloodSprite>;
-[NetworkName("CTEBloodSprite")]
-public class TEBloodSprite
+[NetworkName("CTEBloodSprite", NoBase = true)]
+public partial class TEBloodSprite(ReadOnlySpan<char> name) : BaseTempEntity(name)
 {
-	public static readonly SendTable DT_TEBloodSprite = new([
-		SendPropVector(FIELD.OF(nameof(Origin)), 0, PropFlags.Coord),
-		SendPropVector(FIELD.OF(nameof(Direction)), 0, PropFlags.Coord),
-		SendPropInt(FIELD.OF(nameof(R)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(G)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(B)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(A)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Size)), 8, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEBloodSprite);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Direction)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(R)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(G)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(B)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(A)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Size)) { Bits = 8, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_vecDirection")]
+	[NetworkVar("m_vecDirection")]
 	public Vector3 Direction;
-	[NetworkName("r")]
+	[NetworkVar("r")]
 	public int R;
-	[NetworkName("g")]
+	[NetworkVar("g")]
 	public int G;
-	[NetworkName("b")]
+	[NetworkVar("b")]
 	public int B;
-	[NetworkName("a")]
+	[NetworkVar("a")]
 	public int A;
 	public int SprayModel;
 	public int DropModel;
-	[NetworkName("m_nSize")]
+	[NetworkVar("m_nSize")]
 	public int Size;
 }

@@ -3,33 +3,32 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_VGuiScreen>;
 [NetworkName("CVGuiScreen")]
-public class C_VGuiScreen : C_BaseEntity
+public partial class C_VGuiScreen : C_BaseEntity
 {
-	public static readonly RecvTable DT_VGuiScreen = new(DT_BaseEntity, [
-		RecvPropFloat(FIELD.OF(nameof(Width))),
-		RecvPropFloat(FIELD.OF(nameof(Height))),
-		RecvPropInt(FIELD.OF(nameof(AttachmentIndex))),
-		RecvPropInt(FIELD.OF(nameof(PanelName))),
-		RecvPropInt(FIELD.OF(nameof(ScreenFlags))),
-		RecvPropInt(FIELD.OF(nameof(OverlayMaterial))),
-		RecvPropEHandle(FIELD.OF(nameof(HPlayerOwner))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_VGuiScreen);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Width)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Height)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ScreenFlags)) { Bits = 5, Flags = PropFlags.Unsigned },
+		new(nameof(PanelName)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(AttachmentIndex)) { Bits = 5, Flags = PropFlags.Unsigned },
+		new(nameof(OverlayMaterial)) { Bits = 10, Flags = PropFlags.Unsigned },
+		nameof(HPlayerOwner),
+	];
 
-	[NetworkName("m_flWidth")]
+	[NetworkVar("m_flWidth")]
 	public float Width;
-	[NetworkName("m_flHeight")]
+	[NetworkVar("m_flHeight")]
 	public float Height;
-	[NetworkName("m_nAttachmentIndex")]
-	public int AttachmentIndex;
-	[NetworkName("m_nPanelName")]
-	public int PanelName;
-	[NetworkName("m_fScreenFlags")]
+	[NetworkVar("m_fScreenFlags")]
 	public int ScreenFlags;
-	[NetworkName("m_nOverlayMaterial")]
+	[NetworkVar("m_nPanelName")]
+	public int PanelName;
+	[NetworkVar("m_nAttachmentIndex")]
+	public int AttachmentIndex;
+	[NetworkVar("m_nOverlayMaterial")]
 	public int OverlayMaterial;
-	[NetworkName("m_hPlayerOwner")]
+	[NetworkVar("m_hPlayerOwner")]
 	public EHANDLE HPlayerOwner = new();
 }

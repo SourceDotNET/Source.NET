@@ -27,7 +27,7 @@ public static class Hierarchy
 				prev.Set(next);
 
 				// Clear hierarchy bits for this guy
-				list.MoveParent.Set(null);
+				list.MoveParent = EHANDLE.FromEntity(null);
 				list.MovePeer.Set(null);
 				list.NetworkProp().SetNetworkParent(new());
 				list.DispatchUpdateTransmitState();

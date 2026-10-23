@@ -1,63 +1,107 @@
 using Source.Common.Engine;
 
-using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace Source.Common;
-
-public static class ServerClassRetriever
-{
-	static readonly Dictionary<Type, ServerClass> ClassList = [];
-
-	public static ServerClass GetOrError(Type t) {
-		if (ClassList.TryGetValue(t, out ServerClass? c))
-			return c;
-
-		FieldInfo? field = t.GetField(nameof(ServerClass), BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy);
-		if (field == null)
-			throw new NullReferenceException(nameof(field));
-
-		c = ClassList[t] = (ServerClass)field.GetValue(null)!;
-		return c;
-	}
-}
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Field | AttributeTargets.Property)]
 public class NetworkNameAttribute(string name) : Attribute
 {
 	public readonly string Name = name;
+	public string? Table { get; set; }
+	public bool NoBase { get; set; }
 }
 
-static class NetworkClassSite
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
+public sealed class NetworkVarAttribute(string? name = null) : Attribute
 {
-	public static string FileName(string path) => path[(path.LastIndexOfAny(['/', '\\']) + 1)..];
+	public readonly string? Name = name;
 }
 
+[AttributeUsage(AttributeTargets.Field, AllowMultiple = false, Inherited = false)]
+public sealed class NetworkTableAttribute(string? name = null) : Attribute
+{
+	public readonly string? Name = name;
+	public bool NoBase { get; set; }
+	public NetworkSide Side { get; set; }
+}
+
+[AttributeUsage(AttributeTargets.Field, AllowMultiple = false, Inherited = false)]
+public sealed class PredictionTableAttribute : Attribute
+{
+}
+
+public enum NetworkSide
+{
+	Both,
+	Server,
+	Client
+}
+
+public sealed class NetworkProp(string member)
+{
+	public readonly string Member = member;
+	public static implicit operator NetworkProp(string member) => new(member);
+	public NetEncoding Encoding { get; init; }
+	public int Bits { get; init; }
+	public PropFlags Flags { get; init; }
+	public float Low { get; init; }
+	public float High { get; init; }
+	public Type? Proxy { get; init; }
+	public string? DataTable { get; init; }
+	public int Count { get; init; }
+	public NetworkSide Side { get; init; }
+	public string? Name { get; init; }
+	public bool Exclude { get; init; }
+}
+
+public sealed class PredictionField(string member)
+{
+	public readonly string Member = member;
+	public static implicit operator PredictionField(string member) => new(member);
+	public FieldType Type { get; init; }
+	public FieldTypeDescFlags Flags { get; init; }
+	public float Tolerance { get; init; }
+	public bool Embedded { get; init; }
+}
+public enum NetEncoding
+{
+	Auto,
+	Int,
+	Bool,
+	Float,
+	Time,
+	Time64,
+	Vector,
+	VectorXY,
+	QAngles,
+	Angle,
+	EHandle,
+	ModelIndex,
+	String,
+	IntWithMinusOneFlag,
+	DataTable,
+	Array,
+	Array2,
+	VectorElements,
+	PredictableId,
+	GModTable,
+	List,
+	Elements
+}
 public class ServerClass
 {
 	public static ServerClass? Head;
-
-	readonly record struct Site(string TypeName, string? NetworkName);
-	static readonly Dictionary<(string File, int Line), Site> Sites = [];
-
-	public static void RegisterSite(string file, int line, string typeName, string? networkName) => Sites[(file, line)] = new(typeName, networkName);
-
-	static string TakeNetworkName(string callerFile, int callerLine) {
-		if (!Sites.Remove((NetworkClassSite.FileName(callerFile), callerLine), out Site site))
-			throw new NullReferenceException($"No generated ServerClass registration for {callerFile}:{callerLine}");
-		return site.NetworkName ?? throw new NullReferenceException($"{site.TypeName} is missing a {nameof(NetworkNameAttribute)}");
-	}
 
 	public string NetworkName;
 	public SendTable Table;
 	public ServerClass? Next;
 	public int ClassID;
 	public int InstanceBaselineIndex = INetworkStringTable.INVALID_STRING_INDEX;
-	public ServerClass(SendTable table, [CallerArgumentExpression(nameof(table))] string? nameOfTable = null, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0) {
-		NetworkName = TakeNetworkName(callerFile, callerLine);
+	public ServerClass(string networkName, SendTable table, string? tableName) {
+		NetworkName = networkName;
 		Table = table;
-		if (nameOfTable != null)
-			table.NetTableName = nameOfTable;
+		if (tableName != null)
+			table.NetTableName = tableName;
 
 		Next = null;
 		InstanceBaselineIndex = INetworkStringTable.INVALID_STRING_INDEX;

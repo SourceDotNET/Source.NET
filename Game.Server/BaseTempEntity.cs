@@ -3,14 +3,11 @@ using Source.Common;
 
 namespace Game.Server;
 
-[NetworkName("CBaseTempEntity")]
-public class BaseTempEntity
+[NetworkName("CBaseTempEntity", NoBase = true)]
+public partial class BaseTempEntity
 {
 	string Name = "";
 	BaseTempEntity? Next;
-
-	public static readonly SendTable DT_BaseTempEntity = new([]);
-	public static readonly ServerClass ServerClass = new ServerClass(DT_BaseTempEntity);
 
 	public static BaseTempEntity? s_pTempEntities = null;
 
@@ -19,9 +16,6 @@ public class BaseTempEntity
 		Next = s_pTempEntities;
 		s_pTempEntities = this;
 	}
-
-	ServerClass? ServerClassCache;
-	public ServerClass GetServerClass() => ServerClassCache ??= ServerClassRetriever.GetOrError(GetType());
 
 	public void Create<IRF>(scoped ref IRF filter, float delay) where IRF : IRecipientFilter {
 		Assert(!filter.IsInitMessage());

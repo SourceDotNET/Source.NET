@@ -5,16 +5,15 @@ using Game.Shared;
 
 namespace Game.Server;
 
-using FIELD = FIELD<BaseHelicopter>;
 
 [NetworkName("CBaseHelicopter")]
-public class BaseHelicopter : AI_TrackPather
+public partial class BaseHelicopter : AI_TrackPather
 {
-	public static readonly SendTable DT_BaseHelicopter = new(DT_AI_BaseNPC, [
-		SendPropFloat(FIELD.OF(nameof(StartupTime)), 0, PropFlags.NoScale)
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseHelicopter);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(StartupTime)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_flStartupTime")]
-	public TimeUnit_t StartupTime;
+	[NetworkVar("m_flStartupTime")]
+	public partial TimeUnit_t StartupTime { get; set; }
 }

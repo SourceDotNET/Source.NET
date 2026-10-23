@@ -6,7 +6,6 @@ using Source.Common.Utilities;
 
 namespace Game.Client;
 
-using FIELD = FIELD<C_SceneEntity>;
 using EventType = Game.Shared.ChoreoEvent.EventType;
 
 public class ChoreoStringPool : IChoreoStringPool
@@ -28,45 +27,51 @@ public class ChoreoStringPool : IChoreoStringPool
 }
 
 [NetworkName("CSceneEntity")]
-public class C_SceneEntity : C_BaseEntity, IChoreoEventCallback
+public partial class C_SceneEntity : C_BaseEntity, IChoreoEventCallback
 {
 	public const int MAX_ACTORS_IN_SCENE = 16;
 
 	static readonly ChoreoStringPool g_ChoreoStringPool = new();
 
-	[NetworkName("m_nSceneStringIndex")]
+	[NetworkVar("m_nSceneStringIndex")]
 	public int SceneStringIndex;
-	[NetworkName("m_bIsPlayingBack")]
+	[NetworkVar("m_bIsPlayingBack")]
 	public bool IsPlayingBack;
-	[NetworkName("m_bPaused")]
+	[NetworkVar("m_bPaused")]
 	public bool Paused;
-	[NetworkName("m_bMultiplayer")]
+	[NetworkVar("m_bMultiplayer")]
 	public bool Multiplayer;
-	[NetworkName("m_flForceClientTime")]
+	[NetworkVar("m_flForceClientTime")]
 	public float ForceClientTime;
-	[NetworkName("m_hActorList")]
+	[NetworkVar("m_hActorList")]
 	readonly List<EHANDLE> ActorList = [];
 
-	public static readonly RecvTable DT_SceneEntity = new([
-		RecvPropInt(FIELD.OF(nameof(SceneStringIndex))),
-		RecvPropBool(FIELD.OF(nameof(IsPlayingBack))),
-		RecvPropBool(FIELD.OF(nameof(Paused))),
-		RecvPropBool(FIELD.OF(nameof(Multiplayer))),
-		RecvPropFloat(FIELD.OF(nameof(ForceClientTime)), 0, RecvProxy_ForcedClientTime),
-		RecvPropList<EHANDLE>(FIELD.OF_LIST(nameof(ActorList), MAX_ACTORS_IN_SCENE), ResizeActorList, RecvPropEHandle()),
-	]);
-	public static new readonly ClientClass ClientClass = new ClientClass(DT_SceneEntity);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(SceneStringIndex),
+		nameof(IsPlayingBack),
+		nameof(Paused),
+		nameof(Multiplayer),
+		new(nameof(ForceClientTime)) { Proxy = typeof(ForceClientTimeProxy) },
+		new(nameof(ActorList)) { Encoding = NetEncoding.List, Count = MAX_ACTORS_IN_SCENE, Proxy = typeof(ActorListProxy) },
+	];
 
-	static void ResizeActorList(object instance, object list, int len) {
-		var vec = (List<EHANDLE>)list;
-		while (vec.Count < len) vec.Add(new());
-		while (vec.Count > len) vec.RemoveAt(vec.Count - 1);
+	public static class ActorListProxy
+	{
+		public static void Resize(object instance, object list, int len) {
+			var vec = (List<EHANDLE>)list;
+			while (vec.Count < len) vec.Add(new());
+			while (vec.Count > len) vec.RemoveAt(vec.Count - 1);
+		}
 	}
 
-	static void RecvProxy_ForcedClientTime(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
-		C_SceneEntity scene = (C_SceneEntity)instance;
-		field.SetValue(instance, data.Value.Float);
-		scene.OnResetClientTime();
+	public static class ForceClientTimeProxy
+	{
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+			C_SceneEntity scene = (C_SceneEntity)instance;
+			field.SetValue(instance, data.Value.Float);
+			scene.OnResetClientTime();
+		}
 	}
 
 	struct QueuedEvents

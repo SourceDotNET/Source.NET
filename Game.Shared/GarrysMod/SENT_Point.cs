@@ -7,25 +7,9 @@ using Source;
 #if CLIENT_DLL
 namespace Game.Client;
 using Game.Client.GarrysMod;
-using FIELD = Source.FIELD<C_SENT_Point>;
 #else
 namespace Game.Server;
 using Game.Server.GarrysMod;
-using FIELD = Source.FIELD<SENT_Point>;
-#endif
-
-using Table =
-#if CLIENT_DLL
-	RecvTable;
-#else
-	SendTable;
-#endif
-
-using Class =
-#if CLIENT_DLL
-	ClientClass;
-#else
-	ServerClass;
 #endif
 
 [LinkEntityToClass("sent_point")]
@@ -38,22 +22,12 @@ public partial class
 #endif
 	: BaseEntity
 {
-	public static readonly Table DT_SENT_point = new(DT_BaseEntity, [
-#if CLIENT_DLL
-		RecvPropDataTable("m_ScriptedEntity", FIELD.OF(nameof(ScriptedEntity)), ScriptedEntity.DT_ScriptedEntity, 0, RECV_GET_OBJECT_AT_FIELD(FIELD.OF(nameof(ScriptedEntity))))
-#elif GAME_DLL
-		SendPropDataTable("m_ScriptedEntity", FIELD.OF(nameof(ScriptedEntity)), ScriptedEntity.DT_ScriptedEntity)
-#endif
-	]);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(ScriptedEntity)) { Encoding = NetEncoding.DataTable, DataTable = "DT_ScriptedEntity" },
+	];
 
-	public static readonly new Class
-#if CLIENT_DLL
-		ClientClass
-#else
-		ServerClass
-#endif
-		= new Class(DT_SENT_point);
-
+	[NetworkVar("m_ScriptedEntity")]
 	public readonly ScriptedEntity ScriptedEntity = new();
 
 #if CLIENT_DLL

@@ -3,24 +3,23 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_ParticleSmokeGrenade>;
-[NetworkName("ParticleSmokeGrenade")]
-public class C_ParticleSmokeGrenade : C_BaseParticleEntity
+[NetworkName("ParticleSmokeGrenade", Table = "DT_ParticleSmokeGrenade")]
+public partial class C_ParticleSmokeGrenade : C_BaseParticleEntity
 {
-	public static readonly RecvTable DT_ParticleSmokeGrenade = new(DT_BaseParticleEntity, [
-		RecvPropFloat(FIELD.OF(nameof(SpawnTime))),
-		RecvPropFloat(FIELD.OF(nameof(FadeStartTime))),
-		RecvPropFloat(FIELD.OF(nameof(FadeEndTime))),
-		RecvPropBool(FIELD.OF(nameof(CurrentStage))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_ParticleSmokeGrenade);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(SpawnTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeStartTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeEndTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(CurrentStage),
+	];
 
-	[NetworkName("m_flSpawnTime")]
+	[NetworkVar("m_flSpawnTime")]
 	public float SpawnTime;
-	[NetworkName("m_FadeStartTime")]
+	[NetworkVar("m_FadeStartTime")]
 	public float FadeStartTime;
-	[NetworkName("m_FadeEndTime")]
+	[NetworkVar("m_FadeEndTime")]
 	public float FadeEndTime;
-	[NetworkName("m_CurrentStage")]
+	[NetworkVar("m_CurrentStage")]
 	public bool CurrentStage;
 }

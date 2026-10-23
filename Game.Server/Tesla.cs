@@ -3,19 +3,18 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<Tesla>;
 [LinkEntityToClass("point_tesla")]
 [NetworkName("CTesla")]
-public class Tesla : BaseEntity
+public partial class Tesla : BaseEntity
 {
-	public static readonly SendTable DT_Tesla = new(DT_BaseEntity, [
-		SendPropString(FIELD.OF(nameof(SoundName))),
-		SendPropString(FIELD.OF(nameof(SpriteName))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_Tesla);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(SoundName)) { Encoding = NetEncoding.String },
+		new(nameof(SpriteName)) { Encoding = NetEncoding.String },
+	];
 
-	[NetworkName("m_SoundName")]
-	public InlineArray64<char> SoundName;
-	[NetworkName("m_iszSpriteName")]
-	public InlineArray256<char> SpriteName;
+	[NetworkVar("m_SoundName")]
+	public partial ref readonly InlineArray64<char> SoundName { get; }
+	[NetworkVar("m_iszSpriteName")]
+	public partial ref readonly InlineArray256<char> SpriteName { get; }
 }

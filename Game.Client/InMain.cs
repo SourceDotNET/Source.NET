@@ -7,6 +7,7 @@ using Source.Common.Bitbuffers;
 using Source.Common.Client;
 using Source.Common.Commands;
 using Source.Common.GUI;
+using Source.Common.Hashing;
 using Source.Common.Input;
 using Source.Common.Mathematics;
 
@@ -273,6 +274,8 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 			cmd.Buttons |= InButtons.Forward;
 		else if (cmd.ForwardMove < 0)
 			cmd.Buttons |= InButtons.Back;
+
+		cmd.RandomSeed = (int)(MD5Value.PseudoRandom((uint)sequenceNumber) & 0x7fffffff);
 	}
 
 	private void ApplyExtras(ref UserCmd cmd) {

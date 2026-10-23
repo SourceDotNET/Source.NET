@@ -3,32 +3,31 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_Fish>;
-[NetworkName("CFish")]
-public class C_Fish : C_BaseAnimating
+[NetworkName("CFish", Table = "DT_CFish", NoBase = true)]
+public partial class C_Fish : C_BaseAnimating
 {
-	public static readonly RecvTable DT_CFish = new([
-		RecvPropVector(FIELD.OF(nameof(PoolOrigin))),
-		RecvPropFloat(FIELD.OF(nameof(Le))),
-		RecvPropFloat(FIELD.OF(nameof(X))),
-		RecvPropFloat(FIELD.OF(nameof(Y))),
-		RecvPropFloat(FIELD.OF(nameof(Z))),
-		RecvPropInt(FIELD.OF(nameof(ModelIndex))),
-		RecvPropInt(FIELD.OF(nameof(LifeState))),
-		RecvPropFloat(FIELD.OF(nameof(WaterLevel))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_CFish);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(PoolOrigin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(X)) { Bits = 7, Low = -255.0f, High = 255.0f },
+		new(nameof(Y)) { Bits = 7, Low = -255.0f, High = 255.0f },
+		new(nameof(Z)) { Bits = 0, Flags = PropFlags.Coord | PropFlags.NoScale },
+		new(nameof(Le)) { Bits = 7, Low = 0.0f, High = 360.0f },
+		new(nameof(ModelIndex)) { Encoding = NetEncoding.Int, Bits = 14 },
+		new(nameof(LifeState)) { Bits = 3, Flags = PropFlags.Unsigned },
+		new(nameof(WaterLevel)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_poolOrigin")]
+	[NetworkVar("m_poolOrigin")]
 	public Vector3 PoolOrigin;
-	[NetworkName("m_angle")]
-	public float Le;
-	[NetworkName("m_x")]
+	[NetworkVar("m_x")]
 	public float X;
-	[NetworkName("m_y")]
+	[NetworkVar("m_y")]
 	public float Y;
-	[NetworkName("m_z")]
+	[NetworkVar("m_z")]
 	public float Z;
-	[NetworkName("m_waterLevel")]
+	[NetworkVar("m_angle")]
+	public float Le;
+	[NetworkVar("m_waterLevel")]
 	public new float WaterLevel;
 }

@@ -6,24 +6,8 @@ using System.Numerics;
 
 #if CLIENT_DLL
 namespace Game.Client;
-using FIELD = Source.FIELD<C_PhysBeam>;
 #else
 namespace Game.Server;
-using FIELD = Source.FIELD<PhysBeam>;
-#endif
-
-using Table =
-#if CLIENT_DLL
-	RecvTable;
-#else
-	SendTable;
-#endif
-
-using Class =
-#if CLIENT_DLL
-	ClientClass;
-#else
-	ServerClass;
 #endif
 
 [LinkEntityToClass("physgun_beam")]
@@ -36,35 +20,39 @@ public partial class
 #endif
 	: BaseEntity
 {
-	public static readonly Table DT_PhysBeam = new(DT_BaseEntity, [
-#if CLIENT_DLL
-		RecvPropEHandle(FIELD.OF(nameof(TargetEnt))),
-		RecvPropVector(FIELD.OF(nameof(HoldPos))),
-		RecvPropBool(FIELD.OF(nameof(IsOn))),
-		RecvPropInt(FIELD.OF(nameof(PhysBone))),
-#elif GAME_DLL
-		SendPropEHandle(FIELD.OF(nameof(TargetEnt))),
-		SendPropVector(FIELD.OF(nameof(HoldPos)), 0, PropFlags.NoScale),
-		SendPropBool(FIELD.OF(nameof(IsOn))),
-		SendPropInt(FIELD.OF(nameof(PhysBone)), 12, 0),
-#endif
-	]);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(TargetEnt),
+		new(nameof(HoldPos)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(IsOn),
+		new(nameof(PhysBone)) { Bits = 12 },
+	];
 
-	public static readonly new Class
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(IsOn),
+		nameof(TargetEnt),
+		nameof(HoldPos),
+		nameof(PhysBone),
+	];
+
 #if CLIENT_DLL
-		ClientClass
+	public C_PhysBeam() {
+		TargetEnt = new();
+	}
 #else
-		ServerClass
+	public PhysBeam() {
+		TargetEnt = new();
+	}
 #endif
-		= new Class(DT_PhysBeam);
 
-	[NetworkName("m_hTargetEnt")]
-	public EHANDLE TargetEnt = new();
-	[NetworkName("m_HoldPos")]
-	public Vector3 HoldPos;
-	[NetworkName("m_bIsOn")]
-	public bool IsOn;
-	[NetworkName("m_iPhysBone")]
-	public int PhysBone;
+	[NetworkVar("m_hTargetEnt")]
+	public partial EHANDLE TargetEnt { get; set; }
+	[NetworkVar("m_HoldPos")]
+	public partial Vector3 HoldPos { get; set; }
+	[NetworkVar("m_bIsOn")]
+	public partial bool IsOn { get; set; }
+	[NetworkVar("m_iPhysBone")]
+	public partial int PhysBone { get; set; }
 }
 #endif

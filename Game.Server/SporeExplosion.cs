@@ -3,34 +3,33 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<SporeExplosion>;
 [LinkEntityToClass("env_sporeexplosion")]
-[NetworkName("SporeExplosion")]
-public class SporeExplosion : BaseParticleEntity
+[NetworkName("SporeExplosion", Table = "DT_SporeExplosion")]
+public partial class SporeExplosion : BaseParticleEntity
 {
-	public static readonly SendTable DT_SporeExplosion = new(DT_BaseParticleEntity, [
-		SendPropFloat(FIELD.OF(nameof(SpawnRate)), 8, 0, 1, 1024),
-		SendPropFloat(FIELD.OF(nameof(ParticleLifetime)), 16, PropFlags.RoundUp, 0.1f, 100),
-		SendPropFloat(FIELD.OF(nameof(StartSize)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(EndSize)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(SpawnRadius)), 0, PropFlags.NoScale),
-		SendPropBool(FIELD.OF(nameof(Emit))),
-		SendPropBool(FIELD.OF(nameof(DontRemove))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_SporeExplosion);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(SpawnRate)) { Bits = 8, Low = 1.0f, High = 1024.0f },
+		new(nameof(ParticleLifetime)) { Bits = 16, Flags = PropFlags.RoundUp, Low = 0.1f, High = 100.0f },
+		new(nameof(StartSize)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(EndSize)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(SpawnRadius)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(Emit),
+		nameof(DontRemove),
+	];
 
-	[NetworkName("m_flSpawnRate")]
-	public float SpawnRate;
-	[NetworkName("m_flParticleLifetime")]
-	public float ParticleLifetime;
-	[NetworkName("m_flStartSize")]
-	public float StartSize;
-	[NetworkName("m_flEndSize")]
-	public float EndSize;
-	[NetworkName("m_flSpawnRadius")]
-	public float SpawnRadius;
-	[NetworkName("m_bEmit")]
-	public bool Emit;
-	[NetworkName("m_bDontRemove")]
-	public bool DontRemove;
+	[NetworkVar("m_flSpawnRate")]
+	public partial float SpawnRate { get; set; }
+	[NetworkVar("m_flParticleLifetime")]
+	public partial float ParticleLifetime { get; set; }
+	[NetworkVar("m_flStartSize")]
+	public partial float StartSize { get; set; }
+	[NetworkVar("m_flEndSize")]
+	public partial float EndSize { get; set; }
+	[NetworkVar("m_flSpawnRadius")]
+	public partial float SpawnRadius { get; set; }
+	[NetworkVar("m_bEmit")]
+	public partial bool Emit { get; set; }
+	[NetworkVar("m_bDontRemove")]
+	public partial bool DontRemove { get; set; }
 }

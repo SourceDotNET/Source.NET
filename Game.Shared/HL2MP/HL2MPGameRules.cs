@@ -17,14 +17,12 @@ namespace Game.Server.GarrysMod;
 using Source.Common;
 using Source;
 
-using FIELD = Source.FIELD<HL2MPGameRulesProxy>;
-
 using Game.Shared;
 using Source.Common.Engine;
 
 [LinkEntityToClass("hl2mp_gamerules")]
 [NetworkName("CHL2MPGameRulesProxy")]
-public class
+public partial class
 #if CLIENT_DLL
 	C_HL2MPGameRulesProxy
 #else
@@ -32,35 +30,24 @@ public class
 #endif
 	: GameRulesProxy
 {
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(HL2MPGameRules.Props)) { Name = "hl2mp_gamerules_data", Proxy = typeof(HL2MPGameRulesProxy.RulesProxy) },
+	];
+
 	public override GameRules GameRules => hl2mp_gamerules_data;
 	public HL2MPGameRules hl2mp_gamerules_data = new();
-	public static readonly
+	public static class RulesProxy
+	{
 #if CLIENT_DLL
-		RecvTable
+		public static void Recv(RecvProp prop, out object? outInstance, object? instance, IFieldAccessor fieldInfo, int objectID) {
+			outInstance = ((HL2MPGameRulesProxy)instance!).hl2mp_gamerules_data;
+		}
 #else
-		SendTable
+		public static object? Send(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID) => SendProxy_HL2MPRules(prop, instance, data, recipients, objectID);
 #endif
-	DT_HL2MPRules = new(nameof(DT_HL2MPRules), [
-#if CLIENT_DLL
-		RecvPropBool(FIELD<HL2MPGameRules>.OF("TeamPlayEnabled")),
-#else
-		SendPropBool(FIELD<HL2MPGameRules>.OF("TeamPlayEnabled"))
-#endif
-	]);
+	}
 
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_HL2MPGameRulesProxy = new(DT_GameRulesProxy, [
-#if CLIENT_DLL
-			RecvPropDataTable(nameof(hl2mp_gamerules_data), FIELD.OF(nameof(hl2mp_gamerules_data)), DT_HL2MPRules, 0, DataTableRecvProxy_PointerDataTable)
-#else
-			SendPropDataTable(nameof(hl2mp_gamerules_data), DT_HL2MPRules, SendProxy_HL2MPRules)
-#endif
-		]);
 #if !CLIENT_DLL
 	public static object SendProxy_HL2MPRules(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID) {
 		HL2MPGameRules rules = HL2MPRules();
@@ -68,14 +55,9 @@ public class
 		return rules;
 	}
 #endif
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_HL2MPGameRulesProxy);
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_HL2MPGameRulesProxy);
-#endif
 }
 
-public class
+public partial class
 #if CLIENT_DLL
 	C_HL2MPGameRules
 #else
@@ -84,6 +66,11 @@ public class
 	: MultiplayRules
 // TODO: AutoGameSystemPerFrame
 {
+	[NetworkTable("DT_HL2MPRules")]
+	public static readonly NetworkProp[] Props = [
+		nameof(TeamPlayEnabled),
+	];
+
 	public
 #if CLIENT_DLL
 		C_HL2MPGameRules
@@ -94,8 +81,8 @@ public class
 
 	}
 	public override ReadOnlySpan<char> Name() => "HL2MPGameRules";
-	[NetworkName("m_bTeamPlayEnabled")]
-	public bool TeamPlayEnabled;
+	[NetworkVar("m_bTeamPlayEnabled")]
+	public partial bool TeamPlayEnabled { get; set; }
 
 	public override bool ShouldCollide(CollisionGroup collisionGroup0, CollisionGroup collisionGroup1) {
 		if (collisionGroup0 > collisionGroup1) {

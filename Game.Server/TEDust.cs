@@ -3,22 +3,21 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEDust>;
 [NetworkName("CTEDust")]
-public class TEDust(ReadOnlySpan<char> name) : TEParticleSystem(name)
+public partial class TEDust(ReadOnlySpan<char> name) : TEParticleSystem(name)
 {
-	public static readonly SendTable DT_TEDust = new(DT_TEParticleSystem, [
-		SendPropFloat(FIELD.OF(nameof(LSize)), 0, PropFlags.Coord | PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(LSpeed)), 0, PropFlags.Coord | PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(Direction)), 4, 0, -1.0f, 1.0f),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEDust);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(LSize)) { Bits = 0, Flags = PropFlags.Coord | PropFlags.NoScale },
+		new(nameof(LSpeed)) { Bits = 0, Flags = PropFlags.Coord | PropFlags.NoScale },
+		new(nameof(Direction)) { Bits = 4, Low = -1.0f, High = 1.0f },
+	];
 
-	[NetworkName("m_flSize")]
+	[NetworkVar("m_flSize")]
 	public float LSize;
-	[NetworkName("m_flSpeed")]
+	[NetworkVar("m_flSpeed")]
 	public float LSpeed;
-	[NetworkName("m_vecDirection")]
+	[NetworkVar("m_vecDirection")]
 	public Vector3 Direction;
 }
 

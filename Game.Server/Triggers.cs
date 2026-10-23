@@ -12,8 +12,6 @@ using System.Numerics;
 
 namespace Game.Server;
 
-using FIELD_BT = FIELD<BaseTrigger>;
-
 public static class TriggerGlobals
 {
 	public static readonly ConVar showtriggers = new("showtriggers", "0", FCvar.Cheat, "Shows trigger brushes");
@@ -74,8 +72,14 @@ public static class TriggerGlobals
 
 [LinkEntityToClass("trigger")]
 [NetworkName("CBaseTrigger")]
-public class BaseTrigger : BaseToggle
+public partial class BaseTrigger : BaseToggle
 {
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(ClientSidePredicted),
+		new(nameof(SpawnFlags)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.NoScale },
+	];
+
 	[Flags]
 	public enum SF
 	{
@@ -94,13 +98,8 @@ public class BaseTrigger : BaseToggle
 		DisallowBots = 0x1000,   // Bots are not allowed to fire this trigger
 	}
 
-	public static readonly SendTable DT_BaseTrigger = new(DT_BaseToggle, [
-		SendPropBool(FIELD_BT.OF(nameof(ClientSidePredicted))),
-		SendPropInt(FIELD_BT.OF(nameof(SpawnFlags)), 32, PropFlags.NoScale)
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseTrigger);
-	[NetworkName("m_bClientSidePredicted")]
-	public bool ClientSidePredicted;
+	[NetworkVar("m_bClientSidePredicted")]
+	public partial bool ClientSidePredicted { get; set; }
 
 	public bool Disabled;
 	public string? FilterName;

@@ -4,25 +4,24 @@ using Game.Shared;
 using System.Numerics;
 using Source.Common.Mathematics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEMuzzleFlash>;
 [NetworkName("CTEMuzzleFlash")]
-public class C_TEMuzzleFlash : C_BaseTempEntity
+public partial class C_TEMuzzleFlash : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEMuzzleFlash = new(DT_BaseTempEntity, [
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropVector(FIELD.OF(nameof(Angles))),
-		RecvPropFloat(FIELD.OF(nameof(Scale))),
-		RecvPropInt(FIELD.OF(nameof(Type))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEMuzzleFlash);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Angles)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Scale)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Type)) { Bits = 4, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_vecAngles")]
+	[NetworkVar("m_vecAngles")]
 	public Vector3 Angles;
-	[NetworkName("m_flScale")]
+	[NetworkVar("m_flScale")]
 	public float Scale;
-	[NetworkName("m_nType")]
+	[NetworkVar("m_nType")]
 	public int Type;
 }
 

@@ -60,7 +60,7 @@ public partial class
 			if (!ActiveWeapon.Get()!.Holster(weapon))
 				return false;
 
-		ActiveWeapon.Set(weapon);
+		ActiveWeapon = Handle<BaseCombatWeapon>.FromEntity(weapon);
 		return weapon.Deploy();
 	}
 
@@ -113,7 +113,7 @@ public partial class
 			return;
 
 		// Ammo pickup sound
-		Ammo.Set(ammoIndex, Math.Max(Ammo[ammoIndex] - count, 0));
+		AmmoForModify()[ammoIndex] = Math.Max(Ammo[ammoIndex] - count, 0);
 	}
 	public void RemoveAmmo(int count, ReadOnlySpan<char> name) => RemoveAmmo(count, GetAmmoDef().Index(name));
 
@@ -132,7 +132,7 @@ public partial class
 		for (int i = 0; i < MAX_AMMO_SLOTS; i++) {
 			int old = Ammo[i];
 			if (Ammo[i] != 0)
-				Ammo.Set(i, 0);
+				AmmoForModify()[i] = 0;
 			OnAmmoChanged(this, i, old, 0);
 		}
 	}
