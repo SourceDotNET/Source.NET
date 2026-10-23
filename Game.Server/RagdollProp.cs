@@ -5,6 +5,7 @@ using Source;
 using Game.Shared;
 
 using System.Numerics;
+using Source.Common.Physics;
 namespace Game.Server;
 
 [LinkEntityToClass("physics_prop_ragdoll")]
@@ -45,4 +46,12 @@ public partial class RagdollProp : BaseAnimating
 	public static Ragdoll? Ragdoll_GetRagdoll(BaseEntity entity) => (entity as RagdollProp)?.GetRagdoll();
 
 	public override bool IsRagdollProp() => true;
+
+	public override int VPhysicsGetObjectList(Span<IPhysicsObject?> list) {
+		for (int i = 0; i < ragdoll.ListCount; i++) 
+			if (i < list.Length) 
+				list[i] = ragdoll.List[i].Object;
+
+		return ragdoll.ListCount;
+	}
 }

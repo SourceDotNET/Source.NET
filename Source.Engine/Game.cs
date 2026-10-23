@@ -152,6 +152,10 @@ public class Game : IGame
 				Key?.Event(in ev);
 				break;
 			default:
+#if GMOD_DLL
+				if (ev.Type == InputEventType.IE_AnalogValueChanged && (AnalogCode)ev.Data == AnalogCode.MouseWheel)
+					clientDLL?.IN_MouseWheelAnalog(ev.Data3);
+#endif
 				if (surface?.HandleInputEvent(in ev) ?? false)
 					break;
 

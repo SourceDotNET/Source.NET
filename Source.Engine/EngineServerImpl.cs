@@ -1103,7 +1103,17 @@ internal class EngineServer(Cbuf Cbuf, Host Host) : IEngineServer
 	}
 
 	public float GetClientConVarFloat(int client, ReadOnlySpan<char> cvar, float fallback) {
-		throw new NotImplementedException();
+		if (client < 1 || client > sv.GetClientCount()) {
+			DevMsg(1, "GetClientConVarValue: player invalid index %i\n", client);
+			return fallback;
+		}
+
+		ReadOnlySpan<char> value = sv.GetClient(client - 1)!.GetUserSetting(cvar);
+		if (value.IsEmpty || value[0] == '\0')
+			return fallback;
+
+		float result = (float)atof(value);
+		return float.IsFinite(result) ? result : fallback;
 	}
 
 	public ref CSteamID GMOD_GetPlayerOwnerSteamID(Edict client) {

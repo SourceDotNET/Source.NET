@@ -153,7 +153,7 @@ public partial class BreakableProp : BaseProp, IBreakableWithPropData, IPlayerPi
 			throw new NotImplementedException();
 	}
 
-	public void SetPhysicsAttacker(BasePlayer? entity, TimeUnit_t time) {
+	public override void SetPhysicsAttacker(BasePlayer? entity, TimeUnit_t time) {
 		PhysicsAttacker.Set(entity);
 		LastPhysicsInfluenceTime = time;
 	}
@@ -352,7 +352,7 @@ public partial class PhysicsProp : BreakableProp
 	float ForceToEnableMotion;
 
 	bool FirstCollisionAfterLaunch;
-	bool ThrownByPlayer;
+	internal bool ThrownByPlayer;
 
 	public OutputEvent OnPhysGunPickup_ = new();
 	public OutputEvent OnPhysGunPunt = new();

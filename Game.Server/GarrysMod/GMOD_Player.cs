@@ -69,6 +69,20 @@ public partial class GMOD_Player : HL2MP_Player
 
 	public bool Transition;
 
+	public ReadOnlySpan<char> GetPlayerInfo(ReadOnlySpan<char> name, ReadOnlySpan<char> defaultValue) => GetInfo(name);
+
+	public float GetSnapAngles() => Math.Clamp((float)atof(GetPlayerInfo("gm_snapangles", "45")), -360f, 360f);
+
+	public void SnapToGrid(ref Vector3 vec) {
+		float grid = Math.Clamp((float)atof(GetPlayerInfo("gm_snapgrid", "0")), 0f, 4096f);
+		if (grid <= 0)
+			return;
+
+		vec.X = MathF.Round(vec.X / grid) * grid;
+		vec.Y = MathF.Round(vec.Y / grid) * grid;
+		vec.Z = MathF.Round(vec.Z / grid) * grid;
+	}
+
 	public override void InitialSpawn() {
 		SetModel("models/player.mdl");
 		base.InitialSpawn();

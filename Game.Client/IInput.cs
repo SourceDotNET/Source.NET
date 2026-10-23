@@ -20,6 +20,9 @@ public interface IInput
 	void ExtraMouseSample(double frametime, bool active);
 	void ActivateMouse();
 	void DeactivateMouse();
+#if GMOD_DLL
+	void MouseWheeled(int delta);
+#endif
 	void ClearStates();
 	void CAM_Think();
 	ref UserCmd GetUserCmd(int sequenceNumber);

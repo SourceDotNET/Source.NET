@@ -962,6 +962,69 @@ public static partial class LuaEntity
 		return 0;
 	}
 
+	const int MAX_PHYSOBJECT_LIST = 0x400;
+
+	[LuaMethod]
+	static int Entity__GetPhysicsObject(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+#if GAME_DLL
+		if (ent.Edict() != null && ent.EntIndex() != 0)
+			LuaPhysObj.Push_PhysObj(ent.VPhysicsGetObject());
+		else
+			LuaPhysObj.Push_PhysObj(g_PhysWorldObject);
+#else
+		LuaPhysObj.Push_PhysObj(ent.VPhysicsGetObject());
+#endif
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetPhysicsObjectNum(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+#if GAME_DLL
+		if (ent.Edict() == null || ent.EntIndex() == 0) {
+			LuaPhysObj.Push_PhysObj(g_PhysWorldObject);
+			return 1;
+		}
+#endif
+		int index = (int)lua.GetNumber(2);
+		if (index < 0) {
+			DevWarning($"Entity:GetPhysicsObjectNum - Out of bounds physics object - min 0, got {index}\n");
+			return 0;
+		}
+
+		IPhysicsObject[] list = System.Buffers.ArrayPool<IPhysicsObject>.Shared.Rent(MAX_PHYSOBJECT_LIST);
+		try {
+			int count = ent.VPhysicsGetObjectList(list.AsSpan(0, MAX_PHYSOBJECT_LIST));
+			if (count == 0)
+				return 0;
+
+			if (index >= count) {
+				DevWarning($"Entity:GetPhysicsObjectNum - Out of bounds physics object - max {count - 1}, got {index}\n");
+				return 0;
+			}
+
+			LuaPhysObj.Push_PhysObj(list[index]);
+			return 1;
+		}
+		finally {
+			System.Buffers.ArrayPool<IPhysicsObject>.Shared.Return(list, true);
+		}
+	}
+
+	[LuaMethod]
+	static int Entity__GetPhysicsObjectCount(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		IPhysicsObject[] list = System.Buffers.ArrayPool<IPhysicsObject>.Shared.Rent(MAX_PHYSOBJECT_LIST);
+		try {
+			lua.PushNumber(ent.VPhysicsGetObjectList(list.AsSpan(0, MAX_PHYSOBJECT_LIST)));
+			return 1;
+		}
+		finally {
+			System.Buffers.ArrayPool<IPhysicsObject>.Shared.Return(list, true);
+		}
+	}
+
 	[LuaMethod]
 	static int Entity__GetPos(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;

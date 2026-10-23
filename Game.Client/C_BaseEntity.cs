@@ -957,7 +957,17 @@ public partial class C_BaseEntity : IClientEntity
 	IPhysicsObject? PhysicsObject = null!;
 	public void VPhysicsUpdate(IPhysicsObject physics) { }
 	public IPhysicsObject? VPhysicsGetObject() => PhysicsObject;
-	public int VPhysicsGetObjectList(Span<IPhysicsObject> list) => throw new NotImplementedException();
+	public virtual int VPhysicsGetObjectList(Span<IPhysicsObject?> list) {
+		IPhysicsObject? phys = VPhysicsGetObject();
+		if (phys != null) {
+			Assert((phys.GetGameFlags() & PhysicsFlags.MultiObjectEntity) == 0);
+			if (list.Length > 0) {
+				list[0] = phys;
+				return 1;
+			}
+		}
+		return 0;
+	}
 
 	public bool IsFloating() => false;
 
@@ -1241,8 +1251,17 @@ public partial class C_BaseEntity : IClientEntity
 		if (nModelType == ModelType.Studio || nModelType == ModelType.Brush)
 			modelinfo.GetModelRenderBounds(GetModel(), out mins, out maxs);
 		else {
-			// todo
-			mins = maxs = default;
+			if (GetRenderAngles() == CollisionProp().GetCollisionAngles()) {
+				mins = CollisionProp().OBBMins();
+				maxs = CollisionProp().OBBMaxs();
+			}
+			else {
+				Assert(CollisionProp().GetCollisionAngles() == vec3_angle);
+				if (CollisionProp().BoundingRadius() == 0.0f)
+					mins = maxs = vec3_origin;
+				else
+					MathLib.IRotateAABB(EntityToWorldTransform(), CollisionProp().OBBMins(), CollisionProp().OBBMaxs(), out mins, out maxs);
+			}
 		}
 	}
 

@@ -1,8 +1,10 @@
 using Game.Shared;
 
 using Source.Common;
+using Source.Common.Physics;
 
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace Game.Server;
 
@@ -60,6 +62,12 @@ public partial class PropVehicleDriveable : BaseAnimating
 	public partial Vector3 GunCrosshair { get; set; }
 	[NetworkVar("m_bLocked")]
 	public partial bool Locked { get; set; }
+	readonly FourWheelVehiclePhysics VehiclePhysics = new();
+	[MethodImpl(MethodImplOptions.AggressiveInlining)] public FourWheelVehiclePhysics GetPhysics() => VehiclePhysics;
 
 	public override bool IsVehicle() => true;
+
+	public override int VPhysicsGetObjectList(Span<IPhysicsObject?> list) {
+		return GetPhysics().VPhysicsGetObjectList(list);
+	}
 }
