@@ -31,23 +31,6 @@ using Color = Source.Color;
 namespace Game;
 
 
-public static class ClassMap
-{
-	static bool Initialized;
-	public static void Init() {
-		if (Initialized) return;
-		Initialized = true;
-		// Here is where we start initializing things based on LinkEntityToClassAttribute's
-		var typePairs = Assembly.GetExecutingAssembly().GetTypesWithAttributeMulti<LinkEntityToClassAttribute>();
-		foreach (var type in typePairs) {
-			var attr = type.Value;
-
-			var factoryType = typeof(CEntityFactory<>).MakeGenericType(type.Key);
-			Activator.CreateInstance(factoryType, [type.Value.LocalName]);
-		}
-	}
-}
-
 public interface IEntityFactory
 {
 	IServerNetworkable? Create(ReadOnlySpan<char> className);

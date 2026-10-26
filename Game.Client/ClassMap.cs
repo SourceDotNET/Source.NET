@@ -6,8 +6,6 @@ using Source;
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -32,24 +30,6 @@ public class ClassMap : IClassMap
 {
 	public static readonly ClassMap g_ClassMap = new();
 	public static ClassMap GetClassMap() => g_ClassMap;
-	static ClassMap() {
-		// Here is where we start initializing things based on LinkEntityToClassAttribute's
-		var typePairs = Assembly.GetExecutingAssembly().GetTypesWithAttributeMulti<LinkEntityToClassAttribute>();
-		foreach (var type in typePairs) {
-			var attr = type.Value;
-
-			DynamicMethod m = new DynamicMethod("LinkEntity_Instantiate" + type.Key.Name + "_ToMap_" + attr.LocalName, typeof(C_BaseEntity), []);
-			ILGenerator il = m.GetILGenerator();
-
-			il.Emit(OpCodes.Newobj, type.Key.GetConstructor([]) ?? throw new Exception("no constructor for auto factory"));
-			il.Emit(OpCodes.Castclass, typeof(C_BaseEntity));
-			il.Emit(OpCodes.Ret);
-
-			DispatchFunction dispatch = m.CreateDelegate<DispatchFunction>();
-
-			GetClassMap().Add(type.Key, attr.LocalName, type.Key.Name, dispatch);
-		}
-	}
 
 
 	readonly Dictionary<ulong, ClassEntry> ClassDict = [];
