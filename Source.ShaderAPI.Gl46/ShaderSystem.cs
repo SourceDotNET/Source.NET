@@ -104,6 +104,7 @@ public class ShaderSystem : IShaderSystemInternal
 				ShaderAPI.ShadeMode(ShadeMode.Flat);
 
 			PrepForShaderDraw(shader, parms, renderState);
+			renderState.Activate();
 
 			ref BasePerMaterialContextData? contextData = ref ((ShadowStateGl46)renderState).ContextData;
 
@@ -266,7 +267,6 @@ public class ShaderSystem : IShaderSystemInternal
 		Assert(RenderState == null);
 		// LATER; plug into spew?
 		RenderState = renderState;
-		renderState?.Activate(); // Activate the render state, this flushes out UBO's etc
 	}
 
 	public void InitShaderInstance(IShader shader, IMaterialVar[]? shaderParams, ReadOnlySpan<char> materialName, ReadOnlySpan<char> textureGroupName) {
