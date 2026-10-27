@@ -473,6 +473,8 @@ public class Material : IMaterialInternal
 		if (IsPrecachedVars())
 			return true;
 
+		MaterialLock hMaterialLock = materials.Lock();
+
 		// How should we load VMT includes?
 		// How should we allow async?
 
@@ -509,6 +511,7 @@ public class Material : IMaterialInternal
 			}
 		}
 
+		materials.Unlock(hMaterialLock);
 		return ok;
 	}
 
