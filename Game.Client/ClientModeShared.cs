@@ -1,4 +1,4 @@
-﻿using Game.Client.HUD;
+using Game.Client.HUD;
 using Game.Shared;
 
 using Source;
@@ -164,6 +164,15 @@ public class ClientModeShared : GameEventListener, IClientMode
 
 		if (HudElementKeyInput(down, keynum, currentBinding) == 0)
 			return 0;
+
+#if GMOD_DLL
+		if (surface.IsCursorVisible() && (keynum == ButtonCode.MouseWheelUp || keynum == ButtonCode.MouseWheelDown))
+			return 0;
+#endif
+
+		BaseCombatWeapon? activeWeapon = C_BaseCombatWeapon.GetActiveWeapon();
+		if (activeWeapon != null)
+			return activeWeapon.KeyInput(down, keynum, currentBinding);
 
 		return 1;
 	}

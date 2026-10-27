@@ -197,6 +197,26 @@ public static class PhysicsSharedGlobals
 		return flags;
 	}
 
+	public static bool PhysHasContactWithOtherInDirection(IPhysicsObject physics, in Vector3 dir) {
+		bool hit = false;
+		object? gameData = physics.GetGameData();
+		IPhysicsFrictionSnapshot snapshot = physics.CreateFrictionSnapshot();
+		while (snapshot.IsValid()) {
+			IPhysicsObject? other = snapshot.GetObject(1);
+			if (other!.GetGameData() != gameData) {
+				snapshot.GetSurfaceNormal(out Vector3 normal);
+				if (Vector3.Dot(normal, dir) > 0) {
+					hit = true;
+					break;
+				}
+			}
+			snapshot.NextFrictionData();
+		}
+		physics.DestroyFrictionSnapshot(snapshot);
+
+		return hit;
+	}
+
 	public static void PhysRecheckObjectPair(IPhysicsObject obj0, IPhysicsObject obj1) {
 		if (!obj0.IsStatic())
 			obj0.RecheckCollisionFilter();

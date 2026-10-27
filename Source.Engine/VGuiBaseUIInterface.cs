@@ -489,7 +489,13 @@ public class EngineVGui(
 		if (staticGameUIFuncs == null)
 			return;
 
-		if (staticGameUIFuncs.UpdateProgressBar(progress, localize.Find(desc)))
+		if (!desc.IsEmpty && desc[0] == '#') {
+			ReadOnlySpan<char> localized = localize.Find(desc);
+			if (!localized.IsEmpty)
+				desc = localized;
+		}
+
+		if (staticGameUIFuncs.UpdateProgressBar(progress, desc))
 			Host.View.RenderGuiOnly();
 	}
 	public void StartCustomProgress() {

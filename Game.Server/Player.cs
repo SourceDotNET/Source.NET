@@ -385,6 +385,10 @@ public partial class BasePlayer : BaseCombatCharacter
 	protected PlayerPhysFlag PhysicsFlags;
 	public int Train;
 
+	int MouseWheelValue;
+	public int MouseWheel() => MouseWheelValue;
+	public void SetMouseWheel(int value) => MouseWheelValue = value;
+
 	public void SetPhysicsFlag(PlayerPhysFlag flag, bool set) {
 		if (set)
 			PhysicsFlags |= flag;
@@ -1583,6 +1587,7 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	public virtual void PlayerRunCommand(UserCmd userCmd, IMoveHelper s_MoveHelperServer) {
 		TouchedPhysObject = false;
+		MouseWheelValue = userCmd.ScrollWheelSpeed;
 
 		if (pl.FixAngle == (int)FixAngle.None)
 			MathLib.VectorCopy(userCmd.ViewAngles, out pl.ViewingAngle);

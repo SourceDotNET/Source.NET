@@ -90,6 +90,9 @@ public class PhysicsSurfaceProps : IPhysicsSurfaceProps
 	}
 
 	public nint GetSurfaceIndex(ReadOnlySpan<char> surfacePropName) {
+		if (surfacePropName.IsStringEmpty)
+			return -1;
+
 		if (surfacePropName[0] == '$') {
 			nint index = GetReservedSurfaceIndex(surfacePropName);
 			if (index >= 0)

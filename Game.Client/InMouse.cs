@@ -1,6 +1,7 @@
 ﻿using Source.Common.Commands;
 using Source.Common.GUI;
 using Source.Common.Launcher;
+using Source.GUI.Controls;
 
 namespace Game.Client;
 
@@ -43,9 +44,26 @@ public partial class Input
 
 			AccumulatedMouseXMovement = 0;
 			AccumulatedMouseYMovement = 0;
+#if GMOD_DLL
+			MouseWheel = 0;
+#endif
 			launcher.SetWindowRelativeMouseMode(false);
 		}
 	}
+
+#if GMOD_DLL
+	int MouseWheel;
+
+	public void MouseWheeled(int delta) {
+		if (!Surface.IsCursorVisible()) {
+			MouseWheel += delta;
+			return;
+		}
+
+		if (input.GetMouseOver() is Panel panel && panel.IsWorldClicker())
+			MouseWheel += delta;
+	}
+#endif
 
 	ConVar m_filter = new("0", FCvar.Archive, "Mouse filtering (set this to 1 to average the mouse over 2 frames).");
 	ConVar sensitivity = new("3", FCvar.Archive, "Mouse sensitivity.", 0.0001f, 1000);
