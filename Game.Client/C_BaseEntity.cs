@@ -1386,6 +1386,12 @@ public partial class C_BaseEntity : IClientEntity
 
 		UpdateOnRemove();
 		Term();
+
+		LuaEntityObject?.UnReference();
+		LuaEntityObject = null;
+		LuaTableObject?.UnReference();
+		LuaTableObject = null;
+		LuaCalcAbsolutePosition.UnReference();
 	}
 
 	public int DataObjectTypes;
@@ -1421,12 +1427,6 @@ public partial class C_BaseEntity : IClientEntity
 		DestroyModelInstance();
 		RemoveFromLeafSystem();
 		RemoveFromAimEntsList();
-
-		LuaEntityObject?.UnReference();
-		LuaEntityObject = null;
-		LuaTableObject?.UnReference();
-		LuaTableObject = null;
-		LuaCalcAbsolutePosition.UnReference();
 	}
 
 	public bool OnPredictedEntityRemove(bool isbeingremoved, C_BaseEntity predicted) {
