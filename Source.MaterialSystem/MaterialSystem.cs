@@ -1487,9 +1487,14 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 
 	public void UncacheAllMaterials() {
 		// todo: finish me!!
+		MaterialLock hLock = Lock();
+		Flush(true);
+
 		foreach (var material in MaterialDict) {
 			material.Uncache();
 		}
+
+		Unlock(hLock);
 	}
 
 	public void ReloadTextures() {

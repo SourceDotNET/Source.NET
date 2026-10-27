@@ -1179,11 +1179,13 @@ public class Material : IMaterialInternal
 	}
 
 	private void CleanUpShaderParams() {
-
+		ShaderParams = null;
+		VarCount = 0;
 	}
 
 	private void CleanUpStateSnapshots() {
-
+		if (IsValidRenderState())
+			materials.ShaderSystem.CleanupRenderState(ShaderRenderState);
 	}
 
 	int EnumerationID;

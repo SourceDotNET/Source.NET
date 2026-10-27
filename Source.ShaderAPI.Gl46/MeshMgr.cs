@@ -16,7 +16,7 @@ public class MeshMgr : IMeshMgr
 	internal IMaterialSystem MaterialSystem;
 
 	internal void Flush() {
-		BufferedMesh.Flush();
+		BufferedMesh?.Flush();
 	}
 
 	internal void DiscardVertexBuffers() {
@@ -111,7 +111,7 @@ public class MeshMgr : IMeshMgr
 	List<VertexBufferGl46> DynamicVertexBuffers = [];
 	IndexBufferGl46? DynamicIndexBuffer;
 
-	BufferedMeshGl46 BufferedMesh;
+	BufferedMeshGl46? BufferedMesh;
 	DynamicMeshGl46 DynamicMesh;
 	DynamicMeshGl46 DynamicFlexMesh;
 	uint ZeroVertexBuffer;

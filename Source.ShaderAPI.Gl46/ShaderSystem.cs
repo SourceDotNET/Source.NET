@@ -350,7 +350,12 @@ public class ShaderSystem : IShaderSystemInternal
 	}
 
 	private void InitRenderStateFlags(ref IShaderShadow renderState, IMaterialVar[] shaderParams) {
+		renderState.SetFlags(0);
+	}
 
+	public void CleanupRenderState(IShaderShadow? renderState) {
+		if (renderState != null)
+			((ShadowStateGl46)renderState).CleanupRenderState();
 	}
 
 	public void Draw(bool makeActualDrawCall = true) {

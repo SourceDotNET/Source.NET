@@ -67,6 +67,10 @@ public class ShadowStateGl46 : IShaderShadow
 	public void SetShaderUniform(IMaterialVar textureVar) {
 		shaderUniforms.Add(textureVar);
 	}
+	internal void CleanupRenderState() {
+		ContextData = null;
+		shaderUniforms.Clear();
+	}
 	public void ActivateShaderUniforms() {
 		foreach (var var in shaderUniforms) {
 			ShaderAPI.SetShaderUniform(var);
