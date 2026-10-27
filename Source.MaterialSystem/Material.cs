@@ -272,7 +272,7 @@ public class Material : IMaterialInternal
 	readonly List<FileNameHandle_t> VMTIncludes = [];
 
 	private string GetTextureGroupName() {
-		return "";
+		return texGroupName;
 	}
 
 	public static bool LoadVMTFile(IFileSystem fileSystem, ref KeyValues keyValues, KeyValues patchKeyValues, ReadOnlySpan<char> materialName, bool absolutePath, List<FileNameHandle_t>? includes = null) {
