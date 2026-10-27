@@ -1,7 +1,5 @@
 using Game.Shared;
 
-using Microsoft.Extensions.DependencyInjection;
-
 using Source;
 using Source.Common;
 using Source.Common.Commands;
@@ -18,10 +16,6 @@ namespace Game.Server;
 
 public static class SourceDllMain
 {
-	public static void Link(IServiceCollection services) {
-		ClassMap.Init();
-	}
-
 	[Dependency] public static IEngineServer engine { get; private set; } = null!;
 	[Dependency] public static IFileSystem filesystem { get; private set; } = null!;
 	[Dependency] public static ServerGlobalVariables gpGlobals { get; private set; } = null!;
