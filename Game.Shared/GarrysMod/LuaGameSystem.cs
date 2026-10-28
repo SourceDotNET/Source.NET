@@ -42,8 +42,7 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 			gGM.LoadGamemode(Gamemode, false);
 			gGM.SetGamemode(Gamemode, true);
 		}
-		// Currently breaking things, uncomment once the path is fully implemented.
-		// RecacheMaterials();
+		RecacheMaterials();
 	}
 
 	static void RecacheMaterials() {

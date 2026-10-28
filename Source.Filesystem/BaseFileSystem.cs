@@ -444,7 +444,26 @@ public partial class BaseFileSystem : IFileSystem
 	}
 
 	public IFileHandle? Open(ReadOnlySpan<char> fileName, FileOpenOptions options, ReadOnlySpan<char> pathID) {
+		if ((options & FileOpenOptions.Append) == FileOpenOptions.Read && (options & FileOpenOptions.Extended) == 0) {
+			Span<char> fileNameBuff = stackalloc char[MAX_PATH];
+			return FirstToThePost<IFileHandle?, Open_Op>(FixUpPath(fileName, fileNameBuff), pathID, new Open_Op(options), null, out _);
+		}
 		return FirstToThePost<IFileHandle?, Open_Op>(fileName, pathID, new Open_Op(options), null, out _);
+	}
+
+	private static ReadOnlySpan<char> FixUpPath(ReadOnlySpan<char> fileName, Span<char> fixedUpFileName) {
+		strcpy(fixedUpFileName, fileName);
+		StrTools.FixSlashes(fixedUpFileName, StrTools.CORRECT_PATH_SEPARATOR);
+		StrTools.FixDoubleSlashes(fixedUpFileName);
+
+		Span<char> fixedUp = fixedUpFileName[..(int)strlen(fixedUpFileName)];
+		bool isAbsolute = (fixedUp.Length > 1 && fixedUp[1] == ':') || (fixedUp.Length > 0 && (fixedUp[0] == '/' || fixedUp[0] == '\\'));
+		if (!isAbsolute) {
+			for (int i = 0; i < fixedUp.Length; i++)
+				fixedUp[i] = char.ToLowerInvariant(fixedUp[i]);
+		}
+
+		return fixedUp;
 	}
 
 

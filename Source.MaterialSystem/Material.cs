@@ -272,7 +272,7 @@ public class Material : IMaterialInternal
 	readonly List<FileNameHandle_t> VMTIncludes = [];
 
 	private string GetTextureGroupName() {
-		return "";
+		return texGroupName;
 	}
 
 	public static bool LoadVMTFile(IFileSystem fileSystem, ref KeyValues keyValues, KeyValues patchKeyValues, ReadOnlySpan<char> materialName, bool absolutePath, List<FileNameHandle_t>? includes = null) {
@@ -473,6 +473,8 @@ public class Material : IMaterialInternal
 		if (IsPrecachedVars())
 			return true;
 
+		MaterialLock hMaterialLock = materials.Lock();
+
 		// How should we load VMT includes?
 		// How should we allow async?
 
@@ -509,6 +511,7 @@ public class Material : IMaterialInternal
 			}
 		}
 
+		materials.Unlock(hMaterialLock);
 		return ok;
 	}
 
@@ -1179,11 +1182,13 @@ public class Material : IMaterialInternal
 	}
 
 	private void CleanUpShaderParams() {
-
+		ShaderParams = null;
+		VarCount = 0;
 	}
 
 	private void CleanUpStateSnapshots() {
-
+		if (IsValidRenderState())
+			materials.ShaderSystem.CleanupRenderState(ShaderRenderState);
 	}
 
 	int EnumerationID;

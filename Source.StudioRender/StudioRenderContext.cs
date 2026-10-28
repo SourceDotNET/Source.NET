@@ -580,7 +580,7 @@ public class StudioRenderContext(IMaterialSystem materialSystem, IStudioDataCach
 		lodData.Materials![i] = material!;
 		if (material != null) {
 			// Increment the reference count for the material.
-			// material.IncrementReferenceCount();
+			material.IncrementReferenceCount();
 			threadData.Context.ComputeMaterialFlags(hdr, lodData, material);
 			lodData.MaterialFlags[i] = UsesMouthShader(material) ? 1 : 0;
 		}
