@@ -263,7 +263,7 @@ public class SoundEmitterSystemBase : ISoundEmitterSystemBase
 		int i, c;
 
 		FileNameHandle_t hFilename = filesystem.FindFileName(name);
-		if (hFilename == 0) {
+		if (hFilename != 0) {
 			// First, make sure it's known
 			c = SoundKeyValues.Count;
 			for (i = 0; i < c; i++)
