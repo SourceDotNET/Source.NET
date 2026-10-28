@@ -576,7 +576,7 @@ public class ShaderSystem : IShaderSystemInternal
 	}
 
 	private unsafe bool LoadCachedProgram(ShaderCompileJob job) {
-		using IFileHandle? handle = FileSystem.Open(job.CachePath, FileOpenOptions.Read | FileOpenOptions.Binary, "DEFAULT_WRITE_PATH");
+		using IFileHandle? handle = FileSystem.Open(job.CachePath, FileOpenOptions.Read | FileOpenOptions.Binary, "MOD");
 		if (handle == null || handle.Stream.Length <= sizeof(int))
 			return false;
 
@@ -718,7 +718,7 @@ public class ShaderSystem : IShaderSystemInternal
 			if (combos.IsEmpty)
 				Msg($"Compiled shader: {shader.Name} ({shader.TypeName})\n");
 			else
-				Msg($"Compiled shader: {shader.Name} ({shader.TypeName}) [{combos}]\n");
+				Msg($"Compiled shader: {shader.Name} ({shader.TypeName}) [{string.Join(';', combos.ToString().Split(';').Where(x => !x.EndsWith(" 0")))}]\n");
 		}
 	}
 

@@ -13,7 +13,7 @@ public static class OptimizedModel
 {
 	public class MaterialReplacementHeader
 	{
-		public const int SIZEOF = sizeof(short) + 2 + sizeof(int);
+		public const int SIZEOF = sizeof(short) + sizeof(int);
 
 		Memory<byte> Data;
 		int ThisOffset;

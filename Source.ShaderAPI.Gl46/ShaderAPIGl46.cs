@@ -2576,12 +2576,13 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			glTextureSubImage2D(GetModifyTexture(), mip, x, y, Math.Max(width >> mip, 1), Math.Max(height >> mip, 1), ImageLoader.GetGLImageUploadFormat(srcFormat), ImageLoader.GetGLImageUploadType(srcFormat), data);
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 		var err = glGetError();
-		// System.Diagnostics.Debug.Assert(err == 0);
+		// Assert(err == 0);
 		if (err != 0) {
 			InternalTextureInfo tex = GetTexture(ModifyTextureHandle);
 			int levels = 0;
 			glGetTextureParameteriv(GetModifyTexture(), GL_TEXTURE_IMMUTABLE_LEVELS, &levels);
 			Warning($"glTextureSubImage2D error: {err} ('{tex.DebugName.String()}' {tex.Width}x{tex.Height} {tex.Format} levels {levels}, mip {mip} rect {x},{y} {width >> mip}x{height >> mip}, src {srcFormat} stride {srcStride})\n");
+			// Console.WriteLine(Environment.StackTrace);
 		}
 	}
 
@@ -3940,7 +3941,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		throw new NotImplementedException("Incomplete port of IShaderDynamicAPI");
 	}
 
-	public void PushDeformation(in DeformationBase deformation ) {
+	public void PushDeformation(in DeformationBase deformation) {
 		throw new NotImplementedException("Incomplete port of IShaderDynamicAPI");
 	}
 
@@ -3956,11 +3957,11 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		throw new NotImplementedException("Incomplete port of IShaderDynamicAPI");
 	}
 
-	public void SetBooleanPixelShaderConstant(int var, ReadOnlySpan<bool> vec, bool force = false ) {
+	public void SetBooleanPixelShaderConstant(int var, ReadOnlySpan<bool> vec, bool force = false) {
 		throw new NotImplementedException("Incomplete port of IShaderDynamicAPI");
 	}
 
-	public void SetBooleanVertexShaderConstant(int var, ReadOnlySpan<bool> vec, bool force = false ) {
+	public void SetBooleanVertexShaderConstant(int var, ReadOnlySpan<bool> vec, bool force = false) {
 		throw new NotImplementedException("Incomplete port of IShaderDynamicAPI");
 	}
 
@@ -3982,11 +3983,11 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			IntRenderingParameters[parmNumber] = value;
 	}
 
-	public void SetIntegerPixelShaderConstant(int var, ReadOnlySpan<int> vec, bool force = false ) {
+	public void SetIntegerPixelShaderConstant(int var, ReadOnlySpan<int> vec, bool force = false) {
 		throw new NotImplementedException("Incomplete port of IShaderDynamicAPI");
 	}
 
-	public void SetIntegerVertexShaderConstant(int var, ReadOnlySpan<int> vec, bool force = false ) {
+	public void SetIntegerVertexShaderConstant(int var, ReadOnlySpan<int> vec, bool force = false) {
 		throw new NotImplementedException("Incomplete port of IShaderDynamicAPI");
 	}
 
