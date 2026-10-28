@@ -81,6 +81,52 @@ public static partial class LuaVGUI
 		return 0;
 	}
 
+#if !MENU_DLL
+	[LuaMethod]
+	static int Panel__SetSteamID(ILuaInterface lua) {
+		Panel? panel = Get_Panel(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+
+		if (panel is AvatarImage avatar) {
+			_ = ulong.TryParse(lua.CheckString(2), out ulong steamID);
+			int size = 0;
+			if (lua.GetType(3) == LuaType.Number) {
+				int value = (int)lua.GetNumber(3);
+				size = 32 < value ? 1 : 0;
+				if (64 < value)
+					size = 2;
+			}
+			avatar.SetSteamID(steamID, size);
+		}
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Panel__SetPlayer(ILuaInterface lua) {
+		Panel? panel = Get_Panel(1);
+		if (panel == null) {
+			lua.Error("Tried to use a NULL Panel!");
+			return 0;
+		}
+
+		if (panel is not AvatarImage avatar)
+			return 0;
+
+		int size = 0;
+		if (lua.GetType(3) == LuaType.Number) {
+			int value = (int)lua.GetNumber(3);
+			size = 32 < value ? 1 : 0;
+			if (64 < value)
+				size = 2;
+		}
+		avatar.SetPlayer(LuaPlayer.Get_Player(2, true), size);
+		return 0;
+	}
+#endif
+
 	[LuaMethod]
 	static int Panel__PaintManual(ILuaInterface lua) {
 		Panel? panel = Get_Panel(1);
