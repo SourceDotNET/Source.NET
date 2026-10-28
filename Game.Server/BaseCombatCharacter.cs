@@ -13,8 +13,6 @@ using System.Runtime.CompilerServices;
 
 namespace Game.Server;
 
-using FIELD = Source.FIELD<BaseCombatCharacter>;
-
 [Flags]
 public enum Capability
 {
@@ -70,6 +68,12 @@ public class Relationship
 [NetworkName("CBaseCombatCharacter")]
 public partial class BaseCombatCharacter : BaseFlex
 {
+	public BaseCombatCharacter() {
+		MyWeaponsForModify() = new();
+		LastWeapon = new();
+		ActiveWeapon = new();
+	}
+
 	public bool ForceServerRagdoll;
 
 	public virtual Source.Common.Mathematics.QAngle BodyAngles() => GetAbsAngles();
@@ -219,53 +223,80 @@ public partial class BaseCombatCharacter : BaseFlex
 	public virtual bool IsInAVehicle() => false;
 	public virtual bool ExitVehicle() => false;
 
-	public static readonly SendTable DT_BCCLocalPlayerExclusive = new(nameof(DT_BCCLocalPlayerExclusive), [
-		SendPropTime64(FIELD.OF(nameof(NextAttack))),
-	]);
+	[NetworkTable("DT_BCCLocalPlayerExclusive")]
+	public static readonly NetworkProp[] BCCLocalPlayerExclusiveProps = [
+		nameof(NextAttack),
+	];
 
-	public static readonly SendTable DT_BaseCombatCharacter = new(DT_BaseFlex, [
-		SendPropDataTable( "bcc_localdata", DT_BCCLocalPlayerExclusive, SendProxy_SendBaseCombatCharacterLocalDataTable ),
-		SendPropEHandle(FIELD.OF(nameof(ActiveWeapon))),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(MyWeapons)), SendPropEHandle( FIELD.OF_ARRAY(nameof(MyWeapons)))),
-		SendPropInt(FIELD.OF(nameof(BloodColor)), 5, 0)
-	]);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(BCCLocalPlayerExclusiveProps)) { Name = "bcc_localdata", Proxy = typeof(BCCLocalDataProxy) },
+		nameof(ActiveWeapon),
+		nameof(MyWeapons),
+		new(nameof(BloodColor)) { Bits = 5 },
+	];
 
 	public TimeUnit_t GetNextAttack() => NextAttack;
 	public void SetNextAttack(TimeUnit_t wait) => NextAttack = wait;
 
-	[NetworkName("m_flNextAttack")]
-	public TimeUnit_t NextAttack;
+	[NetworkVar("m_flNextAttack")]
+	public partial TimeUnit_t NextAttack { get; set; }
 	public float ImpactEnergyScale;
-	[NetworkName("m_hLastWeapon")]
-	public Handle<BaseCombatWeapon> LastWeapon = new();
-	[NetworkName("m_hActiveWeapon")]
-	public Handle<BaseCombatWeapon> ActiveWeapon = new();
-	[NetworkName("m_hMyWeapons")]
-	public InlineArrayNewMaxWeapons<Handle<BaseCombatWeapon>> MyWeapons = new();
-	[NetworkName("m_iAmmo")]
-	[NetworkArraySize(MAX_AMMO_TYPES)] public readonly NetworkArray<int> Ammo = new(MAX_AMMO_TYPES);
-	[NetworkName("m_bloodColor")]
-	public BloodColor BloodColor;
+	[NetworkVar("m_hLastWeapon")]
+	public partial Handle<BaseCombatWeapon> LastWeapon { get; set; }
+	[NetworkVar("m_hActiveWeapon")]
+	public partial Handle<BaseCombatWeapon> ActiveWeapon { get; set; }
+	[NetworkVar("m_hMyWeapons")]
+	public partial ref readonly InlineArrayNewMaxWeapons<Handle<BaseCombatWeapon>> MyWeapons { get; }
+	[NetworkVar("m_iAmmo")]
+	public partial ref readonly InlineArray256<int> Ammo { get; }
+	[NetworkVar("m_bloodColor")]
+	public partial BloodColor BloodColor { get; set; }
 
-	private static object? SendProxy_SendBaseCombatCharacterLocalDataTable(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID) {
-		recipients.ClearAllRecipients();
+	public static class BCCLocalDataProxy
+	{
+		public static object? Send(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID) {
+			recipients.ClearAllRecipients();
 
-		BaseCombatCharacter character = (BaseCombatCharacter)instance;
-		if (character != null) {
-			if (character.IsPlayer())
-				recipients.SetOnly(character.EntIndex() - 1);
-			else {
-				IServerVehicle vehicle = character.GetServerVehicle();
-				if (vehicle != null) {
-					BaseCombatCharacter driver = vehicle.GetPassenger();
-					if (driver != null)
-						recipients.SetOnly(driver.EntIndex() - 1);
+			BaseCombatCharacter character = (BaseCombatCharacter)instance;
+			if (character != null) {
+				if (character.IsPlayer())
+					recipients.SetOnly(character.EntIndex() - 1);
+				else {
+					IServerVehicle vehicle = character.GetServerVehicle();
+					if (vehicle != null) {
+						BaseCombatCharacter driver = vehicle.GetPassenger();
+						if (driver != null)
+							recipients.SetOnly(driver.EntIndex() - 1);
+					}
 				}
 			}
-		}
 
-		return instance;
+			return instance;
+		}
 	}
+	public override void SetTransmit(CheckTransmitInfo info, bool always) {
+		if (info.TransmitEdict.Get(EntIndex()) != 0)
+			return;
+
+		base.SetTransmit(info, always);
+
+		if (info.ClientEnt == Edict()) {
+			for (int i = 0; i < MAX_WEAPONS; i++) {
+				BaseCombatWeapon? weapon = MyWeapons[i].Get();
+				if (weapon == null)
+					continue;
+
+				weapon.SetTransmit(info, always);
+			}
+		}
+		else {
+			BaseCombatWeapon? activeWeapon = ActiveWeapon.Get();
+			if (activeWeapon != null && !activeWeapon.IsEffectActive(EntityEffects.NoDraw))
+				activeWeapon.SetTransmit(info, always);
+		}
+	}
+
 	public void ClearLastKnownArea() {
 		// TODO
 	}
@@ -613,7 +644,7 @@ public partial class BaseCombatCharacter : BaseFlex
 	public virtual void Weapon_Equip(BaseCombatWeapon weapon) {
 		for (int i = 0; i < MAX_WEAPONS; i++) {
 			if (MyWeapons[i].Get() == null) {
-				MyWeapons[i].Set(weapon);
+				MyWeaponsForModify()[i].Set(weapon);
 				break;
 			}
 		}
@@ -730,7 +761,7 @@ public partial class BaseCombatCharacter : BaseFlex
 		if (!suppressSound)
 			EmitSound("BaseCombatCharacter.AmmoPickup");
 
-		Ammo.Set(ammoIndex, Ammo[ammoIndex] + add);
+		AmmoForModify()[ammoIndex] = Ammo[ammoIndex] + add;
 
 		return add;
 	}
@@ -747,7 +778,7 @@ public partial class BaseCombatCharacter : BaseFlex
 	public void SetActiveWeapon(BaseCombatWeapon? newWeapon) {
 		BaseCombatWeapon? oldWeapon = ActiveWeapon.Get();
 		if (newWeapon != oldWeapon) {
-			ActiveWeapon.Set(newWeapon);
+			ActiveWeapon = Handle<BaseCombatWeapon>.FromEntity(newWeapon);
 			OnChangeActiveWeapon(oldWeapon, newWeapon);
 		}
 	}
@@ -772,8 +803,6 @@ public partial class BaseCombatCharacter : BaseFlex
 
 	public int WeaponCount() => MAX_WEAPONS;
 	public BaseCombatWeapon? GetWeapon(int i) => MyWeapons[i].Get();
-
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BaseCombatCharacter);
 
 	public override void DoMuzzleFlash() {
 		BaseCombatWeapon? weapon = GetActiveWeapon();

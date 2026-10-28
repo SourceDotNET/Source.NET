@@ -302,9 +302,6 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 	}
 
 	private ITexture? CreatePowerOfTwoFBTexture() {
-		if (IsX360())
-			return null;
-
 		return materials.CreateNamedRenderTargetTextureEx2(
 			"_rt_PowerOfTwoFB",
 			1024, 1024, RenderTargetSizeMode.Default,
@@ -390,10 +387,6 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 			strcpy(textureName, MaterialDefines.FULL_FRAME_FRAMEBUFFER);
 
 		CreateRenderTargetFlags rtFlags = extraFlags | CreateRenderTargetFlags.HDR;
-		if (IsX360()) {
-			// just make the system memory texture only
-			rtFlags |= CreateRenderTargetFlags.NoEDRAM;
-		}
 		return materials.CreateNamedRenderTargetTextureEx2(
 			textureName.SliceNullTerminatedString(),
 			1, 1, RenderTargetSizeMode.FullFrameBuffer, materials.GetBackBufferFormat(),
@@ -403,27 +396,16 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 	}
 
 	private ITexture? CreateFullFrameDepthTexture() {
-		if (IsX360()) {
-			return materials.CreateNamedRenderTargetTextureEx2("_rt_FullFrameDepth", 1, 1,
-				RenderTargetSizeMode.FullFrameBuffer, materials.GetShadowDepthTextureFormat(), MaterialRenderTargetDepth.None,
-				TextureFlags.ClampS | TextureFlags.ClampT | TextureFlags.PointSample,
-				CreateRenderTargetFlags.NoEDRAM);
-		}
-		else
-			materials.AddTextureAlias("_rt_FullFrameDepth", "_rt_PowerOfTwoFB");
+		materials.AddTextureAlias("_rt_FullFrameDepth", "_rt_PowerOfTwoFB");
 
 		return null;
 	}
 
 	private ITexture? CreateResolvedFullFrameDepthTexture() {
-		if (IsPC()) {
-			return materials.CreateNamedRenderTargetTextureEx2("_rt_ResolvedFullFrameDepth", 1, 1,
-				RenderTargetSizeMode.FullFrameBuffer, ImageFormat.RGBA8888, MaterialRenderTargetDepth.Separate,
-				TextureFlags.ClampS | TextureFlags.ClampT | TextureFlags.PointSample,
-				CreateRenderTargetFlags.NoEDRAM);
-		}
-
-		return null;
+		return materials.CreateNamedRenderTargetTextureEx2("_rt_ResolvedFullFrameDepth", 1, 1,
+			RenderTargetSizeMode.FullFrameBuffer, ImageFormat.RGBA8888, MaterialRenderTargetDepth.Separate,
+			TextureFlags.ClampS | TextureFlags.ClampT | TextureFlags.PointSample,
+			CreateRenderTargetFlags.NoEDRAM);
 	}
 
 	/// <summary>
@@ -452,13 +434,12 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 
 		// Create the render targets upon which mods may rely
 
-		if (IsPC())
-			// Create for all mods as vgui2 uses it for 3D painting
-			g_PowerOfTwoFBTexture.Init(CreatePowerOfTwoFBTexture());
+		// Create for all mods as vgui2 uses it for 3D painting
+		g_PowerOfTwoFBTexture.Init(CreatePowerOfTwoFBTexture());
 
 		// Create these for all mods because the engine references them
 		if (HardwareConfig.GetDXSupportLevel() >= 80) {
-			if (IsPC() && HardwareConfig.GetDXSupportLevel() >= 90 && HardwareConfig.GetHDRType() == HDRType.Float)
+			if (HardwareConfig.GetDXSupportLevel() >= 90 && HardwareConfig.GetHDRType() == HDRType.Float)
 				// Used for building HDR Cubemaps
 				g_BuildCubemaps16BitTexture.Init(CreateBuildCubemaps16BitTexture());
 
@@ -470,11 +451,9 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 				g_QuarterSizedFBTexture1.Init(CreateQuarterSizedFBTexture(1, 0));
 		}
 
-		if (IsPC()) {
-			g_TeenyFBTexture0.Init(CreateTeenyFBTexture(0));
-			g_TeenyFBTexture1.Init(CreateTeenyFBTexture(1));
-			g_TeenyFBTexture2.Init(CreateTeenyFBTexture(2));
-		}
+		g_TeenyFBTexture0.Init(CreateTeenyFBTexture(0));
+		g_TeenyFBTexture1.Init(CreateTeenyFBTexture(1));
+		g_TeenyFBTexture2.Init(CreateTeenyFBTexture(2));
 
 		g_FullFrameFBTexture0.Init(CreateFullFrameFBTexture(0));
 		g_FullFrameFBTexture1.Init(CreateFullFrameFBTexture(1));

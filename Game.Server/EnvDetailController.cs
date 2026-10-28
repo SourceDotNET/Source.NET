@@ -3,19 +3,18 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<EnvDetailController>;
 [LinkEntityToClass("env_detail_controller")]
-[NetworkName("CEnvDetailController")]
-public class EnvDetailController : BaseEntity
+[NetworkName("CEnvDetailController", Table = "DT_DetailController", NoBase = true)]
+public partial class EnvDetailController : BaseEntity
 {
-	public static readonly SendTable DT_DetailController = new([
-		SendPropFloat(FIELD.OF(nameof(FadeStartDist)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(FadeEndDist)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_DetailController);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(FadeStartDist)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeEndDist)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_flFadeStartDist")]
-	public float FadeStartDist;
-	[NetworkName("m_flFadeEndDist")]
-	public float FadeEndDist;
+	[NetworkVar("m_flFadeStartDist")]
+	public partial float FadeStartDist { get; set; }
+	[NetworkVar("m_flFadeEndDist")]
+	public partial float FadeEndDist { get; set; }
 }

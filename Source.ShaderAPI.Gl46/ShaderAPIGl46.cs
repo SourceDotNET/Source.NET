@@ -346,10 +346,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	ShaderAPITextureHandle_t LinearToGammaTableIdentityTexture;
 
 	public float LinearToGamma_HardwareSpecific(float linear) {
-		if (IsPC())
-			return MathLib.SrgbLinearToGamma(linear);
-		else
-			throw new NotImplementedException();
+		return MathLib.SrgbLinearToGamma(linear);
 	}
 
 	public void SetDefaultState() {
@@ -1577,68 +1574,66 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 		DebugDataExportFrame = CurrentFrame;
 
-		if (IsPC()) {
-			if (DebugTextureList != null)
-				DebugTextureList = null;
+		if (DebugTextureList != null)
+			DebugTextureList = null;
 
-			DebugTextureList = new KeyValues("TextureList");
+		DebugTextureList = new KeyValues("TextureList");
 
-			TextureMemoryUsedTotal = 0;
-			TextureMemoryUsedPicMip1 = 0;
-			TextureMemoryUsedPicMip2 = 0;
-			foreach (var texkvp in Textures) {
-				var tex = texkvp.Value;
-				TextureMemoryUsedTotal += tex.GetMemUsage();
+		TextureMemoryUsedTotal = 0;
+		TextureMemoryUsedPicMip1 = 0;
+		TextureMemoryUsedPicMip2 = 0;
+		foreach (var texkvp in Textures) {
+			var tex = texkvp.Value;
+			TextureMemoryUsedTotal += tex.GetMemUsage();
 
-				// Compute picmip memory usage
-				{
-					nuint numBytes = tex.GetMemUsage();
+			// Compute picmip memory usage
+			{
+				nuint numBytes = tex.GetMemUsage();
 
-					if (tex.Levels > 1) {
-						if (tex.GetWidth() > 4 || tex.GetHeight() > 4 || tex.GetDepth() > 4) {
-							nuint topmipsize = (nuint)ImageLoader.GetMemRequired(tex.GetWidth(), tex.GetHeight(), tex.GetDepth(), tex.GetImageFormat(), false);
-							numBytes -= topmipsize;
+				if (tex.Levels > 1) {
+					if (tex.GetWidth() > 4 || tex.GetHeight() > 4 || tex.GetDepth() > 4) {
+						nuint topmipsize = (nuint)ImageLoader.GetMemRequired(tex.GetWidth(), tex.GetHeight(), tex.GetDepth(), tex.GetImageFormat(), false);
+						numBytes -= topmipsize;
 
-							TextureMemoryUsedPicMip1 += numBytes;
+						TextureMemoryUsedPicMip1 += numBytes;
 
-							if (tex.GetWidth() > 8 || tex.GetHeight() > 8 || tex.GetDepth() > 8) {
-								nuint othermipsizeRatio = (nuint)(((tex.GetWidth() > 8) ? 2 : 1) * ((tex.GetHeight() > 8) ? 2 : 1) * ((tex.GetDepth() > 8) ? 2 : 1));
-								nuint othermipsize = topmipsize / othermipsizeRatio;
-								numBytes -= othermipsize;
-							}
-
-							TextureMemoryUsedPicMip1 += numBytes;
+						if (tex.GetWidth() > 8 || tex.GetHeight() > 8 || tex.GetDepth() > 8) {
+							nuint othermipsizeRatio = (nuint)(((tex.GetWidth() > 8) ? 2 : 1) * ((tex.GetHeight() > 8) ? 2 : 1) * ((tex.GetDepth() > 8) ? 2 : 1));
+							nuint othermipsize = topmipsize / othermipsizeRatio;
+							numBytes -= othermipsize;
 						}
-						else {
-							TextureMemoryUsedPicMip1 += numBytes;
-							TextureMemoryUsedPicMip2 += numBytes;
-						}
+
+						TextureMemoryUsedPicMip1 += numBytes;
 					}
 					else {
 						TextureMemoryUsedPicMip1 += numBytes;
 						TextureMemoryUsedPicMip2 += numBytes;
 					}
 				}
-
-				if (!DebugGetAllTextures) // && tex.LastBoundFrame != CurrentFrame, todo SetTextureState
-					continue;
-
-				if (tex.LastBoundFrame != CurrentFrame)
-					tex.TimesBoundThisFrame = 0;
-
-				KeyValues pSubKey = DebugTextureList.CreateNewKey();
-				pSubKey.SetString("Name", tex.DebugName.String());
-				pSubKey.SetString("TexGroup", tex.TextureGroupName.String());
-				pSubKey.SetInt("Size", (int)tex.GetMemUsage());
-				if (tex.GetCount() > 1)
-					pSubKey.SetInt("Count", tex.GetCount());
-				pSubKey.SetString("Format", ImageLoader.GetName(tex.GetImageFormat()));
-				pSubKey.SetInt("Width", tex.GetWidth());
-				pSubKey.SetInt("Height", tex.GetHeight());
-
-				pSubKey.SetInt("BindsMax", tex.TimesBoundMax);
-				pSubKey.SetInt("BindsFrame", tex.TimesBoundThisFrame);
+				else {
+					TextureMemoryUsedPicMip1 += numBytes;
+					TextureMemoryUsedPicMip2 += numBytes;
+				}
 			}
+
+			if (!DebugGetAllTextures) // && tex.LastBoundFrame != CurrentFrame, todo SetTextureState
+				continue;
+
+			if (tex.LastBoundFrame != CurrentFrame)
+				tex.TimesBoundThisFrame = 0;
+
+			KeyValues pSubKey = DebugTextureList.CreateNewKey();
+			pSubKey.SetString("Name", tex.DebugName.String());
+			pSubKey.SetString("TexGroup", tex.TextureGroupName.String());
+			pSubKey.SetInt("Size", (int)tex.GetMemUsage());
+			if (tex.GetCount() > 1)
+				pSubKey.SetInt("Count", tex.GetCount());
+			pSubKey.SetString("Format", ImageLoader.GetName(tex.GetImageFormat()));
+			pSubKey.SetInt("Width", tex.GetWidth());
+			pSubKey.SetInt("Height", tex.GetHeight());
+
+			pSubKey.SetInt("BindsMax", tex.TimesBoundMax);
+			pSubKey.SetInt("BindsFrame", tex.TimesBoundThisFrame);
 		}
 	}
 

@@ -15,7 +15,6 @@ using System.Numerics;
 
 namespace Game.Server;
 
-using FIELD = FIELD<SceneEntity>;
 using DEFINE = Source.DEFINE<SceneEntity>;
 using EventType = Game.Shared.ChoreoEvent.EventType;
 
@@ -448,28 +447,28 @@ public partial class SceneEntity : PointEntity, IChoreoEventCallback
 
 	public const int MAX_ACTORS_IN_SCENE = 16;
 
-	[NetworkName("m_nSceneStringIndex")]
-	public int SceneStringIndex;
-	[NetworkName("m_bIsPlayingBack")]
-	public bool IsPlayingBack;
-	[NetworkName("m_bPaused")]
-	public bool Paused;
-	[NetworkName("m_bMultiplayer")]
-	public bool Multiplayer;
-	[NetworkName("m_flForceClientTime")]
-	public float ForceClientTime;
-	[NetworkName("m_hActorList")]
+	[NetworkVar("m_nSceneStringIndex")]
+	public partial int SceneStringIndex { get; set; }
+	[NetworkVar("m_bIsPlayingBack")]
+	public partial bool IsPlayingBack { get; set; }
+	[NetworkVar("m_bPaused")]
+	public partial bool Paused { get; set; }
+	[NetworkVar("m_bMultiplayer")]
+	public partial bool Multiplayer { get; set; }
+	[NetworkVar("m_flForceClientTime")]
+	public partial float ForceClientTime { get; set; }
+	[NetworkVar("m_hActorList")]
 	readonly List<EHANDLE> ActorList = [];
 
-	public static readonly SendTable DT_SceneEntity = new([
-		SendPropInt(FIELD.OF(nameof(SceneStringIndex)), 12, PropFlags.Unsigned),
-		SendPropBool(FIELD.OF(nameof(IsPlayingBack))),
-		SendPropBool(FIELD.OF(nameof(Paused))),
-		SendPropBool(FIELD.OF(nameof(Multiplayer))),
-		SendPropFloat(FIELD.OF(nameof(ForceClientTime)), 0, PropFlags.NoScale),
-		SendPropList<EHANDLE>(FIELD.OF(nameof(ActorList)), MAX_ACTORS_IN_SCENE, SendPropEHandle()),
-	]);
-	public static new readonly ServerClass ServerClass = new ServerClass(DT_SceneEntity);
+	[NetworkTable(NoBase = true)]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(SceneStringIndex)) { Bits = 12, Flags = PropFlags.Unsigned },
+		nameof(IsPlayingBack),
+		nameof(Paused),
+		nameof(Multiplayer),
+		new(nameof(ForceClientTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ActorList)) { Encoding = NetEncoding.List, Count = MAX_ACTORS_IN_SCENE },
+	];
 
 	public static readonly new DataMap DataDesc = new(typeof(SceneEntity), BaseEntity.DataDesc, [
 		DEFINE.KEYFIELD(nameof(SceneFile), FieldType.String, "SceneFile"),

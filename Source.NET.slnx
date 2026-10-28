@@ -28,7 +28,10 @@
     <Project Path="Source.CodeAnalysis.Lua/Source.CodeAnalysis.Lua.csproj">
       <Platform Project="x64" />
     </Project>
-    <Project Path="Source.CodeAnalysis.NetworkClasses/Source.CodeAnalysis.NetworkClasses.csproj">
+    <Project Path="Source.CodeAnalysis.VGUI/Source.CodeAnalysis.VGUI.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="Source.CodeAnalysis.EntityFactories/Source.CodeAnalysis.EntityFactories.csproj">
       <Platform Project="x64" />
     </Project>
     <Project Path="Source.CodeAnalysis.NetworkVars/Source.CodeAnalysis.NetworkVars.csproj">
@@ -161,6 +164,9 @@
   <Folder Name="/7. Tools/" />
   <Folder Name="/9. Tests/">
     <Project Path="Source.Common.Tests/Source.Common.Tests.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="Game.Server.Tests/Game.Server.Tests.csproj">
       <Platform Project="x64" />
     </Project>
   </Folder>

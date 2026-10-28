@@ -182,6 +182,7 @@ public class DrawTreeFrame : Frame
 		Tree.SetBounds(x, yOffset, w, t - (yOffset - y));
 	}
 
+	[UiMessage("TreeViewItemSelected")]
 	public void RecalculateSelectedHighlight() {
 		Assert(Tree != null);
 
@@ -203,28 +204,13 @@ public class DrawTreeFrame : Frame
 			DrawTreeSelectedPanel = (Panel?)data.GetPtr("PanelPtr");
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name == "TreeViewItemSelected") {
-			RecalculateSelectedHighlight();
-			return;
-		}
-		base.OnMessage(message, from);
-	}
-
 	static readonly KeyValues KV_Command_PerformLayout = new("Command", "command", "performlayout");
 	static readonly KeyValues KV_Command_ReloadScheme = new("Command", "command", "reloadscheme");
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (strcmp(command, "performlayout") == 0) {
-			DrawTreeSelectedPanel?.SendMessage(KV_Command_PerformLayout, this);
-			return;
-		}
-		else if (strieq(command, "reloadscheme")) {
-			DrawTreeSelectedPanel?.SendMessage(KV_Command_ReloadScheme, this);
-			return;
-		}
+	[UiCommand("performlayout")]
+	private void OnPerformLayout() => DrawTreeSelectedPanel?.SendMessage(KV_Command_PerformLayout, this);
 
-		base.OnCommand(command);
-	}
+	[UiCommand("reloadscheme")]
+	private void OnReloadScheme() => DrawTreeSelectedPanel?.SendMessage(KV_Command_ReloadScheme, this);
 }
 
 public class VGuiDrawTree

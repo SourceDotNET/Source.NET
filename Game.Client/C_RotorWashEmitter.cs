@@ -3,15 +3,14 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_RotorWashEmitter>;
 [NetworkName("CRotorWashEmitter")]
-public class C_RotorWashEmitter : C_BaseEntity
+public partial class C_RotorWashEmitter : C_BaseEntity
 {
-	public static readonly RecvTable DT_RotorWashEmitter = new(DT_BaseEntity, [
-		RecvPropFloat(FIELD.OF(nameof(Altitude))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_RotorWashEmitter);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Altitude)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_flAltitude")]
+	[NetworkVar("m_flAltitude")]
 	public float Altitude;
 }

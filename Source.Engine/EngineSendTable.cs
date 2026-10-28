@@ -8,6 +8,7 @@ using Source.Common.Hashing;
 using Source.Common.Networking;
 
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace Source.Engine;
 
@@ -27,19 +28,19 @@ public static class EngineSendTable
 		for (int i = 0; i < tables.Length; i++)
 			SendTables.Add(tables[i]);
 
-		SendTableCRC = ComputeCRC();
+		SendTableCRC = ComputeCRC(CollectionsMarshal.AsSpan(SendTables));
 
 		return true;
 	}
 
-	private static uint ComputeCRC() {
+	private static uint ComputeCRC(ReadOnlySpan<SendTable> tables) {
 		CRC32_t result = default;
 		CRC32.Init(ref result);
 
 		// walk the tables and checksum them
-		int c = SendTables.Count();
+		int c = tables.Length;
 		for (int i = 0; i < c; i++) {
-			SendTable st = SendTables[i];
+			SendTable st = tables[i];
 			result = SendTable_CRCTable(ref result, st);
 		}
 

@@ -3,5 +3,21 @@
 	     which emits Source.Generated.CvarRegistration for EngineBuilder.ConVar_Register to use instead of reflection. -->
 	<ItemGroup Condition="'@(Compile->WithMetadataValue('Identity', '..\Usings\GlobalUsings.cs'))' != ''">
 		<ProjectReference Include="$(MSBuildThisFileDirectory)Source.CodeAnalysis.ConVars\Source.CodeAnalysis.ConVars.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+		<ProjectReference Include="$(MSBuildThisFileDirectory)Source.CodeAnalysis.VGUI\Source.CodeAnalysis.VGUI.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(IsWindows)' != 'true'">
+		<Compile Remove="**\*.Win32.cs" />
+		<None Include="**\*.Win32.cs" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(IsOSX)' != 'true'">
+		<Compile Remove="**\*.OSX.cs" />
+		<None Include="**\*.OSX.cs" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(IsLinux)' != 'true'">
+		<Compile Remove="**\*.Linux.cs" />
+		<None Include="**\*.Linux.cs" />
 	</ItemGroup>
 </Project>

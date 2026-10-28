@@ -3,33 +3,32 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<Fish>;
 [LinkEntityToClass("fish")]
-[NetworkName("CFish")]
-public class Fish : BaseAnimating
+[NetworkName("CFish", Table = "DT_CFish", NoBase = true)]
+public partial class Fish : BaseAnimating
 {
-	public static readonly SendTable DT_CFish = new([
-		SendPropVector(FIELD.OF(nameof(PoolOrigin)), 0, PropFlags.Coord),
-		SendPropFloat(FIELD.OF(nameof(Le)), 7, 0, 0.0f, 360.0f),
-		SendPropFloat(FIELD.OF(nameof(X)), 7, 0, -255.0f, 255.0f),
-		SendPropFloat(FIELD.OF(nameof(Y)), 7, 0, -255.0f, 255.0f),
-		SendPropFloat(FIELD.OF(nameof(Z)), 0, PropFlags.Coord | PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(ModelIndex)), 14, 0),
-		SendPropInt(FIELD.OF(nameof(LifeState)), 3, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(WaterLevel)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_CFish);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(PoolOrigin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Le)) { Bits = 7, Low = 0.0f, High = 360.0f },
+		new(nameof(X)) { Bits = 7, Low = -255.0f, High = 255.0f },
+		new(nameof(Y)) { Bits = 7, Low = -255.0f, High = 255.0f },
+		new(nameof(Z)) { Bits = 0, Flags = PropFlags.Coord | PropFlags.NoScale },
+		new(nameof(ModelIndex)) { Encoding = NetEncoding.Int, Bits = 14 },
+		new(nameof(LifeState)) { Bits = 3, Flags = PropFlags.Unsigned },
+		new(nameof(WaterLevel)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_poolOrigin")]
-	public Vector3 PoolOrigin;
-	[NetworkName("m_angle")]
-	public float Le;
-	[NetworkName("m_x")]
-	public float X;
-	[NetworkName("m_y")]
-	public float Y;
-	[NetworkName("m_z")]
-	public float Z;
-	[NetworkName("m_waterLevel")]
-	public new float WaterLevel;
+	[NetworkVar("m_poolOrigin")]
+	public partial Vector3 PoolOrigin { get; set; }
+	[NetworkVar("m_angle")]
+	public partial float Le { get; set; }
+	[NetworkVar("m_x")]
+	public partial float X { get; set; }
+	[NetworkVar("m_y")]
+	public partial float Y { get; set; }
+	[NetworkVar("m_z")]
+	public partial float Z { get; set; }
+	[NetworkVar("m_waterLevel")]
+	public new partial float WaterLevel { get; set; }
 }

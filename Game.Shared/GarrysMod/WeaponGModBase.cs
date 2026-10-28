@@ -5,21 +5,6 @@ using Source;
 using Source.Common;
 using Source.Common.Mathematics;
 
-
-using Table =
-#if CLIENT_DLL
-	Source.Common.RecvTable;
-#else
-	Source.Common.SendTable;
-#endif
-
-using Class =
-#if CLIENT_DLL
-	Source.Common.ClientClass;
-#else
-	Source.Common.ServerClass;
-#endif
-
 // ====================================================================================================== //
 // WeaponHL2MPBase
 // ====================================================================================================== //
@@ -63,18 +48,11 @@ namespace Game.Server
 #endif
 		: BaseCombatWeapon
 	{
-		public static readonly Table DT_WeaponHL2MPBase = new(DT_BaseCombatWeapon, []);
-
-		public static readonly new Class
-#if CLIENT_DLL
-			ClientClass
-#else
-		ServerClass
-#endif
-			= new Class(DT_WeaponHL2MPBase);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
 
 #if CLIENT_DLL
-		public static readonly new DataMap PredMap = new([], typeof(WeaponHL2MPBase), BaseCombatWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
 		public override bool ShouldPredict() {
 			if (GetOwner() != null && GetOwner() == C_BasePlayer.GetLocalPlayer())
 				return true;
@@ -130,15 +108,9 @@ namespace Game.Server
 #endif
 		: WeaponHL2MPBase
 	{
-		public static readonly Table DT_BaseHL2MPCombatWeapon = new(DT_WeaponHL2MPBase, []);
-
-		public static readonly new Class
-#if CLIENT_DLL
-			ClientClass
-#else
-		ServerClass
-#endif
-			= new Class(DT_BaseHL2MPCombatWeapon);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
 
 		protected bool Lowered;
 		protected TimeUnit_t RaiseTime;
@@ -152,10 +124,6 @@ namespace Game.Server
 			}
 			return false;
 		}
-
-#if CLIENT_DLL
-		public static readonly new DataMap PredMap = new([], typeof(BaseHL2MPCombatWeapon), BaseCombatWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
-#endif
 
 #if CLIENT_DLL
 		public override void OnDataChanged(DataUpdateType updateType) {

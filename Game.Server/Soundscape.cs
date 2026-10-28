@@ -211,7 +211,7 @@ public class EnvSoundscape : PointEntity
 				Util.TraceLine(target, update.PlayerPosition, Mask.SolidBrushOnly | Mask.Water, update.Player, Source.CollisionGroup.None, out Trace tr);
 
 				if (tr.Fraction == 1 && !tr.StartSolid) {
-					ref AudioParams audio = ref update.Player!.GetAudioParams();
+					ref AudioParams audio = ref update.Player!.GetAudioParamsForModify();
 					WriteAudioParamsTo(ref audio);
 					update.CurrentSoundscape = this;
 					update.InRange = true;
@@ -227,7 +227,7 @@ public class EnvSoundscape : PointEntity
 			DebugOverlay.Box(GetAbsOrigin(), new(-10, -10, -10), new(10, 10, 10), 255, 0, 255, 64, persist);
 
 			if (update.Player != null) {
-				ref AudioParams audio = ref update.Player.GetAudioParams();
+				ref readonly AudioParams audio = ref update.Player.GetAudioParams();
 				if (audio.Ent.Get() != this) {
 					if (InRangeOfPlayer(update.Player))
 						DebugOverlay.Line(GetAbsOrigin(), update.Player.WorldSpaceCenter(), 255, 255, 255, true, persist);
@@ -346,7 +346,7 @@ public class EnvSoundscapeTriggerable : EnvSoundscape
 
 		// Add us to the player's list of soundscapes and
 		player.TriggerSoundscapeList.Insert(0, GetRefEHandle());
-		WriteAudioParamsTo(ref player.GetAudioParams());
+		WriteAudioParamsTo(ref player.GetAudioParamsForModify());
 	}
 
 	public void DelegateEndTouch(BaseEntity ent) {
@@ -358,7 +358,7 @@ public class EnvSoundscapeTriggerable : EnvSoundscape
 		while (player.TriggerSoundscapeList.Count > 0) {
 			if (player.TriggerSoundscapeList[0].Get() is EnvSoundscapeTriggerable ss) {
 				// Make this one current.
-				ss.WriteAudioParamsTo(ref player.GetAudioParams());
+				ss.WriteAudioParamsTo(ref player.GetAudioParamsForModify());
 				return;
 			}
 			else
@@ -366,7 +366,7 @@ public class EnvSoundscapeTriggerable : EnvSoundscape
 		}
 
 		// No soundscapes left.
-		player.GetAudioParams().Ent.Set(null);
+		player.GetAudioParamsForModify().Ent.Set(null);
 	}
 
 	// Overrides the base class's think and prevents it from running at all.

@@ -33,12 +33,12 @@ public class OptionsDialog : PropertyDialog
 		AddPage(new OptionsSubVoice(this, null), "#GameUI_Voice");
 		// AddPage(new OptionsSubLegal(this, null), "#GameUI_Legal");
 #else
-#if WIN32
-		ConVarRef hap_HasDevice = new("hap_HasDevice");
-		hap_HasDevice.Init("hap_HasDevice", true);
-		// if (hap_HasDevice.GetBool())
-			// AddPage(new OptionsSubHaptics(this), "#GameUI_Haptics_TabTitle");
-#endif
+		if (IsWindows) {
+			ConVarRef hap_HasDevice = new("hap_HasDevice");
+			hap_HasDevice.Init("hap_HasDevice", true);
+			// if (hap_HasDevice.GetBool())
+				// AddPage(new OptionsSubHaptics(this), "#GameUI_Haptics_TabTitle");
+		}
 
 		// if (ModInfo.IsSinglePlayerOnly() && !ModInfo.NoDifficulty())
 			// AddPage(new OptionsSubDifficulty(this), "#GameUI_Difficulty");
@@ -79,20 +79,12 @@ public class OptionsDialog : PropertyDialog
 	}
 
 	static readonly KeyValues KV_GameUIHidden = new("GameUIHidden");
+	[UiMessage("GameUIHidden")]
 	public void OnGameUIHidden() {
 		for (int i = 0; i < GetChildCount(); i++) {
 			Panel child = GetChild(i);
 			if (child != null && child.IsVisible())
 				PostMessage(child, KV_GameUIHidden);
 		}
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name == "GameUIHidden") {
-			OnGameUIHidden();
-			return;
-		}
-
-		base.OnMessage(message, from);
 	}
 }

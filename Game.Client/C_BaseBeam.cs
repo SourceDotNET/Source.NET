@@ -3,57 +3,56 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_BaseBeam>;
-[NetworkName("CTEBaseBeam")]
-public class C_BaseBeam : C_BaseTempEntity
+[NetworkName("CTEBaseBeam", Table = "DT_BaseBeam", NoBase = true)]
+public partial class C_BaseBeam : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_BaseBeam = new([
-		RecvPropInt(FIELD.OF(nameof(ModelIndex))),
-		RecvPropInt(FIELD.OF(nameof(HaloIndex))),
-		RecvPropInt(FIELD.OF(nameof(StartFrame))),
-		RecvPropInt(FIELD.OF(nameof(FrameRate))),
-		RecvPropFloat(FIELD.OF(nameof(Life))),
-		RecvPropFloat(FIELD.OF(nameof(Width))),
-		RecvPropFloat(FIELD.OF(nameof(EndWidth))),
-		RecvPropInt(FIELD.OF(nameof(FadeLength))),
-		RecvPropFloat(FIELD.OF(nameof(Amplitude))),
-		RecvPropInt(FIELD.OF(nameof(Speed))),
-		RecvPropInt(FIELD.OF(nameof(R))),
-		RecvPropInt(FIELD.OF(nameof(G))),
-		RecvPropInt(FIELD.OF(nameof(B))),
-		RecvPropInt(FIELD.OF(nameof(A))),
-		RecvPropInt(FIELD.OF(nameof(Flags))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_BaseBeam);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(ModelIndex)) { Bits = 14 },
+		new(nameof(HaloIndex)) { Bits = 14 },
+		new(nameof(StartFrame)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(FrameRate)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Life)) { Bits = 8, Low = 0.0f, High = 25.6f },
+		new(nameof(Width)) { Bits = 10, Low = 0.0f, High = 128.0f },
+		new(nameof(EndWidth)) { Bits = 10, Low = 0.0f, High = 128.0f },
+		new(nameof(FadeLength)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Amplitude)) { Bits = 8, Low = 0.0f, High = 64.0f },
+		new(nameof(Speed)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(R)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(G)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(B)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(A)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Flags)) { Bits = 20, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_nModelIndex")]
+	[NetworkVar("m_nModelIndex")]
 	public int ModelIndex;
-	[NetworkName("m_nHaloIndex")]
+	[NetworkVar("m_nHaloIndex")]
 	public int HaloIndex;
-	[NetworkName("m_nStartFrame")]
+	[NetworkVar("m_nStartFrame")]
 	public int StartFrame;
-	[NetworkName("m_nFrameRate")]
+	[NetworkVar("m_nFrameRate")]
 	public int FrameRate;
-	[NetworkName("m_fLife")]
+	[NetworkVar("m_fLife")]
 	public float Life;
-	[NetworkName("m_fWidth")]
+	[NetworkVar("m_fWidth")]
 	public float Width;
-	[NetworkName("m_fEndWidth")]
+	[NetworkVar("m_fEndWidth")]
 	public float EndWidth;
-	[NetworkName("m_nFadeLength")]
+	[NetworkVar("m_nFadeLength")]
 	public int FadeLength;
-	[NetworkName("m_fAmplitude")]
+	[NetworkVar("m_fAmplitude")]
 	public float Amplitude;
-	[NetworkName("m_nSpeed")]
+	[NetworkVar("m_nSpeed")]
 	public int Speed;
-	[NetworkName("r")]
+	[NetworkVar("r")]
 	public int R;
-	[NetworkName("g")]
+	[NetworkVar("g")]
 	public int G;
-	[NetworkName("b")]
+	[NetworkVar("b")]
 	public int B;
-	[NetworkName("a")]
+	[NetworkVar("a")]
 	public int A;
-	[NetworkName("m_nFlags")]
+	[NetworkVar("m_nFlags")]
 	public int Flags;
 }

@@ -3,24 +3,23 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_NPC_Barnacle>;
-[NetworkName("CNPC_Barnacle")]
-public class C_NPC_Barnacle : C_AI_BaseNPC
+[NetworkName("CNPC_Barnacle", Table = "DT_Barnacle")]
+public partial class C_NPC_Barnacle : C_AI_BaseNPC
 {
-	public static readonly RecvTable DT_Barnacle = new(DT_AI_BaseNPC, [
-		RecvPropFloat(FIELD.OF(nameof(Altitude))),
-		RecvPropVector(FIELD.OF(nameof(Root))),
-		RecvPropVector(FIELD.OF(nameof(Tip))),
-		RecvPropVector(FIELD.OF(nameof(TipDrawOffset))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_Barnacle);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Altitude)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Root)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Tip)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(TipDrawOffset)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_flAltitude")]
+	[NetworkVar("m_flAltitude")]
 	public float Altitude;
-	[NetworkName("m_vecRoot")]
+	[NetworkVar("m_vecRoot")]
 	public Vector3 Root;
-	[NetworkName("m_vecTip")]
+	[NetworkVar("m_vecTip")]
 	public Vector3 Tip;
-	[NetworkName("m_vecTipDrawOffset")]
+	[NetworkVar("m_vecTipDrawOffset")]
 	public Vector3 TipDrawOffset;
 }

@@ -5,33 +5,15 @@ using Source.Common.Mathematics;
 
 using System.Numerics;
 namespace Game.Shared.GarrysMod;
-using DEFINE = Source.DEFINE<Weapon357>;
-using FIELD = Source.FIELD<Weapon357>;
 
 [LinkEntityToClass("weapon_357")]
 [PrecacheWeaponRegister("weapon_357")]
 [NetworkName("CWeapon357")]
-public class Weapon357 : BaseHL2MPCombatWeapon
+public partial class Weapon357 : BaseHL2MPCombatWeapon
 {
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_Weapon357 = new(DT_BaseHL2MPCombatWeapon, [
-#if CLIENT_DLL
-
-#else
-
-#endif
-		]);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_Weapon357);
-	public static readonly new DataMap PredMap = new([], typeof(Weapon357), BaseHL2MPCombatWeapon.PredMap); public override DataMap? GetPredDescMap() => PredMap;
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_Weapon357);
-#endif
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
 
 	public override void PrimaryAttack() {
 		BasePlayer? player = ToBasePlayer(GetOwner());

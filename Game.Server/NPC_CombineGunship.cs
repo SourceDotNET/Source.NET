@@ -3,16 +3,15 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<NPC_CombineGunship>;
 [LinkEntityToClass("npc_combinegunship")]
-[NetworkName("CNPC_CombineGunship")]
-public class NPC_CombineGunship : BaseHelicopter
+[NetworkName("CNPC_CombineGunship", Table = "DT_CombineGunship")]
+public partial class NPC_CombineGunship : BaseHelicopter
 {
-	public static readonly SendTable DT_CombineGunship = new(DT_BaseHelicopter, [
-		SendPropVector(FIELD.OF(nameof(HitPos)), 0, PropFlags.Coord),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_CombineGunship);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(HitPos)) { Bits = 0, Flags = PropFlags.Coord },
+	];
 
-	[NetworkName("m_vecHitPos")]
-	public Vector3 HitPos;
+	[NetworkVar("m_vecHitPos")]
+	public partial Vector3 HitPos { get; set; }
 }

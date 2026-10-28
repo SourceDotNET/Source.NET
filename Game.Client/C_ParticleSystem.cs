@@ -4,37 +4,37 @@ using Source;
 using Source.Common;
 
 namespace Game.Client;
-using FIELD = FIELD<C_ParticleSystem>;
 
-[NetworkName("CParticleSystem")]
-public class C_ParticleSystem : C_BaseEntity
+[NetworkName("CParticleSystem", NoBase = true)]
+public partial class C_ParticleSystem : C_BaseEntity
 {
-	public static readonly RecvTable DT_ParticleSystem = new([
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropEHandle(FIELD.OF(nameof(OwnerEntity))),
-		RecvPropEHandle(FIELD.OF(nameof(MoveParent))),
-		RecvPropInt(FIELD.OF(nameof(ParentAttachment))),
-		RecvPropVector(FIELD.OF(nameof(Rotation))),
-		RecvPropInt(FIELD.OF(nameof(EffectIndex))),
-		RecvPropBool(FIELD.OF(nameof(Active))),
-		RecvPropFloat(FIELD.OF(nameof(StartTime))),
-		RecvPropArray3(FIELD.OF_ARRAY(nameof(ControlPointEnts)), RecvPropEHandle(FIELD.OF_ARRAYINDEX(nameof(ControlPointEnts), 0))),
-		RecvPropArray3(FIELD.OF_ARRAY(nameof(ControlPointParents)), RecvPropInt(FIELD.OF_ARRAYINDEX(nameof(ControlPointParents), 0))),
-		RecvPropBool(FIELD.OF(nameof(WeatherEffect))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_ParticleSystem);
-	[NetworkName("m_iEffectIndex")]
-	public int EffectIndex;
-	[NetworkName("m_bActive")]
-	public bool Active;
-	[NetworkName("m_flStartTime")]
-	public TimeUnit_t StartTime;
-	[NetworkName("m_bWeatherEffect")]
-	public bool WeatherEffect;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Origin)) { Encoding = NetEncoding.Vector, Bits = 0, Flags = PropFlags.Coord | PropFlags.ChangesOften },
+		new(nameof(OwnerEntity)) { Encoding = NetEncoding.EHandle },
+		new(nameof(NetworkMoveParent)) { Encoding = NetEncoding.Int, Proxy = typeof(MoveParentProxy) },
+		new(nameof(ParentAttachment)) { Encoding = NetEncoding.Int, Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Rotation)) { Encoding = NetEncoding.Vector, Bits = 13, Flags = PropFlags.RoundDown | PropFlags.ChangesOften },
+		new(nameof(EffectIndex)) { Bits = 12, Flags = PropFlags.Unsigned },
+		nameof(Active),
+		new(nameof(StartTime)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale },
+		nameof(ControlPointEnts),
+		new(nameof(ControlPointParents)) { Bits = 3, Flags = PropFlags.Unsigned },
+		nameof(WeatherEffect),
+	];
 
-	[NetworkName("m_hControlPointEnts")]
+	[NetworkVar("m_iEffectIndex")]
+	public int EffectIndex;
+	[NetworkVar("m_bActive")]
+	public bool Active;
+	[NetworkVar("m_flStartTime")]
+	public TimeUnit_t StartTime;
+	[NetworkVar("m_hControlPointEnts")]
 	public InlineArrayNewMaxControlPoints<EHANDLE> ControlPointEnts = new();
-	[NetworkName("m_iControlPointParents")]
+
+	[NetworkVar("m_iControlPointParents")]
 	public InlineArrayNewMaxControlPoints<byte> ControlPointParents = new();
+	[NetworkVar("m_bWeatherEffect")]
+	public bool WeatherEffect;
 }
 

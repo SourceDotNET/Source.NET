@@ -38,24 +38,23 @@ public class QueryBox : MessageBox
 		CancelButton.SetPos((wide / 2) + x + 16, tall - CancelButton.GetTall() - 15);
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		switch (command) {
-			case "OK":
-				OnCommand("Close");
-				if (OkCommand != null) PostActionSignal(OkCommand.MakeCopy());
-				break;
-			case "Cancel":
-				OnCommand("Close");
-				if (CancelCommand != null) PostActionSignal(CancelCommand.MakeCopy());
-				break;
-		}
+	[UiCommand("OK")]
+	private void OnOK() {
+		DoCommand("Close");
+		if (OkCommand != null) PostActionSignal(OkCommand.MakeCopy());
+		base.OnCommand("OK");
+	}
 
-		base.OnCommand(command);
+	[UiCommand("Cancel")]
+	private void OnCancelCommand() {
+		DoCommand("Close");
+		if (CancelCommand != null) PostActionSignal(CancelCommand.MakeCopy());
+		base.OnCommand("Cancel");
 	}
 
 	public override void OnKeyCodeTyped(ButtonCode code) {
 		if (code == ButtonCode.KeyEscape)
-			OnCommand("Cancel");
+			DoCommand("Cancel");
 		else
 			base.OnKeyCodeTyped(code);
 	}

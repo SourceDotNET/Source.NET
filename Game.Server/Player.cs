@@ -22,8 +22,6 @@ using System.Runtime.InteropServices;
 
 namespace Game.Server;
 
-using FIELD = Source.FIELD<BasePlayer>;
-
 public enum PlayerConnectedState
 {
 	Connected,
@@ -257,8 +255,8 @@ public enum PlayerPhysFlag
 [NetworkName("CBasePlayer")]
 public partial class BasePlayer : BaseCombatCharacter
 {
-	[NetworkName("m_ArmorValue")]
-	public int ArmorValue;
+	[NetworkVar("m_ArmorValue")]
+	public partial int ArmorValue { get; set; }
 
 	public int GetArmorValue() => ArmorValue;
 
@@ -290,10 +288,6 @@ public partial class BasePlayer : BaseCombatCharacter
 	}
 	public const float DOT_30DEGREE = 0.866025403784f;
 	public const float DOT_45DEGREE = 0.707106781187f;
-	public static readonly SendTable DT_PlayerState = new(nameof(DT_PlayerState), [
-		SendPropInt(FIELD<PlayerState>.OF(nameof(PlayerState.DeadFlag)), 1, PropFlags.Unsigned)
-	]);
-
 	public override bool IsPlayer() => true;
 	public override Class_T Classify() => Class_T.Player;
 	public virtual bool IsBot() => (GetFlags() & EntityFlags.FakeClient) != 0;
@@ -311,49 +305,48 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	public BaseViewModel? GetViewModel(int index) => ViewModel[index].Get();
 
-	public static readonly SendTable DT_LocalPlayerExclusive = new(nameof(DT_LocalPlayerExclusive), [
-		SendPropDataTable("m_Local", FIELD.OF(nameof(Local)), PlayerLocalData.DT_Local),
-		SendPropFloat(FIELD.OF(nameof(Friction)), 0, PropFlags.NoScale | PropFlags.RoundDown, 0.0f, 4.0f),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(Ammo)), SendPropInt( FIELD.OF_ARRAYINDEX(nameof(Ammo)), 16, PropFlags.Unsigned)),
-		SendPropInt(FIELD.OF(nameof(TickBase)), -1, PropFlags.ChangesOften),
-		SendPropInt(FIELD.OF(nameof(NextThinkTick))),
-		SendPropEHandle(FIELD.OF(nameof(LastWeapon))),
-		SendPropEHandle(FIELD.OF(nameof(GroundEntity)), PropFlags.ChangesOften),
-		SendPropVector(FIELD.OF(nameof(BaseVelocity)), 0, PropFlags.NoScale),
-		SendPropEHandle(FIELD.OF(nameof(ConstraintEntity))),
-		SendPropVector(FIELD.OF(nameof(ConstraintCenter)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(ConstraintRadius)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(ConstraintWidth)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(ConstraintSpeedFactor)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(DeathTime)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(LaggedMovementValue)), 0, PropFlags.NoScale),
-		SendPropEHandle(FIELD.OF(nameof(TonemapController))),
-		SendPropEHandle(FIELD.OF(nameof(ViewEntity))),
-		SendPropBool(FIELD.OF(nameof(DisableWorldClicking))),
-	]);
+	[NetworkTable("DT_LocalPlayerExclusive")]
+	public static readonly NetworkProp[] LocalPlayerExclusiveProps = [
+		new(nameof(Local)) { Encoding = NetEncoding.DataTable, DataTable = "DT_Local" },
+		new(nameof(Friction)) { Bits = 0, Flags = PropFlags.NoScale | PropFlags.RoundDown, Low = 0.0f, High = 4.0f },
+		new(nameof(Ammo)) { Bits = 16, Flags = PropFlags.Unsigned },
+		new(nameof(TickBase)) { Bits = -1, Flags = PropFlags.ChangesOften },
+		nameof(NextThinkTick),
+		nameof(LastWeapon),
+		new(nameof(GroundEntity)) { Flags = PropFlags.ChangesOften },
+		new(nameof(BaseVelocity)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(ConstraintEntity),
+		new(nameof(ConstraintCenter)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ConstraintRadius)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ConstraintWidth)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ConstraintSpeedFactor)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(DeathTime)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(LaggedMovementValue)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale },
+		nameof(TonemapController),
+		nameof(ViewEntity),
+		nameof(DisableWorldClicking),
+	];
 
-	public static readonly SendTable DT_BasePlayer = new(DT_BaseCombatCharacter, [
-		SendPropDataTable(nameof(pl), FIELD.OF(nameof(pl)), DT_PlayerState, SendProxy_DataTableToDataTable),
-		SendPropEHandle(FIELD.OF(nameof(Vehicle))),
-		SendPropEHandle(FIELD.OF(nameof(UseEntity))),
-		SendPropInt(FIELD.OF(nameof(LifeState)), 3, PropFlags.Unsigned ),
-		SendPropEHandle(FIELD.OF(nameof(ColorCorrectionCtrl))), // << gmod specific
-		SendPropFloat(FIELD.OF(nameof(Maxspeed)), 12, PropFlags.RoundDown, 0.0f, 2048.0f ),
-		SendPropInt(FIELD.OF("flags"), Constants.PLAYER_FLAG_BITS, PropFlags.Unsigned|PropFlags.ChangesOften, SendProxy_CropFlagsToPlayerFlagBitsLength),
-		SendPropInt(FIELD.OF(nameof(ObserverMode)), 3, PropFlags.Unsigned),
-		SendPropEHandle(FIELD.OF(nameof(ObserverTarget))),
-		SendPropFloat(FIELD.OF(nameof(FOV)), 16, PropFlags.Unsigned, 0, 65536),
-		SendPropFloat(FIELD.OF(nameof(FOVStart)), 16, PropFlags.Unsigned, 0, 65536),
-		SendPropTime64(FIELD.OF(nameof(FOVTime))),
-		SendPropFloat(FIELD.OF(nameof(DefaultFOV)), 16, PropFlags.Unsigned, 0, 65536),
-		SendPropEHandle(FIELD.OF(nameof(ZoomOwner))),
-
-		SendPropEHandle(FIELD.OF_SENDINFO_ARRAY(nameof(ViewModel))),
-		SendPropArray(FIELD.OF_ARRAY(nameof(ViewModel))),
-
-		SendPropBool(FIELD.OF(nameof(UseWeaponsInVehicle))),
-		SendPropDataTable( "localdata", DT_LocalPlayerExclusive, SendProxy_SendLocalDataTable),
-	]);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(pl)) { Encoding = NetEncoding.DataTable, DataTable = "DT_PlayerState" },
+		nameof(Vehicle),
+		nameof(UseEntity),
+		new(nameof(LifeState)) { Bits = 3, Flags = PropFlags.Unsigned },
+		nameof(ColorCorrectionCtrl), // << gmod specific
+		new(nameof(Maxspeed)) { Bits = 12, Flags = PropFlags.RoundDown, Low = 0.0f, High = 2048.0f },
+		new(nameof(flags)) { Bits = Constants.PLAYER_FLAG_BITS, Flags = PropFlags.Unsigned | PropFlags.ChangesOften, Proxy = typeof(CropFlagsToPlayerFlagBitsLengthProxy) },
+		new(nameof(ObserverMode)) { Bits = 3, Flags = PropFlags.Unsigned },
+		nameof(ObserverTarget),
+		new(nameof(FOV)) { Encoding = NetEncoding.Float, Bits = 16, Flags = PropFlags.Unsigned, Low = 0, High = 65536 },
+		new(nameof(FOVStart)) { Encoding = NetEncoding.Float, Bits = 16, Flags = PropFlags.Unsigned, Low = 0, High = 65536 },
+		nameof(FOVTime),
+		new(nameof(DefaultFOV)) { Bits = 16, Flags = PropFlags.Unsigned, Low = 0, High = 65536 },
+		nameof(ZoomOwner),
+		new(nameof(ViewModel)) { Encoding = NetEncoding.Array },
+		nameof(UseWeaponsInVehicle),
+		new(nameof(LocalPlayerExclusiveProps)) { Name = "localdata", Proxy = typeof(LocalPlayerExclusiveProxy) },
+	];
 
 	public static Edict? s_PlayerEdict;
 	public static BaseEntity? g_LastSpawn;
@@ -392,6 +385,10 @@ public partial class BasePlayer : BaseCombatCharacter
 	protected PlayerPhysFlag PhysicsFlags;
 	public int Train;
 
+	int MouseWheelValue;
+	public int MouseWheel() => MouseWheelValue;
+	public void SetMouseWheel(int value) => MouseWheelValue = value;
+
 	public void SetPhysicsFlag(PlayerPhysFlag flag, bool set) {
 		if (set)
 			PhysicsFlags |= flag;
@@ -429,18 +426,36 @@ public partial class BasePlayer : BaseCombatCharacter
 	public bool PredictWeapons;
 	readonly List<UserCmd> AvailableCommandsBuf = [];
 
-	public static void SendProxy_CropFlagsToPlayerFlagBitsLength(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID) {
-		int mask = (1 << Constants.PLAYER_FLAG_BITS) - 1;
-		int data = field.GetValue<int>(instance);
-		outData.Int = data & mask;
+	public static class CropFlagsToPlayerFlagBitsLengthProxy
+	{
+		public static void Send(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID) {
+			int mask = (1 << Constants.PLAYER_FLAG_BITS) - 1;
+			int data = field.GetValue<int>(instance);
+			outData.Int = data & mask;
+		}
+	}
+
+	public static class LocalPlayerExclusiveProxy
+	{
+		public static object? Send(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID)
+			=> SendProxy_SendLocalDataTable(prop, instance, data, recipients, objectID);
 	}
 
 	GamePlayerInfo PlayerInfo = new();
 
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BasePlayer);
-
 
 	public BasePlayer() {
+		Local.Outer = this;
+		pl.OnNetworkStateChanged = NetworkStateChanged;
+		ViewModelForModify() = new();
+		Vehicle = new();
+		UseEntity = new();
+		ObserverTarget = new();
+		ZoomOwner = new();
+		ConstraintEntity = new();
+		TonemapController = new();
+		ViewEntity = new();
+		ColorCorrectionCtrl = new();
 		AddEFlags(EFL.NoAutoEdictAttach);
 
 #if DEBUG
@@ -475,7 +490,7 @@ public partial class BasePlayer : BaseCombatCharacter
 		bitsDamageType = 0;
 
 		ForceOrigin = false;
-		Vehicle.Set(null);
+		Vehicle = EHANDLE.FromEntity(null);
 		CurrentCommand = default;
 		LockViewanglesTickNumber = 0;
 		LockedViewangles.Init();
@@ -483,7 +498,7 @@ public partial class BasePlayer : BaseCombatCharacter
 		// Setup our default FOV
 		DefaultFOV = g_pGameRules.DefaultFOV();
 
-		ZoomOwner.Set(null);
+		ZoomOwner = EHANDLE.FromEntity(null);
 
 		UpdateRate = 20;  // cl_updaterate defualt
 		LerpTime = 0.1f; // cl_interp default
@@ -533,11 +548,13 @@ public partial class BasePlayer : BaseCombatCharacter
 		LastObjectiveTime = -1;
 	}
 
+	[NetworkVar("pl")]
 	public readonly PlayerState pl = new();
-	[NetworkName("m_Local")]
+	[NetworkVar("m_Local")]
 	public readonly PlayerLocalData Local = new();
 
-	public ref AudioParams GetAudioParams() => ref Local.Audio;
+	public ref readonly AudioParams GetAudioParams() => ref Local.Audio;
+	public ref AudioParams GetAudioParamsForModify() => ref Local.AudioForModify();
 
 	// Used by env_soundscape_triggerable to manage when the player is touching multiple
 	// soundscape triggers simultaneously.
@@ -549,22 +566,22 @@ public partial class BasePlayer : BaseCombatCharacter
 			SetPoseParameter(BodyPitchPoseParam, pitch);
 	}
 
-	[NetworkName("m_hVehicle")]
-	public EHANDLE Vehicle = new();
-	[NetworkName("m_hUseEntity")]
-	public EHANDLE UseEntity = new();
-	[NetworkName("m_hObserverTarget")]
-	public EHANDLE ObserverTarget = new();
-	[NetworkName("m_hZoomOwner")]
-	public EHANDLE ZoomOwner = new();
-	[NetworkName("m_hConstraintEntity")]
-	public EHANDLE ConstraintEntity = new();
-	[NetworkName("m_hTonemapController")]
-	public EHANDLE TonemapController = new();
-	[NetworkName("m_hViewEntity")]
-	public EHANDLE ViewEntity = new();
-	[NetworkName("m_hViewModel")]
-	protected InlineArrayNewMaxViewmodels<Handle<BaseViewModel>> ViewModel = new();
+	[NetworkVar("m_hVehicle")]
+	public partial EHANDLE Vehicle { get; set; }
+	[NetworkVar("m_hUseEntity")]
+	public partial EHANDLE UseEntity { get; set; }
+	[NetworkVar("m_hObserverTarget")]
+	public partial EHANDLE ObserverTarget { get; set; }
+	[NetworkVar("m_hZoomOwner")]
+	public partial EHANDLE ZoomOwner { get; set; }
+	[NetworkVar("m_hConstraintEntity")]
+	public partial EHANDLE ConstraintEntity { get; set; }
+	[NetworkVar("m_hTonemapController")]
+	public partial EHANDLE TonemapController { get; set; }
+	[NetworkVar("m_hViewEntity")]
+	public partial EHANDLE ViewEntity { get; set; }
+	[NetworkVar("m_hViewModel")]
+	protected partial ref readonly InlineArrayNewMaxViewmodels<Handle<BaseViewModel>> ViewModel { get; }
 	readonly List<Handle<BaseEntity>> SimulatedByThisPlayer = [];
 
 	public IServerVehicle? GetVehicle() => Vehicle.Get()?.GetServerVehicle();
@@ -581,7 +598,7 @@ public partial class BasePlayer : BaseCombatCharacter
 	public virtual ReadOnlySpan<char> GetSceneSoundToken() => "";
 
 	public void SetViewEntity(BaseEntity? entity) {
-		ViewEntity.Set(entity);
+		ViewEntity = EHANDLE.FromEntity(entity);
 
 		if (ViewEntity.Get() != null)
 			engine.SetView(Edict()!, ViewEntity.Get()!.Edict()!);
@@ -597,47 +614,47 @@ public partial class BasePlayer : BaseCombatCharacter
 	}
 
 	bool HasHaptics;
-	[NetworkName("m_bDisableWorldClicking")]
-	public bool DisableWorldClicking;
+	[NetworkVar("m_bDisableWorldClicking")]
+	public partial bool DisableWorldClicking { get; set; }
 	public bool WorldClicking;
 	public Vector3 WorldClickVector;
-	[NetworkName("m_flMaxspeed")]
-	float Maxspeed;
-	[NetworkName("m_iObserverMode")]
-	int ObserverMode;
-	[NetworkName("m_iFOV")]
-	int FOV;
-	[NetworkName("m_nTickBase")]
-	public int TickBase;
-	[NetworkName("m_iFOVStart")]
-	int FOVStart;
-	[NetworkName("m_flFOVTime")]
-	TimeUnit_t FOVTime;
-	[NetworkName("m_iDefaultFOV")]
-	float DefaultFOV;
-	[NetworkName("m_vecConstraintCenter")]
-	public Vector3 ConstraintCenter;
-	[NetworkName("m_flConstraintRadius")]
-	public float ConstraintRadius;
-	[NetworkName("m_flConstraintWidth")]
-	public float ConstraintWidth;
-	[NetworkName("m_flConstraintSpeedFactor")]
-	public float ConstraintSpeedFactor;
+	[NetworkVar("m_flMaxspeed")]
+	private partial float Maxspeed { get; set; }
+	[NetworkVar("m_iObserverMode")]
+	private partial int ObserverMode { get; set; }
+	[NetworkVar("m_iFOV")]
+	private partial int FOV { get; set; }
+	[NetworkVar("m_nTickBase")]
+	public partial int TickBase { get; set; }
+	[NetworkVar("m_iFOVStart")]
+	private partial int FOVStart { get; set; }
+	[NetworkVar("m_flFOVTime")]
+	private partial TimeUnit_t FOVTime { get; set; }
+	[NetworkVar("m_iDefaultFOV")]
+	private partial float DefaultFOV { get; set; }
+	[NetworkVar("m_vecConstraintCenter")]
+	public partial Vector3 ConstraintCenter { get; set; }
+	[NetworkVar("m_flConstraintRadius")]
+	public partial float ConstraintRadius { get; set; }
+	[NetworkVar("m_flConstraintWidth")]
+	public partial float ConstraintWidth { get; set; }
+	[NetworkVar("m_flConstraintSpeedFactor")]
+	public partial float ConstraintSpeedFactor { get; set; }
 	InlineArray18<char> LastPlaceName;
-	[NetworkName("m_hColorCorrectionCtrl")]
-	EHANDLE ColorCorrectionCtrl = new();
-	[NetworkName("m_bUseWeaponsInVehicle")]
-	bool UseWeaponsInVehicle;
+	[NetworkVar("m_hColorCorrectionCtrl")]
+	private partial EHANDLE ColorCorrectionCtrl { get; set; }
+	[NetworkVar("m_bUseWeaponsInVehicle")]
+	private partial bool UseWeaponsInVehicle { get; set; }
 	public bool GetAllowWeaponsInVehicle() => UseWeaponsInVehicle;
 
 	public virtual void StopObserverMode() {
 		// todo
 	}
 	public bool OnTarget;
-	[NetworkName("m_flDeathTime")]
-	public TimeUnit_t DeathTime;
-	[NetworkName("m_flLaggedMovementValue")]
-	public double LaggedMovementValue;
+	[NetworkVar("m_flDeathTime")]
+	public partial TimeUnit_t DeathTime { get; set; }
+	[NetworkVar("m_flLaggedMovementValue")]
+	public partial double LaggedMovementValue { get; set; }
 	public TimeUnit_t StepSoundTime;
 
 	InlineArray32<char> AnimExtension;
@@ -1098,7 +1115,7 @@ public partial class BasePlayer : BaseCombatCharacter
 			vm.SetIndex(index);
 			Util.DispatchSpawn(vm);
 			vm.FollowEntity(this);
-			ViewModel[index].Set(vm);
+			ViewModelForModify()[index].Set(vm);
 		}
 	}
 
@@ -1570,6 +1587,7 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	public virtual void PlayerRunCommand(UserCmd userCmd, IMoveHelper s_MoveHelperServer) {
 		TouchedPhysObject = false;
+		MouseWheelValue = userCmd.ScrollWheelSpeed;
 
 		if (pl.FixAngle == (int)FixAngle.None)
 			MathLib.VectorCopy(userCmd.ViewAngles, out pl.ViewingAngle);
@@ -2248,6 +2266,11 @@ public partial class BasePlayer : BaseCombatCharacter
 
 		// todo
 
+		for (int i = 0; i < WeaponCount(); i++) {
+			if (GetWeapon(i) != null)
+				GetWeapon(i)!.UpdateClientData(this);
+		}
+
 		// g_pGameRules.UpdateClientData(this);
 	}
 
@@ -2341,7 +2364,7 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	public virtual void PickupObject(BaseEntity obj, bool limitMassAndSize = true) { }
 
-	public void SetUseEntity(BaseEntity? useEntity) => UseEntity.Set(useEntity);
+	public void SetUseEntity(BaseEntity? useEntity) => UseEntity = EHANDLE.FromEntity(useEntity);
 	public BaseEntity? GetUseEntity() => UseEntity.Get();
 
 	public static bool CanPickupObject(BaseEntity? obj, float massLimit, float sizeLimit) {
@@ -2450,7 +2473,7 @@ public partial class BasePlayer : BaseCombatCharacter
 			// Stop controlling the train/object
 			// TODO: Send HUD Update
 			UseEntity.Get()!.Use(this, this, UseType.Off, 0);
-			UseEntity.Set(null);
+			UseEntity = EHANDLE.FromEntity(null);
 			return true;
 		}
 

@@ -3,19 +3,18 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEAntlionDust>;
 [NetworkName("CTEAntlionDust")]
-public class TEAntlionDust(ReadOnlySpan<char> name) : TEParticleSystem(name)
+public partial class TEAntlionDust(ReadOnlySpan<char> name) : TEParticleSystem(name)
 {
-	public static readonly SendTable DT_TEAntlionDust = new(DT_TEParticleSystem, [
-		SendPropVector(FIELD.OF(nameof(Origin)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(Angles)), 0, PropFlags.NoScale),
-		SendPropBool(FIELD.OF(nameof(BlockedSpawner))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEAntlionDust);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Origin)) { Encoding = NetEncoding.Vector, Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Angles)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(BlockedSpawner),
+	];
 
-	[NetworkName("m_vecAngles")]
+	[NetworkVar("m_vecAngles")]
 	public Vector3 Angles;
-	[NetworkName("m_bBlockedSpawner")]
+	[NetworkVar("m_bBlockedSpawner")]
 	public bool BlockedSpawner;
 }

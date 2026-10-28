@@ -5,7 +5,7 @@ using Source.Common.Networking;
 namespace Game.Client;
 
 public class BoundedCvar_Predict()
-	: ConVar_ServerBounded("cl_predict", "1.0", FCvar.UserInfo | FCvar.NotConnected, "Perform client side prediction.")
+	: ConVar_ServerBounded("cl_predict", "1.0", FCvar.UserInfo, "Perform client side prediction.")
 {
 	public static bool ForceCLPredictOff = false;
 	ConVar? clientPredict;
@@ -15,7 +15,7 @@ public class BoundedCvar_Predict()
 
 		clientPredict ??= cvar.FindVar("sv_client_predict");
 
-		if (clientPredict != null && clientPredict.GetInt() != -1)
+		if (clientPredict != null && clientPredict.GetInt() != -1 && gpGlobals.MaxClients > 1)
 			return clientPredict.GetFloat();
 		else
 			return GetBaseFloatValue();

@@ -4,20 +4,19 @@ using Source;
 using Source.Common;
 
 namespace Game.Client;
-using FIELD = FIELD<C_FuncOccluder>;
 
 [NetworkName("CFuncOccluder")]
-public class C_FuncOccluder : C_BaseEntity
+public partial class C_FuncOccluder : C_BaseEntity
 {
-	public static readonly RecvTable DT_FuncOccluder = new([
-		RecvPropBool(FIELD.OF(nameof(Active))),
-		RecvPropInt(FIELD.OF(nameof(OccluderIndex))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_FuncOccluder);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Active),
+		new(nameof(OccluderIndex)) { Bits = 10, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_bActive")]
+	[NetworkVar("m_bActive")]
 	public bool Active;
-	[NetworkName("m_nOccluderIndex")]
+	[NetworkVar("m_nOccluderIndex")]
 	public int OccluderIndex;
 }
 

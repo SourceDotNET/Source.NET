@@ -7,8 +7,10 @@ namespace Game.Server.HL2;
 
 [LinkEntityToClass("weapon_annabelle")]
 [NetworkName("CWeaponAnnabelle")]
-public class WeaponAnnabelle : BaseHLCombatWeapon
+public partial class WeaponAnnabelle : BaseHLCombatWeapon
 {
-	public static readonly SendTable DT_WeaponAnnabelle = new(DT_BaseHLCombatWeapon, []);
-	public static new readonly ServerClass ServerClass = new ServerClass(DT_WeaponAnnabelle);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 }

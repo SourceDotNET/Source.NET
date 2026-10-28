@@ -13,22 +13,6 @@ using Game.Shared;
 namespace Game.Server;
 #endif
 
-using Table =
-#if CLIENT_DLL
-	RecvTable;
-#else
-	SendTable;
-#endif
-
-using Class =
-#if CLIENT_DLL
-	ClientClass;
-#else
-	ServerClass;
-#endif
-
-using FIELD = Source.FIELD<InfoLadderDismount>;
-
 [LinkEntityToClass("info_ladder_dismount")]
 [NetworkName("CInfoLadderDismount")]
 public partial class
@@ -38,8 +22,10 @@ public partial class
 	InfoLadderDismount : BaseEntity
 #endif
 {
-	public static Table DT_InfoLadderDismount = new(DT_BaseEntity, []);
-	public static readonly Class Class = new Class(DT_InfoLadderDismount);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 }
 
 #endif

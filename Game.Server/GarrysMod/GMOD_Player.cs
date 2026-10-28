@@ -12,8 +12,6 @@ using System.Numerics;
 
 namespace Game.Server.GarrysMod;
 
-using FIELD = FIELD<GMOD_Player>;
-
 public static class GMOD_PlayerGlobals
 {
 	public static GMOD_Player? ToGMODPlayer(BaseEntity? entity) {
@@ -27,36 +25,63 @@ public static class GMOD_PlayerGlobals
 [NetworkName("CGMOD_Player")]
 public partial class GMOD_Player : HL2MP_Player
 {
+	public GMOD_Player() {
+		HoveredWidget = new();
+		PressedWidget = new();
+		Driving = new();
+		CanZoom = true;
+		CanWalk = true;
+		StepSize = 18;
+		JumpPower = 200;
+		PlayerColor = new(255, 255, 255);
+		WeaponColor = new(255, 255, 255);
+		Hands = new();
+	}
+
 	public static GMOD_Player? CreatePlayer(ReadOnlySpan<char> classname, Edict ed) {
 		s_PlayerEdict = ed;
 		return (GMOD_Player?)CreateEntityByName(classname);
 	}
-	public static readonly SendTable DT_GMOD_Player = new(DT_HL2MP_Player, [
-		SendPropInt(FIELD.OF(nameof(GModPlayerFlags)), 5, 0),
-		SendPropEHandle(FIELD.OF(nameof(HoveredWidget))),
-		SendPropEHandle(FIELD.OF(nameof(PressedWidget))),
-		SendPropEHandle(FIELD.OF(nameof(Driving))),
-		SendPropInt(FIELD.OF(nameof(DrivingMode)), 15, 0),
-		SendPropInt(FIELD.OF(nameof(PlayerClass)), 15, 0),
-		SendPropBool(FIELD.OF(nameof(CanZoom))),
-		SendPropBool(FIELD.OF(nameof(CanWalk))),
-		SendPropBool(FIELD.OF(nameof(IsTyping))),
-		SendPropFloat(FIELD.OF(nameof(StepSize)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(JumpPower)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF_NAMED(nameof(ViewOffset), "m_ViewOffset"), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(ViewOffsetDucked)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(GestureEndTime)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(PlayerColor)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(WeaponColor)), 0, PropFlags.NoScale),
-		SendPropEHandle(FIELD.OF(nameof(Hands))),
-		SendPropInt(FIELD.OF(nameof(WaterLevel)), 2, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(MaxArmor)), 32, 0),
-		SendPropFloat(FIELD.OF(nameof(Gravity)), 0, PropFlags.NoScale),
-		SendPropBool(FIELD.OF(nameof(SprintEnabled))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_GMOD_Player);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(GModPlayerFlags)) { Bits = 5 },
+		nameof(HoveredWidget),
+		nameof(PressedWidget),
+		nameof(Driving),
+		new(nameof(DrivingMode)) { Bits = 15 },
+		new(nameof(PlayerClass)) { Bits = 15 },
+		nameof(CanZoom),
+		nameof(CanWalk),
+		nameof(IsTyping),
+		new(nameof(StepSize)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(JumpPower)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ViewOffset)) { Name = "m_ViewOffset", Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ViewOffsetDucked)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(GestureEndTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(PlayerColor)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(WeaponColor)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(Hands),
+		new(nameof(WaterLevel)) { Bits = 2, Flags = PropFlags.Unsigned },
+		new(nameof(MaxArmor)) { Bits = 32 },
+		new(nameof(Gravity)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(SprintEnabled),
+	];
 
 	public bool Transition;
+
+	public ReadOnlySpan<char> GetPlayerInfo(ReadOnlySpan<char> name, ReadOnlySpan<char> defaultValue) => GetInfo(name);
+
+	public float GetSnapAngles() => Math.Clamp((float)atof(GetPlayerInfo("gm_snapangles", "45")), -360f, 360f);
+
+	public void SnapToGrid(ref Vector3 vec) {
+		float grid = Math.Clamp((float)atof(GetPlayerInfo("gm_snapgrid", "0")), 0f, 4096f);
+		if (grid <= 0)
+			return;
+
+		vec.X = MathF.Round(vec.X / grid) * grid;
+		vec.Y = MathF.Round(vec.Y / grid) * grid;
+		vec.Z = MathF.Round(vec.Z / grid) * grid;
+	}
 
 	public override void InitialSpawn() {
 		SetModel("models/player.mdl");
@@ -110,36 +135,36 @@ public partial class GMOD_Player : HL2MP_Player
 	}
 
 	public bool ShouldDropWeapon;
-	[NetworkName("m_iGModPlayerFlags")]
-	public int GModPlayerFlags;
-	[NetworkName("m_HoveredWidget")]
-	public EHANDLE HoveredWidget = new();
-	[NetworkName("m_PressedWidget")]
-	public EHANDLE PressedWidget = new();
-	[NetworkName("m_Driving")]
-	public EHANDLE Driving = new();
-	[NetworkName("m_DrivingMode")]
-	public int DrivingMode;
-	[NetworkName("m_PlayerClass")]
-	public int PlayerClass;
-	[NetworkName("m_bCanZoom")]
-	public bool CanZoom = true;
-	[NetworkName("m_bCanWalk")]
-	public bool CanWalk = true;
-	[NetworkName("m_bIsTyping")]
-	public bool IsTyping;
-	[NetworkName("m_StepSize")]
-	public float StepSize = 18;
-	[NetworkName("m_JumpPower")]
-	public float JumpPower = 200;
-	[NetworkName("m_ViewOffsetDucked")]
-	public Vector3 ViewOffsetDucked;
-	[NetworkName("m_fGestureEndTime")]
-	public float GestureEndTime;
-	[NetworkName("m_PlayerColor")]
-	public Vector3 PlayerColor = new(255, 255, 255);
-	[NetworkName("m_WeaponColor")]
-	public Vector3 WeaponColor = new(255, 255, 255);
+	[NetworkVar("m_iGModPlayerFlags")]
+	public partial int GModPlayerFlags { get; set; }
+	[NetworkVar("m_HoveredWidget")]
+	public partial EHANDLE HoveredWidget { get; set; }
+	[NetworkVar("m_PressedWidget")]
+	public partial EHANDLE PressedWidget { get; set; }
+	[NetworkVar("m_Driving")]
+	public partial EHANDLE Driving { get; set; }
+	[NetworkVar("m_DrivingMode")]
+	public partial int DrivingMode { get; set; }
+	[NetworkVar("m_PlayerClass")]
+	public partial int PlayerClass { get; set; }
+	[NetworkVar("m_bCanZoom")]
+	public partial bool CanZoom { get; set; }
+	[NetworkVar("m_bCanWalk")]
+	public partial bool CanWalk { get; set; }
+	[NetworkVar("m_bIsTyping")]
+	public partial bool IsTyping { get; set; }
+	[NetworkVar("m_StepSize")]
+	public partial float StepSize { get; set; }
+	[NetworkVar("m_JumpPower")]
+	public partial float JumpPower { get; set; }
+	[NetworkVar("m_ViewOffsetDucked")]
+	public partial Vector3 ViewOffsetDucked { get; set; }
+	[NetworkVar("m_fGestureEndTime")]
+	public partial float GestureEndTime { get; set; }
+	[NetworkVar("m_PlayerColor")]
+	public partial Vector3 PlayerColor { get; set; }
+	[NetworkVar("m_WeaponColor")]
+	public partial Vector3 WeaponColor { get; set; }
 
 	public virtual Vector3 GetPlayerColor() => PlayerColor;
 
@@ -156,14 +181,14 @@ public partial class GMOD_Player : HL2MP_Player
 			WeaponColor = color;
 		}
 	}
-	[NetworkName("m_Hands")]
-	public EHANDLE Hands = new();
-	[NetworkName("m_iMaxArmor")]
-	public int MaxArmor;
-	[NetworkName("m_flGravity")]
-	public float Gravity;
-	[NetworkName("m_bSprintEnabled")]
-	public bool SprintEnabled;
+	[NetworkVar("m_Hands")]
+	public partial EHANDLE Hands { get; set; }
+	[NetworkVar("m_iMaxArmor")]
+	public partial int MaxArmor { get; set; }
+	[NetworkVar("m_flGravity")]
+	public partial float Gravity { get; set; }
+	[NetworkVar("m_bSprintEnabled")]
+	public partial bool SprintEnabled { get; set; }
 
 	public override void PlayerRunCommand(UserCmd ucmd, IMoveHelper moveHelper) {
 		base.PlayerRunCommand(ucmd, moveHelper);

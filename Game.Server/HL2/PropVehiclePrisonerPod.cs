@@ -6,33 +6,41 @@ using Source.Common;
 using System.Numerics;
 
 namespace Game.Server.HL2;
-using FIELD = Source.FIELD<PropVehiclePrisonerPod>;
 [LinkEntityToClass("prop_vehicle_prisoner_pod")]
 [NetworkName("CPropVehiclePrisonerPod")]
-public class PropVehiclePrisonerPod : PhysicsProp
+public partial class PropVehiclePrisonerPod : PhysicsProp
 {
-	public static readonly SendTable DT_PropVehiclePrisonerPod = new(DT_PhysicsProp, [
-		SendPropEHandle(FIELD.OF(nameof(Player))),
-		SendPropBool(FIELD.OF(nameof(EnterAnimOn))),
-		SendPropBool(FIELD.OF(nameof(ExitAnimOn))),
-		SendPropVector(FIELD.OF(nameof(EyeExitEndpoint)), 0, PropFlags.Coord),
-		SendPropBool(FIELD.OF(nameof(LimitView))),
-		SendPropBool(FIELD.OF(nameof(Locked))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PropVehiclePrisonerPod);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Player),
+		nameof(EnterAnimOn),
+		nameof(ExitAnimOn),
+		new(nameof(EyeExitEndpoint)) { Bits = 0, Flags = PropFlags.Coord },
+		nameof(LimitView),
+		nameof(Locked),
+	];
 
-	[NetworkName("m_hPlayer")]
-	public EHANDLE Player = new();
-	[NetworkName("m_bEnterAnimOn")]
-	public bool EnterAnimOn = new();
-	[NetworkName("m_bExitAnimOn")]
-	public bool ExitAnimOn = new();
-	[NetworkName("m_vecEyeExitEndpoint")]
-	public Vector3 EyeExitEndpoint = new();
-	[NetworkName("m_bLimitView")]
-	public bool LimitView = new();
-	[NetworkName("m_bLocked")]
-	public bool Locked;
+	public PropVehiclePrisonerPod() {
+		Player = new();
+		EnterAnimOn = new();
+		ExitAnimOn = new();
+		EyeExitEndpoint = new();
+		LimitView = new();
+	}
+
+
+	[NetworkVar("m_hPlayer")]
+	public partial EHANDLE Player { get; set; }
+	[NetworkVar("m_bEnterAnimOn")]
+	public partial bool EnterAnimOn { get; set; }
+	[NetworkVar("m_bExitAnimOn")]
+	public partial bool ExitAnimOn { get; set; }
+	[NetworkVar("m_vecEyeExitEndpoint")]
+	public partial Vector3 EyeExitEndpoint { get; set; }
+	[NetworkVar("m_bLimitView")]
+	public partial bool LimitView { get; set; }
+	[NetworkVar("m_bLocked")]
+	public partial bool Locked { get; set; }
 
 	public override bool IsVehicle() => true;
 }

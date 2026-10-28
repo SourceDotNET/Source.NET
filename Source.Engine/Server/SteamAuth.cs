@@ -453,6 +453,8 @@ public class Steam3ServerImpl : IDisposable
 		if (!BIsActive())
 			return;
 
+		Steamworks.GameServer.Shutdown();
+
 		HasActivePlayers = false;
 		LogOnResult = false;
 		SteamIDGS = CSteamID.NotInitYetGS;

@@ -3,15 +3,14 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<TEBeamFollow>;
 [NetworkName("CTEBeamFollow")]
-public class TEBeamFollow(ReadOnlySpan<char> name) : BaseBeam(name)
+public partial class TEBeamFollow(ReadOnlySpan<char> name) : BaseBeam(name)
 {
-	public static readonly SendTable DT_TEBeamFollow = new(DT_BaseBeam, [
-		SendPropInt(FIELD.OF(nameof(EntIndex)), 24, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_TEBeamFollow);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(EntIndex)) { Bits = 24, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_iEntIndex")]
+	[NetworkVar("m_iEntIndex")]
 	public int EntIndex;
 }

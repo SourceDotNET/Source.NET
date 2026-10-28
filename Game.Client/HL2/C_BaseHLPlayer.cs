@@ -5,22 +5,22 @@ using Source.Common;
 
 namespace Game.Client.HL2;
 
-using DEFINE = Source.DEFINE<C_BaseHLPlayer>;
 using FIELD = Source.FIELD<C_BaseHLPlayer>;
 
 [NetworkName("CHL2_Player")]
 public partial class C_BaseHLPlayer : C_BasePlayer
 {
-	public static readonly RecvTable DT_HL2_Player = new(DT_BasePlayer, [
-		RecvPropDataTable("m_HL2Local", FIELD.OF(nameof(HL2Local)), C_HL2PlayerLocalData.DT_HL2Local, 0, DataTableRecvProxy_PointerDataTable),
-		RecvPropBool(FIELD.OF(nameof(m_bIsSprinting)))
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_HL2_Player);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(HL2Local)) { Encoding = NetEncoding.DataTable, DataTable = "DT_HL2Local" },
+		nameof(m_bIsSprinting),
+	];
 
-	public static readonly new DataMap PredMap = new(typeof(C_BaseHLPlayer), C_BasePlayer.PredMap, [
-		DEFINE.PRED_TYPEDESCRIPTION( nameof(HL2Local), C_HL2PlayerLocalData.PredMap ),
-		DEFINE.PRED_FIELD( nameof(m_bIsSprinting), FieldType.Boolean, FieldTypeDescFlags.InSendTable ),
-	]); public override DataMap? GetPredDescMap() => PredMap;
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		new(nameof(HL2Local)) { Embedded = true },
+		nameof(m_bIsSprinting),
+	];
 
 	public C_BaseHLPlayer() {
 		AddVar(this, FIELD.OF("Local.PunchAngle"), Local.iv_PunchAngle, LatchFlags.LatchSimulationVar);
@@ -35,9 +35,9 @@ public partial class C_BaseHLPlayer : C_BasePlayer
 
 	public void ExitLadder(){ }
 
-	[NetworkName("m_HL2Local")]
+	[NetworkVar("m_HL2Local")]
 	public readonly C_HL2PlayerLocalData HL2Local = new();
-	[NetworkName("m_fIsSprinting")]
+	[NetworkVar("m_fIsSprinting")]
 	public bool m_bIsSprinting;
 	public bool m_bPlayUseDenySound;
 

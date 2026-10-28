@@ -193,10 +193,11 @@ public class Material : IMaterialInternal
 		Span<char> lowercased = stackalloc char[varName.Length];
 		varName.ToLowerInvariant(lowercased);
 		ReadOnlySpan<char> lowercasedROS = lowercased; // Need to make a version of that that works on Span...
-		foreach (var shaderParam in Vars) {
-			if (shaderParam.GetName().Hash() == lowercasedROS.Hash()) {
+		Span<IMaterialVar> vars = Vars;
+		for (int i = vars.Length; --i >= 0;) {
+			if (vars[i].GetName().Hash() == lowercasedROS.Hash()) {
 				found = true;
-				return shaderParam;
+				return vars[i];
 			}
 		}
 		found = false;
@@ -271,7 +272,7 @@ public class Material : IMaterialInternal
 	readonly List<FileNameHandle_t> VMTIncludes = [];
 
 	private string GetTextureGroupName() {
-		return "";
+		return texGroupName;
 	}
 
 	public static bool LoadVMTFile(IFileSystem fileSystem, ref KeyValues keyValues, KeyValues patchKeyValues, ReadOnlySpan<char> materialName, bool absolutePath, List<FileNameHandle_t>? includes = null) {
@@ -472,6 +473,8 @@ public class Material : IMaterialInternal
 		if (IsPrecachedVars())
 			return true;
 
+		MaterialLock hMaterialLock = materials.Lock();
+
 		// How should we load VMT includes?
 		// How should we allow async?
 
@@ -508,6 +511,7 @@ public class Material : IMaterialInternal
 			}
 		}
 
+		materials.Unlock(hMaterialLock);
 		return ok;
 	}
 
@@ -1006,9 +1010,9 @@ public class Material : IMaterialInternal
 			else if (0 == stricmp(cond, "ldr"))
 				shouldSkip = materials.HardwareConfig.GetHDRType() != HDRType.None;
 			else if (0 == stricmp(cond, "360"))
-				shouldSkip = !IsX360();
+				shouldSkip = true;
 			else if (0 == stricmp(cond, "gameconsole"))
-				shouldSkip = !IsConsole();
+				shouldSkip = true;
 			else
 				Warning($"unrecognized conditional test {varName} in {GetName()}\n");
 
@@ -1164,15 +1168,27 @@ public class Material : IMaterialInternal
 	}
 
 	private void CleanUpMaterialProxy() {
+		if (ProxyInfo.Count == 0)
+			return;
 
+		IMaterialProxyFactory? materialProxyFactory = materials.GetMaterialProxyFactory();
+		if (materialProxyFactory == null)
+			return;
+
+		for (int i = ProxyInfo.Count - 1; i >= 0; i--)
+			materialProxyFactory.DeleteProxy(ProxyInfo[i]);
+
+		ProxyInfo.Clear();
 	}
 
 	private void CleanUpShaderParams() {
-
+		ShaderParams = null;
+		VarCount = 0;
 	}
 
 	private void CleanUpStateSnapshots() {
-
+		if (IsValidRenderState())
+			materials.ShaderSystem.CleanupRenderState(ShaderRenderState);
 	}
 
 	int EnumerationID;

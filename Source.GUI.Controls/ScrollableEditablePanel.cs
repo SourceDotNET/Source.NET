@@ -43,6 +43,7 @@ class ScrollableEditablePanel : EditablePanel
 			ScrollBar.GetButton(1)!.SetFgColor(GetFgColor());
 	}
 
+	[UiMessage("ScrollBarSliderMoved")]
 	void OnScrollBarSliderMoved() {
 		InvalidateLayout();
 
@@ -54,14 +55,5 @@ class ScrollableEditablePanel : EditablePanel
 		int val = ScrollBar.GetValue();
 		val -= delta * 50;
 		ScrollBar.SetValue(val);
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name == "ScrollBarSliderMoved") {
-			OnScrollBarSliderMoved();
-			return;
-		}
-
-		base.OnMessage(message, from);
 	}
 }

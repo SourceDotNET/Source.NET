@@ -5,8 +5,10 @@ using Source.Common;
 namespace Game.Client;
 
 [NetworkName("CPhysMagnet")]
-public class C_PhysMagnet : C_BaseAnimating
+public partial class C_PhysMagnet : C_BaseAnimating
 {
-	public static readonly RecvTable DT_PhysMagnet = new(DT_BaseAnimating, []);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_PhysMagnet);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 }

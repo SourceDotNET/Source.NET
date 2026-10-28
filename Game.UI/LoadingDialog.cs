@@ -70,13 +70,10 @@ public class LoadingDialog : Frame
 		HideOtherDialogs(false);
 		base.OnClose();
 	}
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.Equals("Cancel", StringComparison.OrdinalIgnoreCase)) {
-			engine.ClientCmd_Unrestricted("disconnect\n");
-			Close();
-		}
-		else
-			base.OnCommand(command);
+	[UiCommand("Cancel")]
+	private void OnCancel() {
+		engine.ClientCmd_Unrestricted("disconnect\n");
+		Close();
 	}
 
 	public LoadingDialog(Panel? parent) : base(parent, "LoadingDialog") {

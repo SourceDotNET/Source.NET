@@ -3,28 +3,27 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEGlowSprite>;
 [NetworkName("CTEGlowSprite")]
-public class C_TEGlowSprite : C_BaseTempEntity
+public partial class C_TEGlowSprite : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEGlowSprite = new(DT_BaseTempEntity, [
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropInt(FIELD.OF(nameof(ModelIndex))),
-		RecvPropFloat(FIELD.OF(nameof(Scale))),
-		RecvPropFloat(FIELD.OF(nameof(Life))),
-		RecvPropInt(FIELD.OF(nameof(Brightness))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEGlowSprite);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(ModelIndex)) { Bits = 14 },
+		new(nameof(Scale)) { Bits = 8, Flags = PropFlags.RoundDown, Low = 0.0f, High = 25.6f },
+		new(nameof(Life)) { Bits = 8, Flags = PropFlags.RoundDown, Low = 0.0f, High = 25.6f },
+		new(nameof(Brightness)) { Bits = 8, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_nModelIndex")]
+	[NetworkVar("m_nModelIndex")]
 	public int ModelIndex;
-	[NetworkName("m_fScale")]
+	[NetworkVar("m_fScale")]
 	public float Scale;
-	[NetworkName("m_fLife")]
+	[NetworkVar("m_fLife")]
 	public float Life;
-	[NetworkName("m_nBrightness")]
+	[NetworkVar("m_nBrightness")]
 	public int Brightness;
 }
 

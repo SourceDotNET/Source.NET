@@ -643,8 +643,9 @@ public interface IPhysicsObject
 	void GetDamping(out float speed, out float rot);
 
 	// coefficients are optional, pass either
-	void SetDragCoefficient(ref float drag, ref float angularDrag);
+	void SetDragCoefficient(in float? drag, in float? angularDrag);
 	void SetBuoyancyRatio(float ratio);         // Override bouyancy
+	float GetBuoyancyRatio();
 
 	// material index
 	int GetMaterialIndex();

@@ -3,19 +3,18 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<EnvStarfield>;
 [LinkEntityToClass("env_starfield")]
 [NetworkName("CEnvStarfield")]
-public class EnvStarfield : BaseEntity
+public partial class EnvStarfield : BaseEntity
 {
-	public static readonly SendTable DT_EnvStarfield = new(DT_BaseEntity, [
-		SendPropBool(FIELD.OF(nameof(On))),
-		SendPropFloat(FIELD.OF(nameof(Density)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_EnvStarfield);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(On),
+		new(nameof(Density)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_bOn")]
-	public bool On;
-	[NetworkName("m_flDensity")]
-	public float Density;
+	[NetworkVar("m_bOn")]
+	public partial bool On { get; set; }
+	[NetworkVar("m_flDensity")]
+	public partial float Density { get; set; }
 }

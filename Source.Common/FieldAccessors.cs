@@ -20,10 +20,14 @@ public static class FieldAccessorRegistry
 	}
 
 	public static DynamicAccessor Create(Type owner, string expression, string? name) {
+		return TryCreate(owner, expression, name) ?? throw new KeyNotFoundException($"No generated field accessor for {owner.FullName}.{expression}");
+	}
+
+	public static DynamicAccessor? TryCreate(Type owner, string expression, string? name) {
 		Func<DynamicAccessor>? factory;
 		lock (RegistryLock)
 			Scalars.TryGetValue((owner, expression, name), out factory);
-		return factory?.Invoke() ?? throw new KeyNotFoundException($"No generated field accessor for {owner.FullName}.{expression}");
+		return factory?.Invoke();
 	}
 
 	public static DynamicArrayAccessor CreateArray(Type owner, string expression, int listMax) {

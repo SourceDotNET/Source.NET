@@ -6,25 +6,24 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
 
-using FIELD = FIELD<C_TEBeamEntPoint>;
 [NetworkName("CTEBeamEntPoint")]
-public class C_TEBeamEntPoint : C_BaseBeam
+public partial class C_TEBeamEntPoint : C_BaseBeam
 {
-	public static readonly RecvTable DT_TEBeamEntPoint = new(DT_BaseBeam, [
-		RecvPropInt(FIELD.OF(nameof(StartEntity))),
-		RecvPropInt(FIELD.OF(nameof(EndEntity))),
-		RecvPropVector(FIELD.OF(nameof(StartPoint))),
-		RecvPropVector(FIELD.OF(nameof(EndPoint))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEBeamEntPoint).AsEvent<C_TEBeamEntPoint>();
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(StartEntity)) { Bits = 24, Flags = PropFlags.Unsigned },
+		new(nameof(EndEntity)) { Bits = 24, Flags = PropFlags.Unsigned },
+		new(nameof(StartPoint)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(EndPoint)) { Bits = 0, Flags = PropFlags.Coord },
+	];
 
-	[NetworkName("m_nStartEntity")]
+	[NetworkVar("m_nStartEntity")]
 	public int StartEntity;
-	[NetworkName("m_nEndEntity")]
+	[NetworkVar("m_nEndEntity")]
 	public int EndEntity;
-	[NetworkName("m_vecStartPoint")]
+	[NetworkVar("m_vecStartPoint")]
 	public Vector3 StartPoint;
-	[NetworkName("m_vecEndPoint")]
+	[NetworkVar("m_vecEndPoint")]
 	public Vector3 EndPoint;
 
 	public override void PostDataUpdate(DataUpdateType updateType) {

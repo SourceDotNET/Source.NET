@@ -287,10 +287,12 @@ public class CClientThinkList : IGameSystemPerFrame
 					pEntity.SetRemovalFlag(false);
 
 				IClientThinkable? pThink = cl_entitylist.GetClientThinkableFromHandle(handle);
-				if (pThink != null) 
+				if (pThink != null)
 					pThink.Release();
 			}
 		}
+
+		DeleteList.Clear();
 	}
 
 	private void AddEntityToFrameThinkList(ThinkEntry pEntry, bool bAlwaysChain, ref int count, Span<ThinkEntry> ppFrameThinkList) {

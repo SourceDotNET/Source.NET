@@ -3,45 +3,44 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_SteamJet>;
 [NetworkName("CSteamJet")]
-public class C_SteamJet : C_BaseParticleEntity
+public partial class C_SteamJet : C_BaseParticleEntity
 {
-	public static readonly RecvTable DT_SteamJet = new(DT_BaseParticleEntity, [
-		RecvPropFloat(FIELD.OF(nameof(SpreadSpeed))),
-		RecvPropFloat(FIELD.OF(nameof(Speed))),
-		RecvPropFloat(FIELD.OF(nameof(StartSize))),
-		RecvPropFloat(FIELD.OF(nameof(EndSize))),
-		RecvPropFloat(FIELD.OF(nameof(Rate))),
-		RecvPropFloat(FIELD.OF(nameof(JetLength))),
-		RecvPropBool(FIELD.OF(nameof(Emit))),
-		RecvPropBool(FIELD.OF(nameof(FaceLeft))),
-		RecvPropInt(FIELD.OF(nameof(Type))),
-		RecvPropInt(FIELD.OF(nameof(Spawnflags))),
-		RecvPropFloat(FIELD.OF(nameof(RollSpeed))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_SteamJet);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(SpreadSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Speed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(StartSize)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(EndSize)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Rate)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(JetLength)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(Emit),
+		nameof(FaceLeft),
+		new(nameof(Type)) { Bits = 2, Flags = PropFlags.Unsigned },
+		new(nameof(Spawnflags)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(RollSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_SpreadSpeed")]
+	[NetworkVar("m_SpreadSpeed")]
 	public float SpreadSpeed;
-	[NetworkName("m_Speed")]
+	[NetworkVar("m_Speed")]
 	public new float Speed;
-	[NetworkName("m_StartSize")]
+	[NetworkVar("m_StartSize")]
 	public float StartSize;
-	[NetworkName("m_EndSize")]
+	[NetworkVar("m_EndSize")]
 	public float EndSize;
-	[NetworkName("m_Rate")]
+	[NetworkVar("m_Rate")]
 	public float Rate;
-	[NetworkName("m_JetLength")]
+	[NetworkVar("m_JetLength")]
 	public float JetLength;
-	[NetworkName("m_bEmit")]
+	[NetworkVar("m_bEmit")]
 	public bool Emit;
-	[NetworkName("m_bFaceLeft")]
+	[NetworkVar("m_bFaceLeft")]
 	public bool FaceLeft;
-	[NetworkName("m_nType")]
+	[NetworkVar("m_nType")]
 	public int Type;
-	[NetworkName("m_spawnflags")]
+	[NetworkVar("m_spawnflags")]
 	public int Spawnflags;
-	[NetworkName("m_flRollSpeed")]
+	[NetworkVar("m_flRollSpeed")]
 	public float RollSpeed;
 }

@@ -26,18 +26,16 @@ public static class ViewScene
 	public static void UpdateRefractTexture(int x, int y, int w, int h, bool forceUpdate = false) {
 		Assert(!DrawingShadowDepthView());
 
-		if (!IsRetail() && !r_updaterefracttexture.GetBool())
+		if (!r_updaterefracttexture.GetBool())
 			return;
 
 		using MatRenderContextPtr renderContext = new(materials);
 		ITexture? texture = RenderTexture.GetPowerOfTwoFrameBufferTexture();
-		if (IsPC() || forceUpdate || g_bAllowMultipleRefractUpdatesPerScenePerFrame || (gpGlobals.FrameCount != g_viewscene_refractUpdateFrame)) {
-			// forced or only once per frame 
-			System.Drawing.Rectangle rect = new(x, y, w, h);
-			renderContext.CopyRenderTargetToTextureEx(texture!, 0, ref rect, ref Unsafe.NullRef<System.Drawing.Rectangle>());
+		// forced or only once per frame 
+		System.Drawing.Rectangle rect = new(x, y, w, h);
+		renderContext.CopyRenderTargetToTextureEx(texture!, 0, ref rect, ref Unsafe.NullRef<System.Drawing.Rectangle>());
 
-			g_viewscene_refractUpdateFrame = gpGlobals.FrameCount;
-		}
+		g_viewscene_refractUpdateFrame = gpGlobals.FrameCount;
 		renderContext.SetFrameBufferCopyTexture(texture);
 	}
 

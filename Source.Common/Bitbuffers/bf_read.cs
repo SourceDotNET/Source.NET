@@ -80,7 +80,7 @@ public unsafe class bf_read : BitBuffer
 		StartReading(pData, bytes, 0, bits);
 	}
 
-	public bf_read(string name, byte[]? pData, int bytes, int bits = 0) {
+	public bf_read(string name, byte[]? pData, int bytes, int bits = -1) {
 		debugName = name;
 		StartReading(pData, bytes, 0, bits);
 	}
@@ -143,6 +143,12 @@ public unsafe class bf_read : BitBuffer
 		fixed (byte* pOutRO = pOutData) {
 			byte* pOut = pOutRO;
 			int nBitsLeft = nBits;
+
+			while (((nint)pOut & 3) != 0 && nBitsLeft >= 8) {
+				*pOut = (byte)ReadUBitLong(8);
+				++pOut;
+				nBitsLeft -= 8;
+			}
 
 			// read dwords
 			while (nBitsLeft >= 32) {
@@ -399,7 +405,7 @@ public unsafe class bf_read : BitBuffer
 		if (flags == 0)
 			return 0;
 
-		return ReadUBitLong(ReadBitCoordMP_numbits_table[flags - 1]) * 4 + flags;
+		return ReadUBitLong(ReadBitCoordBits_numbits_table[flags - 1]) * 4 + flags;
 	}
 
 	enum ReadBitCoordMPBitsFlags { INBOUNDS = 1, INTVAL = 2 };
@@ -468,7 +474,7 @@ public unsafe class bf_read : BitBuffer
 		uint fractval = ReadUBitLong(NORMAL_FRACTIONAL_BITS);
 
 		// Calculate the correct floating point value
-		float value = fractval * NORMAL_RESOLUTION;
+		float value = (float)(fractval * NORMAL_RESOLUTION);
 
 		// Fixup the sign if negative.
 		if (signbit > 0)
@@ -525,8 +531,8 @@ public unsafe class bf_read : BitBuffer
 		// Read the two DWORDs according to network endian
 		short endianIndex = 0x0100;
 		byte* idx = (byte*)&endianIndex;
-		pLongs[*idx++] = ReadUBitLong(sizeof(long) << 3);
-		pLongs[*idx] = ReadUBitLong(sizeof(long) << 3);
+		pLongs[*idx++] = ReadUBitLong(sizeof(int) << 3);
+		pLongs[*idx] = ReadUBitLong(sizeof(int) << 3);
 
 		return retval;
 	}
@@ -566,8 +572,10 @@ public unsafe class bf_read : BitBuffer
 	}
 
 	public bool ReadString(out string? str, int maxLen, bool bLine = false) {
-		str = ReadString(maxLen, bLine);
-		return !Overflowed;
+		Span<byte> buffer = stackalloc byte[maxLen];
+		bool fits = ReadString(buffer, bLine, out int chars);
+		str = Encoding.ASCII.GetString(buffer[..chars]);
+		return fits;
 	}
 	public bool ReadString(Span<char> str, bool bLine, out int outNumChars) {
 		Assert(!str.IsEmpty);
@@ -576,7 +584,7 @@ public unsafe class bf_read : BitBuffer
 		bool bTooSmall = false;
 		int iChar = 0;
 		while (true) {
-			char val = (char)ReadChar();
+			char val = (char)ReadByte();
 			if (val == 0)
 				break;
 			else if (bLine && val == '\n')
@@ -640,23 +648,22 @@ public unsafe class bf_read : BitBuffer
 	public int ReadString(Span<char> target, bool bLine = false) {
 		if (target.Length < 1) return 0;
 		Span<byte> data = stackalloc byte[target.Length];
-		int bytes = ReadString(data, bLine);
-		int chars = Encoding.ASCII.GetChars(data[..bytes], target[..^1]);
+		ReadString(data, bLine, out int bytes);
+		int chars = Encoding.ASCII.GetChars(data[..bytes], target);
 		target[chars] = '\0';
 		return chars;
 	}
 	public int ReadString(Span<byte> target, bool bLine = false) {
 		Assert(target.Length != 0);
 		int i = 0;
-		while (target.Length > 0 && !Overflowed) {
+		while (!Overflowed) {
 			byte val = ReadByte();
 			if (val == 0)
 				break;
 			else if (bLine && val == '\n')
 				break;
-			target[0] = val;
-			target = target[1..];
-			i++;
+			if (i < target.Length)
+				target[i++] = val;
 		}
 		return i;
 	}
@@ -665,20 +672,8 @@ public unsafe class bf_read : BitBuffer
 			return string.Empty;
 
 		Span<byte> writeTarget = stackalloc byte[maxLen];
-
-		int iChar = 0;
-		while (iChar < writeTarget.Length && !Overflowed) {
-			byte val = ReadByte();
-
-			if (val == 0)
-				break;
-			else if (bLine && val == '\n')
-				break;
-
-			writeTarget[iChar++] = val;
-		}
-
-		return Encoding.ASCII.GetString(writeTarget[..iChar]);
+		ReadString(writeTarget, bLine, out int chars);
+		return Encoding.ASCII.GetString(writeTarget[..chars]);
 	}
 
 	public void ExciseBits(int startbit, int bitstoremove) {
@@ -750,6 +745,8 @@ public unsafe class bf_read : BitBuffer
 	public uint ReadUBitLong(uint bits) => ReadUBitLong((int)bits); // macro
 
 	public uint ReadUBitLong(int bits) {
+		Assert(bits > 0 && bits <= 32);
+
 		if (BitsLeft < bits) {
 			curBit = dataBits;
 			TriggerOverflow();

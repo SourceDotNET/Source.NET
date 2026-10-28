@@ -3,37 +3,36 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<BeamSpotlight>;
 [LinkEntityToClass("beam_spotlight")]
 [NetworkName("CBeamSpotlight")]
-public class BeamSpotlight : BaseEntity
+public partial class BeamSpotlight : BaseEntity
 {
-	public static readonly SendTable DT_BeamSpotlight = new(DT_BaseEntity, [
-		SendPropInt(FIELD.OF(nameof(HaloIndex)), 16, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(SpotlightOn)), 1, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(HasDynamicLight)), 1, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(SpotlightMaxLength)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(SpotlightGoalWidth)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(HDRColorScale)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(RotationSpeed)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(RotationAxis)), 2, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BeamSpotlight);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(HaloIndex)) { Bits = 16, Flags = PropFlags.Unsigned },
+		new(nameof(SpotlightOn)) { Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(HasDynamicLight)) { Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(SpotlightMaxLength)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(SpotlightGoalWidth)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(HDRColorScale)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(RotationSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(RotationAxis)) { Bits = 2, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_nHaloIndex")]
-	public int HaloIndex;
-	[NetworkName("m_bSpotlightOn")]
-	public int SpotlightOn;
-	[NetworkName("m_bHasDynamicLight")]
-	public int HasDynamicLight;
-	[NetworkName("m_flSpotlightMaxLength")]
-	public float SpotlightMaxLength;
-	[NetworkName("m_flSpotlightGoalWidth")]
-	public float SpotlightGoalWidth;
-	[NetworkName("m_flHDRColorScale")]
-	public float HDRColorScale;
-	[NetworkName("m_flRotationSpeed")]
-	public float RotationSpeed;
-	[NetworkName("m_nRotationAxis")]
-	public int RotationAxis;
+	[NetworkVar("m_nHaloIndex")]
+	public partial int HaloIndex { get; set; }
+	[NetworkVar("m_bSpotlightOn")]
+	public partial int SpotlightOn { get; set; }
+	[NetworkVar("m_bHasDynamicLight")]
+	public partial int HasDynamicLight { get; set; }
+	[NetworkVar("m_flSpotlightMaxLength")]
+	public partial float SpotlightMaxLength { get; set; }
+	[NetworkVar("m_flSpotlightGoalWidth")]
+	public partial float SpotlightGoalWidth { get; set; }
+	[NetworkVar("m_flHDRColorScale")]
+	public partial float HDRColorScale { get; set; }
+	[NetworkVar("m_flRotationSpeed")]
+	public partial float RotationSpeed { get; set; }
+	[NetworkVar("m_nRotationAxis")]
+	public partial int RotationAxis { get; set; }
 }

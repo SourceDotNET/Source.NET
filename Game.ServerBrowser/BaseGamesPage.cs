@@ -722,11 +722,12 @@ public class BaseGamesPage : PropertyPage, IGameList
 		OnButtonToggled(Filter, visible ? 1 : 0);
 	}
 
-	void OnButtonToggled(Panel panel, int state) {
+	[UiMessage("ButtonToggled")]
+	void OnButtonToggled(Panel sender, int state) {
 		UpdateFilterAndQuickListVisibility();
 
-		if (panel == NoFullServersFilterCheck || panel == NoEmptyServersFilterCheck || panel == NoPasswordFilterCheck || panel == ReplayFilterCheck)
-			OnTextChanged(panel, "");
+		if (sender == NoFullServersFilterCheck || sender == NoEmptyServersFilterCheck || sender == NoPasswordFilterCheck || sender == ReplayFilterCheck)
+			OnTextChanged(sender, "");
 	}
 
 	void UpdateDerivedLayouts() {
@@ -750,9 +751,10 @@ public class BaseGamesPage : PropertyPage, IGameList
 			HideReplayFilter();
 	}
 
-	void OnTextChanged(Panel panel, ReadOnlySpan<char> text) {
+	[UiMessage("TextChanged")]
+	void OnTextChanged(Panel sender, ReadOnlySpan<char> text) {
 		if (stricmp(text, ComboAllText) == 0) {
-			if (panel is ComboBox combo) {
+			if (sender is ComboBox combo) {
 				combo.SetText("");
 				text = "";
 			}
@@ -761,7 +763,7 @@ public class BaseGamesPage : PropertyPage, IGameList
 		UpdateFilterSettings();
 		ApplyGameFilters();
 
-		if (FiltersVisible && (panel == GameFilter || panel == LocationFilter) && ServerBrowserDialog.Instance!.IsVisible()) {
+		if (FiltersVisible && (sender == GameFilter || sender == LocationFilter) && ServerBrowserDialog.Instance!.IsVisible()) {
 			StopRefresh();
 			GetNewServerList();
 		}
@@ -883,29 +885,15 @@ public class BaseGamesPage : PropertyPage, IGameList
 		}
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		switch (command) {
-			case "Connect":
-				OnBeginConnect();
-				break;
-			case "stoprefresh":
-				StopRefresh();
-				break;
-			case "refresh":
-				SteamMatchmakingServers.RefreshQuery(Request);
-				SetRefreshing(true);
-				ServerRefreshCount = 0;
-				ClearQuickList();
-				break;
-			case "GetNewList":
-				GetNewServerList();
-				break;
-			default:
-				base.OnCommand(command);
-				break;
-		}
+	[UiCommand("refresh")]
+	private void OnRefresh() {
+		SteamMatchmakingServers.RefreshQuery(Request);
+		SetRefreshing(true);
+		ServerRefreshCount = 0;
+		ClearQuickList();
 	}
 
+	[UiMessage("ItemSelected")]
 	void OnItemSelected() {
 		if (GetSelectedServerID() == -1)
 			Connect.SetEnabled(false);
@@ -923,8 +911,10 @@ public class BaseGamesPage : PropertyPage, IGameList
 	public bool OnGameListEnterPressed() => false;
 	int GetSelectedItemsCount() => GameList.GetSelectedItemsCount();
 
+	[UiMessage("AddToFavorites")]
 	public virtual void OnAddToFavorites() { }
 
+	[UiMessage("AddToBlacklist")]
 	public virtual void OnAddToBlacklist() { }
 
 	public virtual void ServerFailedToRespond(HServerListRequest req, int server) => ServerResponded(req, server);
@@ -936,6 +926,7 @@ public class BaseGamesPage : PropertyPage, IGameList
 		UpdateStatus();
 	}
 
+	[UiMessage("RefreshServer")]
 	void OnRefreshServer(int serverID) {
 		for (int i = 0; i < GameList.GetSelectedItemsCount(); i++) {
 			int serverId = GameList.GetItemUserData(GameList.GetSelectedItem(i));
@@ -1001,8 +992,10 @@ public class BaseGamesPage : PropertyPage, IGameList
 		ClearQuickList();
 	}
 
+	[UiCommand("GetNewList")]
 	public virtual void GetNewServerList() => StartRefresh();
 
+	[UiCommand("stoprefresh")]
 	public virtual void StopRefresh() {
 		ServerRefreshCount = 0;
 
@@ -1054,6 +1047,8 @@ public class BaseGamesPage : PropertyPage, IGameList
 		return serverId;
 	}
 
+	[UiCommand("Connect")]
+	[UiMessage("ConnectToServer")]
 	public void OnBeginConnect() {
 		KeyValues? kv = null;
 		int serverID = GetSelectedServerID(ref kv);
@@ -1092,6 +1087,7 @@ public class BaseGamesPage : PropertyPage, IGameList
 		ServerBrowserDialog.Instance!.JoinGame(this, (uint)serverID);
 	}
 
+	[UiMessage("ViewGameInfo")]
 	void OnViewGameInfo() {
 		int serverID = GetSelectedServerID();
 		if (serverID == -1)
@@ -1135,42 +1131,8 @@ public class BaseGamesPage : PropertyPage, IGameList
 	void OnFavoritesMsg(FavoritesListChanged_t favListChanged) { }
 
 	public virtual bool SupportsItem(IGameList.InterfaceItem item) => false;
+	[UiMessage("OpenContextMenu")]
 	public virtual void OnOpenContextMenu(int itemID) { }
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		switch (message.Name) {
-			case "OpenContextMenu":
-				OnOpenContextMenu(message.GetInt("itemID"));
-				return;
-			case "AddToFavorites":
-				OnAddToFavorites();
-				return;
-			case "AddToBlacklist":
-				OnAddToBlacklist();
-				return;
-			case "ItemSelected":
-				OnItemSelected();
-				return;
-			case "ConnectToServer":
-				OnBeginConnect();
-				return;
-			case "ViewGameInfo":
-				OnViewGameInfo();
-				return;
-			case "RefreshServer":
-				OnRefreshServer(message.GetInt("serverID"));
-				return;
-			case "TextChanged":
-				OnTextChanged((Panel)from!, message.GetString("text"));
-				break;
-			case "ButtonToggled":
-				OnButtonToggled((Panel)from!, message.GetInt("state"));
-				break;
-			default:
-				base.OnMessage(message, from);
-				break;
-		}
-	}
 }
 
 class DialogServerWarning : Frame
@@ -1195,16 +1157,14 @@ class DialogServerWarning : Frame
 	}
 
 	readonly static KeyValues KV_Close = new("Close");
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.Equals("OK", StringComparison.Ordinal)) {
-			PostMessage(this, KV_Close);
-			ServerBrowserDialog.Instance!.JoinGame(GameList, (uint)ServerID);
-		}
-
-		base.OnCommand(command);
+	[UiCommand("OK")]
+	private void OnOK() {
+		PostMessage(this, KV_Close);
+		ServerBrowserDialog.Instance!.JoinGame(GameList, (uint)ServerID);
+		base.OnCommand("OK");
 	}
 
-	public void OnButtonToggled(Panel panel, int state) {
+	public void OnButtonToggled(Panel sender, int state) {
 		ConVarRef sb_dontshow_maxplayer_warning = new("sb_dontshow_maxplayer_warning");
 		if (sb_dontshow_maxplayer_warning.IsValid())
 			sb_dontshow_maxplayer_warning.SetValue(state);

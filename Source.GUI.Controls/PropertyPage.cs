@@ -12,11 +12,16 @@ public class PropertyPage : EditablePanel
 
 	}
 
+	[UiMessage("ResetData")]
 	public virtual void OnResetData() { }
+	[UiMessage("ApplyChanges")]
 	public virtual void OnApplyChanges() { }
+	[UiMessage("PageShow")]
 	public virtual void OnPageShow() { }
+	[UiMessage("PageHide")]
 	public virtual void OnPageHide() { }
-	public void OnPageTabActivated(Panel pageTab) => PageTab = pageTab;
+	[UiMessage("PageTabActivated")]
+	public void OnPageTabActivated(Panel sender) => PageTab = sender;
 
 	public override void OnKeyCodeTyped(ButtonCode code) {
 		switch (code) {
@@ -37,28 +42,5 @@ public class PropertyPage : EditablePanel
 				GetFocusNavGroup().SetCurrentDefaultButton(null);
 
 		base.SetVisible(state);
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		switch (message.Name) {
-			case "ApplyChanges":
-				OnApplyChanges();
-				break;
-			case "ResetData":
-				OnResetData();
-				break;
-			case "PageShow":
-				OnPageShow();
-				break;
-			case "PageHide":
-				OnPageHide();
-				break;
-			case "PageTabActivated":
-				OnPageTabActivated((Panel)message.GetPtr("Panel")!);
-				break;
-			default:
-				base.OnMessage(message, from);
-				break;
-		}
 	}
 }

@@ -3,28 +3,27 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<Precipitation>;
 [LinkEntityToClass("func_precipitation")]
 [NetworkName("CPrecipitation")]
-public class Precipitation : BaseEntity
+public partial class Precipitation : BaseEntity
 {
-	public static readonly SendTable DT_Precipitation = new(DT_BaseEntity, [
-		SendPropInt(FIELD.OF(nameof(PrecipType)), 4, PropFlags.Unsigned),
-		SendPropString(FIELD.OF(nameof(ParticleNameClose))),
-		SendPropString(FIELD.OF(nameof(ParticleNameInner))),
-		SendPropString(FIELD.OF(nameof(ParticleNameOuter))),
-		SendPropFloat(FIELD.OF(nameof(ParticleDist)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_Precipitation);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(PrecipType)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(ParticleNameClose)) { Encoding = NetEncoding.String },
+		new(nameof(ParticleNameInner)) { Encoding = NetEncoding.String },
+		new(nameof(ParticleNameOuter)) { Encoding = NetEncoding.String },
+		new(nameof(ParticleDist)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_nPrecipType")]
-	public int PrecipType;
-	[NetworkName("m_sParticleNameClose")]
-	public InlineArray512<char> ParticleNameClose;
-	[NetworkName("m_sParticleNameInner")]
-	public InlineArray512<char> ParticleNameInner;
-	[NetworkName("m_sParticleNameOuter")]
-	public InlineArray512<char> ParticleNameOuter;
-	[NetworkName("m_flParticleDist")]
-	public float ParticleDist;
+	[NetworkVar("m_nPrecipType")]
+	public partial int PrecipType { get; set; }
+	[NetworkVar("m_sParticleNameClose")]
+	public partial ref readonly InlineArray512<char> ParticleNameClose { get; }
+	[NetworkVar("m_sParticleNameInner")]
+	public partial ref readonly InlineArray512<char> ParticleNameInner { get; }
+	[NetworkVar("m_sParticleNameOuter")]
+	public partial ref readonly InlineArray512<char> ParticleNameOuter { get; }
+	[NetworkVar("m_flParticleDist")]
+	public partial float ParticleDist { get; set; }
 }

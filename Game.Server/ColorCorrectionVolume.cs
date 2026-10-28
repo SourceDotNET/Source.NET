@@ -3,29 +3,28 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<ColorCorrectionVolume>;
 [LinkEntityToClass("color_correction_volume")]
-[NetworkName("CColorCorrectionVolume")]
-public class ColorCorrectionVolume : BaseEntity
+[NetworkName("CColorCorrectionVolume", NoBase = true)]
+public partial class ColorCorrectionVolume : BaseEntity
 {
-	public static readonly SendTable DT_ColorCorrectionVolume = new([
-		SendPropBool(FIELD.OF(nameof(Enabled))),
-		SendPropFloat(FIELD.OF(nameof(MaxWeight)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(FadeDuration)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(Weight)), 0, PropFlags.NoScale),
-		SendPropString(FIELD.OF(nameof(LookupFilename))),
-		SendPropInt(FIELD.OF(nameof(ModelIndex)), 14, 0),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_ColorCorrectionVolume);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Enabled),
+		new(nameof(MaxWeight)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeDuration)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Weight)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(LookupFilename)) { Encoding = NetEncoding.String },
+		new(nameof(ModelIndex)) { Encoding = NetEncoding.Int, Bits = 14 },
+	];
 
-	[NetworkName("m_bEnabled")]
-	public bool Enabled;
-	[NetworkName("m_MaxWeight")]
-	public float MaxWeight;
-	[NetworkName("m_FadeDuration")]
-	public float FadeDuration;
-	[NetworkName("m_Weight")]
-	public float Weight;
-	[NetworkName("m_lookupFilename")]
-	public InlineArrayMaxPath<char> LookupFilename;
+	[NetworkVar("m_bEnabled")]
+	public partial bool Enabled { get; set; }
+	[NetworkVar("m_MaxWeight")]
+	public partial float MaxWeight { get; set; }
+	[NetworkVar("m_FadeDuration")]
+	public partial float FadeDuration { get; set; }
+	[NetworkVar("m_Weight")]
+	public partial float Weight { get; set; }
+	[NetworkVar("m_lookupFilename")]
+	public partial ref readonly InlineArrayMaxPath<char> LookupFilename { get; }
 }

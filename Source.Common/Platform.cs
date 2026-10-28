@@ -1,33 +1,38 @@
 using Source.Common;
 
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Source;
-
-public static class PlatformMacros
-{
-	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsPC() => true;
-	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsConsole() => false;
-	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsX360() => false;
-	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsRetail() => false;
-	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsOSX()
-#if OSX
-		=> true;
-#else
-		=> false;
-#endif
-	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static bool IsPlatform64Bits() => IntPtr.Size == 8;
-
-	public const int MAX_PATH = 260;
-	public const int MAX_OSPATH = 260;
-}
 
 public delegate bool MessageBoxFn(ReadOnlySpan<char> title, ReadOnlySpan<char> info, bool showOkAndCancel);
 
 public static class Platform
 {
+	public const bool IsWindows
+#if WIN32
+		= true;
+#else
+		= false;
+#endif
+
+	public const bool IsOSX
+#if OSX
+		= true;
+#else
+		= false;
+#endif
+
+	public const bool IsPosix
+#if POSIX
+		= true;
+#else
+		= false;
+#endif
+
+	public const int MAX_PATH = 260;
+	public const int MAX_OSPATH = 260;
+
 	readonly static Lazy<Stopwatch> __timer = new(() => {
 		Stopwatch stopwatch = new();
 		stopwatch.Start();

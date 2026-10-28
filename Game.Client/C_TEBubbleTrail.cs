@@ -3,31 +3,30 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEBubbleTrail>;
 [NetworkName("CTEBubbleTrail")]
-public class C_TEBubbleTrail : C_BaseTempEntity
+public partial class C_TEBubbleTrail : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEBubbleTrail = new(DT_BaseTempEntity, [
-		RecvPropVector(FIELD.OF(nameof(Mins))),
-		RecvPropVector(FIELD.OF(nameof(Maxs))),
-		RecvPropInt(FIELD.OF(nameof(ModelIndex))),
-		RecvPropFloat(FIELD.OF(nameof(LWaterZ))),
-		RecvPropInt(FIELD.OF(nameof(Count))),
-		RecvPropFloat(FIELD.OF(nameof(Speed))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEBubbleTrail);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Mins)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Maxs)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(ModelIndex)) { Bits = 14 },
+		new(nameof(LWaterZ)) { Bits = 17, Low = MIN_COORD_INTEGER, High = MAX_COORD_INTEGER },
+		new(nameof(Count)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Speed)) { Bits = 17, Low = MIN_COORD_INTEGER, High = MAX_COORD_INTEGER },
+	];
 
-	[NetworkName("m_vecMins")]
+	[NetworkVar("m_vecMins")]
 	public Vector3 Mins;
-	[NetworkName("m_vecMaxs")]
+	[NetworkVar("m_vecMaxs")]
 	public Vector3 Maxs;
-	[NetworkName("m_nModelIndex")]
+	[NetworkVar("m_nModelIndex")]
 	public int ModelIndex;
-	[NetworkName("m_flWaterZ")]
+	[NetworkVar("m_flWaterZ")]
 	public float LWaterZ;
-	[NetworkName("m_nCount")]
+	[NetworkVar("m_nCount")]
 	public int Count;
-	[NetworkName("m_fSpeed")]
+	[NetworkVar("m_fSpeed")]
 	public float Speed;
 }
 

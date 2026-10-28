@@ -1,41 +1,67 @@
 ﻿using Source.Common;
+#if GAME_DLL
+using Game.Server;
+#endif
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace Game.Shared;
 
-public class EnvWindShared
+public partial class EnvWindShared
 {
-	[NetworkName("m_flStartTime")]
-	public float StartTime;
-	[NetworkName("m_iWindSeed")]
-	public int WindSeed;
-	[NetworkName("m_iMinWind")]
-	public int MinWind;
-	[NetworkName("m_iMaxWind")]
-	public int MaxWind;
-	[NetworkName("m_iMinGust")]
-	public int MinGust;
-	[NetworkName("m_iMaxGust")]
-	public int MaxGust;
-	[NetworkName("m_flMinGustDelay")]
-	public float MinGustDelay;
-	[NetworkName("m_flMaxGustDelay")]
-	public float MaxGustDelay;
-	[NetworkName("m_flGustDuration")]
-	public float GustDuration;
-	[NetworkName("m_iGustDirChange")]
-	public int GustDirChange;
+	[NetworkTable("DT_EnvWindShared")]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(MinWind)) { Bits = 10, Flags = PropFlags.Unsigned },
+		new(nameof(MaxWind)) { Bits = 10, Flags = PropFlags.Unsigned },
+		new(nameof(MinGust)) { Bits = 10, Flags = PropFlags.Unsigned },
+		new(nameof(MaxGust)) { Bits = 10, Flags = PropFlags.Unsigned },
+		nameof(MinGustDelay),
+		nameof(MaxGustDelay),
+		new(nameof(GustDirChange)) { Bits = 9, Flags = PropFlags.Unsigned },
+		new(nameof(WindSeed)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(InitialWindDir)) { Bits = 9, Flags = PropFlags.Unsigned },
+		nameof(InitialWindSpeed),
+		nameof(StartTime),
+		nameof(GustDuration),
+		new(nameof(WindRadius)) { Bits = 32, Flags = PropFlags.NoScale },
+	];
+
+#if GAME_DLL
+	public BaseEntity? Outer;
+	public void NetworkStateChanged() => Outer?.NetworkStateChanged();
+	public void NetworkStateChanged(IFieldAccessor field) => Outer?.NetworkStateChanged();
+#endif
+
+	[NetworkVar("m_iMinWind")]
+	public partial int MinWind { get; set; }
+	[NetworkVar("m_iMaxWind")]
+	public partial int MaxWind { get; set; }
+	[NetworkVar("m_iMinGust")]
+	public partial int MinGust { get; set; }
+	[NetworkVar("m_iMaxGust")]
+	public partial int MaxGust { get; set; }
+	[NetworkVar("m_flMinGustDelay")]
+	public partial float MinGustDelay { get; set; }
+	[NetworkVar("m_flMaxGustDelay")]
+	public partial float MaxGustDelay { get; set; }
+	[NetworkVar("m_iGustDirChange")]
+	public partial int GustDirChange { get; set; }
+	[NetworkVar("m_iWindSeed")]
+	public partial int WindSeed { get; set; }
 	public int GustSound;
 	public int WindDir;
 	public float WindSpeed;
-	[NetworkName("m_iInitialWindDir")]
-	public int InitialWindDir;
-	[NetworkName("m_flInitialWindSpeed")]
-	public float InitialWindSpeed;
-	[NetworkName("m_windRadius")]
-	public int WindRadius;
+	[NetworkVar("m_iInitialWindDir")]
+	public partial int InitialWindDir { get; set; }
+	[NetworkVar("m_flInitialWindSpeed")]
+	public partial float InitialWindSpeed { get; set; }
+	[NetworkVar("m_flStartTime")]
+	public partial float StartTime { get; set; }
+	[NetworkVar("m_flGustDuration")]
+	public partial float GustDuration { get; set; }
+	[NetworkVar("m_windRadius")]
+	public partial int WindRadius { get; set; }
 
 	#if !CLIENT_DLL
 		// todo: onguststart/ongustend

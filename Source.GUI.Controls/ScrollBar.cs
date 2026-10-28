@@ -291,20 +291,10 @@ public class ScrollBar : Panel
 
 	public virtual void SendSliderMoveMessage(int value) => PostActionSignal(new KeyValues("ScrollBarSliderMoved", "position", value));
 
-	public void OnSliderMoved(int value) {
+	[UiMessage("ScrollBarSliderMoved")]
+	public void OnSliderMoved([MessageParam("position")] int value) {
 		SendSliderMoveMessage(value);
 		UpdateSliderImages();
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		switch (message.Name) {
-			case "ScrollBarSliderMoved":
-				OnSliderMoved(message.GetInt("position"));
-				break;
-			default:
-				base.OnMessage(message, from);
-				break;
-		}
 	}
 
 	public int GetValue() => Slider!.GetValue();

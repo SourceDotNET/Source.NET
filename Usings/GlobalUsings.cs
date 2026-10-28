@@ -1,6 +1,6 @@
 ﻿global using static Source.Dbg;
 global using static Source.Common.CFormatting;
-global using static Source.PlatformMacros;
+global using static Source.Platform;
 global using static Source.Common.MemUtils;
 global using static Source.Common.ThreadUtils;
 global using static Source.Common.Engine.EngineSoundGlobals;

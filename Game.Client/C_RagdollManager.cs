@@ -3,16 +3,14 @@ using Source;
 
 namespace Game.Client;
 
-using FIELD = FIELD<C_RagdollManager>;
-
-[NetworkName("CRagdollManager")]
-public class C_RagdollManager : C_BaseEntity
+[NetworkName("CRagdollManager", NoBase = true)]
+public partial class C_RagdollManager : C_BaseEntity
 {
-	[NetworkName("m_iCurrentMaxRagdollCount")]
-	public int CurrentMaxRagdollCount;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(CurrentMaxRagdollCount)) { Bits = 6 },
+	];
 
-	public static readonly RecvTable DT_RagdollManager = new([
-		RecvPropInt(FIELD.OF(nameof(CurrentMaxRagdollCount))),
-	]);
-	public static new readonly ClientClass ClientClass = new ClientClass(DT_RagdollManager);
+	[NetworkVar("m_iCurrentMaxRagdollCount")]
+	public int CurrentMaxRagdollCount;
 }

@@ -244,17 +244,10 @@ class DebugSystemPanel : Panel
 			Surface.SetCursor(GetCursor());
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.Equals("toggledebugpanel", StringComparison.OrdinalIgnoreCase)) {
-			OptionsPanel?.SetVisible(!OptionsPanel.IsVisible());
-			return;
-		}
-		else if (command.Equals("quit", StringComparison.OrdinalIgnoreCase)) {
-			cbuf.AddText("quit\n");
-			return;
-		}
+	[UiCommand("toggledebugpanel")]
+	private void OnToggleDebugPanel() => OptionsPanel?.SetVisible(!OptionsPanel.IsVisible());
 
-		base.OnCommand(command);
-	}
+	[UiCommand("quit")]
+	private void OnQuit() => cbuf.AddText("quit\n");
 }
 #endif

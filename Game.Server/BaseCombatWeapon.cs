@@ -3,6 +3,7 @@ using Game.Shared;
 using Source;
 using Source.Common;
 using Source.Common.Commands;
+using Source.Common.Engine;
 using Source.Common.Formats.BSP;
 using Source.Common.Physics;
 
@@ -34,7 +35,15 @@ public partial class BaseCombatWeapon : BaseAnimating
 	public override DataMap? GetDataDescMap() => DataDesc;
 
 	public BaseCombatWeapon() {
+		Owner = new();
 		OnBaseCombatWeaponCreated(this);
+	}
+
+	public override EdictFlags UpdateTransmitState() {
+		if (GetOwner() != null)
+			return SetTransmitState(EdictFlags.PVSCheck);
+
+		return base.UpdateTransmitState();
 	}
 
 	public override void UpdateOnRemove() {

@@ -86,14 +86,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		garrysmod.LevelInit(mapname);
 #endif
 
-		if (gpGlobals.MaxClients > 1) {
-			if (cl_predict.GetInt() == 0)
-				engine.ClientCmd("cl_predict 1");
-		}
-		else {
-			if (cl_predict.GetInt() != 0)
-				engine.ClientCmd("cl_predict 0");
-		}
+		engine.ClientCmd(gpGlobals.MaxClients < 2 ? "cl_predict 0" : "cl_predict 1");
 	}
 
 	public void LevelInitPostEntity() {
@@ -211,10 +204,11 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 	public void Shutdown() {
 		ClientVoiceMgr_Shutdown();
-		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
 #if GMOD_DLL
+		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
 		get.MenuSystem()?.Shutdown();
 		get.HTML()?.Shutdown();
+		Game.Client.GarrysMod.MaterialProxyFactory.Shutdown();
 #endif
 	}
 
@@ -548,9 +542,11 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 		// StopAllRumbleEffects();
 
-		// gHUD.LevelShutdown();
+		gHUD.LevelShutdown();
 
-		// todo
+#if GMOD_DLL
+		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
+#endif
 	}
 
 	public LookupProxyInterfaceFn GetMaterialProxyInterfaceFn() {
@@ -804,9 +800,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		throw new NotImplementedException();
 	}
 
-	public void IN_MouseWheelAnalog(int value) {
-		throw new NotImplementedException();
-	}
+	public void IN_MouseWheelAnalog(int value) => input.MouseWheeled(value);
 
 	public void GMOD_SignOnStateChanged(int userID, int oldState, int newState) {
 		throw new NotImplementedException();

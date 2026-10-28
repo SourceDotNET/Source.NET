@@ -20,7 +20,7 @@ public static class CoordSize
 
 	public const int NORMAL_FRACTIONAL_BITS = 11;
 	public const int NORMAL_DENOMINATOR = (1 << NORMAL_FRACTIONAL_BITS) - 1;
-	public const float NORMAL_RESOLUTION = 1.0f / NORMAL_DENOMINATOR;
+	public const double NORMAL_RESOLUTION = 1.0 / NORMAL_DENOMINATOR;
 
 	/// <summary>
 	/// This is limited by the network fractional bits used for coords, because net coords will be only be accurate to 5 bits fractional.

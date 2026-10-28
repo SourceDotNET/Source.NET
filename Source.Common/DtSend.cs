@@ -397,12 +397,6 @@ public static class SendPropHelpers
 		=> SendPropInt(field, Constants.SP_MODEL_INDEX_BITS);
 	public static SendProp SendPropString(IFieldAccessor field, int bufferSize = -1, PropFlags flags = 0, SendVarProxyFn? proxyFn = null) {
 		SendProp ret = new();
-		if (bufferSize == -1) {
-			// Try to see if this is inline. If it is then we can set the explicit size ourselves
-			var inlineArrayAttr = field.FieldType.GetCustomAttribute<InlineArrayAttribute>();
-			if (inlineArrayAttr != null)
-				bufferSize = inlineArrayAttr.Length;
-		}
 		ret.Type = SendPropType.String;
 		ret.FieldInfo = field;
 		ret.SetFlags(flags);

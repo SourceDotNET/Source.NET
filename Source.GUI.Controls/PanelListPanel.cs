@@ -246,6 +246,7 @@ public class PanelListPanel : EditablePanel
 		SetBgColor(GetSchemeColor("lISTpANEL.BgColor", GetBgColor(), scheme));
 	}
 
+	[UiMessage("ScrollBarSliderMoved")]
 	public void OnSliderMoved(int position) {
 		InvalidateLayout();
 		Repaint();
@@ -300,14 +301,5 @@ public class PanelListPanel : EditablePanel
 
 		Vbar.SetValue(y);
 		InvalidateLayout();
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name.Equals("ScrollBarSliderMoved")) {
-			OnSliderMoved(message.GetInt("position", 0));
-			return;
-		}
-
-		base.OnMessage(message, from);
 	}
 }

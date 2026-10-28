@@ -3,31 +3,30 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEBloodStream>;
 [NetworkName("CTEBloodStream")]
-public class C_TEBloodStream : C_TEParticleSystem
+public partial class C_TEBloodStream : C_TEParticleSystem
 {
-	public static readonly RecvTable DT_TEBloodStream = new(DT_TEParticleSystem, [
-		RecvPropVector(FIELD.OF(nameof(Direction))),
-		RecvPropInt(FIELD.OF(nameof(R))),
-		RecvPropInt(FIELD.OF(nameof(G))),
-		RecvPropInt(FIELD.OF(nameof(B))),
-		RecvPropInt(FIELD.OF(nameof(A))),
-		RecvPropInt(FIELD.OF(nameof(Amount))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEBloodStream);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Direction)) { Bits = 11, Low = -10.0f, High = 10.0f },
+		new(nameof(R)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(G)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(B)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(A)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Amount)) { Bits = 8, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecDirection")]
+	[NetworkVar("m_vecDirection")]
 	public Vector3 Direction;
-	[NetworkName("r")]
+	[NetworkVar("r")]
 	public int R;
-	[NetworkName("g")]
+	[NetworkVar("g")]
 	public int G;
-	[NetworkName("b")]
+	[NetworkVar("b")]
 	public int B;
-	[NetworkName("a")]
+	[NetworkVar("a")]
 	public int A;
-	[NetworkName("m_nAmount")]
+	[NetworkVar("m_nAmount")]
 	public int Amount;
 }
 

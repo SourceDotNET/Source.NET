@@ -545,7 +545,7 @@ public class AchievementMgr : AutoGameSystemPerFrame, IGameEventListener2, IAchi
 	}
 
 	public void PrintAchievementStatus() {
-		if (IsPC() && !LoggedIntoSteam()) {
+		if (!LoggedIntoSteam()) {
 			Msg("Steam not running, achievements disabled. Cannot view or unlock achievements.\n");
 			return;
 		}

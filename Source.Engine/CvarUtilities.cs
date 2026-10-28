@@ -67,10 +67,19 @@ public class CvarUtilities(ICvar cvar, Host Host, Cmd cmd)
 #endif
 		}
 
+		if (v.IsFlagSet(FCvar.NotConnected)) {
+#if !SWDS
+			if (cl.IsConnected()) {
+				Dbg.ConMsg($"Can't set {v.GetName()} when connected\n");
+				return true;
+			}
+#endif
+		}
+
 		if (v.IsFlagSet(FCvar.Cheat)) {
 			if (!Host.IsSinglePlayerGame() && !Host.CanCheat()
 #if !SWDS
-				&& cl.IsHLTV
+				&& !cl.IsHLTV
 #endif
 				) {
 				Dbg.ConMsg($"Can't use cheat cvar {v.GetName()} in multiplayer, unless the server has sv_cheats set to 1.\n");

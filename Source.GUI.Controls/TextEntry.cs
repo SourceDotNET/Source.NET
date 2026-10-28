@@ -738,7 +738,7 @@ public class TextEntry : Panel
 		bool winkey = Input.IsKeyDown(ButtonCode.KeyLWin) || Input.IsKeyDown(ButtonCode.KeyRWin);
 		bool fallThrough = false;
 
-		if ((ctrl || (winkey && IsOSX())) && !alt) {
+		if ((ctrl || (winkey && IsOSX)) && !alt) {
 			switch (code) {
 				case ButtonCode.KeyA:
 					SelectAllText(false);
@@ -770,6 +770,13 @@ public class TextEntry : Panel
 
 				case ButtonCode.KeyLeft:
 					GotoWordLeft();
+					break;
+
+				case ButtonCode.KeyBackspace:
+					if (GetSelectedRange(out _, out _))
+						DeleteSelected();
+					else
+						DeleteWordLeft();
 					break;
 
 				case ButtonCode.KeyEnter:
@@ -969,22 +976,61 @@ public class TextEntry : Panel
 		if (CursorPos < 1)
 			return;
 
-		while (--CursorPos >= 0)
-			if (!char.IsWhiteSpace(TextStream[CursorPos]))
-				break;
-
-
-		while (--CursorPos >= 0)
-			if (char.IsWhiteSpace(TextStream[CursorPos]))
-				break;
-
-		CursorPos++;
+		CursorPos = FindWordLeft(CursorPos);
 
 		ScrollLeft();
 
 		LayoutVerticalScrollBarSlider();
 		ResetCursorBlink();
 		Repaint();
+	}
+
+	enum CharClass { Whitespace, Word, Punctuation }
+
+	static CharClass GetCharClass(char ch) {
+		if (char.IsWhiteSpace(ch))
+			return CharClass.Whitespace;
+		if (char.IsLetterOrDigit(ch) || ch == '_')
+			return CharClass.Word;
+		return CharClass.Punctuation;
+	}
+
+	private int FindWordLeft(int pos) {
+		while (pos > 0 && GetCharClass(TextStream[pos - 1]) == CharClass.Whitespace)
+			pos--;
+
+		if (pos > 0) {
+			CharClass charClass = GetCharClass(TextStream[pos - 1]);
+			while (pos > 0 && GetCharClass(TextStream[pos - 1]) == charClass)
+				pos--;
+		}
+
+		return pos;
+	}
+
+	private int FindWordRight(int pos) {
+		int count = TextStream.Count;
+		if (pos < count) {
+			CharClass charClass = GetCharClass(TextStream[pos]);
+			if (charClass != CharClass.Whitespace)
+				while (pos < count && GetCharClass(TextStream[pos]) == charClass)
+					pos++;
+		}
+
+		while (pos < count && GetCharClass(TextStream[pos]) == CharClass.Whitespace)
+			pos++;
+
+		return pos;
+	}
+
+	private void DeleteWordLeft() {
+		int start = FindWordLeft(CursorPos);
+		if (start == CursorPos)
+			return;
+
+		Select[0] = start;
+		Select[1] = CursorPos;
+		DeleteSelected();
 	}
 
 	private void ScrollLeft() {
@@ -1007,16 +1053,7 @@ public class TextEntry : Panel
 	private void GotoWordRight() {
 		SelectCheck();
 
-		while (++CursorPos < TextStream.Count)
-			if (char.IsWhiteSpace(TextStream[CursorPos]))
-				break;
-
-		while (++CursorPos < TextStream.Count)
-			if (!char.IsWhiteSpace(TextStream[CursorPos]))
-				break;
-
-		if (CursorPos > TextStream.Count)
-			CursorPos = TextStream.Count;
+		CursorPos = FindWordRight(CursorPos);
 
 		ScrollRight();
 

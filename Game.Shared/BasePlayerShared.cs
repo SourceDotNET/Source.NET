@@ -174,7 +174,7 @@ public partial class
 	}
 
 	public void ResetObserverMode() {
-		ObserverTarget.Set(null);
+		ObserverTarget = EHANDLE.FromEntity(null);
 		ObserverMode = (int)Shared.ObserverMode.None;
 
 #if !CLIENT_DLL
@@ -306,7 +306,7 @@ public partial class
 
 	public BaseEntity? GetFOVOwner() => ZoomOwner.Get();
 
-	public void ClearZoomOwner() => ZoomOwner.Set(null);
+	public void ClearZoomOwner() => ZoomOwner = EHANDLE.FromEntity(null);
 
 	public bool SetFOV(BaseEntity requester, int fov, float zoomRate = 0, int zoomStart = 0) {
 		Assert(requester != null);
@@ -323,9 +323,9 @@ public partial class
 		else {
 			//FIXME: Maybe do this is as an accessor instead
 			if (fov == 0)
-				ZoomOwner.Set(null);
+				ZoomOwner = EHANDLE.FromEntity(null);
 			else
-				ZoomOwner.Set(requester);
+				ZoomOwner = EHANDLE.FromEntity(requester);
 		}
 
 		// Setup our FOV and our scaling time
@@ -1067,7 +1067,7 @@ public partial class
 	}
 
 	void Weapon_SetLast(BaseCombatWeapon? pWeapon) {
-		LastWeapon.Set(pWeapon);
+		LastWeapon = Handle<BaseCombatWeapon>.FromEntity(pWeapon);
 	}
 
 	public void SetAnimationExtension(ReadOnlySpan<char> extension) {

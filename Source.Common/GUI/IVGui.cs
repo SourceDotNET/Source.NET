@@ -15,7 +15,7 @@ public struct MessageItem
 {
 	public KeyValues Params;
 	public IPanel? To;
-	public IPanel? From;
+	public IPanel? Sender;
 	public double ArrivalTime;
 	public ulong MessageID;
 	public MessageItemType Special;
@@ -34,7 +34,7 @@ public interface IVGui
 	void Quit();
 	void RunFrame();
 	bool DispatchMessages();
-	void PostMessage(IPanel? to, KeyValues message, IPanel? from, double delay = 0, MessageItemType type = MessageItemType.TargettingPanel);
+	void PostMessage(IPanel? to, KeyValues message, IPanel? sender, double delay = 0, MessageItemType type = MessageItemType.TargettingPanel);
 	void Stop();
 	IVGuiInput GetInput();
 	void MarkPanelForDeletion(IPanel? panel);

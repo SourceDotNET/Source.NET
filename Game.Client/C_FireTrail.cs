@@ -3,18 +3,17 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_FireTrail>;
 [NetworkName("CFireTrail")]
-public class C_FireTrail : C_BaseParticleEntity
+public partial class C_FireTrail : C_BaseParticleEntity
 {
-	public static readonly RecvTable DT_FireTrail = new(DT_BaseParticleEntity, [
-		RecvPropInt(FIELD.OF(nameof(Attachment))),
-		RecvPropFloat(FIELD.OF(nameof(Lifetime))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_FireTrail);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Attachment)) { Bits = 32 },
+		new(nameof(Lifetime)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_nAttachment")]
+	[NetworkVar("m_nAttachment")]
 	public int Attachment;
-	[NetworkName("m_flLifetime")]
+	[NetworkVar("m_flLifetime")]
 	public float Lifetime;
 }

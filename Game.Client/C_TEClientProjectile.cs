@@ -3,28 +3,27 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEClientProjectile>;
 [NetworkName("CTEClientProjectile")]
-public class C_TEClientProjectile : C_BaseTempEntity
+public partial class C_TEClientProjectile : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEClientProjectile = new(DT_BaseTempEntity, [
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropVector(FIELD.OF(nameof(Velocity))),
-		RecvPropInt(FIELD.OF(nameof(ModelIndex))),
-		RecvPropInt(FIELD.OF(nameof(LifeTime))),
-		RecvPropInt(FIELD.OF(nameof(HOwner))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEClientProjectile);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Velocity)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(ModelIndex)) { Bits = 14 },
+		new(nameof(LifeTime)) { Bits = 6, Flags = PropFlags.Unsigned },
+		new(nameof(HOwner)) { Bits = 23, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_vecVelocity")]
+	[NetworkVar("m_vecVelocity")]
 	public Vector3 Velocity;
-	[NetworkName("m_nModelIndex")]
+	[NetworkVar("m_nModelIndex")]
 	public int ModelIndex;
-	[NetworkName("m_nLifeTime")]
+	[NetworkVar("m_nLifeTime")]
 	public int LifeTime;
-	[NetworkName("m_hOwner")]
+	[NetworkVar("m_hOwner")]
 	public int HOwner;
 }
 

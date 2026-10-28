@@ -18,8 +18,6 @@ using Source.Common;
 using Source.Common.Engine;
 using Source;
 
-using FIELD = Source.FIELD<GMODGameRulesProxy>;
-
 using Game.Shared;
 using Source.GUI.Controls;
 
@@ -32,7 +30,7 @@ public static class GMOD_GameRules_Globals
 
 [LinkEntityToClass("gmod_gamerules")]
 [NetworkName("CGMODGameRulesProxy")]
-public class
+public partial class
 #if CLIENT_DLL
 	C_GMODGameRulesProxy
 #else
@@ -40,22 +38,20 @@ public class
 #endif
 	: GameRulesProxy
 {
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(GMODGameRules.Props)) { Name = "gmod_gamerules_data", Proxy = typeof(GMODGameRulesProxy.RulesProxy) },
+	];
+
 	public override GameRules GameRules => GMODRules();
-	public static readonly
+	public static class RulesProxy
+	{
 #if CLIENT_DLL
-		RecvTable
+		public static void Recv(RecvProp prop, out object? outInstance, object? instance, IFieldAccessor fieldInfo, int objectID) => RecvProxy_GMODRules(prop, out outInstance, instance, fieldInfo, objectID);
 #else
-		SendTable
+		public static object? Send(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID) => SendProxy_GMODRules(prop, instance, data, recipients, objectID);
 #endif
-	DT_GMODRules = new(nameof(DT_GMODRules), [
-#if CLIENT_DLL
-		RecvPropFloat(FIELD<GMODGameRules>.OF("TimeScale")),
-		RecvPropInt(FIELD<GMODGameRules>.OF("SkillLevel"))
-#else
-		SendPropFloat(FIELD<GMODGameRules>.OF("TimeScale"), 0, PropFlags.NoScale, 0, 0),
-		SendPropInt(FIELD<GMODGameRules>.OF("SkillLevel"), 4, PropFlags.Unsigned)
-#endif
-	]);
+	}
 
 #if CLIENT_DLL
 	public static void RecvProxy_GMODRules(RecvProp prop, out object? outInstance, object? instance, IFieldAccessor fieldInfo, int objectID) {
@@ -63,29 +59,16 @@ public class
 		Assert(rules != null);
 		outInstance = rules;
 	}
-
-	public static readonly RecvTable DT_GMODGameRulesProxy = new(DT_GameRulesProxy, [
-		RecvPropDataTable("gmod_gamerules_data", DT_GMODRules, 0, RecvProxy_GMODRules)
-	]);
 #else
 	public static object SendProxy_GMODRules(SendProp prop, object instance, IFieldAccessor data, SendProxyRecipients recipients, int objectID) {
 		GMODGameRules rules = GMODRules();
 		Assert(rules != null);
 		return rules;
 	}
-
-	public static readonly SendTable DT_GMODGameRulesProxy = new(DT_GameRulesProxy, [
-		SendPropDataTable("gmod_gamerules_data", DT_GMODRules, SendProxy_GMODRules)
-	]);
-#endif
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_GMODGameRulesProxy);
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_GMODGameRulesProxy);
 #endif
 }
 
-public class
+public partial class
 #if CLIENT_DLL
 	C_GMODGameRules
 #else
@@ -94,12 +77,18 @@ public class
 	: HL2MPGameRules
 // TODO: AutoGameSystemPerFrame
 {
+	[NetworkTable("DT_GMODRules")]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(TimeScale)) { Bits = 0, Flags = PropFlags.NoScale, Low = 0.0f, High = 0.0f },
+		new(nameof(SkillLevel)) { Bits = 4, Flags = PropFlags.Unsigned },
+	];
+
 	public override ReadOnlySpan<char> Name() => "GMODGameRules";
 
-	[NetworkName("m_fTimeScale")]
-	public float TimeScale;
-	[NetworkName("m_iSkillLevel")]
-	public int SkillLevel;
+	[NetworkVar("m_fTimeScale")]
+	public partial float TimeScale { get; set; }
+	[NetworkVar("m_iSkillLevel")]
+	public partial int SkillLevel { get; set; }
 
 #if GAME_DLL
 	public override bool FlPlayerFallDeathDoesScreenFade(BasePlayer player) {

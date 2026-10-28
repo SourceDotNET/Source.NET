@@ -216,6 +216,11 @@ public class Hud(HudElementHelper HudElementHelper)
 		ResetHUD();
 	}
 
+	public void LevelShutdown() {
+		foreach (var element in HudList)
+			element.LevelShutdown();
+	}
+
 	public void InitColors(IScheme scheme) {
 		ClrNormal = scheme.GetColor("Normal", new(255, 208, 64, 255));
 		ClrCaution = scheme.GetColor("Caution", new(255, 48, 0, 255));

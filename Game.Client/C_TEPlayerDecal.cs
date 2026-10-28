@@ -10,22 +10,21 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 namespace Game.Client;
 
-using FIELD = FIELD<C_TEPlayerDecal>;
 [NetworkName("CTEPlayerDecal")]
-public class C_TEPlayerDecal : C_BaseTempEntity
+public partial class C_TEPlayerDecal : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEPlayerDecal = new(DT_BaseTempEntity, [
-		RecvPropVector(FIELD.OF(nameof(Origin))),
-		RecvPropInt(FIELD.OF(nameof(Entity))),
-		RecvPropInt(FIELD.OF(nameof(Player))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEPlayerDecal);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(Entity)) { Bits = 13, Flags = PropFlags.Unsigned },
+		new(nameof(Player)) { Bits = 7, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_vecOrigin")]
+	[NetworkVar("m_vecOrigin")]
 	public Vector3 Origin;
-	[NetworkName("m_nEntity")]
+	[NetworkVar("m_nEntity")]
 	public int Entity;
-	[NetworkName("m_nPlayer")]
+	[NetworkVar("m_nPlayer")]
 	public int Player;
 
 	public static readonly ConVar cl_playerspraydisable = new( "cl_playerspraydisable", "0", FCvar.ClientDLL | FCvar.Archive, "Disable player sprays." );

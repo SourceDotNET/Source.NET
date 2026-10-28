@@ -7,67 +7,64 @@ using System.Numerics;
 
 namespace Game.Client;
 
-using FIELD = FIELD<C_ScriptIntro>;
-
 [NetworkName("CScriptIntro")]
-public class C_ScriptIntro : C_BaseEntity
+public partial class C_ScriptIntro : C_BaseEntity
 {
-	[NetworkName("m_vecCameraView")]
-	public Vector3 CameraView;
-	[NetworkName("m_vecCameraViewAngles")]
-	public Vector3 CameraViewAngles;
-	[NetworkName("m_iBlendMode")]
-	public int BlendMode;
-	[NetworkName("m_iNextBlendMode")]
-	public int NextBlendMode;
-	[NetworkName("m_flNextBlendTime")]
-	public TimeUnit_t NextBlendTime;
-	[NetworkName("m_flBlendStartTime")]
-	public TimeUnit_t BlendStartTime;
-	[NetworkName("m_bActive")]
-	public bool Active;
-	[NetworkName("m_iFOV")]
-	public int FOV;
-	[NetworkName("m_iNextFOV")]
-	public int NextFOV;
-	[NetworkName("m_iStartFOV")]
-	public int StartFOV;
-	[NetworkName("m_flNextFOVBlendTime")]
-	public TimeUnit_t NextFOVBlendTime;
-	[NetworkName("m_flFOVBlendStartTime")]
-	public TimeUnit_t FOVBlendStartTime;
-	[NetworkName("m_bAlternateFOV")]
-	public bool AlternateFOV;
-	[NetworkName("m_flFadeAlpha")]
-	public float FadeAlpha;
-	[NetworkName("m_flFadeColor")]
-	public InlineArray3<float> FadeColor;
-	[NetworkName("m_flFadeDuration")]
-	public float FadeDuration;
-	[NetworkName("m_hCameraEntity")]
-	public EHANDLE CameraEntity = new();
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(CameraView)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(CameraViewAngles)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(BlendMode)) { Bits = 5 },
+		new(nameof(NextBlendMode)) { Bits = 5 },
+		new(nameof(NextBlendTime)) { Encoding = NetEncoding.Time64 },
+		new(nameof(BlendStartTime)) { Encoding = NetEncoding.Time64 },
+		nameof(Active),
+		new(nameof(FOV)) { Bits = 9 },
+		new(nameof(NextFOV)) { Bits = 9 },
+		new(nameof(StartFOV)) { Bits = 9 },
+		new(nameof(NextFOVBlendTime)) { Encoding = NetEncoding.Time64 },
+		new(nameof(FOVBlendStartTime)) { Encoding = NetEncoding.Time64 },
+		nameof(AlternateFOV),
+		new(nameof(FadeAlpha)) { Bits = 10 },
+		new(nameof(FadeColor)) { Encoding = NetEncoding.Array2, Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeDuration)) { Bits = 10, Flags = PropFlags.RoundDown, Low = 0.0f, High = 255.0f },
+		nameof(CameraEntity),
+	];
 
-	public static readonly RecvTable DT_ScriptIntro = new(DT_BaseEntity, [
-		RecvPropVector(FIELD.OF(nameof(CameraView))),
-		RecvPropVector(FIELD.OF(nameof(CameraViewAngles))),
-		RecvPropInt(FIELD.OF(nameof(BlendMode))),
-		RecvPropInt(FIELD.OF(nameof(NextBlendMode))),
-		RecvPropTime64(FIELD.OF(nameof(NextBlendTime))),
-		RecvPropTime64(FIELD.OF(nameof(BlendStartTime))),
-		RecvPropBool(FIELD.OF(nameof(Active))),
-		RecvPropInt(FIELD.OF(nameof(FOV))),
-		RecvPropInt(FIELD.OF(nameof(NextFOV))),
-		RecvPropInt(FIELD.OF(nameof(StartFOV))),
-		RecvPropTime64(FIELD.OF(nameof(NextFOVBlendTime))),
-		RecvPropTime64(FIELD.OF(nameof(FOVBlendStartTime))),
-		RecvPropBool(FIELD.OF(nameof(AlternateFOV))),
-		RecvPropFloat(FIELD.OF(nameof(FadeAlpha))),
-		RecvPropFloat(FIELD.OF_ARRAYINDEX(nameof(FadeColor), 0)),
-		RecvPropArray(FIELD.OF_ARRAY(nameof(FadeColor))),
-		RecvPropFloat(FIELD.OF(nameof(FadeDuration))),
-		RecvPropEHandle(FIELD.OF(nameof(CameraEntity))),
-	]);
-	public static new readonly ClientClass ClientClass = new ClientClass(DT_ScriptIntro);
+	[NetworkVar("m_vecCameraView")]
+	public Vector3 CameraView;
+	[NetworkVar("m_vecCameraViewAngles")]
+	public Vector3 CameraViewAngles;
+	[NetworkVar("m_iBlendMode")]
+	public int BlendMode;
+	[NetworkVar("m_iNextBlendMode")]
+	public int NextBlendMode;
+	[NetworkVar("m_flNextBlendTime")]
+	public TimeUnit_t NextBlendTime;
+	[NetworkVar("m_flBlendStartTime")]
+	public TimeUnit_t BlendStartTime;
+	[NetworkVar("m_bActive")]
+	public bool Active;
+	[NetworkVar("m_iFOV")]
+	public int FOV;
+	[NetworkVar("m_iNextFOV")]
+	public int NextFOV;
+	[NetworkVar("m_iStartFOV")]
+	public int StartFOV;
+	[NetworkVar("m_flNextFOVBlendTime")]
+	public TimeUnit_t NextFOVBlendTime;
+	[NetworkVar("m_flFOVBlendStartTime")]
+	public TimeUnit_t FOVBlendStartTime;
+	[NetworkVar("m_bAlternateFOV")]
+	public bool AlternateFOV;
+	[NetworkVar("m_flFadeAlpha")]
+	public float FadeAlpha;
+	[NetworkVar("m_flFadeColor")]
+	public InlineArray3<float> FadeColor;
+	[NetworkVar("m_flFadeDuration")]
+	public float FadeDuration;
+	[NetworkVar("m_hCameraEntity")]
+	public EHANDLE CameraEntity = new();
 
 	int PrevFOV;
 	readonly IntroData IntroData = new();

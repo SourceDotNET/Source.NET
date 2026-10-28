@@ -68,27 +68,15 @@ public class GModBase : Panel
 	static void DestroyPanel(ref Panel? panel) {
 		if (panel == null)
 			return;
-		panel.SetParent(null);
-		panel.SetVisible(false);
-		panel.MarkForDeletion();
+		panel.DeletePanel();
 		panel = null;
 	}
 
 	public static void Shutdown() {
-		Panel clientDll = (Panel)enginevgui.GetPanel(VGuiPanelType.ClientDll);
-		for (int i = 0; i < clientDll.GetChildCount(); i++)
-			clientDll.GetChild(i).ClearLuaReferencesRecursive();
-
 		if (HudGMod.g_HudGMod != null) {
-			for (int i = 0; i < HudGMod.g_HudGMod.GetChildCount(); i++) {
-				HudGMod.g_HudGMod.GetChild(i).MarkForDeletion();
-				HudGMod.g_HudGMod.GetChild(i).ClearLuaReferencesRecursive();
-			}
+			while (HudGMod.g_HudGMod.GetChildCount() > 0)
+				HudGMod.g_HudGMod.GetChild(0).DeletePanel();
 		}
-
-		MouseInput?.ClearLuaReferencesRecursive();
-		BasePanel?.ClearLuaReferencesRecursive();
-		ParentToHUDPanel?.ClearLuaReferencesRecursive();
 
 		DestroyPanel(ref MouseInput);
 		DestroyPanel(ref BasePanel);

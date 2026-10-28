@@ -151,7 +151,7 @@ public interface IServerGameClients
 	void ClientSettingsChanged(Edict edict);
 	void ClientSetupVisibility(Edict? viewEntity, Edict client, byte[] pvs, int pvssize);
 	TimeUnit_t ProcessUsercmds(Edict player, bf_read buf, int numCmds, int totalCmds, int droppedPackets, bool ignore, bool paused);
-	PlayerState GetPlayerState(Edict player);
+	PlayerEngineState GetPlayerState(Edict player);
 	void ClientEarPosition(Edict entity, out Vector3 earOrigin);
 	void GetBugReportInfo(Span<char> buf);
 	void NetworkIDValidated(ReadOnlySpan<char> userName, ReadOnlySpan<char> networkID);

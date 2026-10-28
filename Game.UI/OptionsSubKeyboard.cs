@@ -58,32 +58,41 @@ public class OptionsSubKeyboard : PropertyPage
 
 	public override void OnKeyCodeTyped(ButtonCode code) {
 		if (code == ButtonCode.KeyEnter)
-			OnCommand("ChangeKey");
+			DoCommand("ChangeKey");
 		else
 			base.OnKeyCodeTyped(code);
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.Equals("Defaults", StringComparison.OrdinalIgnoreCase)) {
-			var box = new QueryBox("#GameUI_KeyboardSettings", "#GameUI_KeyboardSettingsText");
-			box.AddActionSignalTarget(this);
-			box.SetOKCommand(new KeyValues("Command", "command", "DefaultsOK"));
-			box.DoModal();
-		}
-		else if (command.Equals("DefaultsOK", StringComparison.OrdinalIgnoreCase)) {
-			FillInDefaultBindings();
-			KeyBindList.RequestFocus();
-		}
-		else if (!KeyBindList.IsCapturing() && command.Equals("ChangeKey", StringComparison.OrdinalIgnoreCase))
+	[UiCommand("Defaults")]
+	private void OnDefaults() {
+		var box = new QueryBox("#GameUI_KeyboardSettings", "#GameUI_KeyboardSettingsText");
+		box.AddActionSignalTarget(this);
+		box.SetOKCommand(new KeyValues("Command", "command", "DefaultsOK"));
+		box.DoModal();
+	}
+
+	[UiCommand("DefaultsOK")]
+	private void OnDefaultsOK() {
+		FillInDefaultBindings();
+		KeyBindList.RequestFocus();
+	}
+
+	[UiCommand("ChangeKey")]
+	private void OnChangeKey() {
+		if (!KeyBindList.IsCapturing())
 			KeyBindList.StartCaptureMode(CursorCode.Blank);
-		else if (!KeyBindList.IsCapturing() && command.Equals("ClearKey", StringComparison.OrdinalIgnoreCase)) {
+		else
+			base.OnCommand("ChangeKey");
+	}
+
+	[UiCommand("ClearKey")]
+	private void OnClearKey() {
+		if (!KeyBindList.IsCapturing()) {
 			OnKeyCodePressed(ButtonCode.KeyDelete);
 			KeyBindList.RequestFocus();
 		}
-		else if (command.Equals("Advanced", StringComparison.OrdinalIgnoreCase))
-			OpenKeyboardAdvancedDialog();
 		else
-			base.OnCommand(command);
+			base.OnCommand("ClearKey");
 	}
 
 	readonly IEngineClient engine = Singleton<IEngineClient>();
@@ -270,6 +279,7 @@ public class OptionsSubKeyboard : PropertyPage
 		// todo
 	}
 
+	[UiMessage("ItemSelected")]
 	public void ItemSelected(int itemID) {
 		KeyBindList.SetItemOfInterest(itemID);
 
@@ -327,18 +337,10 @@ public class OptionsSubKeyboard : PropertyPage
 
 	}
 
+	[UiCommand("Advanced")]
 	public void OpenKeyboardAdvancedDialog() {
 		OptionsSubKeyboardAdvancedDlg ??= new(GetParent());
 		OptionsSubKeyboardAdvancedDlg.Activate();
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name == "ItemSelected") {
-			ItemSelected(message.GetInt("itemID", -1));
-			return;
-		}
-
-		base.OnMessage(message, from);
 	}
 }
 
@@ -374,13 +376,10 @@ class OptionsSubKeyboardAdvancedDlg : Frame
 		hud_fastswitch.SetValue(GetControlInt("FastSwitchCheck", 0));
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.Equals("OK", StringComparison.OrdinalIgnoreCase)) {
-			OnApplyData();
-			Close();
-		}
-		else
-			base.OnCommand(command);
+	[UiCommand("OK")]
+	private void OnOK() {
+		OnApplyData();
+		Close();
 	}
 
 	public override void OnKeyCodeTyped(ButtonCode code) {

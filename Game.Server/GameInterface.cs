@@ -798,7 +798,7 @@ public class ServerGameClients : IServerGameClients
 		maxPlayers = Constants.MAX_PLAYERS;
 	}
 
-	public PlayerState? GetPlayerState(Edict player) {
+	public PlayerEngineState? GetPlayerState(Edict player) {
 		if (player == null || player.GetUnknown() == null)
 			return null;
 

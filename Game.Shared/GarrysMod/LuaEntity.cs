@@ -423,7 +423,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_bool[index] = value;
+			ent.GMOD_boolForModify()[index] = value;
 		}
 		return 0;
 	}
@@ -445,7 +445,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_float[index] = value;
+			ent.GMOD_floatForModify()[index] = value;
 		}
 		return 0;
 	}
@@ -467,7 +467,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_int[index] = value;
+			ent.GMOD_intForModify()[index] = value;
 		}
 		return 0;
 	}
@@ -489,7 +489,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_Vector[index] = value;
+			ent.GMOD_VectorForModify()[index] = value;
 		}
 		return 0;
 	}
@@ -511,7 +511,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_QAngle[index] = value;
+			ent.GMOD_QAngleForModify()[index] = value;
 		}
 		return 0;
 	}
@@ -536,7 +536,7 @@ public static partial class LuaEntity
 #if GAME_DLL
 			ent.NetworkStateChanged();
 #endif
-			ent.GMOD_EHANDLE[index].Set(value);
+			ent.GMOD_EHANDLEForModify()[index].Set(value);
 		}
 		return 0;
 	}
@@ -558,25 +558,25 @@ public static partial class LuaEntity
 #if GAME_DLL
 				ent.NetworkStateChanged();
 #endif
-				strcpy(ent.GMOD_String0, value);
+				strcpy(ent.GMOD_String0ForModify(), value);
 				break;
 			case 1:
 #if GAME_DLL
 				ent.NetworkStateChanged();
 #endif
-				strcpy(ent.GMOD_String1, value);
+				strcpy(ent.GMOD_String1ForModify(), value);
 				break;
 			case 2:
 #if GAME_DLL
 				ent.NetworkStateChanged();
 #endif
-				strcpy(ent.GMOD_String2, value);
+				strcpy(ent.GMOD_String2ForModify(), value);
 				break;
 			case 3:
 #if GAME_DLL
 				ent.NetworkStateChanged();
 #endif
-				strcpy(ent.GMOD_String3, value);
+				strcpy(ent.GMOD_String3ForModify(), value);
 				break;
 		}
 		return 0;
@@ -625,6 +625,13 @@ public static partial class LuaEntity
 	[LuaMethod]
 	static int Entity__IsNPC(ILuaInterface lua) {
 		lua.PushBool(false);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__IsRagdoll(ILuaInterface lua) {
+		BaseEntity? ent = Get_Entity(1, true);
+		lua.PushBool(ent != null && ent.IsRagdoll());
 		return 1;
 	}
 
@@ -953,6 +960,69 @@ public static partial class LuaEntity
 			Warning($"Model missing: {modelName}\n");
 		mdlcache.Release(handle);
 		return 0;
+	}
+
+	const int MAX_PHYSOBJECT_LIST = 0x400;
+
+	[LuaMethod]
+	static int Entity__GetPhysicsObject(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+#if GAME_DLL
+		if (ent.Edict() != null && ent.EntIndex() != 0)
+			LuaPhysObj.Push_PhysObj(ent.VPhysicsGetObject());
+		else
+			LuaPhysObj.Push_PhysObj(g_PhysWorldObject);
+#else
+		LuaPhysObj.Push_PhysObj(ent.VPhysicsGetObject());
+#endif
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetPhysicsObjectNum(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+#if GAME_DLL
+		if (ent.Edict() == null || ent.EntIndex() == 0) {
+			LuaPhysObj.Push_PhysObj(g_PhysWorldObject);
+			return 1;
+		}
+#endif
+		int index = (int)lua.GetNumber(2);
+		if (index < 0) {
+			DevWarning($"Entity:GetPhysicsObjectNum - Out of bounds physics object - min 0, got {index}\n");
+			return 0;
+		}
+
+		IPhysicsObject[] list = System.Buffers.ArrayPool<IPhysicsObject>.Shared.Rent(MAX_PHYSOBJECT_LIST);
+		try {
+			int count = ent.VPhysicsGetObjectList(list.AsSpan(0, MAX_PHYSOBJECT_LIST));
+			if (count == 0)
+				return 0;
+
+			if (index >= count) {
+				DevWarning($"Entity:GetPhysicsObjectNum - Out of bounds physics object - max {count - 1}, got {index}\n");
+				return 0;
+			}
+
+			LuaPhysObj.Push_PhysObj(list[index]);
+			return 1;
+		}
+		finally {
+			System.Buffers.ArrayPool<IPhysicsObject>.Shared.Return(list, true);
+		}
+	}
+
+	[LuaMethod]
+	static int Entity__GetPhysicsObjectCount(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		IPhysicsObject[] list = System.Buffers.ArrayPool<IPhysicsObject>.Shared.Rent(MAX_PHYSOBJECT_LIST);
+		try {
+			lua.PushNumber(ent.VPhysicsGetObjectList(list.AsSpan(0, MAX_PHYSOBJECT_LIST)));
+			return 1;
+		}
+		finally {
+			System.Buffers.ArrayPool<IPhysicsObject>.Shared.Return(list, true);
+		}
 	}
 
 	[LuaMethod]

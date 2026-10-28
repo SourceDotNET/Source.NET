@@ -39,7 +39,7 @@ public class ServerNetworkProperty : IServerNetworkable, IEventRegisterCallback
 	}
 
 	public ServerClass GetServerClass() {
-		ServerClass ??= ServerClassRetriever.GetOrError(Outer.GetType());
+		ServerClass ??= Outer!.GetServerClass();
 
 		return ServerClass;
 	}

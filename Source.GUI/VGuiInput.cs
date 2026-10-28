@@ -653,7 +653,7 @@ public class VGuiInput : IVGuiInput
 
 				KeyValues pMessage = new KeyValues("KillFocus");
 				pMessage.SetPtr("newPanel", wantedKeyFocus);
-				context.KeyFocus.SendMessage(pMessage, null);
+				context.KeyFocus.SendMessage(pMessage, wantedKeyFocus);
 
 				context.KeyFocus?.Repaint();
 

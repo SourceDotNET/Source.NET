@@ -3,49 +3,48 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<PointCamera>;
 [LinkEntityToClass("point_camera")]
 [NetworkName("CPointCamera")]
-public class PointCamera : BaseEntity
+public partial class PointCamera : BaseEntity
 {
-	public static readonly SendTable DT_PointCamera = new(DT_BaseEntity, [
-		SendPropFloat(FIELD.OF(nameof(FOV)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(Resolution)), 0, PropFlags.NoScale),
-		SendPropBool(FIELD.OF(nameof(FogEnable))),
-		SendPropInt(FIELD.OF(nameof(FogColor)), 32, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(FogColorHDR)), 32, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(FogStart)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(FogEnd)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(FogMaxDensity)), 0, PropFlags.NoScale),
-		SendPropBool(FIELD.OF(nameof(FogRadial))),
-		SendPropBool(FIELD.OF(nameof(Active))),
-		SendPropBool(FIELD.OF(nameof(UseScreenAspectRatio))),
-		SendPropBool(FIELD.OF(nameof(GlobalOverride))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PointCamera);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(FOV)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Resolution)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(FogEnable),
+		new(nameof(FogColor)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(FogColorHDR)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(FogStart)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FogEnd)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FogMaxDensity)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(FogRadial),
+		nameof(Active),
+		nameof(UseScreenAspectRatio),
+		nameof(GlobalOverride),
+	];
 
-	[NetworkName("m_FOV")]
-	public float FOV;
-	[NetworkName("m_Resolution")]
-	public float Resolution;
-	[NetworkName("m_bFogEnable")]
-	public bool FogEnable;
-	[NetworkName("m_FogColor")]
-	public int FogColor;
-	[NetworkName("m_FogColorHDR")]
-	public int FogColorHDR;
-	[NetworkName("m_flFogStart")]
-	public float FogStart;
-	[NetworkName("m_flFogEnd")]
-	public float FogEnd;
-	[NetworkName("m_flFogMaxDensity")]
-	public float FogMaxDensity;
-	[NetworkName("m_bFogRadial")]
-	public bool FogRadial;
-	[NetworkName("m_bActive")]
-	public bool Active;
-	[NetworkName("m_bUseScreenAspectRatio")]
-	public bool UseScreenAspectRatio;
-	[NetworkName("m_bGlobalOverride")]
-	public bool GlobalOverride;
+	[NetworkVar("m_FOV")]
+	public partial float FOV { get; set; }
+	[NetworkVar("m_Resolution")]
+	public partial float Resolution { get; set; }
+	[NetworkVar("m_bFogEnable")]
+	public partial bool FogEnable { get; set; }
+	[NetworkVar("m_FogColor")]
+	public partial int FogColor { get; set; }
+	[NetworkVar("m_FogColorHDR")]
+	public partial int FogColorHDR { get; set; }
+	[NetworkVar("m_flFogStart")]
+	public partial float FogStart { get; set; }
+	[NetworkVar("m_flFogEnd")]
+	public partial float FogEnd { get; set; }
+	[NetworkVar("m_flFogMaxDensity")]
+	public partial float FogMaxDensity { get; set; }
+	[NetworkVar("m_bFogRadial")]
+	public partial bool FogRadial { get; set; }
+	[NetworkVar("m_bActive")]
+	public partial bool Active { get; set; }
+	[NetworkVar("m_bUseScreenAspectRatio")]
+	public partial bool UseScreenAspectRatio { get; set; }
+	[NetworkVar("m_bGlobalOverride")]
+	public partial bool GlobalOverride { get; set; }
 }

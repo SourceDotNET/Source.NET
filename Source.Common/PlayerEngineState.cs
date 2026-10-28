@@ -2,10 +2,8 @@
 
 namespace Source.Common;
 
-public class PlayerState
+public class PlayerEngineState
 {
-	[NetworkName("deadflag")]
-	public bool DeadFlag;
 	public QAngle ViewingAngle;
 
 	// We can't use CLIENT_DLL here in Common... w/e

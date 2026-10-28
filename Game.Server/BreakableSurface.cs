@@ -6,40 +6,39 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
 
-using FIELD = FIELD<BreakableSurface>;
 [LinkEntityToClass("func_breakable_surf")]
 [NetworkName("CBreakableSurface")]
-public class BreakableSurface : BaseEntity
+public partial class BreakableSurface : BaseEntity
 {
-	public static readonly SendTable DT_BreakableSurface = new(DT_BaseEntity, [
-		SendPropInt(FIELD.OF(nameof(NumWide)), 8, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(NumHigh)), 8, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(PanelWidth)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(PanelHeight)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD.OF(nameof(VNormal)), 0, PropFlags.Coord),
-		SendPropVector(FIELD.OF(nameof(VCorner)), 0, PropFlags.Coord),
-		SendPropInt(FIELD.OF(nameof(IsBroken)), 1, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(SurfaceType)), 2, PropFlags.Unsigned),
-		SendPropArray3(FIELD.OF_ARRAY(nameof(RawPanelBitVec)), SendPropInt((IFieldAccessor)null!, 1, PropFlags.Unsigned, sizeOfVar: sizeof(int))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BreakableSurface);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(NumWide)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(NumHigh)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(PanelWidth)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(PanelHeight)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VNormal)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(VCorner)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(IsBroken)) { Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(SurfaceType)) { Bits = 2, Flags = PropFlags.Unsigned },
+		new(nameof(RawPanelBitVec)) { Bits = 1, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_nNumWide")]
-	public int NumWide;
-	[NetworkName("m_nNumHigh")]
-	public int NumHigh;
-	[NetworkName("m_flPanelWidth")]
-	public float PanelWidth;
-	[NetworkName("m_flPanelHeight")]
-	public float PanelHeight;
-	[NetworkName("m_vNormal")]
-	public Vector3 VNormal;
-	[NetworkName("m_vCorner")]
-	public Vector3 VCorner;
-	[NetworkName("m_bIsBroken")]
-	public int IsBroken;
-	[NetworkName("m_nSurfaceType")]
-	public int SurfaceType;
-	[NetworkName("m_RawPanelBitVec")]
-	public InlineArray256<int> RawPanelBitVec;
+	[NetworkVar("m_nNumWide")]
+	public partial int NumWide { get; set; }
+	[NetworkVar("m_nNumHigh")]
+	public partial int NumHigh { get; set; }
+	[NetworkVar("m_flPanelWidth")]
+	public partial float PanelWidth { get; set; }
+	[NetworkVar("m_flPanelHeight")]
+	public partial float PanelHeight { get; set; }
+	[NetworkVar("m_vNormal")]
+	public partial Vector3 VNormal { get; set; }
+	[NetworkVar("m_vCorner")]
+	public partial Vector3 VCorner { get; set; }
+	[NetworkVar("m_bIsBroken")]
+	public partial int IsBroken { get; set; }
+	[NetworkVar("m_nSurfaceType")]
+	public partial int SurfaceType { get; set; }
+	[NetworkVar("m_RawPanelBitVec")]
+	public partial ref readonly InlineArray256<int> RawPanelBitVec { get; }
 }

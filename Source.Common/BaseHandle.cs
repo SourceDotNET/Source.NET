@@ -50,6 +50,7 @@ public struct Handle<T> : IEquatable<Handle<T>>, IEquatable<BaseHandle>, IBaseHa
 	public Handle(uint value) => Index = value;
 	public Handle(in BaseHandle handle) => Index = handle.Index;
 	public Handle(int entry, int serial) => Index = (uint)(entry | (serial << Constants.NUM_ENT_ENTRY_BITS));
+	public static Handle<T> FromEntity(IHandleEntity? entity) => new(entity != null ? entity.GetRefEHandle().Index : Constants.INVALID_EHANDLE_INDEX);
 
 	public readonly int GetEntryIndex() => (int)(Index & Constants.ENT_ENTRY_MASK);
 	public readonly int GetSerialNumber() => (int)(Index >> Constants.NUM_ENT_ENTRY_BITS);

@@ -39,9 +39,9 @@ public class MenuSystem : IMenuSystem
 
 	public void Shutdown() {
 		filesystem.Addons().SetDownloadNotify(null);
-		CloseLua();
 		DestroyLoadingPanel();
 		DestroyMenuPanels();
+		CloseLua();
 	}
 
 	public void SetupNetworkString(INetworkStringTableContainer networkStringTableContainer) => networkstringtable = networkStringTableContainer;
@@ -108,12 +108,15 @@ public class MenuSystem : IMenuSystem
 			return;
 
 		LuaStarts++;
+		g_LuaID++;
 		get.LuaShared()!.UnMountLua("LuaMenu");
 		get.LuaShared()!.CloseLuaInterface(g_Lua);
 		g_Lua = null;
 	}
 
 	public void StartLua() {
+		DestroyLoadingPanel();
+		DestroyMenuPanels();
 		CloseLua();
 		MenuPanels.CreateMenuPanels();
 
@@ -158,7 +161,7 @@ public class MenuSystem : IMenuSystem
 			return;
 
 		MenuPanels.g_hLoadingPanel.SetParent((Panel?)null);
-		MenuPanels.g_hLoadingPanel.MarkForDeletion();
+		MenuPanels.g_hLoadingPanel.DeletePanel();
 		MenuPanels.g_hLoadingPanel = null;
 	}
 
@@ -167,7 +170,7 @@ public class MenuSystem : IMenuSystem
 
 		if (MenuPanels.g_hMenuPanel != null) {
 			MenuPanels.g_hMenuPanel.SetParent((Panel?)null);
-			MenuPanels.g_hMenuPanel.MarkForDeletion();
+			MenuPanels.g_hMenuPanel.DeletePanel();
 			MenuPanels.g_hMenuPanel = null;
 		}
 

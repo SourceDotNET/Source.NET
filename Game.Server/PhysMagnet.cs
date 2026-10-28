@@ -6,8 +6,10 @@ namespace Game.Server;
 
 [LinkEntityToClass("phys_magnet")]
 [NetworkName("CPhysMagnet")]
-public class PhysMagnet : BaseAnimating
+public partial class PhysMagnet : BaseAnimating
 {
-	public static readonly SendTable DT_PhysMagnet = new(DT_BaseAnimating, []);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PhysMagnet);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 }

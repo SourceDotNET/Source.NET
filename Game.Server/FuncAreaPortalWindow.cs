@@ -7,22 +7,22 @@ using System.Numerics;
 
 namespace Game.Server;
 
-using FIELD = FIELD<FuncAreaPortalWindow>;
 using DEFINE = DEFINE<FuncAreaPortalWindow>;
 
 [LinkEntityToClass("func_areaportalwindow")]
 [NetworkName("CFuncAreaPortalWindow")]
-public class FuncAreaPortalWindow : FuncAreaPortalBase
+public partial class FuncAreaPortalWindow : FuncAreaPortalBase
 {
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(FadeDist)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeStartDist)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(TranslucencyLimit)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(BackgroundModelIndex)) { Encoding = NetEncoding.ModelIndex },
+	];
+
 	const float FADE_DIST_BUFFER = 10;
 
-	public static readonly SendTable DT_FuncAreaPortalWindow = new(DT_BaseEntity, [
-		SendPropFloat(FIELD.OF(nameof(FadeDist)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(FadeStartDist)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(TranslucencyLimit)), 0, PropFlags.NoScale),
-		SendPropModelIndex(FIELD.OF(nameof(BackgroundModelIndex))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_FuncAreaPortalWindow);
 
 	public static readonly new DataMap DataDesc = new(typeof(FuncAreaPortalWindow), FuncAreaPortalBase.DataDesc, [
 		DEFINE.KEYFIELD(nameof(PortalNumber), FieldType.Integer, "portalnumber"),
@@ -36,14 +36,14 @@ public class FuncAreaPortalWindow : FuncAreaPortalBase
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
-	[NetworkName("m_flFadeDist")]
-	public float FadeDist;
-	[NetworkName("m_flFadeStartDist")]
-	public float FadeStartDist;
-	[NetworkName("m_flTranslucencyLimit")]
-	public float TranslucencyLimit;
-	[NetworkName("m_iBackgroundModelIndex")]
-	public int BackgroundModelIndex;
+	[NetworkVar("m_flFadeDist")]
+	public partial float FadeDist { get; set; }
+	[NetworkVar("m_flFadeStartDist")]
+	public partial float FadeStartDist { get; set; }
+	[NetworkVar("m_flTranslucencyLimit")]
+	public partial float TranslucencyLimit { get; set; }
+	[NetworkVar("m_iBackgroundModelIndex")]
+	public partial int BackgroundModelIndex { get; set; }
 
 	string? BackgroundBModelName;
 

@@ -26,9 +26,6 @@ public static class RenderTexture
 
 	static readonly TextureReference PowerOfTwoFrameBufferTexture = new();
 	public static ITexture? GetPowerOfTwoFrameBufferTexture() {
-		if (IsX360())
-			return GetFullFrameFrameBufferTexture(1);
-
 		if (!PowerOfTwoFrameBufferTexture.IsValid()) {
 			PowerOfTwoFrameBufferTexture.Init(materials.FindTexture("_rt_PowerOfTwoFB", MaterialDefines.TEXTURE_GROUP_RENDER_TARGET));
 			Assert(!ITexture.IsError(PowerOfTwoFrameBufferTexture.Get()));
@@ -169,11 +166,6 @@ public static class RenderTexture
 	/// tiny 32x32 texture, always 8888
 	/// </summary>
 	public static ITexture? GetTeenyTexture(int which) {
-		if (IsX360()) {
-			Assert(false);
-			return null;
-		}
-
 		Assert(which < MAX_TEENY_TEXTURES);
 
 		if (!TeenyTextures[which].IsValid()) {

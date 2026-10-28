@@ -260,14 +260,14 @@ public class GameMovement : IGameMovement
 			Player.Local.PunchAngleVel -= Player.Local.PunchAngle * springForceMagnitude;
 
 			// don't wrap around
-			Player.Local.PunchAngle.Init(
+			Player.Local.PunchAngle = new QAngle(
 				Math.Clamp(Player.Local.PunchAngle.X, -89f, 89f),
 				Math.Clamp(Player.Local.PunchAngle.Y, -179f, 179f),
 				Math.Clamp(Player.Local.PunchAngle.Z, -89f, 89f));
 		}
 		else {
-			Player.Local.PunchAngle.Init(0, 0, 0);
-			Player.Local.PunchAngleVel.Init(0, 0, 0);
+			Player.Local.PunchAngle = new QAngle(0, 0, 0);
+			Player.Local.PunchAngleVel = new QAngle(0, 0, 0);
 		}
 	}
 
@@ -2415,10 +2415,12 @@ public class GameMovement : IGameMovement
 			Player.PlayStepSound(mv!.GetAbsOrigin(), Player.SurfaceData, fvol, true);
 
 			// Knock the screen around a little bit, temporary effect.
-			Player.Local.PunchAngle[ROLL] = Player.Local.FallVelocity * 0.013f;
+			QAngle punchAngle = Player.Local.PunchAngle;
+			punchAngle[ROLL] = Player.Local.FallVelocity * 0.013f;
 
-			if (Player.Local.PunchAngle[PITCH] > 8)
-				Player.Local.PunchAngle[PITCH] = 8;
+			if (punchAngle[PITCH] > 8)
+				punchAngle[PITCH] = 8;
+			Player.Local.PunchAngle = punchAngle;
 		}
 	}
 	protected void ResetGetPointContentsCache() {

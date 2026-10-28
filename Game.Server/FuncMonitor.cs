@@ -6,8 +6,10 @@ namespace Game.Server;
 
 [LinkEntityToClass("func_monitor")]
 [NetworkName("CFuncMonitor")]
-public class FuncMonitor : FuncBrush
+public partial class FuncMonitor : FuncBrush
 {
-	public static readonly SendTable DT_FuncMonitor = new(DT_BaseEntity, []);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_FuncMonitor);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 }

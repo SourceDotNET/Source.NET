@@ -1005,6 +1005,7 @@ public class SectionedListPanel : Panel
 		return -1;
 	}
 
+	[UiMessage("ScrollBarSliderMoved")]
 	private void OnSliderMoved() {
 		InvalidateLayout();
 		Repaint();
@@ -1261,15 +1262,6 @@ public class SectionedListPanel : Panel
 			ClrOverride = clrOverride
 		};
 		ColorOverrides.Add(newOverride);
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name.Equals("ScrollBarSliderMoved")) {
-			OnSliderMoved();
-			return;
-		}
-
-		base.OnMessage(message, from);
 	}
 
 	internal bool IsClickable() => Clickable;

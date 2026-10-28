@@ -7,35 +7,34 @@ namespace Game.Server;
 
 using static Source.Common.Networking.SVC_ClassInfo;
 
-using FIELD = FIELD<DynamicLight>;
 
 [LinkEntityToClass("light_dynamic")]
 [NetworkName("CDynamicLight")]
-public class DynamicLight : BaseEntity
+public partial class DynamicLight : BaseEntity
 {
-	public static readonly SendTable DT_DynamicLight = new(DT_BaseEntity, [
-		SendPropInt(FIELD.OF(nameof(Flags)), 4, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(LightStyle)), 4, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(Radius)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(Exponent)), 8),
-		SendPropFloat(FIELD.OF(nameof(InnerAngle)), 8, 0, 0.0f, 360.0f),
-		SendPropFloat(FIELD.OF(nameof(OuterAngle)), 8, 0, 0.0f, 360.0f),
-		SendPropFloat(FIELD.OF(nameof(SpotRadius)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_DynamicLight);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Flags)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(LightStyle)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(Radius)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Exponent)) { Bits = 8 },
+		new(nameof(InnerAngle)) { Bits = 8, Low = 0.0f, High = 360.0f },
+		new(nameof(OuterAngle)) { Bits = 8, Low = 0.0f, High = 360.0f },
+		new(nameof(SpotRadius)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_Flags")]
-	public int Flags;
-	[NetworkName("m_LightStyle")]
-	public int LightStyle;
-	[NetworkName("m_Radius")]
-	public float Radius;
-	[NetworkName("m_Exponent")]
-	public int Exponent;
-	[NetworkName("m_InnerAngle")]
-	public float InnerAngle;
-	[NetworkName("m_OuterAngle")]
-	public float OuterAngle;
-	[NetworkName("m_SpotRadius")]
-	public float SpotRadius;
+	[NetworkVar("m_Flags")]
+	public partial int Flags { get; set; }
+	[NetworkVar("m_LightStyle")]
+	public partial int LightStyle { get; set; }
+	[NetworkVar("m_Radius")]
+	public partial float Radius { get; set; }
+	[NetworkVar("m_Exponent")]
+	public partial int Exponent { get; set; }
+	[NetworkVar("m_InnerAngle")]
+	public partial float InnerAngle { get; set; }
+	[NetworkVar("m_OuterAngle")]
+	public partial float OuterAngle { get; set; }
+	[NetworkVar("m_SpotRadius")]
+	public partial float SpotRadius { get; set; }
 }

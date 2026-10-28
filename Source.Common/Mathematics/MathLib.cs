@@ -367,6 +367,18 @@ public static class MathLib
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static int TruncateOrMinValue(float f) => f >= -2147483648f && f < 2147483648f ? (int)f : int.MinValue;
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static int AbsWrapping(int n) => n < 0 ? unchecked(-n) : n;
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool NotGreater(float a, double b) => !(a > b);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool NotLess(float a, double b) => !(a < b);
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static float SimpleSplineRemapValClamped(float val, float A, float B, float C, float D) {
 		if (A == B)
 			return val >= B ? D : C;
@@ -2399,6 +2411,21 @@ public static class MathLib
 
 		minsOut = worldCenter - worldExtents;
 		maxsOut = worldCenter + worldExtents;
+	}
+
+	public static void IRotateAABB(in Matrix3x4 transform, in Vector3 minsIn, in Vector3 maxsIn, out Vector3 minsOut, out Vector3 maxsOut) {
+		Vector3 oldCenter = (minsIn + maxsIn) * 0.5f;
+		Vector3 oldExtents = maxsIn - oldCenter;
+
+		VectorIRotate(oldCenter, transform, out Vector3 newCenter);
+
+		Vector3 newExtents;
+		newExtents.X = MathF.Abs(oldExtents.X * transform[0][0]) + MathF.Abs(oldExtents.Y * transform[1][0]) + MathF.Abs(oldExtents.Z * transform[2][0]);
+		newExtents.Y = MathF.Abs(oldExtents.X * transform[0][1]) + MathF.Abs(oldExtents.Y * transform[1][1]) + MathF.Abs(oldExtents.Z * transform[2][1]);
+		newExtents.Z = MathF.Abs(oldExtents.X * transform[0][2]) + MathF.Abs(oldExtents.Y * transform[1][2]) + MathF.Abs(oldExtents.Z * transform[2][2]);
+
+		minsOut = newCenter - newExtents;
+		maxsOut = newCenter + newExtents;
 	}
 
 	public static float VectorLength(in Vector3 delta) => delta.Length();

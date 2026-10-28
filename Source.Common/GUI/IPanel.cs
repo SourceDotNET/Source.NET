@@ -127,6 +127,8 @@ public interface IPanel : IExtDisposable
 	// Used by the drag/drop manager to always draw on top
 	bool IsTopmostPopup();
 	void SetTopmostPopup(bool state);
+	bool IsPopupStayAtBack();
+	void SetPopupStayAtBack(bool state);
 	void InvalidateLayout(bool layoutNow = false, bool reloadScheme = false);
 
 	int GetAlpha();
@@ -134,7 +136,7 @@ public interface IPanel : IExtDisposable
 	void TraverseLevel(int v);
 	void SetPopup(bool v);
 	void OnTick();
-	void SendMessage(KeyValues parms, IPanel? from);
+	void SendMessage(KeyValues parms, IPanel? sender);
 	IPanel? FindChildByName(ReadOnlySpan<char> childName, bool recurseDown);
 	void AddActionSignalTarget(IPanel editablePanel);
 }

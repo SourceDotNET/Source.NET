@@ -695,7 +695,7 @@ public static partial class LuaPlayer
 		if (player.Hands.Get() != hands)
 			player.NetworkStateChanged();
 #endif
-		player.Hands.Set(hands);
+		player.Hands = EHANDLE.FromEntity(hands);
 		return 0;
 	}
 

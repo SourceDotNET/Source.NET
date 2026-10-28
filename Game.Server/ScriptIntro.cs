@@ -8,76 +8,78 @@ using System.Numerics;
 
 namespace Game.Server;
 
-using FIELD = FIELD<ScriptIntro>;
 using DEFINE = Source.DEFINE<ScriptIntro>;
 
 [LinkEntityToClass("script_intro")]
 [NetworkName("CScriptIntro")]
-public class ScriptIntro : BaseEntity
+public partial class ScriptIntro : BaseEntity
 {
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(CameraView)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(CameraViewAngles)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(BlendMode)) { Bits = 5 },
+		new(nameof(NextBlendMode)) { Bits = 5 },
+		new(nameof(NextBlendTime)) { Encoding = NetEncoding.Time64 },
+		new(nameof(BlendStartTime)) { Encoding = NetEncoding.Time64 },
+		nameof(Active),
+		new(nameof(FOV)) { Bits = 9 },
+		new(nameof(NextFOV)) { Bits = 9 },
+		new(nameof(StartFOV)) { Bits = 9 },
+		new(nameof(NextFOVBlendTime)) { Encoding = NetEncoding.Time64 },
+		new(nameof(FOVBlendStartTime)) { Encoding = NetEncoding.Time64 },
+		nameof(AlternateFOV),
+		new(nameof(FadeAlpha)) { Bits = 10 },
+		new(nameof(FadeColor)) { Encoding = NetEncoding.Array2, Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeDuration)) { Bits = 10, Flags = PropFlags.RoundDown, Low = 0.0f, High = 255.0f },
+		nameof(CameraEntity),
+	];
+
+	public ScriptIntro() {
+		CameraEntity = new();
+	}
+
 	public static Handle<ScriptIntro> g_hIntroScript = new();
 
 	static readonly ConVar cl_spewscriptintro = new("cl_spewscriptintro", "0");
 
-	[NetworkName("m_vecCameraView")]
-	public Vector3 CameraView;
-	[NetworkName("m_vecCameraViewAngles")]
-	public Vector3 CameraViewAngles;
-	[NetworkName("m_iBlendMode")]
-	public int BlendMode;
-	[NetworkName("m_iNextBlendMode")]
-	public int NextBlendMode;
-	[NetworkName("m_flNextBlendTime")]
-	public TimeUnit_t NextBlendTime;
-	[NetworkName("m_flBlendStartTime")]
-	public TimeUnit_t BlendStartTime;
-	[NetworkName("m_bActive")]
-	public bool Active;
-	[NetworkName("m_iFOV")]
-	public int FOV;
-	[NetworkName("m_iNextFOV")]
-	public int NextFOV;
-	[NetworkName("m_iStartFOV")]
-	public int StartFOV;
-	[NetworkName("m_flNextFOVBlendTime")]
-	public TimeUnit_t NextFOVBlendTime;
-	[NetworkName("m_flFOVBlendStartTime")]
-	public TimeUnit_t FOVBlendStartTime;
-	[NetworkName("m_bAlternateFOV")]
-	public bool AlternateFOV;
-	[NetworkName("m_flFadeAlpha")]
-	public float FadeAlpha;
-	[NetworkName("m_flFadeColor")]
-	public InlineArray3<float> FadeColor;
-	[NetworkName("m_flFadeDuration")]
-	public float FadeDuration;
-	[NetworkName("m_hCameraEntity")]
-	public EHANDLE CameraEntity = new();
+	[NetworkVar("m_vecCameraView")]
+	public partial Vector3 CameraView { get; set; }
+	[NetworkVar("m_vecCameraViewAngles")]
+	public partial Vector3 CameraViewAngles { get; set; }
+	[NetworkVar("m_iBlendMode")]
+	public partial int BlendMode { get; set; }
+	[NetworkVar("m_iNextBlendMode")]
+	public partial int NextBlendMode { get; set; }
+	[NetworkVar("m_flNextBlendTime")]
+	public partial TimeUnit_t NextBlendTime { get; set; }
+	[NetworkVar("m_flBlendStartTime")]
+	public partial TimeUnit_t BlendStartTime { get; set; }
+	[NetworkVar("m_bActive")]
+	public partial bool Active { get; set; }
+	[NetworkVar("m_iFOV")]
+	public partial int FOV { get; set; }
+	[NetworkVar("m_iNextFOV")]
+	public partial int NextFOV { get; set; }
+	[NetworkVar("m_iStartFOV")]
+	public partial int StartFOV { get; set; }
+	[NetworkVar("m_flNextFOVBlendTime")]
+	public partial TimeUnit_t NextFOVBlendTime { get; set; }
+	[NetworkVar("m_flFOVBlendStartTime")]
+	public partial TimeUnit_t FOVBlendStartTime { get; set; }
+	[NetworkVar("m_bAlternateFOV")]
+	public partial bool AlternateFOV { get; set; }
+	[NetworkVar("m_flFadeAlpha")]
+	public partial float FadeAlpha { get; set; }
+	[NetworkVar("m_flFadeColor")]
+	public partial ref readonly InlineArray3<float> FadeColor { get; }
+	[NetworkVar("m_flFadeDuration")]
+	public partial float FadeDuration { get; set; }
+	[NetworkVar("m_hCameraEntity")]
+	public partial EHANDLE CameraEntity { get; set; }
 
 	int QueuedBlendMode;
 	int QueuedNextBlendMode;
-
-	public static readonly SendTable DT_ScriptIntro = new(DT_BaseEntity, [
-		SendPropVector(FIELD.OF(nameof(CameraView)), 0, PropFlags.Coord),
-		SendPropVector(FIELD.OF(nameof(CameraViewAngles)), 0, PropFlags.Coord),
-		SendPropInt(FIELD.OF(nameof(BlendMode)), 5),
-		SendPropInt(FIELD.OF(nameof(NextBlendMode)), 5),
-		SendPropTime64(FIELD.OF(nameof(NextBlendTime))),
-		SendPropTime64(FIELD.OF(nameof(BlendStartTime))),
-		SendPropBool(FIELD.OF(nameof(Active))),
-		SendPropInt(FIELD.OF(nameof(FOV)), 9),
-		SendPropInt(FIELD.OF(nameof(NextFOV)), 9),
-		SendPropInt(FIELD.OF(nameof(StartFOV)), 9),
-		SendPropTime64(FIELD.OF(nameof(NextFOVBlendTime))),
-		SendPropTime64(FIELD.OF(nameof(FOVBlendStartTime))),
-		SendPropBool(FIELD.OF(nameof(AlternateFOV))),
-		SendPropFloat(FIELD.OF(nameof(FadeAlpha)), 10),
-		SendPropFloat(FIELD.OF_SENDINFO_ARRAY(nameof(FadeColor)), 0, PropFlags.NoScale),
-		SendPropArray(FIELD.OF_ARRAY(nameof(FadeColor))),
-		SendPropFloat(FIELD.OF(nameof(FadeDuration)), 10, PropFlags.RoundDown, 0.0f, 255.0f),
-		SendPropEHandle(FIELD.OF(nameof(CameraEntity))),
-	]);
-	public static new readonly ServerClass ServerClass = new ServerClass(DT_ScriptIntro);
 
 	public static readonly new DataMap DataDesc = new(typeof(ScriptIntro), BaseEntity.DataDesc, [
 		DEFINE.FIELD(nameof(CameraView), FieldType.Vector),
@@ -153,7 +155,7 @@ public class ScriptIntro : BaseEntity
 			return;
 		}
 
-		CameraEntity.Set(entity);
+		CameraEntity = EHANDLE.FromEntity(entity);
 		CameraView = entity.GetAbsOrigin();
 		QAngle angles = entity.GetAbsAngles();
 		CameraViewAngles = new(angles.X, angles.Y, angles.Z);
@@ -285,9 +287,10 @@ public class ScriptIntro : BaseEntity
 			return;
 		}
 
-		FadeColor[0] = (float)atof(parameters[0]);
-		FadeColor[1] = (float)atof(parameters[1]);
-		FadeColor[2] = (float)atof(parameters[2]);
+		ref var fadeColor = ref FadeColorForModify();
+		fadeColor[0] = (float)atof(parameters[0]);
+		fadeColor[1] = (float)atof(parameters[1]);
+		fadeColor[2] = (float)atof(parameters[2]);
 		NetworkStateChanged();
 	}
 }

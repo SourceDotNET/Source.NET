@@ -24,23 +24,6 @@ public class URLButton : Label
 		}
 	}
 
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		switch (message.Name) {
-			case "PressButton":
-				DoClick();
-				return;
-			case "Hotkey":
-				DoClick();
-				return;
-			case "SetState":
-				OnSetState(message.GetInt("state", 0));
-				return;
-			default:
-				base.OnMessage(message, from);
-				return;
-		}
-	}
-
 	public void Init() {
 		ButtonFlags |= ButtonFlags.UseCaptureMouse | ButtonFlags.ButtonBorderEnabled;
 		MouseClickMask = 0;
@@ -117,6 +100,8 @@ public class URLButton : Label
 
 	public bool IsArmed() => (ButtonFlags & ButtonFlags.Armed) != 0;
 
+	[UiMessage("PressButton")]
+	[UiMessage("Hotkey")]
 	public virtual void DoClick() {
 		SetSelected(true);
 		FireActionSignal();
@@ -228,6 +213,7 @@ public class URLButton : Label
 		}
 	}
 
+	[UiMessage("SetState")]
 	public virtual void OnSetState(int state) {
 		SetSelected(state != 0);
 		Repaint();

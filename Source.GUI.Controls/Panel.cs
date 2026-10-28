@@ -14,7 +14,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -160,68 +159,6 @@ public class PanelAnimationVarAttribute : Attribute
 		DefaultValue = defaultValue;
 		Type = type;
 	}
-
-	public static void InitVar(Type t, PanelAnimationVarAttribute attribute, FieldInfo field) {
-		PanelGetFunc get;
-		PanelSetFunc set;
-
-		{
-			DynamicMethod methodBuilder = new($"{t.Name}PanelAnim_GetVar_{field.Name}", typeof(object), [typeof(Panel)]);
-			var il = methodBuilder.GetILGenerator();
-			{
-				il.Emit(OpCodes.Ldarg_0);
-				il.Emit(OpCodes.Ldfld, field);
-				if (field.FieldType.IsValueType)
-					il.Emit(OpCodes.Box, field.FieldType);
-
-				il.Emit(OpCodes.Ret);
-			}
-			get = methodBuilder.CreateDelegate<PanelGetFunc>();
-		}
-
-		{
-			DynamicMethod methodBuilder = new($"{t.Name}PanelAnim_SetVar_{field.Name}", typeof(void), [typeof(Panel), typeof(object)]);
-			var il = methodBuilder.GetILGenerator();
-			{
-				il.Emit(OpCodes.Ldarg_0);
-				il.Emit(OpCodes.Ldarg_1);
-
-				if (field.FieldType.IsValueType)
-					il.Emit(OpCodes.Unbox_Any, field.FieldType);
-				else
-					il.Emit(OpCodes.Castclass, field.FieldType);
-
-				il.Emit(OpCodes.Stfld, field);
-
-				il.Emit(OpCodes.Ret);
-			}
-			set = methodBuilder.CreateDelegate<PanelSetFunc>();
-		}
-
-		Panel.AddToAnimationMap(
-			t,
-			attribute.Name ?? field.Name,
-			attribute.Type ?? (typedefs.TryGetValue(field.FieldType, out string? name) ? name : field.FieldType.Name),
-			field.Name,
-			attribute.DefaultValue,
-			false,
-			get,
-			set
-		);
-	}
-
-	static readonly Dictionary<Type, string> typedefs = new() {
-		{ typeof(sbyte), "sbyte" },
-		{ typeof(byte), "byte" },
-		{ typeof(short), "short" },
-		{ typeof(ushort), "ushort" },
-		{ typeof(int), "int" },
-		{ typeof(uint), "uint" },
-		{ typeof(long), "long" },
-		{ typeof(ulong), "ulong" },
-		{ typeof(float), "float" },
-		{ typeof(double), "double" }
-	};
 }
 
 public class Panel : IPanel
@@ -373,6 +310,7 @@ public class Panel : IPanel
 	bool MouseInput;
 	bool KbInput;
 	bool TopmostPopup;
+	bool PopupStayAtBack;
 	[PanelAnimationVar("alpha", "255")] float Alpha;
 	IBorder? Border;
 	IScheme? Scheme;
@@ -1153,6 +1091,7 @@ public class Panel : IPanel
 	public Panel? GetParent() => Parent;
 	IPanel? IPanel.GetParent() => Parent;
 
+	[UiMessage("OnScreenSizeChanged")]
 	public virtual void OnScreenSizeChanged(int oldWide, int oldTall) {
 		for (int i = 0; i < GetChildCount(); i++) {
 			IPanel child = GetChild(i);
@@ -1290,6 +1229,8 @@ public class Panel : IPanel
 	}
 
 	public bool IsTopmostPopup() => TopmostPopup;
+	public bool IsPopupStayAtBack() => PopupStayAtBack;
+	public void SetPopupStayAtBack(bool state) => PopupStayAtBack = state;
 
 	public bool IsVisible() {
 		return Visible;
@@ -1542,6 +1483,9 @@ public class Panel : IPanel
 		return false;
 	}
 
+#if GMOD_DLL
+	[UiMessage("activate")]
+#endif
 	public virtual void OnActivate() {
 		if (!PushLuaHook(LUA_POOLEDSTRING.OnActivate))
 			return;
@@ -1550,6 +1494,9 @@ public class Panel : IPanel
 		Lua!.CallInternalNoReturns(1);
 	}
 
+#if GMOD_DLL
+	[UiMessage("deactivate")]
+#endif
 	public virtual void OnDeactivate() {
 		if (!PushLuaHook(LUA_POOLEDSTRING.OnDeactivate))
 			return;
@@ -1581,12 +1528,6 @@ public class Panel : IPanel
 		LuaTable = null;
 		LuaObject?.UnReference();
 		LuaObject = null;
-	}
-
-	public virtual void ClearLuaReferencesRecursive() {
-		ClearLuaReferences();
-		for (int i = 0; i < GetChildCount(); i++)
-			GetChild(i).ClearLuaReferencesRecursive();
 	}
 #endif
 
@@ -2255,8 +2196,9 @@ public class Panel : IPanel
 
 	public void CallParentFunction(KeyValues message) => GetParent()?.SendMessage(message, this);
 
-	public virtual void OnRequestFocus(Panel subFocus, Panel? defaultPanel)
-		=> CallParentFunction(new KeyValues("OnRequestFocus").AddSubKey(new("subFocus", subFocus)).AddSubKey(new("defaultPanel", defaultPanel)));
+	[UiMessage("OnRequestFocus")]
+	public virtual void OnRequestFocus(Panel sender, Panel? defaultPanel)
+		=> GetParent()?.SendMessage(new KeyValues("OnRequestFocus").AddSubKey(new("subFocus", sender)).AddSubKey(new("defaultPanel", defaultPanel)), sender);
 
 	public virtual bool RequestFocusNext(IPanel? existingPanel = null) {
 #if GMOD_DLL
@@ -2625,6 +2567,19 @@ public class Panel : IPanel
 	public virtual void DoModal() { }
 #endif
 
+	PanelHandlerTable? handlerTable;
+	PanelHandlerTable HandlerTable => handlerTable ??= PanelMessageMap.GetTable(GetType());
+
+	public void DoCommand(ReadOnlySpan<char> command, IPanel? sender = null) {
+		if (HandlerTable.TryGetCommand(command, out PanelCommandHandler handler))
+			handler(this, sender);
+		else
+			OnCommand(command);
+	}
+
+	[UiMessage("Command")]
+	private void OnCommandMessage(Panel? sender, ReadOnlySpan<char> command) => DoCommand(command, sender);
+
 	public virtual void OnCommand(ReadOnlySpan<char> command) {
 		if (command.Equals("performlayout", StringComparison.OrdinalIgnoreCase))
 			InvalidateLayout();
@@ -2633,6 +2588,7 @@ public class Panel : IPanel
 		else
 			PostActionSignal(new KeyValues(command));
 	}
+	[UiMessage("MouseCaptureLost")]
 	public virtual void OnMouseCaptureLost() => Tooltips?.ResetDelay();
 	public virtual void OnSetFocus() {
 		Repaint();
@@ -2712,6 +2668,7 @@ public class Panel : IPanel
 #endif
 	}
 	public virtual void OnMouseDoublePressed(ButtonCode code) { }
+	[UiMessage("MouseReleased")]
 	public virtual void OnMouseReleased(ButtonCode code) {
 #if GMOD_DLL
 		if (IsWorldClicker())
@@ -2724,6 +2681,7 @@ public class Panel : IPanel
 #endif
 	}
 	public virtual void OnMouseMismatchedRelease(ButtonCode code, IPanel? pressedPanel) { }
+	[UiMessage("MouseWheeled")]
 	public virtual void OnMouseWheeled(int delta) {
 #if GMOD_DLL
 		if (PushLuaHook(LUA_POOLEDSTRING.OnMouseWheeled)) {
@@ -2735,6 +2693,7 @@ public class Panel : IPanel
 #endif
 		CallParentFunction(new KeyValues("MouseWheeled", "delta", delta));
 	}
+	[UiMessage("DialogVariables")]
 	public virtual void OnDialogVariablesChanged(KeyValues variables) { }
 	bool TriplePressAllowed;
 	public virtual void SetTriplePressAllowed(bool state) => TriplePressAllowed = state;
@@ -2853,6 +2812,7 @@ public class Panel : IPanel
 	}
 
 
+	[UiMessage("KeyTyped")]
 	public virtual void OnKeyTyped(char unichar) { }
 	public virtual void OnKeyCodeReleased(ButtonCode code) {
 #if GMOD_DLL
@@ -2860,11 +2820,14 @@ public class Panel : IPanel
 #endif
 		CallParentFunction(new KeyValues("KeyCodeReleased", "code", (int)code));
 	}
+	[UiMessage("UnhandledMouseClick")]
 	public virtual void OnUnhandledMouseClick(ButtonCode code) { }
+	[UiMessage("KeyFocusTicked")]
 	public void InternalKeyFocusTicked() {
 		OnKeyFocusTicked();
 	}
 	public virtual void OnKeyFocusTicked() { }
+	[UiMessage("MouseFocusTicked")]
 	public void InternalMouseFocusTicked() {
 		InternalSetCursor();
 		OnMouseFocusTicked();
@@ -2873,7 +2836,9 @@ public class Panel : IPanel
 		// Send it to the parent
 		GetParent()?.OnMouseFocusTicked();
 	}
+	[UiMessage("Close")]
 	public virtual void OnClose() { }
+	[UiMessage("Delete")]
 	public virtual void OnDelete() {
 		Dispose();
 	}
@@ -2898,6 +2863,7 @@ public class Panel : IPanel
 
 	static ConVar vgui_print_messages = new("0", FCvar.None);
 
+	[UiMessage("KeyCodePressed")]
 	public void InternalKeyCodePressed(ButtonCode code) {
 		if (!ShouldHandleInputMessage())
 			return;
@@ -2931,6 +2897,7 @@ public class Panel : IPanel
 	private bool GetForceStereoRenderToFrameBuffer() => ForceStereoRenderToFrameBuffer;
 	public void SetForceStereoRenderToFrameBuffer(bool state) => ForceStereoRenderToFrameBuffer = state;
 
+	[UiMessage("KeyCodeTyped")]
 	public void InternalKeyCodeTyped(ButtonCode code) {
 		if (!ShouldHandleInputMessage()) {
 			Input.OnKeyCodeUnhandled(code);
@@ -2972,6 +2939,7 @@ public class Panel : IPanel
 		return false;
 	}
 
+	[UiMessage("MousePressed")]
 	private void InternalMousePressed(ButtonCode code) {
 		// todo triple press/dragdrop etc
 
@@ -2994,6 +2962,7 @@ public class Panel : IPanel
 		OnMousePressed(code);
 	}
 
+	[UiMessage("KeyCodeReleased")]
 	private void InternalKeyCodeReleased(ButtonCode code) {
 		if (!ShouldHandleInputMessage())
 			return;
@@ -3004,7 +2973,8 @@ public class Panel : IPanel
 			CallParentFunction(new KeyValues("KeyCodeReleased", "code", (int)code));
 	}
 
-	private void InternalCursorMoved(int x, int y) {
+	[UiMessage("CursorMoved")]
+	private void InternalCursorMoved([MessageParam("xpos")] int x, [MessageParam("ypos")] int y) {
 		// dragdrop todo
 
 		if (!ShouldHandleInputMessage())
@@ -3038,6 +3008,7 @@ public class Panel : IPanel
 
 	private bool IsCursorNone() => GetCursor() == CursorCode.None;
 
+	[UiMessage("CursorEntered")]
 	private void InternalCursorEntered() {
 		if (IsCursorNone() || !IsMouseInputEnabled())
 			return;
@@ -3059,6 +3030,7 @@ public class Panel : IPanel
 		OnCursorEntered();
 	}
 
+	[UiMessage("CursorExited")]
 	private void InternalCursorExited() {
 #if GMOD_DLL
 		if (Lua != null && LuaTable != null)
@@ -3079,56 +3051,31 @@ public class Panel : IPanel
 
 	public bool IsConsoleStylePanel() => false; // todo
 
-	public virtual void OnMessage(KeyValues message, IPanel? from) {
-		switch (message.Name) {
-			case "KeyCodePressed": InternalKeyCodePressed((ButtonCode)message.GetInt("code")); break;
-			case "KeyCodeTyped": InternalKeyCodeTyped((ButtonCode)message.GetInt("code")); break;
-			case "KeyTyped": OnKeyTyped((char)message.GetInt("unichar")); break;
-			case "KeyCodeReleased": InternalKeyCodeReleased((ButtonCode)message.GetInt("code")); break;
-			case "CursorEntered": InternalCursorEntered(); break;
-			case "CursorExited": InternalCursorExited(); break;
-			case "CursorMoved": InternalCursorMoved(message.GetInt("xpos"), message.GetInt("ypos")); break;
-			case "MouseFocusTicked": InternalMouseFocusTicked(); break;
-			case "KeyFocusTicked": InternalKeyFocusTicked(); break;
-			case "MouseCaptureLost": OnMouseCaptureLost(); break;
-			case "MousePressed": InternalMousePressed((ButtonCode)message.GetInt("code")); break;
-			case "MouseWheeled": OnMouseWheeled(message.GetInt("delta")); break;
-			case "MouseReleased": OnMouseReleased((ButtonCode)message.GetInt("code")); break;
-			case "UnhandledMouseClick": OnUnhandledMouseClick((ButtonCode)message.GetInt("code")); break;
-			case "SetFocus": InternalSetFocus(); break;
-			case "KillFocus": InternalKillFocus((Panel?)message.GetPtr("newPanel")); break;
-			case "TextChanged": OnTextChanged((Panel)message.GetPtr("panel")!); break;
-			case "Delete": OnDelete(); break;
-			case "Close": OnClose(); break;
-			case "OnRequestFocus": OnRequestFocus(message.GetPtr<Panel>("subFocus")!, message.GetPtr<Panel>("defaultPanel")); break;
-			case "OnScreenSizeChanged": OnScreenSizeChanged(message.GetInt("oldwide"), message.GetInt("oldtall")); break;
-			case "Command": OnCommand(message.GetString("command")); break;
-			case "DialogVariables": OnDialogVariablesChanged(message); break;
-#if GMOD_DLL
-			case "activate": OnActivate(); break;
-			case "deactivate": OnDeactivate(); break;
-#endif
+	public virtual void OnMessage(KeyValues message, IPanel? sender) {
+		if (HandlerTable.TryGetMessage(message.Name, out PanelMessageHandler handler))
+			handler(this, message, sender);
 #if DEBUG
-			default:
-				DevMsg(3, $"Unhandled message '{message.Name}' from {from}");
-				break;
+		else
+			DevMsg(3, $"Unhandled message '{message.Name}' from {sender}");
 #endif
-		}
 		if (vgui_print_messages.GetBool())
 			if (vgui_print_messages.GetInt() == 2 || (!message.Name.Contains("Ticked") && !message.Name.Contains("Moved")))
-				Msg($"Message from {from} to {this}: {message.Name}\n");
+				Msg($"Message from {sender} to {this}: {message.Name}\n");
 	}
 
-	public virtual void OnTextChanged(Panel from) {
+	[UiMessage("TextChanged")]
+	public virtual void OnTextChanged(Panel sender) {
 
 	}
 
+	[UiMessage("SetFocus")]
 	private void InternalSetFocus() {
 		OnSetFocus();
 	}
 
-	private void InternalKillFocus(Panel? newPanel) {
-		OnKillFocus(newPanel);
+	[UiMessage("KillFocus")]
+	private void InternalKillFocus(Panel? sender) {
+		OnKillFocus(sender);
 	}
 
 
@@ -3136,8 +3083,8 @@ public class Panel : IPanel
 
 	public virtual void OnMove() { }
 
-	public void SendMessage(KeyValues parms, IPanel? from) {
-		OnMessage(parms, from);
+	public void SendMessage(KeyValues parms, IPanel? sender) {
+		OnMessage(parms, sender);
 	}
 
 	public void SetAllowKeyBindingChainToParent(bool state) {
@@ -3260,7 +3207,7 @@ public class Panel : IPanel
 	}
 
 	public static void AddToAnimationMap(Type t, ReadOnlySpan<char> scriptName, ReadOnlySpan<char> type, ReadOnlySpan<char> var, ReadOnlySpan<char> defaultValue, bool array, PanelGetFunc get, PanelSetFunc set) {
-		PanelAnimationMap map = PanelAnimationDictionary.FindOrAddPanelAnimationMap(t.Name);
+		PanelAnimationMap map = PanelAnimationDictionary.FindOrAddPanelAnimationMap(t.FullName);
 
 		PanelAnimationMapEntry entry = new() {
 			ScriptName = new string(scriptName),
@@ -3275,67 +3222,42 @@ public class Panel : IPanel
 	}
 	public static void ChainToAnimationMap<T>() where T : Panel => ChainToAnimationMap(typeof(T));
 	public static void ChainToAnimationMap(Type t) {
-		foreach (var field in t.GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)) {
-			PanelAnimationVarAttribute? attr = field.GetCustomAttribute<PanelAnimationVarAliasTypeAttribute>() ?? field.GetCustomAttribute<PanelAnimationVarAttribute>();
-			if (attr == null)
-				continue;
+		PanelRegistry.AddAnimationVars(t);
 
-			PanelAnimationVarAttribute.InitVar(t, attr, field);
-		}
-
-		PanelAnimationMap map = PanelAnimationDictionary.FindOrAddPanelAnimationMap(t.Name);
+		PanelAnimationMap map = PanelAnimationDictionary.FindOrAddPanelAnimationMap(t.FullName);
 		map.ClassName = t.Name;
 		Type? baseClass = t.BaseType;
 		if (baseClass?.IsAssignableTo(typeof(Panel)) ?? false)
-			map.BaseMap = PanelAnimationDictionary.FindOrAddPanelAnimationMap(baseClass.Name);
+			map.BaseMap = PanelAnimationDictionary.FindOrAddPanelAnimationMap(baseClass.FullName);
 	}
 
-	public virtual PanelAnimationMap GetAnimMap() => PanelAnimationDictionary.FindOrAddPanelAnimationMap(GetType().Name);
+	public virtual PanelAnimationMap GetAnimMap() => PanelAnimationDictionary.FindOrAddPanelAnimationMap(GetType().FullName);
 
-	delegate Panel CreatePanelFactoryFn();
-	static readonly ConcurrentDictionary<UtlSymId_t, CreatePanelFactoryFn> PanelFactories = [];
-	static readonly ConcurrentDictionary<UtlSymId_t, Type> PanelNames = [];
+	static readonly ConcurrentDictionary<UtlSymId_t, Func<Panel>> PanelFactories = [];
 
 	public static void InitializeControls() {
-		List<Type> list = [];
-
-		foreach (Type type in ReflectionUtils.GetLoadedTypes())
-			if (typeof(Panel).IsAssignableFrom(type))
-				list.Add(type);
+		foreach (Assembly assembly in ReflectionUtils.GetAssemblies())
+			RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
 
 		int count = 0;
-		Parallel.ForEach(list, type => {
-			ChainToAnimationMap(type);
-			//Msg($"VGUI: Initializing {type.Name}\n");
+		foreach (PanelRegistry.Entry entry in PanelRegistry.Entries) {
+			ChainToAnimationMap(entry.Type);
 
-			UtlSymbol nameSymbol = new(type.Name);
-			MethodInfo? method = type.GetMethod($"Create_{type.Name}", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-			if (method != null)
-				PanelFactories[nameSymbol] = method.CreateDelegate<CreatePanelFactoryFn>();
-
-			PanelNames[nameSymbol] = type;
-
-			PanelAliasAttribute? aliasAttr = type.GetCustomAttribute<PanelAliasAttribute>();
-			if (aliasAttr != null) {
-				UtlSymbol aliasSymbol = new(aliasAttr.Alias);
-				PanelNames[aliasSymbol] = type;
-				if (method != null)
-					PanelFactories[aliasSymbol] = method.CreateDelegate<CreatePanelFactoryFn>();
+			if (entry.Factory != null) {
+				PanelFactories[new UtlSymbol(entry.Name)] = entry.Factory;
+				if (entry.Alias != null)
+					PanelFactories[new UtlSymbol(entry.Alias)] = entry.Factory;
 			}
 
-			Interlocked.Increment(ref count);
-		});
+			count++;
+		}
 
 		Msg($"Initialized {count} VGUI controls in all currently loaded assemblies\n");
 	}
 
 	public static Panel? InstancePanel(ReadOnlySpan<char> className) {
-		UtlSymbol sym = new(className);
-		if (PanelFactories.TryGetValue(sym, out CreatePanelFactoryFn? fn))
+		if (PanelFactories.TryGetValue(new UtlSymbol(className), out Func<Panel>? fn))
 			return fn();
-
-		if (PanelNames.TryGetValue(sym, out Type? t))
-			return (Panel)Activator.CreateInstance(t)!;
 
 		return null;
 	}

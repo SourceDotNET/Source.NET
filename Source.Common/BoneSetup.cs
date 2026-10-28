@@ -166,11 +166,11 @@ public ref partial struct BoneSetup
 
 	StudioHdr studioHdr;
 	int boneMask;
-	Span<float> poseParameter;
+	ReadOnlySpan<float> poseParameter;
 
 	public StudioHdr GetStudioHdr() => studioHdr;
 
-	public BoneSetup(StudioHdr studioHdr, int boneMask, Span<float> poseParameter) {
+	public BoneSetup(StudioHdr studioHdr, int boneMask, ReadOnlySpan<float> poseParameter) {
 		this.studioHdr = studioHdr;
 		this.boneMask = boneMask;
 		this.poseParameter = poseParameter;
@@ -241,7 +241,7 @@ public ref partial struct BoneSetup
 		MStudioAnimDesc anim = studioHdr.Animdesc(baseanim);
 		return (anim.Flags & StudioAnimSeqFlags.AllZeros) != 0;
 	}
-	private static bool CalcPoseSingle(StudioHdr studioHdr, Span<Vector3> pos, Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, Span<float> poseParameter, int boneMask, double time) {
+	private static bool CalcPoseSingle(StudioHdr studioHdr, Span<Vector3> pos, Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, ReadOnlySpan<float> poseParameter, int boneMask, double time) {
 		bool bResult = true;
 
 		Vector3[] pos2 = VectorPool.Alloc();
@@ -1644,6 +1644,26 @@ public ref partial struct BoneSetup
 		}
 
 		return -1;
+	}
+
+	public static void Studio_CalcBoneToBoneTransform(StudioHdr studioHdr, int inputBoneIndex, int outputBoneIndex, out Matrix3x4 matrixOut) {
+		MStudioBone bone = studioHdr.Bone(inputBoneIndex);
+
+		MathLib.MatrixInvert(bone.PoseToBone, out Matrix3x4 inputToPose);
+		MathLib.ConcatTransforms(studioHdr.Bone(outputBoneIndex).PoseToBone, inputToPose, out matrixOut);
+	}
+
+	public static void CalcBoneDerivatives(out Vector3 velocity, out Vector3 angVel, in Matrix3x4 prev, in Matrix3x4 current, float dt) {
+		float scale = 1.0f;
+		if (dt > 0)
+			scale = 1.0f / dt;
+
+		MathLib.MatrixAngles(prev, out QAngle startAngles, out Vector3 startPosition);
+		MathLib.MatrixAngles(current, out QAngle endAngles, out Vector3 endPosition);
+
+		velocity = (endPosition - startPosition) * scale;
+		MathLib.RotationDeltaAxisAngle(startAngles, endAngles, out Vector3 deltaAxis, out float deltaAngle);
+		MathLib.VectorScale(deltaAxis, deltaAngle * scale, out angVel);
 	}
 
 	public static void SetupSingleBoneMatrix(StudioHdr ownerHdr, int sequence, int frame, int bone, out Matrix3x4 boneLocal) {

@@ -6,27 +6,26 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-using FIELD = Source.FIELD<Game.Server.HL2.PropCombineBall>;
 namespace Game.Server.HL2;
 
 [LinkEntityToClass("prop_combine_ball")]
 [NetworkName("CPropCombineBall")]
-public class PropCombineBall : BaseAnimating
+public partial class PropCombineBall : BaseAnimating
 {
-	public static readonly SendTable DT_PropCombineBall = new(DT_BaseAnimating, [
-		SendPropBool(FIELD.OF(nameof(Emit))),
-		SendPropFloat(FIELD.OF(nameof(Radius)), 0, PropFlags.NoScale),
-		SendPropBool(FIELD.OF(nameof(Held))),
-		SendPropBool(FIELD.OF(nameof(Launched))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PropCombineBall);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Emit),
+		new(nameof(Radius)) { Bits = 0, Flags = PropFlags.NoScale },
+		nameof(Held),
+		nameof(Launched),
+	];
 
-	[NetworkName("m_bEmit")]
-	public bool Emit;
-	[NetworkName("m_flRadius")]
-	public float Radius;
-	[NetworkName("m_bHeld")]
-	public bool Held;
-	[NetworkName("m_bLaunched")]
-	public bool Launched;
+	[NetworkVar("m_bEmit")]
+	public partial bool Emit { get; set; }
+	[NetworkVar("m_flRadius")]
+	public partial float Radius { get; set; }
+	[NetworkVar("m_bHeld")]
+	public partial bool Held { get; set; }
+	[NetworkVar("m_bLaunched")]
+	public partial bool Launched { get; set; }
 }

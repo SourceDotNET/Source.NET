@@ -196,18 +196,16 @@ public class OptionsSubVoice : PropertyPage
 		MicMeter2.SetVisible(false);
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command.Equals("TestMicrophone", StringComparison.Ordinal)) {
-			if (!VoiceOn)
-				StartTestMicrophone();
-			else
-				EndTestMicrophone();
-		}
-		else if (command.Equals("SteamVoiceSettings", StringComparison.Ordinal))
-			Steamworks.SteamFriends.ActivateGameOverlay("VoiceSettings");
+	[UiCommand("TestMicrophone")]
+	private void OnTestMicrophone() {
+		if (!VoiceOn)
+			StartTestMicrophone();
 		else
-			base.OnCommand(command);
+			EndTestMicrophone();
 	}
+
+	[UiCommand("SteamVoiceSettings")]
+	private void OnSteamVoiceSettings() => Steamworks.SteamFriends.ActivateGameOverlay("VoiceSettings");
 
 	public override void OnPageHide() {
 		if (VoiceOn)

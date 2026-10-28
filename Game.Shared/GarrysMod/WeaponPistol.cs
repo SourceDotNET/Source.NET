@@ -1,48 +1,39 @@
 #if (CLIENT_DLL || GAME_DLL) && GMOD_DLL
 
 using Source.Common;
+using Source.Common.Mathematics;
 namespace Game.Shared.GarrysMod;
 
-using FIELD = Source.FIELD<WeaponPistol>;
 
 [LinkEntityToClass("weapon_pistol")]
 [PrecacheWeaponRegister("weapon_pistol")]
 [NetworkName("CWeaponPistol")]
-public class WeaponPistol : HL2MPMachineGun
+public partial class WeaponPistol : HL2MPMachineGun
 {
-	public static readonly
-#if CLIENT_DLL
-		RecvTable
-#else
-		SendTable
-#endif
-		DT_WeaponPistol = new(DT_HL2MPMachineGun, [
-#if CLIENT_DLL
-			RecvPropTime64(FIELD.OF(nameof(SoonestPrimaryAttack))),
-			RecvPropTime64(FIELD.OF(nameof(LastAttackTime))),
-			RecvPropFloat(FIELD.OF(nameof(AccuracyPenalty))),
-			RecvPropInt(FIELD.OF(nameof(NumShotsFired))),
-#else
-			SendPropTime64(FIELD.OF(nameof(SoonestPrimaryAttack))),
-			SendPropTime64(FIELD.OF(nameof(LastAttackTime))),
-			SendPropFloat(FIELD.OF(nameof(AccuracyPenalty)), 0, PropFlags.NoScale),
-			SendPropInt(FIELD.OF(nameof(NumShotsFired)), 16),
-#endif
-		]);
-#if CLIENT_DLL
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_WeaponPistol);
-	public static readonly new DataMap PredMap = new([], typeof(WeaponPistol), HL2MPMachineGun.PredMap); public override DataMap? GetPredDescMap() => PredMap;
-#else
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_WeaponPistol);
-#endif
-	[NetworkName("m_flSoonestPrimaryAttack")]
-	public TimeUnit_t SoonestPrimaryAttack;
-	[NetworkName("m_flLastAttackTime")]
-	public TimeUnit_t LastAttackTime;
-	[NetworkName("m_flAccuracyPenalty")]
-	public TimeUnit_t AccuracyPenalty;
-	[NetworkName("m_nNumShotsFired")]
-	public int NumShotsFired;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(SoonestPrimaryAttack),
+		nameof(LastAttackTime),
+		new(nameof(AccuracyPenalty)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(NumShotsFired)) { Bits = 16 },
+	];
+
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		nameof(SoonestPrimaryAttack),
+		nameof(LastAttackTime),
+		nameof(AccuracyPenalty),
+		nameof(NumShotsFired),
+	];
+
+	[NetworkVar("m_flSoonestPrimaryAttack")]
+	public partial TimeUnit_t SoonestPrimaryAttack { get; set; }
+	[NetworkVar("m_flLastAttackTime")]
+	public partial TimeUnit_t LastAttackTime { get; set; }
+	[NetworkVar("m_flAccuracyPenalty")]
+	public partial float AccuracyPenalty { get; set; }
+	[NetworkVar("m_nNumShotsFired")]
+	public partial int NumShotsFired { get; set; }
 	public override float GetFireRate() => 0.5f;
 	public const TimeUnit_t PISTOL_FASTEST_REFIRE_TIME = 0.1;
 	public const TimeUnit_t PISTOL_FASTEST_DRY_REFIRE_TIME = 0.2;
@@ -103,7 +94,22 @@ public class WeaponPistol : HL2MPMachineGun
 		base.PrimaryAttack();
 
 		// Add an accuracy penalty which can move past our maximum penalty time if we're really spastic
-		AccuracyPenalty += PISTOL_ACCURACY_SHOT_PENALTY_TIME;
+		AccuracyPenalty += (float)PISTOL_ACCURACY_SHOT_PENALTY_TIME;
+	}
+
+	public override void AddViewKick() {
+		BasePlayer? player = ToBasePlayer(GetOwner());
+
+		if (player == null)
+			return;
+
+		QAngle viewPunch = default;
+
+		viewPunch.X = SharedRandomFloat("pistolpax", 0.25f, 0.5f);
+		viewPunch.Y = SharedRandomFloat("pistolpay", -0.6f, 0.6f);
+		viewPunch.Z = 0.0f;
+
+		player.ViewPunch(viewPunch);
 	}
 }
 #endif

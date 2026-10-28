@@ -7,40 +7,40 @@ using Source.Common;
 using System.Numerics;
 
 namespace Game.Server;
-using FIELD = Source.FIELD<C_Sun>;
 
-[NetworkName("CSun")]
-public class C_Sun : C_BaseEntity
+[NetworkName("CSun", NoBase = true)]
+public partial class C_Sun : C_BaseEntity
 {
-	public static readonly RecvTable DT_Sun = new([
-		RecvPropInt(FIELD.OF(nameof(Render)), 0, RecvProxy_IntToColor32),
-		RecvPropInt(FIELD.OF(nameof(Overlay)), 0, RecvProxy_IntToColor32),
-		RecvPropVector(FIELD.OF(nameof(Direction))),
-		RecvPropInt(FIELD.OF(nameof(On))),
-		RecvPropInt(FIELD.OF(nameof(Size))),
-		RecvPropInt(FIELD.OF(nameof(OverlaySize))),
-		RecvPropInt(FIELD.OF(nameof(Material))),
-		RecvPropInt(FIELD.OF(nameof(OverlayMaterial))),
-		// todo: RecvProxy_HDRColorScale
-		RecvPropFloat(FIELD.OF(nameof(HDRColorScale))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_Sun);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Render)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned, Proxy = typeof(Color32Proxy) },
+		new(nameof(Overlay)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned, Proxy = typeof(Color32Proxy) },
+		new(nameof(Direction)) { Bits = 0, Flags = PropFlags.Normal },
+		new(nameof(On)) { Encoding = NetEncoding.Int, Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(Size)) { Bits = 10, Flags = PropFlags.Unsigned },
+		new(nameof(OverlaySize)) { Bits = 10, Flags = PropFlags.Unsigned },
+		new(nameof(Material)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(OverlayMaterial)) { Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(HDRColorScale)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale, Low = 0.0f, High = 100.0f },
+	];
 
-	[NetworkName("m_clrRender")]
+	[NetworkVar("m_clrRender")]
 	public Color Render;
-	[NetworkName("m_clrOverlay")]
+	[NetworkVar("m_clrOverlay")]
 	public Color Overlay;
-	[NetworkName("m_vDirection")]
+	[NetworkVar("m_vDirection")]
 	public Vector3 Direction;
-	[NetworkName("m_bOn")]
+	[NetworkVar("m_bOn")]
 	public bool On;
-	[NetworkName("m_nSize")]
+	[NetworkVar("m_nSize")]
 	public int Size;
-	[NetworkName("m_nOverlaySize")]
+	[NetworkVar("m_nOverlaySize")]
 	public int OverlaySize;
-	[NetworkName("m_nMaterial")]
+	[NetworkVar("m_nMaterial")]
 	public int Material;
-	[NetworkName("m_nOverlayMaterial")]
+	[NetworkVar("m_nOverlayMaterial")]
 	public int OverlayMaterial;
+	// todo: RecvProxy_HDRColorScale
+	[NetworkVar("HDRColorScale")]
 	public int HDRColorScale;
 }

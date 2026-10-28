@@ -138,19 +138,16 @@ public class GameMenu(Panel parent, ReadOnlySpan<char> name) : Menu(parent, name
 			DeleteAllItems();
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (stricmp(command, "Open") == 0) {
-			if (MainMenuOverridePanel != null) {
-				MainMenuOverridePanel.MoveToFront();
-				MainMenuOverridePanel.RequestFocus();
-			}
-			else {
-				MoveToFront();
-				RequestFocus();
-			}
+	[UiCommand("Open")]
+	private void OnOpen() {
+		if (MainMenuOverridePanel != null) {
+			MainMenuOverridePanel.MoveToFront();
+			MainMenuOverridePanel.RequestFocus();
 		}
-		else
-			base.OnCommand(command);
+		else {
+			MoveToFront();
+			RequestFocus();
+		}
 	}
 
 	public override void SetVisible(bool state) {
@@ -544,34 +541,33 @@ public class SaveBeforeQuitQueryDialog : Frame
 	public override void OnKeyCodePressed(ButtonCode code) {
 		switch (code) {
 			case ButtonCode.KeyXButtonB: Close(); break;
-			case ButtonCode.KeyXButtonA: OnCommand("SaveAndQuit"); break;
-			case ButtonCode.KeyXButtonX: OnCommand("Quit"); break;
+			case ButtonCode.KeyXButtonA: DoCommand("SaveAndQuit"); break;
+			case ButtonCode.KeyXButtonX: DoCommand("Quit"); break;
 			default: base.OnKeyCodePressed(code); break;
 		}
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (0 == stricmp(command, "Quit")) 
-			PostMessage(GetParent(), new KeyValues("Command", "command", "QuitNoConfirm"));
-		else if (0 == stricmp(command, "SaveAndQuit")) {
-			// find a new name to save
-			Span<char> saveName= stackalloc char[128];
-			// TODO: SaveGameDialog.FindSaveSlot(saveName, sizeof(saveName));
-			// TODO: if (saveName[0] != '\0') {
-			// TODO: 	// save the game
-			// TODO: 	Span<char> sz = stackalloc char[256];
-			// TODO: 	sprintf(sz, "save %s\n").S(saveName);
-			// TODO: 	engine.ClientCmd_Unrestricted(sz.SliceNullTerminatedString());
-			// TODO: }
+	[UiCommand("Quit")]
+	private void OnQuit() => PostMessage(GetParent(), new KeyValues("Command", "command", "QuitNoConfirm"));
 
-			// quit
-			PostMessage(GetParent(), new KeyValues("Command", "command", "QuitNoConfirm"));
-		}
-		else if (0 == stricmp(command, "Cancel")) 
-			Close();
-		else 
-			base.OnCommand(command);
+	[UiCommand("SaveAndQuit")]
+	private void OnSaveAndQuit() {
+		// find a new name to save
+		Span<char> saveName= stackalloc char[128];
+		// TODO: SaveGameDialog.FindSaveSlot(saveName, sizeof(saveName));
+		// TODO: if (saveName[0] != '\0') {
+		// TODO: 	// save the game
+		// TODO: 	Span<char> sz = stackalloc char[256];
+		// TODO: 	sprintf(sz, "save %s\n").S(saveName);
+		// TODO: 	engine.ClientCmd_Unrestricted(sz.SliceNullTerminatedString());
+		// TODO: }
+
+		// quit
+		PostMessage(GetParent(), new KeyValues("Command", "command", "QuitNoConfirm"));
 	}
+
+	[UiCommand("Cancel")]
+	private void OnCancel() => Close();
 
 	public override void OnClose() {
 		base.OnClose();
@@ -624,9 +620,6 @@ public class BasePanel : Panel
 
 	public static BasePanel? g_BasePanel;
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		RunMenuCommand(command);
-	}
 
 	[ConCommand("gamemenucommand")]
 	static void Gamemenucommand(in TokenizedCommand args) {
@@ -640,54 +633,58 @@ public class BasePanel : Panel
 
 	public void RunMenuCommand(ReadOnlySpan<char> command) {
 		DevMsg($"Incoming BasePanel message '{command}'\n");
-		switch (command) {
-			case "OpenGameMenu": PostMessage(GameMenu, new("Command", "command", "open")); break;
-			case "OpenPlayerListDialog": break;
-			case "OpenNewGameDialog": break;
-			case "OpenLoadGameDialog": break;
-			case "OpenSaveGameDialog": break;
-			case "OpenBonusMapsDialog": break;
-			case "OpenOptionsDialog": OnOpenOptionsDialog(); break;
-			case "OpenControllerDialog": break;
-			case "OpenBenchmarkDialog": break;
-			case "OpenServerBrowser": OnOpenServerBrowser(); break;
-			case "OpenFriendsDialog": break;
-			case "OpenLoadDemoDialog": break;
-			case "OpenCreateMultiplayerGameDialog": break;
-			case "OpenChangeGameDialog": break;
-			case "OpenLoadCommentaryDialog": break;
-			case "OpenLoadSingleplayerCommentaryDialog": break;
-			case "OpenMatchmakingBasePanel": break;
-			case "OpenAchievementsDialog": break;
-			case "OpenCSAchievementsDialog": break;
-			case "AchievementsDialogClosing": break;
-			case "Quit":
-				OnOpenQuitConfirmationDialog();
-				break;
-			case "QuitNoConfirm":
-				SetVisible(false);
-				Surface.RestrictPaintToSinglePanel(this);
-				engine.ClientCmd_Unrestricted("quit\n");
-				break;
-			case "QuitRestartNoConfirm": break;
-			case "ResumeGame": gameUI.HideGameUI(); break;
-			case "Disconnect": engine.ClientCmd_Unrestricted("disconnect"); break;
-			case "DisconnectNoConfirm": break;
-			case "ReleaseModalWindow": Surface.RestrictPaintToSinglePanel(null); break;
-			case "ShowSigninUI": break;
-			case "ShowDeviceSelector": break;
-			case "SignInDenied": break;
-			case "RequiredSignInDenied": break;
-			case "RequiredStorageDenied": break;
-			case "StorageDeviceDenied": break;
-			case "clear_storage_deviceID": break;
-			case "RestartWithNewLanguage": break;
-			default:
-				base.OnCommand(command);
-				break;
-		}
+		DoCommand(command);
 	}
 
+	[UiCommand("OpenPlayerListDialog")]
+	[UiCommand("OpenNewGameDialog")]
+	[UiCommand("OpenLoadGameDialog")]
+	[UiCommand("OpenSaveGameDialog")]
+	[UiCommand("OpenBonusMapsDialog")]
+	[UiCommand("OpenControllerDialog")]
+	[UiCommand("OpenBenchmarkDialog")]
+	[UiCommand("OpenFriendsDialog")]
+	[UiCommand("OpenLoadDemoDialog")]
+	[UiCommand("OpenCreateMultiplayerGameDialog")]
+	[UiCommand("OpenChangeGameDialog")]
+	[UiCommand("OpenLoadCommentaryDialog")]
+	[UiCommand("OpenLoadSingleplayerCommentaryDialog")]
+	[UiCommand("OpenMatchmakingBasePanel")]
+	[UiCommand("OpenAchievementsDialog")]
+	[UiCommand("OpenCSAchievementsDialog")]
+	[UiCommand("AchievementsDialogClosing")]
+	[UiCommand("QuitRestartNoConfirm")]
+	[UiCommand("DisconnectNoConfirm")]
+	[UiCommand("ShowSigninUI")]
+	[UiCommand("ShowDeviceSelector")]
+	[UiCommand("SignInDenied")]
+	[UiCommand("RequiredSignInDenied")]
+	[UiCommand("RequiredStorageDenied")]
+	[UiCommand("StorageDeviceDenied")]
+	[UiCommand("clear_storage_deviceID")]
+	[UiCommand("RestartWithNewLanguage")]
+	private void OnUnimplementedCommand() { }
+
+	[UiCommand("OpenGameMenu")]
+	private void OnOpenGameMenu() => PostMessage(GameMenu, new("Command", "command", "open"));
+
+	[UiCommand("QuitNoConfirm")]
+	private void OnQuitNoConfirm() {
+		SetVisible(false);
+		Surface.RestrictPaintToSinglePanel(this);
+		engine.ClientCmd_Unrestricted("quit\n");
+	}
+
+	[UiCommand("ResumeGame")]
+	private void OnResumeGame() => gameUI.HideGameUI();
+
+	[UiCommand("Disconnect")]
+	private void OnDisconnect() => engine.ClientCmd_Unrestricted("disconnect");
+
+	[UiCommand("ReleaseModalWindow")]
+	private void OnReleaseModalWindow() => Surface.RestrictPaintToSinglePanel(null);
+
+	[UiCommand("OpenOptionsDialog")]
 	private void OnOpenOptionsDialog() {
 		if (!OptionsDialog.IsValid()) {
 			OptionsDialog = new OptionsDialog(this);
@@ -701,6 +698,7 @@ public class BasePanel : Panel
 	// FIXME: This is meant to be done through some ModuleLoader system, but that doesn't exist yet,
 	// 				so for now I'm cheating
 	static ServerBrowser.ServerBrowser? ServerBrowser;
+	[UiCommand("OpenServerBrowser")]
 	private void OnOpenServerBrowser() {
 		ServerBrowser ??= new();
 		if (ServerBrowser.Initialize())
@@ -717,6 +715,7 @@ public class BasePanel : Panel
 		dialog.SetPos(x + ((ww - wide) / 2), y + ((wt - tall) / 2));
 	}
 
+	[UiCommand("Quit")]
 	public void OnOpenQuitConfirmationDialog() {
 		if (gameUI.IsConsoleUI()) {
 			throw new NotImplementedException();

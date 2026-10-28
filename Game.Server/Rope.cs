@@ -8,77 +8,81 @@ using Source.Common.MaterialSystem;
 namespace Game.Server;
 
 
-using FIELD = FIELD<RopeKeyframe>;
-
 [LinkEntityToClass("keyframe_rope")]
 [LinkEntityToClass("move_rope")]
-[NetworkName("CRopeKeyframe")]
-public class RopeKeyframe : BaseEntity
+[NetworkName("CRopeKeyframe", NoBase = true)]
+public partial class RopeKeyframe : BaseEntity
 {
-	public static readonly SendTable DT_RopeKeyframe = new([
-		SendPropEHandle(FIELD.OF(nameof(StartPoint))),
-		SendPropEHandle(FIELD.OF(nameof(EndPoint))),
-		SendPropInt(FIELD.OF(nameof(StartAttachment)), 5),
-		SendPropInt(FIELD.OF(nameof(EndAttachment)), 5),
-		SendPropInt(FIELD.OF(nameof(StartBone)), 5),
-		SendPropInt(FIELD.OF(nameof(EndBone)), 5),
-		SendPropVector(FIELD.OF(nameof(StartOffset)), 0, PropFlags.Coord),
-		SendPropVector(FIELD.OF(nameof(EndOffset)), 0, PropFlags.Coord),
-		SendPropInt(FIELD.OF(nameof(RenderColor)), 32, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Slack)), 12),
-		SendPropInt(FIELD.OF(nameof(RopeLength)), 15),
-		SendPropInt(FIELD.OF(nameof(LockedPoints)), 4, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(RopeFlags)), 9, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Segments)), 4, PropFlags.Unsigned),
-		SendPropBool(FIELD.OF(nameof(ConstrainBetweenEndpoints))),
-		SendPropInt(FIELD.OF(nameof(RopeMaterialModelIndex)), 16, PropFlags.Unsigned),
-		SendPropInt(FIELD.OF(nameof(Subdiv)), 4, PropFlags.Unsigned),
-		SendPropFloat(FIELD.OF(nameof(TextureScale)), 10, 0, 0.1f, 10.0f),
-		SendPropFloat(FIELD.OF(nameof(Width)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(ScrollSpeed)), 0, PropFlags.NoScale),
-		SendPropVector(NetworkVarFields.Origin, 0, PropFlags.Coord),
-		SendPropEHandle(FIELD.OF(nameof(MoveParent))),
-		SendPropInt(FIELD.OF(nameof(ParentAttachment)), 8, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_RopeKeyframe);
-	[NetworkName("m_hStartPoint")]
-	public EHANDLE StartPoint = new();
-	[NetworkName("m_hEndPoint")]
-	public EHANDLE EndPoint = new();
-	[NetworkName("m_iStartAttachment")]
-	public int StartAttachment;
-	[NetworkName("m_iEndAttachment")]
-	public int EndAttachment;
-	[NetworkName("m_iStartBone")]
-	public int StartBone;
-	[NetworkName("m_iEndBone")]
-	public int EndBone;
-	[NetworkName("m_vecStartOffset")]
-	public Vector3 StartOffset;
-	[NetworkName("m_vecEndOffset")]
-	public Vector3 EndOffset;
-	[NetworkName("m_clrRender")]
-	public Color RenderColor;
-	[NetworkName("m_Slack")]
-	public int Slack;
-	[NetworkName("m_RopeLength")]
-	public int RopeLength;
-	[NetworkName("m_fLockedPoints")]
-	public int LockedPoints;
-	[NetworkName("m_RopeFlags")]
-	public int RopeFlags;
-	[NetworkName("m_nSegments")]
-	public int Segments;
-	[NetworkName("m_bConstrainBetweenEndpoints")]
-	public bool ConstrainBetweenEndpoints;
-	[NetworkName("m_iRopeMaterialModelIndex")]
-	public int RopeMaterialModelIndex;
-	[NetworkName("m_Subdiv")]
-	public int Subdiv;
-	[NetworkName("m_TextureScale")]
-	public float TextureScale;
-	[NetworkName("m_Width")]
-	public float Width;
-	[NetworkName("m_flScrollSpeed")]
-	public float ScrollSpeed;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(StartPoint),
+		nameof(EndPoint),
+		new(nameof(StartAttachment)) { Bits = 5 },
+		new(nameof(EndAttachment)) { Bits = 5 },
+		new(nameof(StartBone)) { Bits = 5 },
+		new(nameof(EndBone)) { Bits = 5 },
+		new(nameof(StartOffset)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(EndOffset)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(RenderColor)) { Encoding = NetEncoding.Int, Bits = 32, Flags = PropFlags.Unsigned },
+		new(nameof(Slack)) { Bits = 12 },
+		new(nameof(RopeLength)) { Bits = 15 },
+		new(nameof(LockedPoints)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(RopeFlags)) { Bits = 9, Flags = PropFlags.Unsigned },
+		new(nameof(Segments)) { Bits = 4, Flags = PropFlags.Unsigned },
+		nameof(ConstrainBetweenEndpoints),
+		new(nameof(RopeMaterialModelIndex)) { Bits = 16, Flags = PropFlags.Unsigned },
+		new(nameof(Subdiv)) { Bits = 4, Flags = PropFlags.Unsigned },
+		new(nameof(TextureScale)) { Bits = 10, Low = 0.1f, High = 10.0f },
+		new(nameof(Width)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(ScrollSpeed)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Origin)) { Encoding = NetEncoding.Vector, Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(MoveParent)) { Encoding = NetEncoding.EHandle },
+		new(nameof(ParentAttachment)) { Encoding = NetEncoding.Int, Bits = 8, Flags = PropFlags.Unsigned },
+	];
+
+	public RopeKeyframe() {
+		StartPoint = new();
+		EndPoint = new();
+	}
+
+	[NetworkVar("m_hStartPoint")]
+	public partial EHANDLE StartPoint { get; set; }
+	[NetworkVar("m_hEndPoint")]
+	public partial EHANDLE EndPoint { get; set; }
+	[NetworkVar("m_iStartAttachment")]
+	public partial int StartAttachment { get; set; }
+	[NetworkVar("m_iEndAttachment")]
+	public partial int EndAttachment { get; set; }
+	[NetworkVar("m_iStartBone")]
+	public partial int StartBone { get; set; }
+	[NetworkVar("m_iEndBone")]
+	public partial int EndBone { get; set; }
+	[NetworkVar("m_vecStartOffset")]
+	public partial Vector3 StartOffset { get; set; }
+	[NetworkVar("m_vecEndOffset")]
+	public partial Vector3 EndOffset { get; set; }
+	[NetworkVar("m_clrRender")]
+	public partial Color RenderColor { get; set; }
+	[NetworkVar("m_Slack")]
+	public partial int Slack { get; set; }
+	[NetworkVar("m_RopeLength")]
+	public partial int RopeLength { get; set; }
+	[NetworkVar("m_fLockedPoints")]
+	public partial int LockedPoints { get; set; }
+	[NetworkVar("m_RopeFlags")]
+	public partial int RopeFlags { get; set; }
+	[NetworkVar("m_nSegments")]
+	public partial int Segments { get; set; }
+	[NetworkVar("m_bConstrainBetweenEndpoints")]
+	public partial bool ConstrainBetweenEndpoints { get; set; }
+	[NetworkVar("m_iRopeMaterialModelIndex")]
+	public partial int RopeMaterialModelIndex { get; set; }
+	[NetworkVar("m_Subdiv")]
+	public partial int Subdiv { get; set; }
+	[NetworkVar("m_TextureScale")]
+	public partial float TextureScale { get; set; }
+	[NetworkVar("m_Width")]
+	public partial float Width { get; set; }
+	[NetworkVar("m_flScrollSpeed")]
+	public partial float ScrollSpeed { get; set; }
 }

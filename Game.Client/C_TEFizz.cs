@@ -3,25 +3,24 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
-using FIELD = FIELD<C_TEFizz>;
 [NetworkName("CTEFizz")]
-public class C_TEFizz : C_BaseTempEntity
+public partial class C_TEFizz : C_BaseTempEntity
 {
-	public static readonly RecvTable DT_TEFizz = new(DT_BaseTempEntity, [
-		RecvPropInt(FIELD.OF(nameof(Entity))),
-		RecvPropInt(FIELD.OF(nameof(ModelIndex))),
-		RecvPropInt(FIELD.OF(nameof(Density))),
-		RecvPropInt(FIELD.OF(nameof(Current))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEFizz);
+	[NetworkTable]
+	public static readonly NetworkProp[] Props = [
+		new(nameof(Entity)) { Bits = 13, Flags = PropFlags.Unsigned },
+		new(nameof(ModelIndex)) { Bits = 14 },
+		new(nameof(Density)) { Bits = 8, Flags = PropFlags.Unsigned },
+		new(nameof(Current)) { Bits = 16 },
+	];
 
-	[NetworkName("m_nEntity")]
+	[NetworkVar("m_nEntity")]
 	public int Entity;
-	[NetworkName("m_nModelIndex")]
+	[NetworkVar("m_nModelIndex")]
 	public int ModelIndex;
-	[NetworkName("m_nDensity")]
+	[NetworkVar("m_nDensity")]
 	public int Density;
-	[NetworkName("m_nCurrent")]
+	[NetworkVar("m_nCurrent")]
 	public int Current;
 }
 

@@ -209,7 +209,7 @@ public class GameServer : BaseServer
 			slot.SetModel(model);
 
 		bool loadNow;
-		loadNow = (slot.GetModel() == null && ((flags & Res.Preload) != 0 || IsX360()));
+		loadNow = (slot.GetModel() == null && (flags & Res.Preload) != 0);
 		if (CommandLine.FindParm("-nopreload") != 0 || CommandLine.FindParm("-nopreloadmodels") != 0)
 			loadNow = false;
 		else if (sv_forcepreload.GetInt() != 0 || CommandLine.FindParm("-preload") != 0)
@@ -718,7 +718,7 @@ public class GameServer : BaseServer
 #elif LINUX
 		ev.SetString( "os", "LINUX" );
 #elif OSX
-		ev.etString( "os", "OSX" );
+		ev.SetString( "os", "OSX" );
 #else
 #error Please define your platform
 #endif

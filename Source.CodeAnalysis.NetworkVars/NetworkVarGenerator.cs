@@ -46,14 +46,19 @@ namespace Source.CodeAnalysis.NetworkVars
 			defaultSeverity: DiagnosticSeverity.Error,
 			isEnabledByDefault: true);
 
-		public void Initialize(IncrementalGeneratorInitializationContext context) {
-			context.RegisterPostInitializationOutput(ctx =>
-				ctx.AddSource("NetworkVarAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8)));
+		private static readonly DiagnosticDescriptor ServerField = new DiagnosticDescriptor(
+			id: "NETVAR005",
+			title: "Server [NetworkVar] members must be partial properties",
+			messageFormat: "'{0}' is a [NetworkVar] field in server code; make it a partial property so changes are tracked",
+			category: "NetworkVars",
+			defaultSeverity: DiagnosticSeverity.Error,
+			isEnabledByDefault: true);
 
+		public void Initialize(IncrementalGeneratorInitializationContext context) {
 			IncrementalValuesProvider<PropertyModel?> properties = context.SyntaxProvider
 				.ForAttributeWithMetadataName(
 					AttributeMetadataName,
-					predicate: static (node, _) => node is PropertyDeclarationSyntax,
+					predicate: static (node, _) => node is PropertyDeclarationSyntax || node is VariableDeclaratorSyntax,
 					transform: static (ctx, _) => GetModel(ctx))
 				.Where(static m => m != null);
 
@@ -61,10 +66,31 @@ namespace Source.CodeAnalysis.NetworkVars
 
 			context.RegisterSourceOutput(collected, static (spc, models) => Emit(spc, models));
 
-			InitializeFieldAccessors(context, collected);
+			InitializeFieldAccessors(context, collected, InitializeTables(context));
 		}
 
+		private static bool HasStateTracking(INamedTypeSymbol? type) {
+			for (INamedTypeSymbol? t = type; t != null; t = t.BaseType) {
+				foreach (ISymbol member in t.GetMembers("NetworkStateChanged")) {
+					if (member is IMethodSymbol method && method.Parameters.Length == 1 && method.Parameters[0].Type.Name == "IFieldAccessor")
+						return true;
+				}
+			}
+			return false;
+		}
+
+		private static bool IsNetworkArray(ITypeSymbol type)
+			=> type is INamedTypeSymbol named && named.IsGenericType && named.Name == "NetworkArray" && named.ContainingNamespace.ToDisplayString() == "Source.Common";
+
 		private static PropertyModel? GetModel(GeneratorAttributeSyntaxContext ctx) {
+			bool isClient = ctx.TargetNode.SyntaxTree.Options.PreprocessorSymbolNames.Contains("CLIENT_DLL");
+
+			if (ctx.TargetSymbol is IFieldSymbol field) {
+				if (isClient || field.IsReadOnly || !HasStateTracking(field.ContainingType) || IsNetworkArray(field.Type))
+					return null;
+				return PropertyModel.ServerFieldError(field.Name, field.ContainingType.Name, field.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), ctx.TargetNode.GetLocation());
+			}
+
 			if (!(ctx.TargetSymbol is IPropertySymbol prop))
 				return null;
 
@@ -102,7 +128,28 @@ namespace Source.CodeAnalysis.NetworkVars
 				propertyIsPartial: propertyIsPartial,
 				typeIsPartial: typeIsPartial,
 				unsupported: unsupported,
-				location: propSyntax.Identifier.GetLocation());
+				isClient: isClient,
+				location: propSyntax.Identifier.GetLocation()) {
+				Accessibility = string.Join(" ", propSyntax.Modifiers
+					.Where(m => m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword) || m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.ProtectedKeyword) || m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.InternalKeyword) || m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PrivateKeyword) || m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NewKeyword))
+					.Select(m => m.Text)),
+				RefReadonly = prop.ReturnsByRefReadonly,
+				BaseHasFields = BaseHasNetworkVarFields(containingType.BaseType)
+			};
+		}
+
+		private static bool BaseHasNetworkVarFields(INamedTypeSymbol? type) {
+			for (INamedTypeSymbol? t = type; t != null; t = t.BaseType) {
+				if (t.ContainingType != null || t.IsGenericType)
+					continue;
+				foreach (IPropertySymbol property in t.GetMembers().OfType<IPropertySymbol>()) {
+					if (!property.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == AttributeMetadataName))
+						continue;
+					if (property.DeclaringSyntaxReferences.Any(r => r.GetSyntax() is PropertyDeclarationSyntax syntax && syntax.Modifiers.Any(m => m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PartialKeyword))))
+						return true;
+				}
+			}
+			return false;
 		}
 
 		private static void Emit(SourceProductionContext spc, ImmutableArray<PropertyModel?> models) {
@@ -115,6 +162,10 @@ namespace Source.CodeAnalysis.NetworkVars
 				PropertyModel first = group.First();
 
 				foreach (PropertyModel model in group) {
+					if (model.IsServerField) {
+						spc.ReportDiagnostic(Diagnostic.Create(ServerField, model.Location, model.PropertyName));
+						continue;
+					}
 					if (!model.PropertyIsPartial) {
 						spc.ReportDiagnostic(Diagnostic.Create(NotPartialProperty, model.Location, model.PropertyName));
 						continue;
@@ -163,8 +214,29 @@ namespace Source.CodeAnalysis.NetworkVars
 				string backing = "__nv_" + name;
 
 				sb.Append(indent).Append("private ").Append(t).Append(' ').Append(backing).AppendLine(";");
-				sb.Append(indent).Append("public partial ").Append(t).Append(' ').Append(name).AppendLine(" {");
+				string accessibility = p.Accessibility.Length == 0 ? "" : p.Accessibility + " ";
+				if (p.RefReadonly) {
+					sb.Append(indent).Append(accessibility).Append("partial ref readonly ").Append(t).Append(' ').Append(name).Append(" { get => ref ").Append(backing).AppendLine("; }");
+					if (p.IsClient)
+						sb.Append(indent).Append("public ref ").Append(t).Append(' ').Append(name).Append("ForModify() => ref ").Append(backing).AppendLine(";");
+					else {
+						sb.Append(indent).Append("public ref ").Append(t).Append(' ').Append(name).AppendLine("ForModify() {");
+						sb.Append(indent).Append("\tNetworkStateChanged(NetworkVarFields.").Append(name).AppendLine(");");
+						sb.Append(indent).Append("\treturn ref ").Append(backing).AppendLine(";");
+						sb.Append(indent).AppendLine("}");
+					}
+					sb.AppendLine();
+					continue;
+				}
+				sb.Append(indent).Append(accessibility).Append("partial ").Append(t).Append(' ').Append(name).AppendLine(" {");
 				sb.Append(indent).Append("\tget => ").Append(backing).AppendLine(";");
+				if (p.IsClient) {
+					sb.Append(indent).Append("\tset => ").Append(backing).AppendLine(" = value;");
+					sb.Append(indent).AppendLine("}");
+					sb.Append(indent).Append("public ref ").Append(t).Append(' ').Append(name).Append("ForModify() => ref ").Append(backing).AppendLine(";");
+					sb.AppendLine();
+					continue;
+				}
 				sb.Append(indent).AppendLine("\tset {");
 				if (p.InlineArrayElement == null)
 					sb.Append(indent).Append("\t\tif (!global::System.Collections.Generic.EqualityComparer<").Append(t).Append(">.Default.Equals(").Append(backing).AppendLine(", value)) {");
@@ -185,7 +257,7 @@ namespace Source.CodeAnalysis.NetworkVars
 				sb.AppendLine();
 			}
 
-			sb.Append(indent).AppendLine("internal static class NetworkVarFields");
+			sb.Append(indent).AppendLine(props.Any(p => p.BaseHasFields) ? "internal static new class NetworkVarFields" : "internal static class NetworkVarFields");
 			sb.Append(indent).AppendLine("{");
 			foreach (PropertyModel p in props) {
 				sb.Append(indent).Append("\tpublic static readonly global::Source.Common.IFieldAccessor ").Append(p.PropertyName)
@@ -210,26 +282,10 @@ namespace Source.CodeAnalysis.NetworkVars
 			return sb.ToString();
 		}
 
-		private const string AttributeSource =
-@"// <auto-generated/>
-#nullable enable
-namespace Source.Common
-{
-	/// <summary>
-	/// Marks a partial property as a networked var. The NetworkVar source generator emits the
-	/// backing field, a change-checked setter that calls NetworkStateChanged, and a shared
-	/// IFieldAccessor (exposed via the nested NetworkVarFields class) for the send table to use.
-	/// </summary>
-	[global::System.AttributeUsage(global::System.AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
-	internal sealed class NetworkVarAttribute : global::System.Attribute
-	{
-	}
-}";
-
 		private sealed class PropertyModel
 		{
 			public PropertyModel(string propertyName, string networkName, string accessorBase, string conversions, string typeDisplay, string? inlineArrayElement, string? @namespace, string typeName,
-				string typeFullyQualified, bool propertyIsPartial, bool typeIsPartial, bool unsupported, Location location) {
+				string typeFullyQualified, bool propertyIsPartial, bool typeIsPartial, bool unsupported, bool isClient, Location location) {
 				PropertyName = propertyName;
 				NetworkName = networkName;
 				AccessorBase = accessorBase;
@@ -242,7 +298,14 @@ namespace Source.Common
 				PropertyIsPartial = propertyIsPartial;
 				TypeIsPartial = typeIsPartial;
 				Unsupported = unsupported;
+				IsClient = isClient;
 				Location = location;
+			}
+
+			public static PropertyModel ServerFieldError(string fieldName, string typeName, string typeFullyQualified, Location location) {
+				PropertyModel model = new PropertyModel(fieldName, fieldName, "", "", "", null, null, typeName, typeFullyQualified, true, true, false, false, location);
+				model.IsServerField = true;
+				return model;
 			}
 
 			public string PropertyName { get; }
@@ -257,6 +320,11 @@ namespace Source.Common
 			public bool PropertyIsPartial { get; }
 			public bool TypeIsPartial { get; }
 			public bool Unsupported { get; }
+			public bool IsClient { get; }
+			public bool IsServerField { get; private set; }
+			public string Accessibility { get; set; } = "";
+			public bool RefReadonly { get; set; }
+			public bool BaseHasFields { get; set; }
 			public Location Location { get; }
 		}
 	}

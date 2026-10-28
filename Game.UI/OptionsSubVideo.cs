@@ -49,7 +49,7 @@ class OptionsSubVideoAdvancedDlg : Frame
 		SetTitle("#GameUI_VideoAdvanced_Title", true);
 		SetSize(260, 400);
 
-		DXLevel = new(this, "dxlevel", 6, false);
+		DXLevel = new(this, "dxlabel", 6, false);
 
 		MaterialSystem_Config config = Materials.GetCurrentConfigForVideoCard();
 		// KeyValues kv = new("config");
@@ -233,8 +233,9 @@ class OptionsSubVideoAdvancedDlg : Frame
 		return 0;
 	}
 
-	public override void OnTextChanged(Panel from) {
-		if (from == DXLevel && RequiresRestart()) {
+	[UiMessage("TextChanged")]
+	public override void OnTextChanged(Panel sender) {
+		if (sender == DXLevel && RequiresRestart()) {
 			QueryBox box = new("#GameUI_SettingRequiresDisconnect_Title", "#GameUI_SettingRequiresDisconnect_Info");
 			box.AddActionSignalTarget(this);
 			box.SetCancelCommand(new KeyValues("ResetDXLevelCombo"));
@@ -242,8 +243,10 @@ class OptionsSubVideoAdvancedDlg : Frame
 		}
 	}
 
+	[UiMessage("GameUIHidden")]
 	private void OnGameUIHidden() => Close();
 
+	[UiMessage("ResetDXLevelCombo")]
 	private void ResetDXLevelCombo() {
 		if (HDR.IsEnabled()) {
 			ConVarRef mat_hdr_level = new("mat_hdr_level");
@@ -252,6 +255,7 @@ class OptionsSubVideoAdvancedDlg : Frame
 		}
 	}
 
+	[UiMessage("OK_Confirmed")]
 	private void OK_Confirmed() {
 		UseChanges = true;
 		Close();
@@ -505,23 +509,20 @@ class OptionsSubVideoAdvancedDlg : Frame
 		MotionBlur.ActivateItem(mat_motion_blur_enabled.GetInt());
 	}
 
-	public override void OnCommand(ReadOnlySpan<char> command) {
-		if (command == "OK") {
-			if (RequiresRestart()) {
-				QueryBox box = new("#GameUI_SettingRequiresDisconnect_Title", "#GameUI_SettingRequiresDisconnect_Info");
-				box.AddActionSignalTarget(this);
-				box.SetOKCommand(new KeyValues("OK_Confirmed"));
-				box.SetCancelCommand(new KeyValues("ResetDXLevelCombo"));
-				box.DoModal();
-				box.MoveToFront();
-				return;
-			}
-
-			UseChanges = true;
-			Close();
+	[UiCommand("OK")]
+	private void OnOK() {
+		if (RequiresRestart()) {
+			QueryBox box = new("#GameUI_SettingRequiresDisconnect_Title", "#GameUI_SettingRequiresDisconnect_Info");
+			box.AddActionSignalTarget(this);
+			box.SetOKCommand(new KeyValues("OK_Confirmed"));
+			box.SetCancelCommand(new KeyValues("ResetDXLevelCombo"));
+			box.DoModal();
+			box.MoveToFront();
+			return;
 		}
-		else
-			base.OnCommand(command);
+
+		UseChanges = true;
+		Close();
 	}
 
 	public override void OnKeyCodeTyped(ButtonCode code) {
@@ -548,26 +549,6 @@ class OptionsSubVideoAdvancedDlg : Frame
 		}
 
 		return false;
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		switch (message.Name) {
-			case "TextChanged":
-				OnTextChanged((Panel)from!);
-				break;
-			case "GameUIHidden":
-				OnGameUIHidden();
-				break;
-			case "ResetDXLevelCombo":
-				ResetDXLevelCombo();
-				break;
-			case "OK_Confirmed":
-				OK_Confirmed();
-				break;
-			default:
-				base.OnMessage(message, from);
-				break;
-		}
 	}
 }
 
@@ -858,8 +839,8 @@ public class OptionsSubVideo : PropertyPage
 		}
 	}
 
-	public override void OnTextChanged(Panel from) {
-		if (from == Mode) {
+	public override void OnTextChanged(Panel sender) {
+		if (sender == Mode) {
 			MaterialSystem_Config config = Materials.GetCurrentConfigForVideoCard();
 			SelectedMode = Mode.GetActiveItem();
 
@@ -869,14 +850,15 @@ public class OptionsSubVideo : PropertyPage
 			if (w != config.VideoMode.Width || h != config.VideoMode.Height)
 				OnDataChanged();
 		}
-		else if (from == AspectRatio)
+		else if (sender == AspectRatio)
 			PrepareResolutionList();
-		else if (from == Windowed) {
+		else if (sender == Windowed) {
 			PrepareResolutionList();
 			OnDataChanged();
 		}
 	}
 
+	[UiMessage("ControlModified")]
 	private void OnDataChanged() => PostActionSignal(new KeyValues("ApplyButtonEnabled"));//static
 
 	private bool RequiresRestart() {
@@ -886,16 +868,19 @@ public class OptionsSubVideo : PropertyPage
 		return RequireRestart;
 	}
 
+	[UiMessage("OpenAdvanced")]
 	private void OpenAdvanced() {
 		OptionsSubVideoAdvancedDlg ??= new(BasePanel.g_BasePanel!.FindChildByName("OptionsDialog"));
 		OptionsSubVideoAdvancedDlg.Activate();
 	}
 
+	[UiMessage("OpenGammaDialog")]
 	private void OpenGammaDialog() {
 		GammaDialog ??= new(this, "GammaDialog");
 		GammaDialog.Activate();
 	}
 
+	[UiMessage("LaunchBenchmark")]
 	private void LaunchBenchmark() {
 		// BasePanel.g_BasePanel?.OnOpenBenchmarkDialog(); // todo
 	}
@@ -930,32 +915,6 @@ public class OptionsSubVideo : PropertyPage
 		// return File.Open(modSteamInfPath.ToString(), mode);
 
 		throw new NotImplementedException();
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		switch (message.Name) {
-			case "ControlModified":
-				OnDataChanged();
-				break;
-			case "TextChanged":
-				OnTextChanged((Panel)from!);
-				break;
-			case "OpenAdvanced":
-				OpenAdvanced();
-				break;
-			case "LaunchBenchmark":
-				LaunchBenchmark();
-				break;
-			case "OpenGammaDialog":
-				OpenGammaDialog();
-				break;
-			// case "OpenThirdPartyVideoCreditsDialog":
-			// 	OpenThirdPartyVideoCreditsDialog();
-			// 	break;
-			default:
-				base.OnMessage(message, from);
-				break;
-		}
 	}
 }
 

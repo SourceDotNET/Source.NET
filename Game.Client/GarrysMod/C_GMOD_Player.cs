@@ -10,7 +10,6 @@ using Source.Common.Mathematics;
 using System.Numerics;
 
 namespace Game.Client.GarrysMod;
-using FIELD = FIELD<C_GMOD_Player>;
 
 [LinkEntityToClass("player")]
 [NetworkName("CGMOD_Player")]
@@ -18,63 +17,64 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 {
 	static ConVar cl_playercolor = new("1.0 0.0 0.0", FCvar.UserInfo | FCvar.Archive | FCvar.ServerCanExecute, "Default Player Model");
 
-	public static readonly RecvTable DT_GMOD_Player = new(DT_HL2MP_Player, [
-		RecvPropInt(FIELD.OF(nameof(GModPlayerFlags))),
-		RecvPropEHandle(FIELD.OF(nameof(HoveredWidget))),
-		RecvPropEHandle(FIELD.OF(nameof(PressedWidget))),
-		RecvPropEHandle(FIELD.OF(nameof(Driving))),
-		RecvPropInt(FIELD.OF(nameof(DrivingMode))),
-		RecvPropInt(FIELD.OF(nameof(PlayerClass))),
-		RecvPropBool(FIELD.OF(nameof(CanZoom))),
-		RecvPropBool(FIELD.OF(nameof(CanWalk))),
-		RecvPropBool(FIELD.OF(nameof(IsTyping))),
-		RecvPropFloat(FIELD.OF(nameof(StepSize))),
-		RecvPropFloat(FIELD.OF(nameof(JumpPower))),
-		RecvPropVector(FIELD.OF_NAMED(nameof(ViewOffset), "m_ViewOffset")),
-		RecvPropVector(FIELD.OF(nameof(ViewOffsetDucked))),
-		RecvPropFloat(FIELD.OF(nameof(GestureEndTime))),
-		RecvPropVector(FIELD.OF(nameof(PlayerColor))),
-		RecvPropVector(FIELD.OF(nameof(WeaponColor))),
-		RecvPropEHandle(FIELD.OF(nameof(Hands))),
-		RecvPropInt(FIELD.OF(nameof(WaterLevel))),
-		RecvPropInt(FIELD.OF(nameof(MaxArmor))),
-		RecvPropFloat(FIELD.OF(nameof(Gravity))),
-		RecvPropBool(FIELD.OF(nameof(SprintEnabled))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_GMOD_Player);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(GModPlayerFlags),
+		nameof(HoveredWidget),
+		nameof(PressedWidget),
+		nameof(Driving),
+		nameof(DrivingMode),
+		nameof(PlayerClass),
+		nameof(CanZoom),
+		nameof(CanWalk),
+		nameof(IsTyping),
+		nameof(StepSize),
+		nameof(JumpPower),
+		new(nameof(ViewOffset)) { Name = "m_ViewOffset" },
+		nameof(ViewOffsetDucked),
+		nameof(GestureEndTime),
+		nameof(PlayerColor),
+		nameof(WeaponColor),
+		nameof(Hands),
+		nameof(WaterLevel),
+		nameof(MaxArmor),
+		nameof(Gravity),
+		nameof(SprintEnabled),
+	];
 
-	[NetworkName("m_iGModPlayerFlags")]
+	[NetworkVar("m_iGModPlayerFlags")]
 	public int GModPlayerFlags;
-	[NetworkName("m_HoveredWidget")]
+	[NetworkVar("m_HoveredWidget")]
 	public EHANDLE HoveredWidget = new();
-	[NetworkName("m_PressedWidget")]
+	[NetworkVar("m_PressedWidget")]
 	public EHANDLE PressedWidget = new();
-	[NetworkName("m_Driving")]
+	[NetworkVar("m_Driving")]
 	public EHANDLE Driving = new();
-	[NetworkName("m_DrivingMode")]
+	[NetworkVar("m_DrivingMode")]
 	public int DrivingMode;
-	[NetworkName("m_PlayerClass")]
+	[NetworkVar("m_PlayerClass")]
 	public int PlayerClass;
-	[NetworkName("m_bCanZoom")]
+	[NetworkVar("m_bCanZoom")]
 	public bool CanZoom;
-	[NetworkName("m_bCanWalk")]
+	[NetworkVar("m_bCanWalk")]
 	public bool CanWalk;
-	[NetworkName("m_bIsTyping")]
+	[NetworkVar("m_bIsTyping")]
 	public bool IsTyping;
-	[NetworkName("m_StepSize")]
+	[NetworkVar("m_StepSize")]
 	public float StepSize;
-	[NetworkName("m_JumpPower")]
+	[NetworkVar("m_JumpPower")]
 	public float JumpPower;
-	[NetworkName("m_ViewOffsetDucked")]
+	[NetworkVar("m_ViewOffsetDucked")]
 	public Vector3 ViewOffsetDucked;
-	[NetworkName("m_fGestureEndTime")]
+	[NetworkVar("m_fGestureEndTime")]
 	public float GestureEndTime;
-	[NetworkName("m_PlayerColor")]
+	[NetworkVar("m_PlayerColor")]
 	public Vector3 PlayerColor;
-	[NetworkName("m_WeaponColor")]
+	[NetworkVar("m_WeaponColor")]
 	public Vector3 WeaponColor;
 
 	public virtual Vector3 GetPlayerColor() => PlayerColor;
+	public virtual Vector3 GetWeaponColor() => WeaponColor;
 
 	public virtual void SetPlayerColor(in Vector3 color) {
 		if (PlayerColor != color)
@@ -85,13 +85,13 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 		if (WeaponColor != color)
 			WeaponColor = color;
 	}
-	[NetworkName("m_Hands")]
+	[NetworkVar("m_Hands")]
 	public EHANDLE Hands = new();
-	[NetworkName("m_iMaxArmor")]
+	[NetworkVar("m_iMaxArmor")]
 	public int MaxArmor;
-	[NetworkName("m_flGravity")]
+	[NetworkVar("m_flGravity")]
 	public float Gravity;
-	[NetworkName("m_bSprintEnabled")]
+	[NetworkVar("m_bSprintEnabled")]
 	public bool SprintEnabled;
 
 	public override bool RestrictPlayerPitch() => (GModPlayerFlags & 16) == 0;

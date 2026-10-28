@@ -4,58 +4,58 @@ using System.Numerics;
 
 namespace Game.Client;
 
-using FIELD = FIELD<C_PropVehicleChoreoGeneric>;
 
 [NetworkName("CPropVehicleChoreoGeneric")]
-public class C_PropVehicleChoreoGeneric : C_DynamicProp
+public partial class C_PropVehicleChoreoGeneric : C_DynamicProp
 {
-	[NetworkName("m_hPlayer")]
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Player),
+		nameof(EnterAnimOn),
+		nameof(ExitAnimOn),
+		nameof(ForceEyesToAttachment),
+		new(nameof(EyeExitEndpoint)) { Bits = 0, Flags = PropFlags.Coord },
+		nameof(VehicleViewClampEyeAngles),
+		new(nameof(VehicleViewPitchCurveZero)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewPitchCurveLinear)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewRollCurveZero)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewRollCurveLinear)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewFOV)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewYawMin)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewYawMax)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewPitchMin)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(VehicleViewPitchMax)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
+
+	[NetworkVar("m_hPlayer")]
 	public EHANDLE Player;
-	[NetworkName("m_bEnterAnimOn")]
+	[NetworkVar("m_bEnterAnimOn")]
 	public bool EnterAnimOn;
-	[NetworkName("m_bExitAnimOn")]
+	[NetworkVar("m_bExitAnimOn")]
 	public bool ExitAnimOn;
-	[NetworkName("m_bForceEyesToAttachment")]
+	[NetworkVar("m_bForceEyesToAttachment")]
 	public bool ForceEyesToAttachment;
-	[NetworkName("m_vecEyeExitEndpoint")]
+	[NetworkVar("m_vecEyeExitEndpoint")]
 	public Vector3 EyeExitEndpoint;
-	[NetworkName("m_vehicleView.bClampEyeAngles")]
+	[NetworkVar("m_vehicleView.bClampEyeAngles")]
 	public bool VehicleViewClampEyeAngles;
-	[NetworkName("m_vehicleView.flPitchCurveZero")]
+	[NetworkVar("m_vehicleView.flPitchCurveZero")]
 	public float VehicleViewPitchCurveZero;
-	[NetworkName("m_vehicleView.flPitchCurveLinear")]
+	[NetworkVar("m_vehicleView.flPitchCurveLinear")]
 	public float VehicleViewPitchCurveLinear;
-	[NetworkName("m_vehicleView.flRollCurveZero")]
+	[NetworkVar("m_vehicleView.flRollCurveZero")]
 	public float VehicleViewRollCurveZero;
-	[NetworkName("m_vehicleView.flRollCurveLinear")]
+	[NetworkVar("m_vehicleView.flRollCurveLinear")]
 	public float VehicleViewRollCurveLinear;
-	[NetworkName("m_vehicleView.flFOV")]
+	[NetworkVar("m_vehicleView.flFOV")]
 	public float VehicleViewFOV;
-	[NetworkName("m_vehicleView.flYawMin")]
+	[NetworkVar("m_vehicleView.flYawMin")]
 	public float VehicleViewYawMin;
-	[NetworkName("m_vehicleView.flYawMax")]
+	[NetworkVar("m_vehicleView.flYawMax")]
 	public float VehicleViewYawMax;
-	[NetworkName("m_vehicleView.flPitchMin")]
+	[NetworkVar("m_vehicleView.flPitchMin")]
 	public float VehicleViewPitchMin;
-	[NetworkName("m_vehicleView.flPitchMax")]
+	[NetworkVar("m_vehicleView.flPitchMax")]
 	public float VehicleViewPitchMax;
 
-	public static readonly RecvTable DT_PropVehicleChoreoGeneric = new(DT_DynamicProp, [
-		RecvPropEHandle(FIELD.OF(nameof(Player))),
-		RecvPropBool(FIELD.OF(nameof(EnterAnimOn))),
-		RecvPropBool(FIELD.OF(nameof(ExitAnimOn))),
-		RecvPropBool(FIELD.OF(nameof(ForceEyesToAttachment))),
-		RecvPropVector(FIELD.OF(nameof(EyeExitEndpoint))),
-		RecvPropBool(FIELD.OF(nameof(VehicleViewClampEyeAngles))),
-		RecvPropFloat(FIELD.OF(nameof(VehicleViewPitchCurveZero))),
-		RecvPropFloat(FIELD.OF(nameof(VehicleViewPitchCurveLinear))),
-		RecvPropFloat(FIELD.OF(nameof(VehicleViewRollCurveZero))),
-		RecvPropFloat(FIELD.OF(nameof(VehicleViewRollCurveLinear))),
-		RecvPropFloat(FIELD.OF(nameof(VehicleViewFOV))),
-		RecvPropFloat(FIELD.OF(nameof(VehicleViewYawMin))),
-		RecvPropFloat(FIELD.OF(nameof(VehicleViewYawMax))),
-		RecvPropFloat(FIELD.OF(nameof(VehicleViewPitchMin))),
-		RecvPropFloat(FIELD.OF(nameof(VehicleViewPitchMax))),
-	]);
-	public static new readonly ClientClass ClientClass = new ClientClass(DT_PropVehicleChoreoGeneric);
 }

@@ -17,7 +17,6 @@ using System.Diagnostics;
 using System.Numerics;
 
 using DEFINE = Source.DEFINE<Game.Server.PhysicsProp>;
-using FIELD_BPD = Source.FIELD<BasePropDoor>;
 using FIELD_DP = Source.FIELD<DynamicProp>;
 using FIELD_PBM = Source.FIELD<PhysBoxMultiplayer>;
 using FIELD_PP = Source.FIELD<PhysicsProp>;
@@ -46,7 +45,7 @@ public class BaseProp : BaseAnimating
 		SetNextThink(TICK_NEVER_THINK);
 
 		AnimTime = gpGlobals.CurTime;
-		PlaybackRate = 0.0;
+		PlaybackRate = 0.0f;
 		SetCycle(0);
 	}
 	public override void Precache() { }
@@ -58,8 +57,12 @@ public class BaseProp : BaseAnimating
 }
 
 [NetworkName("CBreakableProp")]
-public class BreakableProp : BaseProp, IBreakableWithPropData, IPlayerPickupVPhysics
+public partial class BreakableProp : BaseProp, IBreakableWithPropData, IPlayerPickupVPhysics
 {
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 	[Flags]
 	public enum SF
 	{
@@ -83,8 +86,6 @@ public class BreakableProp : BaseProp, IBreakableWithPropData, IPlayerPickupVPhy
 		IsGib = 0x400000,// Limit # of active gibs
 	}
 
-	public static readonly SendTable DT_BreakableProp = new(DT_BaseAnimating, []);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BreakableProp);
 
 	public bool PropDataOverrodeBlockLOS() => BlockLOSSetByPropData;
 
@@ -152,7 +153,7 @@ public class BreakableProp : BaseProp, IBreakableWithPropData, IPlayerPickupVPhy
 			throw new NotImplementedException();
 	}
 
-	public void SetPhysicsAttacker(BasePlayer? entity, TimeUnit_t time) {
+	public override void SetPhysicsAttacker(BasePlayer? entity, TimeUnit_t time) {
 		PhysicsAttacker.Set(entity);
 		LastPhysicsInfluenceTime = time;
 	}
@@ -287,17 +288,18 @@ public class BreakableProp : BaseProp, IBreakableWithPropData, IPlayerPickupVPhy
 
 [LinkEntityToClass("func_physbox_multiplayer")]
 [NetworkName("CPhysBoxMultiplayer")]
-public class PhysBoxMultiplayer : PhysBox, IMultiplayerPhysics
+public partial class PhysBoxMultiplayer : PhysBox, IMultiplayerPhysics
 {
-	public static readonly SendTable DT_PhysBoxMultiplayer = new(DT_PhysBox, [
-		SendPropInt(FIELD_PBM.OF(nameof(PhysicsMode)), 1, PropFlags.Unsigned),
-		SendPropFloat(FIELD_PBM.OF(nameof(Mass)), 0, PropFlags.NoScale)
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PhysBoxMultiplayer);
-	[NetworkName("m_iPhysicsMode")]
-	public int PhysicsMode;
-	[NetworkName("m_fMass")]
-	public float Mass;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(PhysicsMode)) { Bits = 1, Flags = PropFlags.Unsigned },
+		new(nameof(Mass)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
+
+	[NetworkVar("m_iPhysicsMode")]
+	public partial int PhysicsMode { get; set; }
+	[NetworkVar("m_fMass")]
+	public partial float Mass { get; set; }
 
 	public PhysicsMultiplayerMode GetMultiplayerPhysicsMode() => (PhysicsMultiplayerMode)PhysicsMode;
 	public float GetMass() => Mass;
@@ -313,14 +315,15 @@ public class PhysBoxMultiplayer : PhysBox, IMultiplayerPhysics
 [LinkEntityToClass("prop_flare")]
 [LinkEntityToClass("prop_weighted_cube")]
 [NetworkName("CPhysicsProp")]
-public class PhysicsProp : BreakableProp
+public partial class PhysicsProp : BreakableProp
 {
-	public static readonly SendTable DT_PhysicsProp = new(DT_BreakableProp, [
-		SendPropBool(FIELD_PP.OF(nameof(Awake)))
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PhysicsProp);
-	[NetworkName("m_bAwake")]
-	public bool Awake;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Awake),
+	];
+
+	[NetworkVar("m_bAwake")]
+	public partial bool Awake { get; set; }
 
 	public static readonly new DataMap DataDesc = new(typeof(PhysicsProp), BaseEntity.DataDesc, [
 		DEFINE.KEYFIELD(nameof(MassScale), FieldType.Float, "massscale"),
@@ -349,7 +352,7 @@ public class PhysicsProp : BreakableProp
 	float ForceToEnableMotion;
 
 	bool FirstCollisionAfterLaunch;
-	bool ThrownByPlayer;
+	internal bool ThrownByPlayer;
 
 	public OutputEvent OnPhysGunPickup_ = new();
 	public OutputEvent OnPhysGunPunt = new();
@@ -569,57 +572,61 @@ public class PhysicsProp : BreakableProp
 [LinkEntityToClass("prop_wall_projector")]
 [LinkEntityToClass("team_control_point")]
 [NetworkName("CDynamicProp")]
-public class DynamicProp : BreakableProp
+public partial class DynamicProp : BreakableProp
 {
-	public static readonly SendTable DT_DynamicProp = new(DT_BreakableProp, [
-		SendPropBool(FIELD_DP.OF(nameof(UseHitboxesForRenderBox)))
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_DynamicProp);
-	[NetworkName("m_bUseHitboxesForRenderBox")]
-	public bool UseHitboxesForRenderBox;
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(UseHitboxesForRenderBox),
+	];
+
+	[NetworkVar("m_bUseHitboxesForRenderBox")]
+	public partial bool UseHitboxesForRenderBox { get; set; }
 }
 
 [NetworkName("CPhysicsPropMultiplayer")]
-public class PhysicsPropMultiplayer : PhysicsProp
+public partial class PhysicsPropMultiplayer : PhysicsProp
 {
-	public static readonly SendTable DT_PhysicsPropMultiplayer = new(DT_PhysicsProp, [
-		SendPropInt(FIELD_PPM.OF(nameof(PhysicsMode)), 2, PropFlags.Unsigned),
-		SendPropFloat(FIELD_PPM.OF(nameof(Mass)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD_PPM.OF(nameof(CollisionMins)), 0, PropFlags.NoScale),
-		SendPropVector(FIELD_PPM.OF(nameof(CollisionMaxs)), 0, PropFlags.NoScale),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PhysicsPropMultiplayer);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(PhysicsMode)) { Bits = 2, Flags = PropFlags.Unsigned },
+		new(nameof(Mass)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(CollisionMins)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(CollisionMaxs)) { Bits = 0, Flags = PropFlags.NoScale },
+	];
 
-	[NetworkName("m_iPhysicsMode")]
-	public int PhysicsMode;
-	[NetworkName("m_fMass")]
-	public float Mass;
-	[NetworkName("m_collisionMins")]
-	public Vector3 CollisionMins;
-	[NetworkName("m_collisionMaxs")]
-	public Vector3 CollisionMaxs;
+	[NetworkVar("m_iPhysicsMode")]
+	public partial int PhysicsMode { get; set; }
+	[NetworkVar("m_fMass")]
+	public partial float Mass { get; set; }
+	[NetworkVar("m_collisionMins")]
+	public partial Vector3 CollisionMins { get; set; }
+	[NetworkVar("m_collisionMaxs")]
+	public partial Vector3 CollisionMaxs { get; set; }
 }
 
 
 [NetworkName("CBasePropDoor")]
-public class BasePropDoor : DynamicProp
+public partial class BasePropDoor : DynamicProp
 {
-	[NetworkName("m_bLocked")]
-	bool Locked;
-	[NetworkName("m_eDoorState")]
-	int DoorState;
-	public static readonly SendTable DT_BasePropDoor = new(DT_DynamicProp, [
-		SendPropBool(FIELD_BPD.OF(nameof(Locked))),
-		SendPropInt(FIELD_BPD.OF(nameof(DoorState)), 3, PropFlags.Unsigned)
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_BasePropDoor);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Locked),
+		new(nameof(DoorState)) { Bits = 3, Flags = PropFlags.Unsigned },
+	];
+
+	[NetworkVar("m_bLocked")]
+	private partial bool Locked { get; set; }
+	[NetworkVar("m_eDoorState")]
+	private partial int DoorState { get; set; }
 }
 
 [NetworkName("CPropDoorRotating")]
-public class PropDoorRotating : BasePropDoor
+public partial class PropDoorRotating : BasePropDoor
 {
-	public static readonly SendTable DT_PropDoorRotating = new(DT_BasePropDoor, []);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PropDoorRotating);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 }
 
 [LinkEntityToClass("prop_door_rotating")]

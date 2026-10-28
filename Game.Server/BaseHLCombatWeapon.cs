@@ -5,20 +5,20 @@ using Game.Shared.HL2;
 namespace Game.Server;
 
 [NetworkName("CHLMachineGun")]
-public class HLMachineGun : BaseHLCombatWeapon
+public partial class HLMachineGun : BaseHLCombatWeapon
 {
-	public static readonly SendTable DT_HLMachineGun = new(DT_BaseHLCombatWeapon, [
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
 
-	]);
-	public static new readonly ServerClass ServerClass = new ServerClass(DT_HLMachineGun);
 }
 
 
 [NetworkName("CHLSelectFireMachineGun")]
-public class HLSelectFireMachineGun : HLMachineGun
+public partial class HLSelectFireMachineGun : HLMachineGun
 {
-	public static readonly SendTable DT_HLSelectFireMachineGun = new(DT_HLMachineGun, [
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
 
-	]);
-	public static new readonly ServerClass ServerClass = new ServerClass(DT_HLSelectFireMachineGun);
 }

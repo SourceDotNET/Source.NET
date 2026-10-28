@@ -9,20 +9,18 @@ using System;
 namespace Game.Server;
 
 
-using FIELD = FIELD<FuncOccluder>;
-
 [LinkEntityToClass("func_occluder")]
-[NetworkName("CFuncOccluder")]
-public class FuncOccluder : BaseEntity
+[NetworkName("CFuncOccluder", NoBase = true)]
+public partial class FuncOccluder : BaseEntity
 {
-	public static readonly SendTable DT_FuncOccluder = new([
-		SendPropBool(FIELD.OF(nameof(Active))),
-		SendPropInt(FIELD.OF(nameof(OccluderIndex)), 10, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_FuncOccluder);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Active),
+		new(nameof(OccluderIndex)) { Bits = 10, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_bActive")]
-	public bool Active;
-	[NetworkName("m_nOccluderIndex")]
-	public int OccluderIndex;
+	[NetworkVar("m_bActive")]
+	public partial bool Active { get; set; }
+	[NetworkVar("m_nOccluderIndex")]
+	public partial int OccluderIndex { get; set; }
 }

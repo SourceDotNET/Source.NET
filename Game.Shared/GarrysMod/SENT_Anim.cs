@@ -7,27 +7,11 @@ using Source;
 namespace Game.Client;
 using Game.Client.GarrysMod;
 using Source.Common.Engine;
-using FIELD = Source.FIELD<C_SENT_Anim>;
 #else
 namespace Game.Server;
 
 using Game.Server.GarrysMod;
 
-using FIELD = Source.FIELD<SENT_Anim>;
-#endif
-
-using Table =
-#if CLIENT_DLL
-	RecvTable;
-#else
-	SendTable;
-#endif
-
-using Class =
-#if CLIENT_DLL
-	ClientClass;
-#else
-	ServerClass;
 #endif
 
 [LinkEntityToClass("sent_anim")]
@@ -39,22 +23,12 @@ public partial class
 	SENT_Anim : BaseAnimatingOverlay
 #endif
 {
-	public static readonly Table DT_SENT_anim = new(DT_BaseAnimatingOverlay, [
-#if CLIENT_DLL
-		RecvPropDataTable("m_ScriptedEntity", FIELD.OF(nameof(ScriptedEntity)), ScriptedEntity.DT_ScriptedEntity, 0, RECV_GET_OBJECT_AT_FIELD(FIELD.OF(nameof(ScriptedEntity))))
-#elif GAME_DLL
-		SendPropDataTable("m_ScriptedEntity", FIELD.OF(nameof(ScriptedEntity)), ScriptedEntity.DT_ScriptedEntity)
-#endif
-	]);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(ScriptedEntity)) { Encoding = NetEncoding.DataTable, DataTable = "DT_ScriptedEntity" },
+	];
 
-	public static readonly new Class
-#if CLIENT_DLL
-		ClientClass
-#else
-		ServerClass
-#endif
-		= new Class(DT_SENT_anim);
-
+	[NetworkVar("m_ScriptedEntity")]
 	public readonly ScriptedEntity ScriptedEntity = new();
 
 #if CLIENT_DLL

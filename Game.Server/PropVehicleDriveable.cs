@@ -1,61 +1,73 @@
 using Game.Shared;
 
 using Source.Common;
+using Source.Common.Physics;
 
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace Game.Server;
-using FIELD = Source.FIELD<PropVehicleDriveable>;
 
 [LinkEntityToClass("prop_vehicle_driveable")]
 [NetworkName("CPropVehicleDriveable")]
-public class PropVehicleDriveable : BaseAnimating
+public partial class PropVehicleDriveable : BaseAnimating
 {
-	public static readonly SendTable DT_PropVehicleDriveable = new(DT_BaseAnimating, [
-		SendPropEHandle(FIELD.OF(nameof(Player))),
-		SendPropInt(FIELD.OF(nameof(Speed)), 8),
-		SendPropInt(FIELD.OF(nameof(RPM)), 13),
-		SendPropFloat(FIELD.OF(nameof(Throttle)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(BoostTimeLeft)), 8),
-		SendPropBool(FIELD.OF(nameof(HasBoost))),
-		SendPropBool(FIELD.OF(nameof(EnterAnimOn))),
-		SendPropBool(FIELD.OF(nameof(ExitAnimOn))),
-		SendPropBool(FIELD.OF(nameof(UnableToFire))),
-		SendPropVector(FIELD.OF(nameof(EyeExitEndpoint)), 0, PropFlags.Coord),
-		SendPropBool(FIELD.OF(nameof(HasGun))),
-		SendPropVector(FIELD.OF(nameof(GunCrosshair)), 0, PropFlags.Coord),
-		SendPropBool(FIELD.OF(nameof(Locked))),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_PropVehicleDriveable);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		nameof(Player),
+		new(nameof(Speed)) { Bits = 8 },
+		new(nameof(RPM)) { Bits = 13 },
+		new(nameof(Throttle)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(BoostTimeLeft)) { Bits = 8 },
+		nameof(HasBoost),
+		nameof(EnterAnimOn),
+		nameof(ExitAnimOn),
+		nameof(UnableToFire),
+		new(nameof(EyeExitEndpoint)) { Bits = 0, Flags = PropFlags.Coord },
+		nameof(HasGun),
+		new(nameof(GunCrosshair)) { Bits = 0, Flags = PropFlags.Coord },
+		nameof(Locked),
+	];
 
-	[NetworkName("m_hPlayer")]
-	public EHANDLE Player = new();
-	[NetworkName("m_nSpeed")]
-	public new int Speed;
-	[NetworkName("m_nRPM")]
-	public int RPM;
-	[NetworkName("m_flThrottle")]
-	public float Throttle;
-	[NetworkName("m_nBoostTimeLeft")]
-	public int BoostTimeLeft;
-	[NetworkName("m_nHasBoost")]
-	public bool HasBoost;
+	public PropVehicleDriveable() {
+		Player = new();
+	}
+
+
+	[NetworkVar("m_hPlayer")]
+	public partial EHANDLE Player { get; set; }
+	[NetworkVar("m_nSpeed")]
+	public new partial int Speed { get; set; }
+	[NetworkVar("m_nRPM")]
+	public partial int RPM { get; set; }
+	[NetworkVar("m_flThrottle")]
+	public partial float Throttle { get; set; }
+	[NetworkVar("m_nBoostTimeLeft")]
+	public partial int BoostTimeLeft { get; set; }
+	[NetworkVar("m_nHasBoost")]
+	public partial bool HasBoost { get; set; }
 	public bool ScannerDisabledWeapons;
 	public bool ScannerDisabledVehicle;
-	[NetworkName("m_bEnterAnimOn")]
-	public bool EnterAnimOn;
-	[NetworkName("m_bExitAnimOn")]
-	public bool ExitAnimOn;
-	[NetworkName("m_bUnableToFire")]
-	public bool UnableToFire;
-	[NetworkName("m_vecEyeExitEndpoint")]
-	public Vector3 EyeExitEndpoint;
-	[NetworkName("m_bHasGun")]
-	public bool HasGun;
-	[NetworkName("m_vecGunCrosshair")]
-	public Vector3 GunCrosshair;
-	[NetworkName("m_bLocked")]
-	public bool Locked;
+	[NetworkVar("m_bEnterAnimOn")]
+	public partial bool EnterAnimOn { get; set; }
+	[NetworkVar("m_bExitAnimOn")]
+	public partial bool ExitAnimOn { get; set; }
+	[NetworkVar("m_bUnableToFire")]
+	public partial bool UnableToFire { get; set; }
+	[NetworkVar("m_vecEyeExitEndpoint")]
+	public partial Vector3 EyeExitEndpoint { get; set; }
+	[NetworkVar("m_bHasGun")]
+	public partial bool HasGun { get; set; }
+	[NetworkVar("m_vecGunCrosshair")]
+	public partial Vector3 GunCrosshair { get; set; }
+	[NetworkVar("m_bLocked")]
+	public partial bool Locked { get; set; }
+	readonly FourWheelVehiclePhysics VehiclePhysics = new();
+	[MethodImpl(MethodImplOptions.AggressiveInlining)] public FourWheelVehiclePhysics GetPhysics() => VehiclePhysics;
 
 	public override bool IsVehicle() => true;
+
+	public override int VPhysicsGetObjectList(Span<IPhysicsObject?> list) {
+		return GetPhysics().VPhysicsGetObjectList(list);
+	}
 }

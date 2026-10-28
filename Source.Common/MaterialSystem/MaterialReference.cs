@@ -25,14 +25,14 @@ public class MaterialReference : Reference<IMaterial>
 		Init(mat);
 	}
 
-	void Init(IMaterial material) {
+	public void Init(IMaterial material) {
 		if (reference != material) {
 			Shutdown();
 			reference = material;
 		}
 	}
 
-	private void Shutdown(bool deleteIfUnreferenced = false) {
+	public void Shutdown(bool deleteIfUnreferenced = false) {
 		if (reference != null) 
 			reference = null;
 	}

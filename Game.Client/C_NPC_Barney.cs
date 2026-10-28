@@ -4,10 +4,11 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
 
-using FIELD = FIELD<C_NPC_Barney>;
 [NetworkName("CNPC_Barney")]
-public class C_NPC_Barney : C_AI_BaseNPC
+public partial class C_NPC_Barney : C_AI_BaseNPC
 {
-	public static readonly RecvTable DT_NPC_Barney = new(DT_AI_BaseNPC, []);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_NPC_Barney);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+	];
+
 }

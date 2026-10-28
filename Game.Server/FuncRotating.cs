@@ -11,12 +11,11 @@ using System.Xml.Linq;
 namespace Game.Server;
 
 
-using FIELD = FIELD<FuncRotating>;
 using DEFINE = Source.DEFINE<FuncRotating>;
 
 [LinkEntityToClass("func_rotating")]
 [NetworkName("CFuncRotating")]
-public class FuncRotating : BaseEntity
+public partial class FuncRotating : BaseEntity
 {
 	[Flags]
 	public enum SF
@@ -39,37 +38,29 @@ public class FuncRotating : BaseEntity
 	const int FANPITCHMIN = 30;
 	const int FANPITCHMAX = 100;
 
-	public static readonly SendTable DT_FuncRotating = new(DT_BaseEntity, [
-		SendPropExclude(nameof(DT_BaseEntity), "m_angRotation"),
-		SendPropExclude(nameof(DT_BaseEntity), "m_vecOrigin"),
-		SendPropExclude(nameof(DT_BaseEntity), "m_flSimulationTime"),
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(Rotation)) { Exclude = true },
+		new(nameof(Origin)) { Exclude = true },
+		new(nameof(SimulationTime)) { Exclude = true },
 
-		SendPropVector(NetworkVarFields.Origin, 0, PropFlags.Coord | PropFlags.ChangesOften, 0, Constants.HIGH_DEFAULT, SendProxy_FuncRotatingOrigin),
-		SendPropAngle(FIELD.OF_VECTORELEM(nameof(Rotation), 0), 13, PropFlags.RoundDown | PropFlags.ChangesOften, proxyFn: SendProxy_FuncRotatingAngle),
-		SendPropAngle(FIELD.OF_VECTORELEM(nameof(Rotation), 1), 13, PropFlags.RoundDown | PropFlags.ChangesOften, proxyFn: SendProxy_FuncRotatingAngle),
-		SendPropAngle(FIELD.OF_VECTORELEM(nameof(Rotation), 2), 13, PropFlags.RoundDown | PropFlags.ChangesOften, proxyFn: SendProxy_FuncRotatingAngle),
-		SendPropInt(FIELD.OF(nameof(SimulationTime)), SIMULATION_TIME_WINDOW_BITS, PropFlags.Unsigned | PropFlags.ChangesOften | PropFlags.EncodedAgainstTickCount, SendProxy_FuncRotatingSimulationTime)
-	]);
+		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord | PropFlags.ChangesOften, Low = 0.0f, High = Constants.HIGH_DEFAULT, Proxy = typeof(OriginProxy) },
+		new(nameof(Rotation)) { Encoding = NetEncoding.VectorElements, Bits = 13, Flags = PropFlags.RoundDown | PropFlags.ChangesOften, Proxy = typeof(RotationAngleProxy) },
+		new(nameof(SimulationTime)) { Encoding = NetEncoding.Int, Bits = SIMULATION_TIME_WINDOW_BITS, Flags = PropFlags.Unsigned | PropFlags.ChangesOften | PropFlags.EncodedAgainstTickCount, Proxy = typeof(SimulationTimeProxy) },
+	];
 
-	private static void SendProxy_FuncRotatingOrigin(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID) {
-		SendProxy_Origin(prop, instance, field, ref outData, element, objectID);
+	public static class RotationAngleProxy
+	{
+		public static void Send(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID) {
+			FuncRotating? entity = (FuncRotating?)instance;
+			Assert(entity != null);
+
+			float qa = field.GetValue<float>(instance);
+
+			outData.Float = MathLib.anglemod(qa);
+			Assert(float.IsFinite(outData.Float));
+		}
 	}
-
-	private static void SendProxy_FuncRotatingAngle(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID) {
-		FuncRotating? entity = (FuncRotating?)instance;
-		Assert(entity != null);
-
-		float qa = field.GetValue<float>(instance);
-
-		outData.Float = MathLib.anglemod(qa);
-		Assert(float.IsFinite(outData.Float));
-	}
-
-	private static void SendProxy_FuncRotatingSimulationTime(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID) {
-		SendProxy_SimulationTime(prop, instance, field, ref outData, element, objectID);
-	}
-
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_FuncRotating);
 
 	public static readonly new DataMap DataDesc = new(typeof(FuncRotating), BaseEntity.DataDesc, [
 		DEFINE.FIELD(nameof(MoveAng), FieldType.Vector),

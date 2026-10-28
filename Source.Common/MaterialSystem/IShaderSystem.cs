@@ -38,7 +38,7 @@ public interface IShaderSystem
 	void InitShaderInstance(IShader shader, IMaterialVar[]? shaderParams, ReadOnlySpan<char> materialName, ReadOnlySpan<char> textureGroupName);
 	bool InitRenderState(IShader shader, IMaterialVar[] shaderParams, ref IShaderShadow shaderRenderState, ReadOnlySpan<char> materialName);
 	void ResetShaderState();
-	// void CleanupRenderState(ref ShaderRenderState renderState);
+	void CleanupRenderState(IShaderShadow? renderState);
 	void DrawElements(IShader shader, IMaterialVar[] parms, IShaderShadow renderState, VertexCompressionType vertexCompression, uint materialVarTimeStamp);
 	void BeginFrame();
 	void QueueAllShaderCombos();

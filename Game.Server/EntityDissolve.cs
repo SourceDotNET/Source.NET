@@ -3,43 +3,42 @@ using Source;
 using Game.Shared;
 using System.Numerics;
 namespace Game.Server;
-using FIELD = FIELD<EntityDissolve>;
 [LinkEntityToClass("env_entity_dissolver")]
 [NetworkName("CEntityDissolve")]
-public class EntityDissolve : BaseEntity
+public partial class EntityDissolve : BaseEntity
 {
-	public static readonly SendTable DT_EntityDissolve = new(DT_BaseEntity, [
-		SendPropFloat(FIELD.OF(nameof(StartTime)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(FadeInStart)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(FadeInLength)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(FadeOutModelStart)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(FadeOutModelLength)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(FadeOutStart)), 0, PropFlags.NoScale),
-		SendPropFloat(FIELD.OF(nameof(FadeOutLength)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(DissolveType)), 3, PropFlags.Unsigned),
-		SendPropVector(FIELD.OF(nameof(DissolverOrigin)), 0, PropFlags.NoScale),
-		SendPropInt(FIELD.OF(nameof(Magnitude)), 8, PropFlags.Unsigned),
-	]);
-	public static readonly new ServerClass ServerClass = new ServerClass(DT_EntityDissolve);
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(StartTime)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeInStart)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeInLength)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeOutModelStart)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeOutModelLength)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeOutStart)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(FadeOutLength)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(DissolveType)) { Bits = 3, Flags = PropFlags.Unsigned },
+		new(nameof(DissolverOrigin)) { Bits = 0, Flags = PropFlags.NoScale },
+		new(nameof(Magnitude)) { Bits = 8, Flags = PropFlags.Unsigned },
+	];
 
-	[NetworkName("m_flStartTime")]
-	public float StartTime;
-	[NetworkName("m_flFadeInStart")]
-	public float FadeInStart;
-	[NetworkName("m_flFadeInLength")]
-	public float FadeInLength;
-	[NetworkName("m_flFadeOutModelStart")]
-	public float FadeOutModelStart;
-	[NetworkName("m_flFadeOutModelLength")]
-	public float FadeOutModelLength;
-	[NetworkName("m_flFadeOutStart")]
-	public float FadeOutStart;
-	[NetworkName("m_flFadeOutLength")]
-	public float FadeOutLength;
-	[NetworkName("m_nDissolveType")]
-	public int DissolveType;
-	[NetworkName("m_vDissolverOrigin")]
-	public Vector3 DissolverOrigin;
-	[NetworkName("m_nMagnitude")]
-	public int Magnitude;
+	[NetworkVar("m_flStartTime")]
+	public partial float StartTime { get; set; }
+	[NetworkVar("m_flFadeInStart")]
+	public partial float FadeInStart { get; set; }
+	[NetworkVar("m_flFadeInLength")]
+	public partial float FadeInLength { get; set; }
+	[NetworkVar("m_flFadeOutModelStart")]
+	public partial float FadeOutModelStart { get; set; }
+	[NetworkVar("m_flFadeOutModelLength")]
+	public partial float FadeOutModelLength { get; set; }
+	[NetworkVar("m_flFadeOutStart")]
+	public partial float FadeOutStart { get; set; }
+	[NetworkVar("m_flFadeOutLength")]
+	public partial float FadeOutLength { get; set; }
+	[NetworkVar("m_nDissolveType")]
+	public partial int DissolveType { get; set; }
+	[NetworkVar("m_vDissolverOrigin")]
+	public partial Vector3 DissolverOrigin { get; set; }
+	[NetworkVar("m_nMagnitude")]
+	public partial int Magnitude { get; set; }
 }

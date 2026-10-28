@@ -90,23 +90,25 @@ public class OptionsSubMouse : PropertyPage
 	}
 
 	static readonly KeyValues KV_ApplyButtonEnable = new("ApplyButtonEnable");
-	public void OnControlModified(Panel panel) {
+	[UiMessage("ControlModified")]
+	[UiMessage("CheckButtonChecked")]
+	public void OnControlModified(Panel sender) {
 		PostActionSignal(KV_ApplyButtonEnable);
 
-		if (panel == MouseSensitivitySlider && MouseSensitivitySlider.HasBeenModified())
+		if (sender == MouseSensitivitySlider && MouseSensitivitySlider.HasBeenModified())
 			UpdateSensitivityLabel();
-		else if (panel == MouseAccelExponentSlider && MouseAccelExponentSlider.HasBeenModified())
+		else if (sender == MouseAccelExponentSlider && MouseAccelExponentSlider.HasBeenModified())
 			UpdateAccelerationLabel();
-		else if (panel == JoystickCheckBox)
+		else if (sender == JoystickCheckBox)
 			UpdateJoystickPanels();
-		else if (panel == MouseAccelerationCheckBox) {
+		else if (sender == MouseAccelerationCheckBox) {
 			MouseAccelExponentSlider.SetEnabled(MouseAccelerationCheckBox.IsSelected());
 			MouseAccelExponentLabel.SetEnabled(MouseAccelerationCheckBox.IsSelected());
 		}
 	}
 
-	public override void OnTextChanged(Panel from) {
-		if (from == MouseSensitivityLabel) {
+	public override void OnTextChanged(Panel sender) {
+		if (sender == MouseSensitivityLabel) {
 			Span<char> buf = stackalloc char[64];
 			MouseSensitivityLabel.GetText(buf);
 
@@ -117,7 +119,7 @@ public class OptionsSubMouse : PropertyPage
 			return;
 		}
 
-		if (from == MouseAccelExponentLabel) {
+		if (sender == MouseAccelExponentLabel) {
 			Span<char> buf = stackalloc char[64];
 			MouseAccelExponentLabel.GetText(buf);
 
@@ -151,14 +153,5 @@ public class OptionsSubMouse : PropertyPage
 		JoyPitchSensitivitySlider.SetEnabled(joystickEnabled);
 		JoyYawSensitivityPreLabel.SetEnabled(joystickEnabled);
 		JoyPitchSensitivityPreLabel.SetEnabled(joystickEnabled);
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name.Equals("ControlModified"))
-			OnControlModified((Panel)from!);
-		else if (message.Name.Equals("CheckButtonChecked"))
-			OnControlModified((Panel)from!);
-		else
-			base.OnMessage(message, from);
 	}
 }

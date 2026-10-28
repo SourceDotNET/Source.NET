@@ -6,19 +6,18 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
 
-using FIELD = FIELD<C_TEBeamPoints>;
 [NetworkName("CTEBeamPoints")]
-public class C_TEBeamPoints : C_BaseBeam
+public partial class C_TEBeamPoints : C_BaseBeam
 {
-	public static readonly RecvTable DT_TEBeamPoints = new(DT_BaseBeam, [
-		RecvPropVector(FIELD.OF(nameof(StartPoint))),
-		RecvPropVector(FIELD.OF(nameof(EndPoint))),
-	]);
-	public static readonly new ClientClass ClientClass = new ClientClass(DT_TEBeamPoints).AsEvent<C_TEBeamPoints>();
+	[NetworkTable]
+	public static readonly new NetworkProp[] Props = [
+		new(nameof(StartPoint)) { Bits = 0, Flags = PropFlags.Coord },
+		new(nameof(EndPoint)) { Bits = 0, Flags = PropFlags.Coord },
+	];
 
-	[NetworkName("m_vecStartPoint")]
+	[NetworkVar("m_vecStartPoint")]
 	public Vector3 StartPoint;
-	[NetworkName("m_vecEndPoint")]
+	[NetworkVar("m_vecEndPoint")]
 	public Vector3 EndPoint;
 
 	public override void PostDataUpdate(DataUpdateType updateType) {

@@ -63,6 +63,7 @@ public class MenuButton : Button
 	}
 
 	static readonly KeyValues KV_MenuClose = new("MenuClose");
+	[UiMessage("MenuClose")]
 	public void OnMenuClose() {
 		HideMenu();
 		PostActionSignal(KV_MenuClose);
@@ -124,7 +125,7 @@ public class MenuButton : Button
 
 		KeyValues msg = new("CursorEnteredMenuButton");
 		msg.SetPtr("VPanel", this);
-		VGui.PostMessage(GetParent(), msg, null);
+		VGui.PostMessage(GetParent(), msg, this);
 	}
 
 	public void SetDropMenuButtonStyle(bool state) {
@@ -211,14 +212,5 @@ public class MenuButton : Button
 	public Menu GetMenu() {
 		Assert(Menu != null);
 		return Menu;
-	}
-
-	public override void OnMessage(KeyValues message, IPanel? from) {
-		if (message.Name == "MenuClose") {
-			OnMenuClose();
-			return;
-		}
-
-		base.OnMessage(message, from);
 	}
 }
