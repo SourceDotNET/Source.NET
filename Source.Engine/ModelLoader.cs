@@ -602,6 +602,34 @@ public class ModelLoader(IFileSystem fileSystem, Host Host,
 		return false;
 	}
 
+	internal int Mod_GetMaterialCount(Model mod) {
+		switch (mod.Type) {
+			case ModelType.Brush: {
+					List<IMaterial?> uniqueMaterials = new(32);
+					for (int i = 0; i < mod.Brush.NumModelSurfaces; ++i) {
+						ref BSPMSurface2 surfID = ref SurfaceHandleFromIndex(mod.Brush.FirstModelSurface + i, mod.Brush.Shared);
+						if ((MSurf_Flags(ref surfID) & SurfDraw.NoDraw) != 0)
+							continue;
+
+						IMaterial? material = MSurf_TexInfo(ref surfID, mod.Brush.Shared).Material;
+						if (!uniqueMaterials.Contains(material))
+							uniqueMaterials.Add(material);
+					}
+					return uniqueMaterials.Count;
+				}
+
+			case ModelType.Studio:
+				Assert(false);
+				break;
+
+			default:
+				Assert(false);
+				break;
+		}
+
+		return 0;
+	}
+
 	internal void Mod_GetModelMaterials(Model model, ref SpanList<IMaterial> materials) {
 		StudioHeader studioHdr;
 		int i;

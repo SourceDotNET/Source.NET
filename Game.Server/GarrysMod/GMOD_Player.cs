@@ -183,6 +183,7 @@ public partial class GMOD_Player : HL2MP_Player
 	public partial Vector3 WeaponColor { get; set; }
 
 	public virtual Vector3 GetPlayerColor() => PlayerColor;
+	public virtual Vector3 GetWeaponColor() => WeaponColor;
 
 	public virtual void SetPlayerColor(in Vector3 color) {
 		if (PlayerColor != color) {

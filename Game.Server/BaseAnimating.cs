@@ -1316,6 +1316,10 @@ public partial class BaseAnimating : BaseEntity
 		Body = newBody;
 	}
 
+	public int GetBodygroup(int group) => Animation.GetBodygroup(GetModelPtr(), Body, group);
+	public ReadOnlySpan<char> GetBodygroupName(int group) => Animation.GetBodygroupName(GetModelPtr(), group);
+	public int GetBodygroupCount(int group) => Animation.GetBodygroupCount(GetModelPtr(), group);
+
 	public override BaseAnimating? GetBaseAnimating() => this;
 
 	public bool IsUsingClientSideAnimation() {

@@ -408,6 +408,45 @@ static Animation(){
 
 		body = (body - (iCurrent * bodypart.Base) + (value * bodypart.Base));
 	}
+
+	internal static int GetBodygroup(StudioHdr? studioHdr, int body, int group) {
+		if (studioHdr == null)
+			return 0;
+
+		if (group >= studioHdr.NumBodyParts())
+			return 0;
+
+		MStudioBodyParts bodypart = studioHdr.Bodypart(group);
+
+		if (bodypart.NumModels <= 1)
+			return 0;
+
+		int iCurrent = (body / bodypart.Base) % bodypart.NumModels;
+
+		return iCurrent;
+	}
+
+	internal static ReadOnlySpan<char> GetBodygroupName(StudioHdr? studioHdr, int group) {
+		if (studioHdr == null)
+			return "";
+
+		if (group >= studioHdr.NumBodyParts())
+			return "";
+
+		MStudioBodyParts bodypart = studioHdr.Bodypart(group);
+		return bodypart.Name();
+	}
+
+	internal static int GetBodygroupCount(StudioHdr? studioHdr, int group) {
+		if (studioHdr == null)
+			return 0;
+
+		if (group >= studioHdr.NumBodyParts())
+			return 0;
+
+		MStudioBodyParts bodypart = studioHdr.Bodypart(group);
+		return bodypart.NumModels;
+	}
 }
 
 public static class ImplementStudioHdrFns {

@@ -35,6 +35,7 @@ public partial class FuncLadder : BaseEntity
 
 	public override void Term() {
 		s_Ladders.Remove(this);
+		base.Term();
 	}
 
 	public static int GetLadderCount() => s_Ladders.Count;

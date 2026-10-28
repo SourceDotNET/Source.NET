@@ -65,6 +65,8 @@ public static class BaseEntityConstants
 #else
 	public static readonly ConVar hl2_episodic = new("hl2_episodic", "0", FCvar.Replicated);
 #endif
+	public static readonly ConVar ai_shot_bias_min = new("ai_shot_bias_min", "-1.0", FCvar.Replicated);
+	public static readonly ConVar ai_shot_bias_max = new("ai_shot_bias_max", "1.0", FCvar.Replicated);
 
 	public const int NUM_PARENTATTACHMENT_BITS = 8; // < gmod increased 6 . 8
 	public const int VPHYSICS_MAX_OBJECT_LIST_COUNT = 1024;

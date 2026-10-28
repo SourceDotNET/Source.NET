@@ -883,6 +883,13 @@ public static partial class LuaPlayer
 	}
 
 	[LuaMethod]
+	static int Player__GetWeaponColor(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		LuaVector.Push_Vector(player.GetWeaponColor());
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Player__SetWeaponColor(ILuaInterface lua) {
 		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
 		Vector3 color = LuaVector.Get_Vector(2);

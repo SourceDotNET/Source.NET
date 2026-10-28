@@ -3042,7 +3042,7 @@ public partial class BaseEntity : IServerEntity
 
 	public static void PrecacheModelComponents(int modelIndex) {
 		Model? model = (Model?)modelinfo.GetModel(modelIndex);
-		if (model != null || modelinfo.GetModelType(model) != ModelType.Studio)
+		if (model == null || modelinfo.GetModelType(model) != ModelType.Studio)
 			return;
 
 		// sounds

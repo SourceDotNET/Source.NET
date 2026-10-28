@@ -6,6 +6,7 @@ using Source.Common.Formats.BSP;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 using Source.Common.Physics;
+using Source.Common.Utilities;
 using Source.Engine.Client;
 
 using System.Numerics;
@@ -274,11 +275,16 @@ public abstract class ModelInfo(IFileSystem filesystem, IModelLoader modelloader
 	}
 
 	public int GetModelMaterialCount(Model? model) {
-		throw new NotImplementedException();
+		if (model == null)
+			return 0;
+		return ((ModelLoader)modelloader).Mod_GetMaterialCount(model);
 	}
 
 	public void GetModelMaterials(Model? model, Span<IMaterial> material) {
-		throw new NotImplementedException();
+		if (model == null)
+			return;
+		SpanList<IMaterial> materials = new(material);
+		((ModelLoader)modelloader).Mod_GetModelMaterials(model, ref materials);
 	}
 
 	public bool IsModelVertexLit(Model? model) {

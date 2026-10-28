@@ -334,7 +334,11 @@ public class GarrysMod : IGarrysMod
 			return g_Lua.FindAndRunScript(file, run, true, source, true);
 		}
 
+#if CLIENT_DLL
 		public bool ScriptExists(ReadOnlySpan<char> file, ReadOnlySpan<char> pathId) => get.LuaShared()!.LoadFile(file, pathId, true, true) != null;
+#else
+		public bool ScriptExists(ReadOnlySpan<char> file, ReadOnlySpan<char> pathId) => get.LuaShared()!.LoadFile(file, pathId, false, true) != null;
+#endif
 
 #if CLIENT_DLL
 		public C_BaseEntity? CreateEntity(ReadOnlySpan<char> className) => LuaSENTManager.gSENTManager!.CreateEntity(className);

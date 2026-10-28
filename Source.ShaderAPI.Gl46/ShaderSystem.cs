@@ -576,7 +576,7 @@ public class ShaderSystem : IShaderSystemInternal
 	}
 
 	private unsafe bool LoadCachedProgram(ShaderCompileJob job) {
-		using IFileHandle? handle = FileSystem.Open(job.CachePath, FileOpenOptions.Read | FileOpenOptions.Binary, "MOD");
+		using IFileHandle? handle = FileSystem.Open(job.CachePath, FileOpenOptions.Read | FileOpenOptions.Binary, "DEFAULT_WRITE_PATH");
 		if (handle == null || handle.Stream.Length <= sizeof(int))
 			return false;
 

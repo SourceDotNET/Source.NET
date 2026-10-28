@@ -2756,6 +2756,7 @@ public class Panel : IPanel
 		}
 
 #if GMOD_DLL
+		SetDrawOnTop(false);
 		ClearLuaReferences();
 #endif
 		VGui.PanelDeleted(this);

@@ -118,15 +118,7 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 		return true;
 	}
 
-// 	public override void LevelInitPreEntity() => throw new NotImplementedException();
-// 	public override void LevelInitPostEntity() => throw new NotImplementedException();
-// 	public override void LevelShutdownPreEntity() => throw new NotImplementedException();
-// 	public override void LevelShutdownPostEntity() => throw new NotImplementedException();
-#if CLIENT_DLL
-// 	public override void Update(TimeUnit_t frametime) => throw new NotImplementedException();
-#else
-// 	public override void FrameUpdatePreEntityThink() => throw new NotImplementedException();
-#endif
+	// todo LevelShutdownPostEntity
 
 	public void FireGameEvent(IGameEvent ev) {
 #if CLIENT_DLL

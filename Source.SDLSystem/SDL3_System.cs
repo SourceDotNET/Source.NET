@@ -128,8 +128,9 @@ public unsafe partial class SDL3_System(ICommandLine commandLine) : ISystem
 			SDL3.SDL_SetClipboardText("");
 
 		nuint bytes = (nuint)Encoding.UTF8.GetByteCount(text);
-		byte* rawData = (byte*)NativeMemory.Alloc(bytes);
+		byte* rawData = (byte*)NativeMemory.Alloc(bytes + 1);
 		Encoding.UTF8.GetBytes(text, new Span<byte>(rawData, (int)bytes));
+		rawData[bytes] = 0;
 		SDL3.SDL_SetClipboardText(rawData);
 		NativeMemory.Free(rawData);
 	}

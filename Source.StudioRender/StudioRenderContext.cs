@@ -246,7 +246,7 @@ public class StudioRenderContext(IMaterialSystem materialSystem, IStudioDataCach
 		meshData.MeshGroup = new StudioMeshGroup[vtxMesh.NumStripGroups];
 
 		for (int i = 0; i < vtxMesh.NumStripGroups; ++i) {
-			OptimizedModel.StripGroupHeader stripGroup = vtxMesh.StripGroup(i);
+			OptimizedModel.StripGroupHeader stripGroup = vtxMesh.StripGroup(i, studioHdr.Version);
 			StudioMeshGroup meshGroup = meshData.MeshGroup[i] = new();
 
 			meshGroup.MeshNeedsRestore = false;

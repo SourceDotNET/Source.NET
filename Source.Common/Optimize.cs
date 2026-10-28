@@ -126,6 +126,7 @@ public static class OptimizedModel
 		public ref BoneStateChangeHeader BoneStateChange(int i) => ref Data.Span[BoneStateChangeOffset..].Cast<byte, BoneStateChangeHeader>()[i];
 		public Span<BoneStateChangeHeader> BoneStateChanges(int i) => Data.Span[BoneStateChangeOffset..].Cast<byte, BoneStateChangeHeader>()[i..NumBoneStateChanges];
 		public const int SIZEOF = 4 + 4 + 4 + 4 + 2 + 1 + 4 + 4;
+		public const int SIZEOF_V49 = SIZEOF + 4 + 4;
 	}
 
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -151,8 +152,13 @@ public static class OptimizedModel
 		byte flags;
 		public StripGroupFlags Flags => (StripGroupFlags)flags;
 
-		public StripGroupHeader(Memory<byte> mem) {
+		public const int SIZEOF_V49 = SIZEOF + (sizeof(int) * 2);
+
+		int StudioVersion;
+
+		public StripGroupHeader(Memory<byte> mem, int studioVersion) {
 			Data = mem;
+			StudioVersion = studioVersion;
 			Span<byte> data = mem.Span;
 			NumVerts = data[0..].Cast<byte, int>()[0];
 			VertOffset = data[4..].Cast<byte, int>()[0];
@@ -172,7 +178,8 @@ public static class OptimizedModel
 			if (partCache == null)
 				partCache = new StripHeader[NumStrips];
 
-			return partCache[i] ?? (partCache[i] = new(Data[(StripOffset + (StripHeader.SIZEOF * i))..]));
+			int stride = StudioVersion < 49 ? StripHeader.SIZEOF : StripHeader.SIZEOF_V49;
+			return partCache[i] ?? (partCache[i] = new(Data[(StripOffset + (stride * i))..]));
 		}
 	}
 	public class MeshHeader
@@ -193,11 +200,12 @@ public static class OptimizedModel
 		}
 
 		StripGroupHeader[]? partCache;
-		public StripGroupHeader StripGroup(int i) {
+		public StripGroupHeader StripGroup(int i, int studioVersion) {
 			if (partCache == null)
 				partCache = new StripGroupHeader[NumStripGroups];
 
-			return partCache[i] ?? (partCache[i] = new(Data[(StripGroupHeaderOffset + (StripGroupHeader.SIZEOF * i))..]));
+			int stride = studioVersion < 49 ? StripGroupHeader.SIZEOF : StripGroupHeader.SIZEOF_V49;
+			return partCache[i] ?? (partCache[i] = new(Data[(StripGroupHeaderOffset + (stride * i))..], studioVersion));
 		}
 	}
 	public class ModelLODHeader
