@@ -876,6 +876,7 @@ public partial class C_BaseEntity : IClientEntity
 	public int Health;
 	[NetworkVar("m_iMaxHealth")]
 	public int MaxHealth;
+	public virtual int GetMaxHealth() => MaxHealth;
 	[NetworkVar("m_spawnflags")]
 	public int SpawnFlags;
 	[NetworkVar("m_iGModFlags")]

@@ -643,6 +643,27 @@ public abstract class BaseClientState(
 
 		DeltaTick = -1;
 
+		IGameEvent? ev = g_GameEventManager.CreateEvent("server_spawn");
+		if (ev != null) {
+#if GMOD_DLL
+			ev.SetString("loadurl", msg.LoadingURL);
+			ev.SetString("gamemode", msg.Gamemode);
+#endif
+			ev.SetString("hostname", msg.HostName);
+			ev.SetString("address", NetChannel!.GetRemoteAddress()!.ToString(true));
+			ev.SetInt("ip", (int)NetChannel.GetRemoteAddress()!.GetIPNetworkByteOrder());
+			ev.SetInt("port", NetChannel.GetRemoteAddress()!.GetPort());
+			ev.SetString("game", msg.GameDirectory);
+			ev.SetString("mapname", msg.MapName);
+			ev.SetInt("maxplayers", msg.MaxClients);
+			ev.SetInt("password", 0);
+			ev.SetString("os", $"{char.ToUpperInvariant((char)msg.ServerOS)}");
+			ev.SetInt("dedicated", msg.IsDedicated ? 1 : 0);
+			if (GameServerSteamID != 0)
+				ev.SetString("steamid", GameServerSteamID.ToString());
+			g_GameEventManager.FireEventClientSide(ev);
+		}
+
 		Span<char> levelFileName = stackalloc char[MAX_PATH];
 		Host.DefaultMapFileName(msg.MapName, levelFileName);
 		strcpy(_LevelFileName, levelFileName);

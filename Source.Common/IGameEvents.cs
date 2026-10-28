@@ -32,6 +32,9 @@ public interface IGameEvent
 	void SetInt(ReadOnlySpan<char> keyName, int value);
 	void SetFloat(ReadOnlySpan<char> keyName, float value);
 	void SetString(ReadOnlySpan<char> keyName, ReadOnlySpan<char> value);
+#if GMOD_DLL
+	KeyValues? GetDataKeys();
+#endif
 }
 
 public interface IGameEventListener2
@@ -111,6 +114,9 @@ public class GameEvent : IGameEvent
 	public void SetInt(ReadOnlySpan<char> keyName, int value) => DataKeys!.SetInt(keyName, value);
 	public void SetFloat(ReadOnlySpan<char> keyName, float value) => DataKeys!.SetFloat(keyName, value);
 	public void SetString(ReadOnlySpan<char> keyName, ReadOnlySpan<char> value) => DataKeys!.SetString(keyName, value);
+#if GMOD_DLL
+	public KeyValues? GetDataKeys() => DataKeys;
+#endif
 
 	public GameEventDescriptor? Descriptor;
 	public KeyValues? DataKeys;

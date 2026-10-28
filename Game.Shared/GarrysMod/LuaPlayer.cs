@@ -8,6 +8,8 @@ using Source.Common.GarrysMod.Lua;
 using Source.Common.Mathematics;
 
 using System.Numerics;
+using Source.Common.Client;
+
 
 #if CLIENT_DLL
 using GMOD_Player = Game.Client.GarrysMod.C_GMOD_Player;
@@ -677,6 +679,172 @@ public static partial class LuaPlayer
 			}
 		}
 		LuaEntity.Push_Entity(player.GetViewModel(index, true));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetViewEntity(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		BaseEntity? viewEntity = player.GetViewEntity();
+		if (viewEntity == null)
+			viewEntity = player;
+		LuaEntity.Push_Entity(viewEntity);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player____tostring(ILuaInterface lua) {
+		BasePlayer? player = Get_Player(1, true);
+		string str = player == null ? "Player [NULL]" : $"Player [{player.EntIndex()}][{player.GetPlayerName()}]";
+		lua.PushString(str.Length > 0xFF ? str[..0xFF] : str);
+		return 1;
+	}
+
+#if CLIENT_DLL
+	[LuaMethod]
+	static int Player__GetFriendStatus(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		if (!Steamworks.SteamAPI.IsSteamRunning()) {
+			lua.PushString("error_steamworks");
+			return 1;
+		}
+
+		if (!engine.GetPlayerInfo(player.EntIndex(), out PlayerInfo info)) {
+			lua.PushString("error_noplayer");
+			return 1;
+		}
+
+		string status;
+		if (info.FriendsID == 0)
+			status = "error_nofriendid";
+		else if (info.FakePlayer)
+			status = "error_bot";
+		else {
+			Steamworks.CSteamID steamID = default;
+			steamID.InstancedSet(new Steamworks.AccountID_t(info.FriendsID), 1, Steamworks.SteamUtils.GetConnectedUniverse(), Steamworks.EAccountType.k_EAccountTypeIndividual);
+			status = Steamworks.SteamFriends.GetFriendRelationship(steamID) switch {
+				Steamworks.EFriendRelationship.k_EFriendRelationshipBlocked => "blocked",
+				Steamworks.EFriendRelationship.k_EFriendRelationshipRequestRecipient => "requestrecipient",
+				Steamworks.EFriendRelationship.k_EFriendRelationshipFriend => "friend",
+				Steamworks.EFriendRelationship.k_EFriendRelationshipRequestInitiator => "requested",
+				Steamworks.EFriendRelationship.k_EFriendRelationshipIgnored => "blocked",
+				_ => "none",
+			};
+		}
+		lua.PushString(status);
+		return 1;
+	}
+#endif
+
+	[LuaMethod]
+	static int Player__Team(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber(player.GetTeamNumber());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__Armor(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+#if CLIENT_DLL
+		if (g_pPlayerResource == null)
+			return 0;
+		lua.PushNumber(g_pPlayerResource.GetArmor(player.EntIndex()));
+#else
+		lua.PushNumber(player.ArmorValue);
+#endif
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetMaxArmor(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		lua.PushNumber(player.MaxArmor);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__Frags(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+#if CLIENT_DLL
+		if (g_pPlayerResource == null)
+			return 0;
+		lua.PushNumber(g_pPlayerResource.GetFrags(player.EntIndex()));
+#else
+		lua.PushNumber(player.Frags);
+#endif
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__Deaths(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+#if CLIENT_DLL
+		if (g_pPlayerResource == null)
+			return 0;
+		lua.PushNumber(g_pPlayerResource.GetDeaths(player.EntIndex()));
+#else
+		lua.PushNumber(player.Deaths);
+#endif
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__Ping(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+#if CLIENT_DLL
+		if (g_pPlayerResource == null)
+			return 0;
+		lua.PushNumber(g_pPlayerResource.GetPing(player.EntIndex()));
+#else
+		Util.GetPlayerConnectionInfo(player.EntIndex(), out int ping, out _);
+		lua.PushNumber(ping);
+#endif
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetObserverMode(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber((int)player.GetObserverMode());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetObserverTarget(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		LuaEntity.Push_Entity(player.GetObserverTarget());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__Crouching(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool((player.GetFlags() & EntityFlags.Ducking) != 0);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__UserID(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber(player.GetUserID());
+		return 1;
+	}
+
+	[LuaGlobal]
+	static int Player(ILuaInterface lua) {
+#if CLIENT_DLL
+		LuaEntity.Push_Entity(ClientModeShared.USERID2PLAYER((int)lua.CheckNumber(1)));
+#else
+		LuaEntity.Push_Entity(Util.PlayerByUserId((int)lua.CheckNumber(1)));
+#endif
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__IsBot(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(player.IsBot() || player.IsHLTV());
 		return 1;
 	}
 

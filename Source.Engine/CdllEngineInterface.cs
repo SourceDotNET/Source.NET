@@ -702,8 +702,6 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 		throw new NotImplementedException();
 	}
 
-	public bool IsDedicatedServer() {
-		throw new NotImplementedException();
-	}
+	public bool IsDedicatedServer() => ClientState.IsDedicated;
 }
 #endif

@@ -1,4 +1,5 @@
 #if CLIENT_DLL || GAME_DLL || MENU_DLL
+using Source;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.Mathematics;
 
@@ -54,6 +55,15 @@ public static partial class LuaAngle
 
 		ang[index] = (float)value;
 		return 0;
+	}
+
+	[LuaMethod]
+	static int Angle____tostring(ILuaInterface lua) {
+		ref QAngle ang = ref Get_Angle(1);
+		Span<char> str = stackalloc char[64];
+		sprintf(str, "%.3f %.3f %.3f").F(ang.X).F(ang.Y).F(ang.Z);
+		g_Lua!.PushString(((ReadOnlySpan<char>)str).SliceNullTerminatedString());
+		return 1;
 	}
 
 	[LuaMethod]

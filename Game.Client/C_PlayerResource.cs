@@ -71,6 +71,32 @@ public partial class C_PlayerResource : C_BaseEntity
 		return Connected[index];
 	}
 
+	public int GetPlayerScore(int index) {
+		if (!IsConnected(index))
+			return 0;
+		return Score[index];
+	}
+
+	public int GetPing(int index) {
+		if (!IsConnected(index))
+			return 0;
+		return Ping[index];
+	}
+
+	public int GetDeaths(int index) {
+		if (!IsConnected(index))
+			return 0;
+		return Deaths[index];
+	}
+
+	public int GetFrags(int index) => GetPlayerScore(index);
+
+	public int GetArmor(int index) {
+		if (!IsConnected(index))
+			return 0;
+		return Armor[index];
+	}
+
 	public ReadOnlySpan<char> GetPlayerName(int index) {
 		if (index < 1 || index > Constants.MAX_PLAYERS) {
 			Assert(false);

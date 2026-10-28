@@ -129,6 +129,12 @@ public unsafe class LuaInterfaceImpl : ILuaInterface
 		luaL_openlibs(state);
 		DoStackCheck();
 
+		// todo build lua with LUAJIT_DISABLE_VMEVENT
+		GetField(LuaIndex.Global, "jit");
+		PushCFunction(JitAttachDisabled);
+		SetField(-2, "attach");
+		lua_settop(state, -2);
+
 		GetField(LuaIndex.Global, "string");
 		GetField(-1, "gmatch");
 		SetField(-2, "gfind");
@@ -193,6 +199,11 @@ public unsafe class LuaInterfaceImpl : ILuaInterface
 				});
 			}
 		}
+	}
+
+	static int JitAttachDisabled(ILuaInterface lua) {
+		lua.ThrowError("vmevent API disabled");
+		return 0;
 	}
 
 	static int AdvancedLuaErrorReporter(ILuaInterface lua) {
@@ -1144,9 +1155,9 @@ public unsafe class LuaInterfaceImpl : ILuaInterface
 
 		int status;
 		using (Utf8 name = new(chunkName.SliceNullTerminatedString(), stackalloc byte[MAX_PATH * 3]))
-		fixed (byte* buf = code)
-		fixed (byte* mode = "t\0"u8)
-			status = luaL_loadbufferx(state, buf, (nuint)code.Length, name.Pointer, mode);
+			fixed (byte* buf = code)
+			fixed (byte* mode = "t\0"u8)
+				status = luaL_loadbufferx(state, buf, (nuint)code.Length, name.Pointer, mode);
 
 		if (status != OK) {
 			if (printErrors) {

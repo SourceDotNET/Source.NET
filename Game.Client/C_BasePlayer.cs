@@ -106,6 +106,11 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 		}
 		return false;
 	}
+	public int GetUserID() {
+		if (!engine.GetPlayerInfo(EntIndex(), out PlayerInfo pi))
+			return -1;
+		return pi.UserID;
+	}
 	PlayerInfo NetworkIDInfo;
 	InlineArray33<char> NetworkIDString;
 	public ReadOnlySpan<char> GetNetworkIDString() {
@@ -123,7 +128,7 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 		return "NULL";
 	}
 	public bool IsHLTV() => IsLocalPlayer() && engine.IsHLTV();
-	public bool IsBot() => false; // TODO, gmod
+	public bool IsBot() => (GetFlags() & EntityFlags.FakeClient) != 0;
 	public static bool ShouldDrawLocalPlayer() {
 		return input.CAM_IsThirdPerson(); // todo
 	}
@@ -621,6 +626,7 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	EHANDLE TonemapController = new();
 	[NetworkVar("m_hViewEntity")]
 	EHANDLE ViewEntity = new();
+	public virtual C_BaseEntity? GetViewEntity() => ViewEntity.Get();
 	[NetworkVar("m_hViewModel")]
 	InlineArrayNewMaxViewmodels<Handle<C_BaseViewModel>> ViewModel = new();
 	[NetworkVar("m_bDisableWorldClicking")]
