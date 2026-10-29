@@ -66,7 +66,9 @@ class HudHistoryResource : EditableHudElement, IHudElement
 
 	public override void Init() {
 		IHudElement.HookMessage("SWEPCmd", MsgFunc_SWEPCmd);
+#if !GMOD_DLL
 		IHudElement.HookMessage("ItemPickup", MsgFunc_ItemPickup);
+#endif
 		IHudElement.HookMessage("AmmoDenied", MsgFunc_AmmoDenied);
 		Reset();
 	}

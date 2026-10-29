@@ -2,6 +2,7 @@ global using static Game.Server.GameServerClientGlobals;
 
 using Game.Server.GarrysMod;
 using Game.Shared;
+using Game.Shared.GarrysMod;
 
 using Source;
 using Source.Common;
@@ -134,8 +135,16 @@ public class GameServerClientMethods
 		// TODO: }
 		//else {
 		BasePlayer? player = Util.GetCommandClient();
-		if (player != null)
+		if (player != null) {
+#if GMOD_DLL
+			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.CanPlayerSuicide)) {
+				LuaEntity.Push_Entity(player);
+				if (!gGM.CallFinish(1))
+					return;
+			}
+#endif
 			player.CommitSuicide(explode);
+		}
 		//}
 	}
 

@@ -1288,6 +1288,21 @@ public class Panel : IPanel
 	}
 
 	public bool IsWithin(int x, int y) {
+#if GMOD_DLL
+		if (PushLuaHook(LUA_POOLEDSTRING.TestHover)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.PushNumber(x);
+			Lua.PushNumber(y);
+			if (Lua.CallInternal(3, 1)) {
+				if (Lua.GetType(-1) == LuaType.Bool) {
+					bool ret = Lua.GetBool(-1);
+					Lua.Pop(1);
+					return ret;
+				}
+				Lua.Pop(1);
+			}
+		}
+#endif
 		if (x < ClipRectX)
 			return false;
 
@@ -2593,15 +2608,24 @@ public class Panel : IPanel
 	public virtual void OnSetFocus() {
 		Repaint();
 #if GMOD_DLL
-		// todo: OnGetFocus hook
+		CallFocusChanged(true);
 #endif
 	}
 	public virtual void OnKillFocus(Panel? newPanel) {
 		Repaint();
 #if GMOD_DLL
-		// todo: OnLoseFocus hook
+		CallFocusChanged(false);
 #endif
 	}
+#if GMOD_DLL
+	void CallFocusChanged(bool gained) {
+		if (PushLuaHook(LUA_POOLEDSTRING.OnFocusChanged)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.PushBool(gained);
+			Lua.CallInternalNoReturns(2);
+		}
+	}
+#endif
 	public virtual void OnThink() { }
 	public virtual void OnParentChanged(IPanel? oldParent, IPanel? newParent) { }
 	public virtual void OnChildAdded(IPanel child) {
@@ -2618,7 +2642,12 @@ public class Panel : IPanel
 	}
 	public virtual void OnSizeChanged(int newWide, int newTall) {
 #if GMOD_DLL
-		// todo: OnSizeChanged hook
+		if (PushLuaHook(LUA_POOLEDSTRING.OnSizeChanged)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.PushNumber(newWide);
+			Lua.PushNumber(newTall);
+			Lua.CallInternalNoReturns(3);
+		}
 #endif
 		InvalidateLayout();
 	}
@@ -2775,7 +2804,12 @@ public class Panel : IPanel
 		if (!handled && !PassUnhandledInput)
 			return;
 #if GMOD_DLL
-		// todo: OnKeyCodePressed hook
+		if (PushLuaHook(LUA_POOLEDSTRING.OnKeyCodePressed)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.PushNumber((int)code);
+			if (Lua.CallInternalGetBool(2))
+				return;
+		}
 #endif
 		CallParentFunction(new KeyValues("KeyCodePressed").AddSubKey("code", (int)code));
 	}
@@ -2817,7 +2851,12 @@ public class Panel : IPanel
 	public virtual void OnKeyTyped(char unichar) { }
 	public virtual void OnKeyCodeReleased(ButtonCode code) {
 #if GMOD_DLL
-		// todo: OnKeyCodeReleased hook
+		if (PushLuaHook(LUA_POOLEDSTRING.OnKeyCodeReleased)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.PushNumber((int)code);
+			if (Lua.CallInternalGetBool(2))
+				return;
+		}
 #endif
 		CallParentFunction(new KeyValues("KeyCodeReleased", "code", (int)code));
 	}
@@ -3002,7 +3041,13 @@ public class Panel : IPanel
 
 		ScreenToLocal(ref x, ref y);
 #if GMOD_DLL
-		// todo OnCursorMoved
+		if (PushLuaHook(LUA_POOLEDSTRING.OnCursorMoved)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.PushNumber(x);
+			Lua.PushNumber(y);
+			if (Lua.CallInternalGetBool(3))
+				return;
+		}
 #endif
 		OnCursorMoved(x, y);
 	}

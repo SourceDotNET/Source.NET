@@ -1297,6 +1297,10 @@ public partial class C_BaseEntity : IClientEntity
 	}
 
 	public virtual void UpdateOnRemove() {
+#if GMOD_DLL
+		if (GetRefEHandle().Index != Constants.INVALID_EHANDLE_INDEX)
+			garrysmod.EntityRemoved(this, DestroyedOnRecreateEntities);
+#endif
 		VPhysicsDestroyObject();
 
 		Assert(GetMoveParent() == null);
@@ -3561,7 +3565,7 @@ public partial class C_BaseEntity : IClientEntity
 
 	EHANDLE ShadowDirUseOtherEntity = new();
 
-	public bool GetShadowCastDirection(ref Vector3 direction, ShadowType shadowType) {
+	public virtual bool GetShadowCastDirection(ref Vector3 direction, ShadowType shadowType) {
 		if (ShadowDirUseOtherEntity.Get() != null)
 			return ShadowDirUseOtherEntity.Get()!.GetShadowCastDirection(ref direction, shadowType);
 		return false;

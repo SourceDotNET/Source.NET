@@ -618,6 +618,30 @@ public class GarrysMod : IGarrysMod
 		gGM.CallNoReturns(1);
 	}
 
+	public void EntityRemoved(BaseEntity ent, bool fullUpdate) {
+		SoundEnvelopeController.GetController().ShutdownSoundsForEntity(ent.EntIndex());
+		if (g_Lua == null || gGM == null)
+			return;
+
+		if (gGM.CallWithArgs((int)LUA_POOLEDSTRING.EntityRemoved)) {
+#if CLIENT_DLL
+			LuaEntity.Push_Entity(ent);
+#else
+			Game.Server.GarrysMod.LuaEntity.Push_Entity(ent);
+#endif
+			g_Lua.PushBool(fullUpdate);
+			gGM.CallNoReturns(2);
+		}
+		ResetLuaIteratorEntityCache(ent);
+#if !CLIENT_DLL
+		if (ent.IsPlayer()) {
+			ent.GetLuaTable()?.UnReference();
+			ent.GetLuaEntity()?.UnReference();
+		}
+		Game.Server.GarrysMod.LuaNetworkedVars.g_LuaNetworkedVars?.ClearEntity(ent.GetRefEHandle().Index);
+#endif
+	}
+
 	public void Think() {
 		if (g_Lua != null) {
 			// CheckForFilesystemChanges();

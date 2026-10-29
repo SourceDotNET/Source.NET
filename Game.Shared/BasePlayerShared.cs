@@ -31,6 +31,14 @@ using Source.Common;
 using Source.Common.Audio;
 using Source.Common.Formats.BSP;
 using Source.Common.SoundEmitterSystem;
+#if GMOD_DLL
+using Source.Common.GarrysMod.Lua;
+#if CLIENT_DLL
+using Game.Client.GarrysMod;
+#else
+using Game.Server.GarrysMod;
+#endif
+#endif
 
 using System.Runtime.CompilerServices;
 
@@ -415,6 +423,16 @@ public partial class
 
 	public override bool Weapon_Switch(BaseCombatWeapon? weapon, int viewmodelindex = 0) {
 		BaseCombatWeapon? lastWeapon = GetActiveWeapon();
+
+#if GMOD_DLL
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerSwitchWeapon)) {
+			LuaEntity.Push_Entity(this);
+			LuaEntity.Push_Entity(lastWeapon);
+			LuaEntity.Push_Entity(weapon);
+			if (gGM.CallFinish(3))
+				return false;
+		}
+#endif
 
 		if (base.Weapon_Switch(weapon, viewmodelindex)) {
 			if (lastWeapon != null && Weapon_ShouldSetLast(lastWeapon, GetActiveWeapon()))

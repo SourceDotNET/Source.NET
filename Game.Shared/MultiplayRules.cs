@@ -242,7 +242,19 @@ GameRules
 
 	}
 	public override void ClientDisconnected(Edict client) {
-		// todo
+		if (client != null) {
+			BasePlayer? player = (BasePlayer?)BaseEntity.Instance(client);
+
+			if (player != null) {
+				FireTargets("game_playerleave", player, player, UseType.Toggle, 0);
+
+				player.RemoveAllItems(true);
+
+				player.DestroyViewModels();
+
+				player.SetConnected(PlayerConnectedState.Disconnected);
+			}
+		}
 	}
 	public override float FlPlayerFallDamage(BasePlayer player) {
 		throw new NotImplementedException();

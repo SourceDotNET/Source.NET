@@ -141,12 +141,17 @@ public partial class GMOD_Player : HL2MP_Player
 	}
 
 	public override BaseEntity EntSelectSpawnPoint() {
-		BaseEntity? spot = null;
-		while ((spot = gEntList.FindEntityByClassname(spot, "info_player_start")) != null) {
-			if (spot.HasSpawnFlags(1))
-				return spot;
+#if GMOD_DLL
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerSelectSpawn)) {
+			LuaEntity.Push_Entity(this);
+			g_Lua!.PushBool(Transition);
+			if (gGM.CallReturns(2, 1)) {
+				BaseEntity? spot = (BaseEntity?)g_Lua.GetReturn(0).GetEntity();
+				if (spot != null)
+					return spot;
+			}
 		}
-
+#endif
 		return base.EntSelectSpawnPoint();
 	}
 

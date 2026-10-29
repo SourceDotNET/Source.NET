@@ -186,6 +186,12 @@ public partial class BaseCombatWeapon : BaseAnimating
 	public virtual SCOND_t WeaponMeleeAttack1Condition(float dot, float dist) => SCOND_t.COND_NONE;
 	public virtual SCOND_t WeaponMeleeAttack2Condition(float dot, float dist) => SCOND_t.COND_NONE;
 
+	public virtual void Delete() {
+		SetTouch(null);
+		SetThink(SUB_Remove);
+		SetNextThink(gpGlobals.CurTime + 0.1f);
+	}
+
 	public BaseEntity? Respawn() {
 		BaseEntity? newWeapon = Create(GetClassname(), g_pGameRules.VecWeaponRespawnSpot(this), GetLocalAngles(), GetOwnerEntity());
 

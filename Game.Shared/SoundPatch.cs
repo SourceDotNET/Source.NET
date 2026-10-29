@@ -154,7 +154,7 @@ public class SoundPatch : IDisposable
 	TimeUnit_t LastTime;
 	string? SoundName;
 	string? SoundScriptName;
-	EHANDLE Ent;
+	internal EHANDLE Ent;
 	int EntityChannel;
 	int Flags;
 	int BaseFlags;
@@ -535,6 +535,19 @@ public class SoundEnvelopeController() : AutoGameSystemPerFrame("CSoundControlle
 				CommandList.RemoveAt(i);
 		}
 	}
+
+#if GMOD_DLL
+	public void ShutdownSoundsForEntity(int entIndex) {
+		if (entIndex <= 0)
+			return;
+		for (int i = SoundList.Count - 1; i >= 0; i--) {
+			SoundPatch sound = SoundList[i];
+			BaseEntity? ent = sound.Ent.Get();
+			if (ent != null && ent.EntIndex() == entIndex)
+				Shutdown(sound);
+		}
+	}
+#endif
 
 	public void Shutdown(SoundPatch? sound) {
 		if (sound == null)

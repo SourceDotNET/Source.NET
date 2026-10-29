@@ -744,6 +744,50 @@ public static partial class LuaPlayer
 	}
 
 	[LuaMethod]
+	static int Player__GetCurrentCommand(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		if (player.CurrentCommand.IsNull) {
+			lua.ErrorNoHalt("Player:GetCurrentCommand called outside of command/prediction\n");
+			return 0;
+		}
+		LuaUserCmd.Push_CurrentCommand(player.CurrentCommand.Get());
+		return 1;
+	}
+
+#if CLIENT_DLL
+	[LuaMethod]
+	static int Player__UniqueID(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		lua.PushString(player.GetUniqueID());
+		return 1;
+	}
+#endif
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Player__SetTeam(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		int team = (int)lua.CheckNumber(2);
+		if (gpGlobals.MaxClients > 1 && (team < short.MinValue || team > short.MaxValue))
+			lua.ErrorNoHalt($"Out of bounds value {team} for networking in range {short.MinValue} to {short.MaxValue}\n");
+		player.ChangeTeam(team);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SendLua(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		ReadOnlySpan<char> code = lua.CheckString(2);
+		if (stristr(code, "while true do end").IsEmpty) {
+			Game.Server.RecipientFilter filter = new Game.Server.SingleUserRecipientFilter(player);
+			filter.MakeReliable();
+			Game.Client.GarrysMod.GarrysMod.BroadcastLua(filter, code);
+		}
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
 	static int Player__Armor(ILuaInterface lua) {
 		BasePlayer player = Get_Player(1, false)!;
 #if CLIENT_DLL

@@ -926,9 +926,6 @@ public class TextEntry : Panel
 	}
 
 	public override void OnKeyTyped(char ch) {
-#if GMOD_DLL
-		// todo: AllowInput hook
-#endif
 		CursorIsAtEnd = PutCursorAtEnd;
 		PutCursorAtEnd = false;
 
@@ -1106,6 +1103,15 @@ public class TextEntry : Panel
 		if (!Multiline && ch == '\n')
 			return;
 
+#if GMOD_DLL
+		if (PushLuaHook(LUA_POOLEDSTRING.AllowInput)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.PushString([ch]);
+			if (Lua.CallInternalGetBool(2))
+				return;
+		}
+#endif
+
 		if (ch == '\t')
 			return;
 
@@ -1219,9 +1225,6 @@ public class TextEntry : Panel
 	}
 
 	public override void OnKillFocus(Panel? newPanel) {
-#if GMOD_DLL
-		// todo: OnLoseFocus hook
-#endif
 		if (DataChanged) {
 			FireActionSignal();
 			DataChanged = false;
@@ -1243,7 +1246,20 @@ public class TextEntry : Panel
 		SelectNone();
 		PostActionSignal(new KeyValues("TextKillFocus"));
 		base.OnKillFocus(newPanel);
+#if GMOD_DLL
+		if (!InLoseFocus) {
+			InLoseFocus = true;
+			if (PushLuaHook(LUA_POOLEDSTRING.OnLoseFocus)) {
+				PushLua(Lua!, LuaType.Panel);
+				Lua!.CallInternalNoReturns(1);
+			}
+			InLoseFocus = false;
+		}
+#endif
 	}
+#if GMOD_DLL
+	bool InLoseFocus;
+#endif
 
 	private bool IsCursorOffRightSideOfWindow(int CursorPos) {
 		int wx = GetWide() - 1;
@@ -2065,7 +2081,10 @@ public class TextEntry : Panel
 	}
 	public override void OnSetFocus() {
 #if GMOD_DLL
-		// todo: OnGetFocus hook
+		if (PushLuaHook(LUA_POOLEDSTRING.OnGetFocus)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.CallInternalNoReturns(1);
+		}
 #endif
 		if (ShouldSelectAllOnFirstFocus) {
 			Select[1] = TextStream.Count;

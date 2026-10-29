@@ -1313,6 +1313,57 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__LocalToWorld(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Vector3 local = LuaVector.Get_Vector(2);
+		Vector3 world;
+		if (ent.GetAbsAngles() == vec3_angle)
+			world = local + ent.GetAbsOrigin();
+		else
+			MathLib.VectorTransform(local, ent.EntityToWorldTransform(), out world);
+		LuaVector.Push_Vector(world);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__WorldToLocal(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Vector3 world = LuaVector.Get_Vector(2);
+		Vector3 local;
+		if (ent.GetAbsAngles() == vec3_angle)
+			local = world - ent.GetAbsOrigin();
+		else
+			MathLib.VectorITransform(world, ent.EntityToWorldTransform(), out local);
+		LuaVector.Push_Vector(local);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__LocalToWorldAngles(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		QAngle local = LuaAngle.Get_Angle(2);
+		LuaAngle.Push_Angle(MathLib.TransformAnglesToWorldSpace(local, ent.EntityToWorldTransform()));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__WorldToLocalAngles(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		QAngle world = LuaAngle.Get_Angle(2);
+		LuaAngle.Push_Angle(MathLib.TransformAnglesToLocalSpace(world, ent.EntityToWorldTransform()));
+		return 1;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__IsInWorld(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushBool(engine.GetClusterForOrigin(ent.GetAbsOrigin()) != -1);
+		return 1;
+	}
+#endif
+
+	[LuaMethod]
 	static int Entity__GetMoveType(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		lua.PushNumber((int)ent.GetMoveType());
@@ -1434,6 +1485,21 @@ public static partial class LuaEntity
 
 		animating.ResetSequence(sequence);
 		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetSpawnFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber(ent.SpawnFlags);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__HasSpawnFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int flags = (int)lua.CheckNumber(2);
+		lua.PushBool((ent.SpawnFlags & flags) != 0);
+		return 1;
 	}
 
 	[LuaMethod]

@@ -5,6 +5,8 @@ using Game.Shared;
 using Source;
 using Source.Common;
 using Source.Common.GarrysMod;
+using Source.Common.GarrysMod.Lua;
+using Game.Server.GarrysMod;
 using Source.Common.Audio;
 using Source.Common.Commands;
 using Source.Common.Engine;
@@ -935,6 +937,9 @@ public partial class BaseEntity : IServerEntity
 		Util.g_bReceivedChainedUpdateOnRemove = true;
 
 #if GMOD_DLL
+		if (GetRefEHandle().Index != Constants.INVALID_EHANDLE_INDEX)
+			garrysmod.EntityRemoved(this, false);
+
 		for (int i = 0; i < DeleteOnRemoveList.Count; i++) {
 			BaseEntity? ent = DeleteOnRemoveList[i].Get();
 			if (ent == null)
@@ -2110,6 +2115,24 @@ public partial class BaseEntity : IServerEntity
 		else {
 			TakeDamageInfo info = inputInfo;
 
+#if GMOD_DLL
+			TakeDamageInfoRef infoRef = new() { Info = info };
+			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.EntityTakeDamage)) {
+				LuaEntity.Push_Entity(this);
+				LuaTakeDamageInfo.Push_TakeDamageInfo(infoRef);
+				if (gGM.CallFinish(2))
+					return 0;
+			}
+
+			int ret = OnTakeDamage(infoRef.Info);
+			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PostEntityTakeDamage)) {
+				LuaEntity.Push_Entity(this);
+				LuaTakeDamageInfo.Push_TakeDamageInfo(infoRef);
+				g_Lua!.PushBool(ret != 0);
+				gGM.CallNoReturns(3);
+			}
+			return ret;
+#else
 			// Scale the damage by the attacker's modifier.
 			if (info.GetAttacker() != null)
 				info.ScaleDamage(info.GetAttacker()!.GetAttackDamageScale(this));
@@ -2120,6 +2143,7 @@ public partial class BaseEntity : IServerEntity
 			//Msg("%s took %.2f Damage, at %.2f\n", GetClassname(), info.GetDamage(), gpGlobals.curtime );
 
 			return OnTakeDamage(info);
+#endif
 		}
 		return 0;
 	}

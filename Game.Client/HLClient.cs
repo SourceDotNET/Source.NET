@@ -283,6 +283,12 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		ref ViewRect rect = ref rects[0];
 		if (rect.Width == 0 || rect.Height == 0)
 			return;
+#if GMOD_DLL
+		using MatRenderContextPtr renderContext = new(materials);
+		renderContext.Flush(false);
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PreRender) && gGM.CallFinish(0) && !enginevgui.IsGameUIVisible())
+			return;
+#endif
 		view.Render(rects);
 	}
 
