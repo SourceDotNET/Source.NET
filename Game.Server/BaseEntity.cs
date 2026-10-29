@@ -3071,13 +3071,13 @@ public partial class BaseEntity : IServerEntity
 
 		// sounds
 		ReadOnlySpan<char> name = modelinfo.GetModelName(model);
-		if (!g_ModelSoundsCache.TryGetValue(name.Hash(), out _)) {
+		if (!g_ModelSoundsCache.EntryExists(name)) {
 			ReadOnlySpan<char> extension = Path.GetExtension(name);
 
 			if (!stristr(extension, "mdl").IsEmpty)
 				DevMsg(2, $"Late precache of {name}, need to rebuild modelsounds.cache\n");
 			else {
-				if (extension[0] == '\0')
+				if (extension.IsEmpty)
 					Warning($"Precache of {name} ambigious (no extension specified)\n");
 				else
 					Warning($"Late precache of {name} (file missing?)\n");
@@ -3085,11 +3085,31 @@ public partial class BaseEntity : IServerEntity
 			}
 		}
 
-		if (g_ModelSoundsCache.TryGetValue(name.Hash(), out ModelSoundsCache? entry))
-			entry.PrecacheSoundList();
+		ModelSoundsCache? entry = g_ModelSoundsCache.Get(name);
+		Assert(entry != null);
+		entry?.PrecacheSoundList();
 	}
 
-	static readonly Dictionary<UtlSymId_t, ModelSoundsCache> g_ModelSoundsCache = [];
+	public static StudioHdr? ModelSoundsCache_LoadModel(ReadOnlySpan<char> filename) {
+		int idx = engine.PrecacheModel(filename, true);
+		if (idx != -1) {
+			Model? mdl = modelinfo.GetModel(idx);
+			if (mdl != null) {
+				StudioHdr studioHdr = new();
+				studioHdr.Init(modelinfo.GetStudiomodel(mdl), mdlcache);
+				if (studioHdr.IsValid())
+					return studioHdr;
+			}
+		}
+		return null;
+	}
+
+	public static void ModelSoundsCache_FinishModel(StudioHdr hdr) => Assert(hdr != null);
+
+	public static void ModelSoundsCache_PrecacheScriptSound(ReadOnlySpan<char> soundname) => PrecacheScriptSound(soundname);
+
+	const int MODELSOUNDSCACHE_VERSION = 5;
+	static readonly UtlCachedFileData<ModelSoundsCache> g_ModelSoundsCache = new("modelsounds.cache", MODELSOUNDSCACHE_VERSION, null, UtlCachedFileDataType.UseFilesize, false);
 
 	public bool HasSpawnFlags(int flags) => (SpawnFlags & flags) != 0;
 

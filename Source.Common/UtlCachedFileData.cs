@@ -78,6 +78,11 @@ public class UtlCachedFileData<T> where T : class, IBaseCacheInfo, new()
 		return true; 
 	}
 
+	public bool EntryExists(ReadOnlySpan<char> filename) {
+		FileNameHandle_t handle = filesystem.FindOrAddFileName(filename);
+		return Elements.ContainsKey(handle);
+	}
+
 	public T? Get(ReadOnlySpan<char> filename) {
 		FileNameHandle_t idx = GetIndex(filename);
 		ElementType e = Elements[idx];
