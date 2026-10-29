@@ -356,7 +356,10 @@ public class ViewRender : IViewRender
 			if (drawViewModel)
 				flags |= RenderViewInfo.DrawViewmodel;
 
-			RenderView(in viewEye, clearFlags, flags);
+#if GMOD_DLL
+			if (!garrysmod.RenderScene(in viewEye))
+#endif
+				RenderView(in viewEye, clearFlags, flags);
 		}
 
 		View2D.X = rect[0].X;

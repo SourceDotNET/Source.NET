@@ -272,7 +272,7 @@ public static partial class LuaRender
 		return 0;
 	}
 #endif
-	static int RenderTargetStack;
+	internal static int RenderTargetStack;
 
 #if !MENU_DLL
 	[LuaFunction]
@@ -627,7 +627,7 @@ public static partial class LuaRender
 	// todo: RenderView
 	// todo: GetViewSetup
 	// todo: RenderHUD
-	static int CustomClipPlaneCount;
+	internal static int CustomClipPlaneCount;
 
 	[LuaFunction]
 	static int PushCustomClipPlane(ILuaInterface lua) {

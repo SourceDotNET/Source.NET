@@ -2678,6 +2678,27 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	GraphicsBoardState lastBoardState;
 	bool boardStateValid;
 	public bool SetBoardState(in GraphicsBoardState state) {
+		if ((OverrideBlendEnabled && OverrideBlendColor) || (OverrideBlendAlphaEnabled && OverrideBlendAlpha)) {
+			GraphicsBoardState overridden = state;
+			if (OverrideBlendEnabled && OverrideBlendColor) {
+				overridden.Blending = true;
+				overridden.SourceBlend = OverriddenSrcBlend;
+				overridden.DestinationBlend = OverriddenDestBlend;
+				overridden.BlendOperation = OverriddenBlendOp;
+			}
+			if (OverrideBlendAlphaEnabled && OverrideBlendAlpha) {
+				overridden.Blending = true;
+				overridden.AlphaSeparateBlend = true;
+				overridden.AlphaSourceBlend = OverriddenSrcBlendAlpha;
+				overridden.AlphaDestinationBlend = OverriddenDestBlendAlpha;
+				overridden.AlphaBlendOperation = OverriddenBlendOpAlpha;
+			}
+			return SetBoardStateInternal(in overridden);
+		}
+		return SetBoardStateInternal(in state);
+	}
+
+	bool SetBoardStateInternal(in GraphicsBoardState state) {
 		ulong currHash = state.Hash();
 		if (currHash != lastBoardUploadHash) {
 			ref GraphicsBoardState last = ref lastBoardState;
@@ -3557,12 +3578,36 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		}
 	}
 
+	bool OverrideBlendEnabled;
+	bool OverrideBlendColor;
+	ShaderBlendFactor OverriddenSrcBlend;
+	ShaderBlendFactor OverriddenDestBlend;
+	ShaderBlendOp OverriddenBlendOp;
+
+	bool OverrideBlendAlphaEnabled;
+	bool OverrideBlendAlpha;
+	ShaderBlendFactor OverriddenSrcBlendAlpha;
+	ShaderBlendFactor OverriddenDestBlendAlpha;
+	ShaderBlendOp OverriddenBlendOpAlpha;
+
 	public void OverrideBlend(bool overrideEnable, bool useSeparateAlpha, int srcBlend, int destBlend, int blendFunc) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		FlushBufferedPrimitives();
+		OverrideBlendEnabled = overrideEnable;
+		OverrideBlendColor = useSeparateAlpha;
+		OverriddenSrcBlend = (ShaderBlendFactor)srcBlend;
+		OverriddenDestBlend = (ShaderBlendFactor)destBlend;
+		OverriddenBlendOp = (ShaderBlendOp)blendFunc;
+		lastBoardUploadHash = 0;
 	}
 
 	public void OverrideBlendSeparateAlpha(bool overrideEnable, bool useSeparateAlpha, int srcBlend, int destBlend, int blendFunc) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		FlushBufferedPrimitives();
+		OverrideBlendAlphaEnabled = overrideEnable;
+		OverrideBlendAlpha = useSeparateAlpha;
+		OverriddenSrcBlendAlpha = (ShaderBlendFactor)srcBlend;
+		OverriddenDestBlendAlpha = (ShaderBlendFactor)destBlend;
+		OverriddenBlendOpAlpha = (ShaderBlendOp)blendFunc;
+		lastBoardUploadHash = 0;
 	}
 
 	bool OverrideColorWrite;

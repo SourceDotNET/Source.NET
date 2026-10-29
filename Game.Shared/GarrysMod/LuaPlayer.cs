@@ -775,6 +775,31 @@ public static partial class LuaPlayer
 	}
 
 	[LuaMethod]
+	static int Player__RunConsoleCommand(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		string command = lua.CheckString(2);
+		if (!LuaConVar.IsValidConsoleName(command)) {
+			lua.ErrorFromLua($"RunConsoleCommand: Command has invalid characters! ({command})\n\tThe first parameter of this function should contain only the command, the second parameter should contain arguments.");
+			return 0;
+		}
+
+		string? blocked = LuaConCommands.ConCommand_IsBlocked(command);
+		if (blocked != null) {
+			lua.ErrorFromLua($"RunConsoleCommand: Command is blocked! ({blocked})");
+			return 0;
+		}
+
+		if (command.Length < 2) {
+			lua.ErrorFromLua($"RunConsoleCommand: Command is too short, bailing! ({command})");
+			return 0;
+		}
+
+		if (LuaGlobalFunctions.BuildConsoleCommand(lua, 3, command, out string result))
+			engine.ClientCommand(player.Edict(), result);
+		return 0;
+	}
+
+	[LuaMethod]
 	static int Player__SendLua(ILuaInterface lua) {
 		BasePlayer player = Get_Player(1, false)!;
 		ReadOnlySpan<char> code = lua.CheckString(2);

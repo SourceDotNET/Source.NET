@@ -761,13 +761,9 @@ public class MatRenderContext : MatRenderContextBase, IMatRenderContextInternal
 
 	public void OverrideAlphaWriteEnable(bool enable, bool alphaWriteEnable) => shaderAPI.OverrideAlphaWriteEnable(enable, alphaWriteEnable);
 
-	public void OverrideBlend(bool unk1, bool unk2, int unk3, int unk4, int unk5) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void OverrideBlend(bool overrideEnable, bool useSeparateAlpha, int srcBlend, int destBlend, int blendFunc) => shaderAPI.OverrideBlend(overrideEnable, useSeparateAlpha, srcBlend, destBlend, blendFunc);
 
-	public void OverrideBlendSeparateAlpha(bool unk1, bool unk2, int unk3, int unk4, int unk5) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void OverrideBlendSeparateAlpha(bool overrideEnable, bool useSeparateAlpha, int srcBlend, int destBlend, int blendFunc) => shaderAPI.OverrideBlendSeparateAlpha(overrideEnable, useSeparateAlpha, srcBlend, destBlend, blendFunc);
 
 	public void OverrideColorWriteEnable(bool overrideEnable, bool colorWriteEnable) => shaderAPI.OverrideColorWriteEnable(overrideEnable, colorWriteEnable);
 

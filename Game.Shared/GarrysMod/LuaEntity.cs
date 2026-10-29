@@ -62,6 +62,17 @@ public static partial class LuaEntity
 	static readonly List<EHANDLE> RemoveList = [];
 	static bool ProcessingRemoveList;
 
+	public static void RemoveFromRemoveList(BaseEntity ent) {
+		if (ProcessingRemoveList)
+			return;
+		for (int i = 0; i < RemoveList.Count; i++) {
+			if (RemoveList[i].Get() == ent) {
+				RemoveList.RemoveAt(i);
+				return;
+			}
+		}
+	}
+
 	public static void RemoveQueuedEntities() {
 		ProcessingRemoveList = true;
 		for (int i = 0; i < RemoveList.Count; i++) {
@@ -1500,6 +1511,40 @@ public static partial class LuaEntity
 		int flags = (int)lua.CheckNumber(2);
 		lua.PushBool((ent.SpawnFlags & flags) != 0);
 		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetKeyValue(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		for (int i = 0; i < RemoveList.Count; i++) {
+			if (RemoveList[i].Get() == ent)
+				return 0;
+		}
+		if (ent.IsMarkedForDeletion())
+			return 0;
+
+		ReadOnlySpan<char> key = lua.CheckString(2);
+		if (stricmp(key, "classname") == 0)
+			return 0;
+
+		ReadOnlySpan<char> value = lua.CheckString(3);
+		if (stricmp(key, "m_iEFlags") != 0 || (atoi(value) & 1) == 0)
+			ent.KeyValue(key, value);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetAnimation(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (!ent.IsPlayer())
+			return 0;
+		int anim = (int)Math.Clamp((float)(int)lua.CheckNumber(2), 0, 9);
+		HL2MP_Player? player = ent as HL2MP_Player;
+		if (anim == (int)PlayerAnim.Attack1)
+			player!.DoAnimationEvent(PlayerAnimEvent.AttackPrimary, 0, true);
+		else if (anim == (int)PlayerAnim.Reload)
+			player!.DoAnimationEvent(PlayerAnimEvent.Reload, 0, true);
+		return 0;
 	}
 
 	[LuaMethod]

@@ -20,6 +20,62 @@ public static partial class LuaCam
 	static int Start3DCount;
 	static int OrthoViewCount;
 
+	public static void CheckMissingEnds() {
+		if (Start2DCount > 0) {
+			do {
+				using MatRenderContextPtr renderContext = new(materials);
+				renderContext.OverrideAlphaWriteEnable(false, false);
+				((ClientModeShared)clientMode).SetupGModSurface(false);
+				ClientModeShared.SetupVGuiMatrices(false, renderContext.Context);
+				Start2DCount--;
+			} while (Start2DCount > 0);
+			Warning("Warning! Detected missing cam.End2D call!\n");
+		}
+
+		if (Start3DCount > 0) {
+			do {
+				render.PopView(view.GetFrustum());
+				Start3DCount--;
+			} while (Start3DCount > 0);
+			Warning("Warning! Detected missing cam.End3D call!\n");
+		}
+
+		if (Start3D2DCount > 0) {
+			do {
+				using MatRenderContextPtr renderContext = new(materials);
+				renderContext.MatrixMode(MaterialMatrixMode.Model);
+				renderContext.PopMatrix();
+				renderContext.OverrideDepthEnable(false, true);
+				renderContext.GMOD_ForceFilterMode(true, 0);
+				renderContext.GMOD_ForceFilterMode(false, 0);
+				Start3D2DCount--;
+			} while (Start3D2DCount > 0);
+			Warning("Warning! Detected missing cam.End3D2D call!\n");
+		}
+
+		if (LuaRender.CustomClipPlaneCount > 0) {
+			do {
+				using MatRenderContextPtr renderContext = new(materials);
+				renderContext.PopCustomClipPlane();
+				LuaRender.CustomClipPlaneCount--;
+			} while (LuaRender.CustomClipPlaneCount > 0);
+			Warning("Warning! Detected missing render.PopCustomClipPlane call!\n");
+		}
+
+		if (LuaRender.RenderTargetStack > 0) {
+			do {
+				using MatRenderContextPtr renderContext = new(materials);
+				renderContext.Flush(false);
+				renderContext.PopRenderTargetAndViewport();
+				LuaRender.RenderTargetStack--;
+			} while (LuaRender.RenderTargetStack > 0);
+			Warning("Warning! Detected missing render.PopRenderTarget call!\n");
+		}
+
+		using MatRenderContextPtr context = new(materials);
+		context.BindLocalCubemap(null);
+	}
+
 	static ViewSetup StartView;
 
 	public static bool InSurface3D;

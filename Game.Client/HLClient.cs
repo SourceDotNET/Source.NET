@@ -285,7 +285,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 			return;
 #if GMOD_DLL
 		using MatRenderContextPtr renderContext = new(materials);
-		renderContext.Flush(false);
+		renderContext.SetRenderTarget(null);
 		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PreRender) && gGM.CallFinish(0) && !enginevgui.IsGameUIVisible())
 			return;
 #endif
