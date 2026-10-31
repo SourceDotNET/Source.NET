@@ -1307,7 +1307,7 @@ public partial class BaseEntity : IServerEntity
 		if (attachment == -1)
 			attachment = ParentAttachment;
 
-		if (!IsPlayer() && Game.Client.GarrysMod.GarrysMod.IsSacredEntity(Classname ?? "")) {
+		if (!IsPlayer() && Game.Server.GarrysMod.GarrysMod.IsSacredEntity(Classname ?? "")) {
 			Warning($"Refusing to set parent on {Classname}!\n");
 			return;
 		}

@@ -37,7 +37,7 @@ public class LuaGamemode : LuaObject, IDisposable
 	}
 
 	public void LoadGamemode(string name, bool reload) {
-		if (Game.Client.GarrysMod.GarrysMod.g_LuaManager == null)
+		if (GarrysMod.g_LuaManager == null)
 			Error("Tried to LoadGamemode with NULL g_LuaManager");
 		if (g_Lua == null)
 			Error("Tried to LoadGamemode with NULL g_Lua");
@@ -59,16 +59,16 @@ public class LuaGamemode : LuaObject, IDisposable
 			foreach (ILegacyAddons.Information addon in filesystem.LegacyAddons().GetList()) {
 				string path = addon.GamemodesPath + "/" + folder + "/entities";
 				if (!string.IsNullOrEmpty(addon.GamemodesPath) && filesystem.IsDirectory(path, "MOD"))
-					get.LuaShared()!.MountLuaAdd(path, Game.Client.GarrysMod.GarrysMod.LuaPathID);
+					get.LuaShared()!.MountLuaAdd(path, GarrysMod.LuaPathID);
 			}
-			get.LuaShared()!.MountLuaAdd("workshop/" + folder + "/entities", Game.Client.GarrysMod.GarrysMod.LuaPathID);
+			get.LuaShared()!.MountLuaAdd("workshop/" + folder + "/entities", GarrysMod.LuaPathID);
 			get.LuaShared()!.MountLuaAdd(folder + "/entities", g_Lua.GetPathID());
 		}
 
 		LuaTable GM = new("GM", 0);
 		GM.SetMember("Folder", folder);
 		GM.SetMember("FolderName", name);
-		if (!Game.Client.GarrysMod.GarrysMod.g_LuaManager.RunScript(init, Game.Client.GarrysMod.GarrysMod.LuaPathID, true, "!GM"))
+		if (!GarrysMod.g_LuaManager.RunScript(init, GarrysMod.LuaPathID, true, "!GM"))
 			g_Lua.ErrorFromLua($"Couldn't Load Init Script: '{init}'\n");
 
 		string derived = GM.GetMemberStr("DerivedFrom", "base") ?? "";
@@ -104,7 +104,7 @@ public class LuaGamemode : LuaObject, IDisposable
 
 	public bool IsValidGamemode(string name) {
 		string init = name + "/gamemode/" + "init.lua";
-		return Game.Client.GarrysMod.GarrysMod.g_LuaManager!.ScriptExists(init, Game.Client.GarrysMod.GarrysMod.LuaPathID);
+		return GarrysMod.g_LuaManager!.ScriptExists(init, GarrysMod.LuaPathID);
 	}
 
 	public void DeriveGamemode(string name) {
