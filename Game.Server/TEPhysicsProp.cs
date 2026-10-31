@@ -10,7 +10,7 @@ public partial class TEPhysicsProp(ReadOnlySpan<char> name) : BaseTempEntity(nam
 	[NetworkTable]
 	public static readonly NetworkProp[] Props = [
 		new(nameof(Origin)) { Bits = 0, Flags = PropFlags.Coord },
-		new(nameof(Rotation)) { Encoding = NetEncoding.VectorElements, Bits = 13, Flags = PropFlags.RoundDown | PropFlags.IsAVectorElem },
+		new(nameof(Rotation)) { Encoding = NetEncoding.VectorElements, Bits = 13, Flags = PropFlags.RoundDown },
 		new(nameof(Velocity)) { Bits = 0, Flags = PropFlags.Coord },
 		new(nameof(ModelIndex)) { Bits = 14 },
 		new(nameof(Skin)) { Bits = 10 },
