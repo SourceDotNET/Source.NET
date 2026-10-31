@@ -158,7 +158,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			}
 			else {
 				glEnable(GL_SCISSOR_TEST);
-				glScissor(Viewport.X, renderTargetHeight - (Viewport.Y + Viewport.Height), Viewport.Width, Viewport.Height);
+				glScissor(Viewport.X, TargetRowY(Viewport.Y, Viewport.Height, renderTargetHeight), Viewport.Width, Viewport.Height);
 				glClear(flags);
 				glDisable(GL_SCISSOR_TEST);
 			}
@@ -579,7 +579,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 		GetBackBufferDimensions(out _, out int height);
 		glEnable(GL_SCISSOR_TEST);
-		glScissor(left, height - bottom, right - left, bottom - top);
+		glScissor(left, TargetRowY(top, bottom - top, height), right - left, bottom - top);
 	}
 
 	public void DisableAllLocalLights() {
@@ -1471,7 +1471,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		// skips the first couple of loading screen frames.
 		// TODO: Is this hack still needed?
 		if (frame >= 2) {
-			glViewport(viewport.X, targetHeight - (viewport.Y + viewport.Height), viewport.Width, viewport.Height);
+			glViewport(viewport.X, TargetRowY(viewport.Y, viewport.Height, targetHeight), viewport.Width, viewport.Height);
 			glDepthRangef(viewport.MinZ, viewport.MaxZ);
 		}
 		frame++;
@@ -2194,7 +2194,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		bool managed = (creationFlags & CreateTextureFlags.Managed) != 0;
 		bool isDepthBuffer = (creationFlags & CreateTextureFlags.DepthBuffer) != 0;
 		bool isDynamic = (creationFlags & CreateTextureFlags.Dynamic) != 0;
-		if (isRenderTarget && !isDepthBuffer && SupportsSRGBDecode())
+		if (!isDepthBuffer && SupportsSRGBDecode())
 			creationFlags |= CreateTextureFlags.SRGB;
 		bool isSRGB = (creationFlags & CreateTextureFlags.SRGB) != 0;
 
@@ -2798,6 +2798,16 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 	public IShaderDevice GetShaderDevice() => this;
 
+	void UpdateClipOrigin() {
+		glClipControl(UsingTextureRenderTarget ? GL_UPPER_LEFT : GL_LOWER_LEFT, GL_NEGATIVE_ONE_TO_ONE);
+	}
+
+	int TargetRowY(int y, int height, int targetHeight) {
+		if (UsingTextureRenderTarget)
+			return y;
+		return targetHeight - (y + height);
+	}
+
 	public void SetRenderTargetEx(int renderTargetID, ShaderAPITextureHandle_t colorTextureHandle = -1, ShaderAPITextureHandle_t depthTextureHandle = -1) {
 		FlushBufferedPrimitives();
 
@@ -2807,6 +2817,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			if (renderTargetID == 0) {
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
 				UsingTextureRenderTarget = usingTextureTarget;
+				UpdateClipOrigin();
 			}
 			return;
 		}
@@ -2814,8 +2825,10 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		if (colorTextureHandle >= 0)
 			usingTextureTarget = true;
 
-		if (renderTargetID == 0)
+		if (renderTargetID == 0) {
 			UsingTextureRenderTarget = usingTextureTarget;
+			UpdateClipOrigin();
+		}
 
 		glBindFramebuffer(GL_FRAMEBUFFER, renderFBO);
 
@@ -2859,8 +2872,10 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		System.Drawing.Rectangle src = Unsafe.IsNullRef(ref srcRect) ? new(0, 0, srcWidth, srcHeight) : srcRect;
 		System.Drawing.Rectangle dst = Unsafe.IsNullRef(ref dstRect) ? new(0, 0, tex.Width, tex.Height) : dstRect;
 
-		int srcY0 = srcHeight - (src.Y + src.Height);
-		int dstY0 = tex.Height - (dst.Y + dst.Height);
+		int srcY0 = TargetRowY(src.Y, src.Height, srcHeight);
+		int srcY1 = srcY0 + src.Height;
+		if (!UsingTextureRenderTarget)
+			(srcY0, srcY1) = (srcY1, srcY0);
 
 		bool srgbWriteEnabled = !boardStateValid || lastBoardState.SRGBWriteEnable;
 		if (srgbWriteEnabled)
@@ -2868,8 +2883,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 		glNamedFramebufferTexture(copyFBO, GL_COLOR_ATTACHMENT0, GetGL46Texture(textureHandle), 0);
 		glBlitNamedFramebuffer(UsingTextureRenderTarget ? renderFBO : 0, copyFBO,
-			src.X, srcY0, src.X + src.Width, srcY0 + src.Height,
-			dst.X, dstY0, dst.X + dst.Width, dstY0 + dst.Height,
+			src.X, srcY0, src.X + src.Width, srcY1,
+			dst.X, dst.Y, dst.X + dst.Width, dst.Y + dst.Height,
 			GL_COLOR_BUFFER_BIT, GL_LINEAR);
 		glNamedFramebufferTexture(copyFBO, GL_COLOR_ATTACHMENT0, 0, 0);
 
@@ -3675,12 +3690,15 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, (uint)drawFBO);
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
 		fixed (byte* p = bits)
-			glReadPixels(x, srcHeight - (y + height), width, height, GL_BGRA, GL_UNSIGNED_BYTE, p);
+			glReadPixels(x, TargetRowY(y, height, srcHeight), width, height, GL_BGRA, GL_UNSIGNED_BYTE, p);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, (uint)prevRead);
 
-		byte[] flipped = new byte[pitch * height];
-		for (int row = 0; row < height; row++)
-			bits.AsSpan((height - 1 - row) * pitch, pitch).CopyTo(flipped.AsSpan(row * pitch, pitch));
+		byte[] flipped = bits;
+		if (!UsingTextureRenderTarget) {
+			flipped = new byte[pitch * height];
+			for (int row = 0; row < height; row++)
+				bits.AsSpan((height - 1 - row) * pitch, pitch).CopyTo(flipped.AsSpan(row * pitch, pitch));
+		}
 
 		if (dstFormat == ImageFormat.BGRA8888)
 			flipped.AsSpan(0, Math.Min(flipped.Length, data.Length)).CopyTo(data);

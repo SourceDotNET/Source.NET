@@ -28,7 +28,7 @@ void main()
     gl_Position = vec4(v_Position, 1.0);
 #endif
     WriteUserClipDistances(gl_Position);
-    vs_BaseTexCoord = vec2(v_TexCoord.x, 1.0 - v_TexCoord.y);
+    vs_BaseTexCoord = v_TexCoord;
     vs_TexCoord0 = vec4(vs_BaseTexCoord, 0.0, 1.0);
     vs_TexCoord1 = vec4(0.0, 0.0, 0.0, 1.0);
     vs_TexCoord2 = vs_TexCoord0;

@@ -17,10 +17,6 @@ layout(location = 1) out vec2 vs_CoordTap1;
 layout(location = 2) out vec2 vs_CoordTap2;
 layout(location = 3) out vec2 vs_CoordTap3;
 
-vec2 FlipV(vec2 uv)
-{
-    return vec2(uv.x, 1.0 - uv.y);
-}
 
 #include "common_clipplanes_gl460.vs"
 
@@ -29,8 +25,8 @@ void main()
     gl_Position = vec4(v_Position, 1.0);
     WriteUserClipDistances(gl_Position);
 
-    vs_CoordTap0 = FlipV(v_TexCoord + vsTapOffs0);
-    vs_CoordTap1 = FlipV(v_TexCoord + vsTapOffs1);
-    vs_CoordTap2 = FlipV(v_TexCoord + vsTapOffs2);
-    vs_CoordTap3 = FlipV(v_TexCoord + vsTapOffs3);
+    vs_CoordTap0 = v_TexCoord + vsTapOffs0;
+    vs_CoordTap1 = v_TexCoord + vsTapOffs1;
+    vs_CoordTap2 = v_TexCoord + vsTapOffs2;
+    vs_CoordTap3 = v_TexCoord + vsTapOffs3;
 }

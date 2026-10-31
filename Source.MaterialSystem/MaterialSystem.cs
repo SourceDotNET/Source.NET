@@ -129,6 +129,8 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 		QueuedRenderContexts = [new(this), new(this)];
 		ExecuteQueuedContextJobs = [new(MatQueueJob.JobKind.ExecuteQueuedContext, QueuedRenderContexts[0]), new(MatQueueJob.JobKind.ExecuteQueuedContext, QueuedRenderContexts[1])];
 
+		MathLib.Init(IMaterialSystem.GAMMA, IMaterialSystem.TEXGAMMA, 0.0f, (int)IMaterialSystem.OVERBRIGHT);
+
 		// Link up
 		ShaderDevice.PreInit(this, services);
 

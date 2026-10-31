@@ -938,7 +938,7 @@ public partial class BaseVSShader
 		shader.Draw();
 	}
 
-	internal void InitVertexLitGeneric(VertexLitGeneric shader, IMaterialVar[] parms, bool vertexLitGeneric, ref VertexLitGeneric_Vars info) {
+	internal void InitVertexLitGeneric(BaseVSShader shader, IMaterialVar[] parms, bool vertexLitGeneric, ref VertexLitGeneric_Vars info) {
 		if (info.Phong != -1 && parms[info.Phong].GetIntValue() != 0 && HardwareConfig.SupportsPixelShaders_2_b()) {
 			InitSkin(shader, parms, ref info);
 			return;

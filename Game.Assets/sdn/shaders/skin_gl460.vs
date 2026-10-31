@@ -69,8 +69,8 @@ void main()
     // Always normalize since flex path is controlled by runtime
     // constant not a shader combo and will always generate the normalization
     worldNormal   = normalize(worldNormal);
-    worldTangentS = normalize(worldTangentS);
-    worldTangentT = normalize(worldTangentT);
+    worldTangentS = NormalizeD3D9(worldTangentS);
+    worldTangentT = NormalizeD3D9(worldTangentT);
 
     // Transform into projection space
     vec4 vProjPos = projectionMatrix * viewMatrix * vec4(worldPos, 1.0);
