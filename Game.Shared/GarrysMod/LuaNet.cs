@@ -458,7 +458,7 @@ public static partial class LuaNet
 		if (g_NetIncoming == null)
 			return;
 
-		if (Game.Client.GarrysMod.GarrysMod.lua_strict.GetInt() != 0 && bits > g_NetIncoming.BitsLeft)
+		if (GarrysMod.lua_strict.GetInt() != 0 && bits > g_NetIncoming.BitsLeft)
 			lua.ErrorFromLua($"Trying to read more data ({bits} bit) than the net message has left ({g_NetIncoming.BitsLeft} bits)!\n");
 	}
 

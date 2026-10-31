@@ -7,7 +7,13 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
+#if CLIENT_DLL
 namespace Game.Client.GarrysMod;
+#elif MENU_DLL
+namespace Game.MenuSystem.GarrysMod;
+#else
+namespace Game.Server.GarrysMod;
+#endif
 
 public static class LuaDump
 {

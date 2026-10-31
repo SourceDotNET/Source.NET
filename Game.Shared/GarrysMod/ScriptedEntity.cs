@@ -3,7 +3,11 @@ using Source;
 using Source.Common;
 using Source.Common.GarrysMod.Lua;
 
+#if CLIENT_DLL
 using static Game.Client.GarrysMod.GarrysMod;
+#else
+using static Game.Server.GarrysMod.GarrysMod;
+#endif
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
