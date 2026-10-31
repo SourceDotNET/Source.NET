@@ -65,7 +65,7 @@ public static partial class LuaTimer
 	[LuaFunction]
 	static int Check(ILuaInterface lua) {
 #if !MENU_DLL
-		if (Game.Client.GarrysMod.GarrysMod.lua_strict.GetInt() != 0)
+		if (GarrysMod.lua_strict.GetInt() != 0)
 			lua.ErrorFromLua("timer.Check is deprecated and does nothing. Do not use it.");
 #endif
 		return 0;

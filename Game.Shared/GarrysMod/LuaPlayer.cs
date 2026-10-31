@@ -806,7 +806,7 @@ public static partial class LuaPlayer
 		if (stristr(code, "while true do end").IsEmpty) {
 			Game.Server.RecipientFilter filter = new Game.Server.SingleUserRecipientFilter(player);
 			filter.MakeReliable();
-			Game.Client.GarrysMod.GarrysMod.BroadcastLua(filter, code);
+			GarrysMod.BroadcastLua(filter, code);
 		}
 		return 0;
 	}

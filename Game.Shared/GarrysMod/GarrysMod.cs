@@ -1,10 +1,11 @@
 ﻿#if CLIENT_DLL || GAME_DLL
+#if CLIENT_DLL
 global using static Game.Client.GarrysMod.GarrysModSingletons;
+#else
+global using static Game.Server.GarrysMod.GarrysModSingletons;
+#endif
 
 using Game.Shared;
-#if GAME_DLL
-using Game.Server.GarrysMod;
-#endif
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,7 +28,11 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
+#if CLIENT_DLL
 namespace Game.Client.GarrysMod;
+#else
+namespace Game.Server.GarrysMod;
+#endif
 
 public static class GarrysModSingletons
 {
@@ -230,11 +235,7 @@ public class GarrysMod : IGarrysMod
 				g_LuaManager = null;
 			}
 			gGM?.Dispose();
-#if CLIENT_DLL
 			LuaTimer.Shutdown();
-#else
-			Game.Server.GarrysMod.LuaTimer.Shutdown();
-#endif
 			return true;
 		}
 
@@ -263,7 +264,7 @@ public class GarrysMod : IGarrysMod
 			g_LuaManager.Startup();
 #if GAME_DLL
 			gGM.LoadCurrentlyActiveGamemode();
-			Game.Server.GarrysMod.GModDataPack.DataPack().BuildSearchPaths();
+			GModDataPack.DataPack().BuildSearchPaths();
 #endif
 			return true;
 		}
@@ -370,15 +371,9 @@ public class GarrysMod : IGarrysMod
 			Msg("Clientside Lua startup!\n");
 			enginevgui.UpdateCustomProgressBar(0.95f, "Starting Lua...");
 #endif
-#if CLIENT_DLL
 			if (LuaNetworkedVars.g_LuaNetworkedVars != null)
 				Error("g_LuaNetworkedVars");
 			LuaNetworkedVars.g_LuaNetworkedVars = new LuaNetworkedVars();
-#else
-			if (Game.Server.GarrysMod.LuaNetworkedVars.g_LuaNetworkedVars != null)
-				Error("g_LuaNetworkedVars");
-			Game.Server.GarrysMod.LuaNetworkedVars.g_LuaNetworkedVars = new Game.Server.GarrysMod.LuaNetworkedVars();
-#endif
 			if (g_Lua != null)
 				Error("CLuaManager::Startup Lua already exsits?\n");
 
@@ -400,7 +395,7 @@ public class GarrysMod : IGarrysMod
 			g_Lua.SetType(0);
 #else
 			g_Lua = get.LuaShared()!.CreateLuaInterface(Realm.Server, false);
-			g_Lua.Init(Game.Server.GarrysMod.LuaGameCallback.g_LuaCallback, Singleton<ICommandLine>().CheckParm("-withjit"));
+			g_Lua.Init(LuaGameCallback.g_LuaCallback, Singleton<ICommandLine>().CheckParm("-withjit"));
 			g_Lua.SetPathID(LuaPathID);
 			g_Lua.SetType(1);
 #endif
@@ -408,15 +403,10 @@ public class GarrysMod : IGarrysMod
 			g_Lua.Global().SetMember("VERSIONSTR", get.VersionStr());
 			g_Lua.Global().SetMember("BRANCH", get.Branch());
 #if GAME_DLL
-			Game.Server.GarrysMod.FileServ.Add("lua/send.txt");
+			FileServ.Add("lua/send.txt");
 #endif
-#if CLIENT_DLL
 			LuaUser.InitLuaLibraries(g_Lua);
 			LuaClass.InitLuaClasses(g_Lua);
-#else
-			Game.Server.GarrysMod.LuaUser.InitLuaLibraries(g_Lua);
-			Game.Server.GarrysMod.LuaClass.InitLuaClasses(g_Lua);
-#endif
 #if CLIENT_DLL
 			g_Lua.Global().SetMember("SERVER", false);
 			g_Lua.Global().SetMember("CLIENT", true);
@@ -424,11 +414,7 @@ public class GarrysMod : IGarrysMod
 			g_Lua.Global().SetMember("SERVER", true);
 			g_Lua.Global().SetMember("CLIENT", false);
 #endif
-#if CLIENT_DLL
 			LuaEntity.MakeLuaNULLEntity();
-#else
-			Game.Server.GarrysMod.LuaEntity.MakeLuaNULLEntity();
-#endif
 			g_Lua.FindAndRunScript("includes/init.lua", true, true, "!UNKNOWN", true);
 #if CLIENT_DLL
 			if (gGM == null)
@@ -469,7 +455,7 @@ public class GarrysMod : IGarrysMod
 			List<LuaFindResult> files = [];
 			get.LuaShared()!.FindScripts($"{folder}/*.lua", "lsv", files);
 			foreach (LuaFindResult file in files)
-				Game.Server.GarrysMod.FileServ.AddCSLuaFile($"{folder}/{file.FileName}", new string(source));
+				FileServ.AddCSLuaFile($"{folder}/{file.FileName}", new string(source));
 		}
 #endif
 
@@ -492,22 +478,12 @@ public class GarrysMod : IGarrysMod
 			GModBase.Shutdown();
 #endif
 			g_LuaID++;
-#if CLIENT_DLL
 			LuaClass.ShutdownLuaClasses(g_Lua!);
-#else
-			Game.Server.GarrysMod.LuaClass.ShutdownLuaClasses(g_Lua!);
-#endif
 			get.LuaShared()!.CloseLuaInterface(g_Lua!);
 			g_Lua = null;
-#if CLIENT_DLL
 			if (LuaNetworkedVars.g_LuaNetworkedVars == null)
 				Error("!g_LuaNetworkedVars");
 			LuaNetworkedVars.g_LuaNetworkedVars = null;
-#else
-			if (Game.Server.GarrysMod.LuaNetworkedVars.g_LuaNetworkedVars == null)
-				Error("!g_LuaNetworkedVars");
-			Game.Server.GarrysMod.LuaNetworkedVars.g_LuaNetworkedVars = null;
-#endif
 		}
 	}
 
@@ -613,11 +589,7 @@ public class GarrysMod : IGarrysMod
 		if (gGM == null || !gGM.CallWithArgs((int)LUA_POOLEDSTRING.OnEntityCreated))
 			return;
 
-#if CLIENT_DLL
 		LuaEntity.Push_Entity(ent);
-#else
-		Game.Server.GarrysMod.LuaEntity.Push_Entity(ent);
-#endif
 		gGM.CallNoReturns(1);
 	}
 
@@ -671,21 +643,13 @@ public class GarrysMod : IGarrysMod
 #endif
 
 	public void EntityRemoved(BaseEntity ent, bool fullUpdate) {
-#if CLIENT_DLL
 		LuaEntity.RemoveFromRemoveList(ent);
-#else
-		Game.Server.GarrysMod.LuaEntity.RemoveFromRemoveList(ent);
-#endif
 		SoundEnvelopeController.GetController().ShutdownSoundsForEntity(ent.EntIndex());
 		if (g_Lua == null || gGM == null)
 			return;
 
 		if (gGM.CallWithArgs((int)LUA_POOLEDSTRING.EntityRemoved)) {
-#if CLIENT_DLL
 			LuaEntity.Push_Entity(ent);
-#else
-			Game.Server.GarrysMod.LuaEntity.Push_Entity(ent);
-#endif
 			g_Lua.PushBool(fullUpdate);
 			gGM.CallNoReturns(2);
 		}
@@ -695,7 +659,7 @@ public class GarrysMod : IGarrysMod
 			ent.GetLuaTable()?.UnReference();
 			ent.GetLuaEntity()?.UnReference();
 		}
-		Game.Server.GarrysMod.LuaNetworkedVars.g_LuaNetworkedVars?.ClearEntity(ent.GetRefEHandle().Index);
+		LuaNetworkedVars.g_LuaNetworkedVars?.ClearEntity(ent.GetRefEHandle().Index);
 #endif
 	}
 
@@ -708,9 +672,9 @@ public class GarrysMod : IGarrysMod
 			LuaFileLibrary.AsyncCycle();
 			UGCDownloadManager.Think();
 #else
-			Game.Server.GarrysMod.LuaNetworkedVars.g_LuaNetworkedVars?.Cycle();
-			Game.Server.GarrysMod.LuaTimer.Cycle();
-			Game.Server.GarrysMod.LuaFileLibrary.AsyncCycle();
+			LuaNetworkedVars.g_LuaNetworkedVars?.Cycle();
+			LuaTimer.Cycle();
+			LuaFileLibrary.AsyncCycle();
 #endif
 			// HTTP.Cycle();
 			// ErrorReporter.RunQueue();

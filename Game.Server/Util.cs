@@ -74,11 +74,11 @@ public class CEntityFactoryDictionary : IEntityFactoryDictionary
 		className = className.SliceNullTerminatedString();
 		IEntityFactory? factory = FindFactory(className);
 #if GMOD_DLL
-		if (Game.Client.GarrysMod.GarrysMod.g_LuaManager != null) {
+		if (Game.Server.GarrysMod.GarrysMod.g_LuaManager != null) {
 			Span<char> lowered = stackalloc char[512];
 			strcpy(lowered, className);
 			strlower(lowered);
-			IServerNetworkable? luaEnt = Game.Client.GarrysMod.GarrysMod.g_LuaManager.CreateEntity(((ReadOnlySpan<char>)lowered).SliceNullTerminatedString(), factory != null);
+			IServerNetworkable? luaEnt = Game.Server.GarrysMod.GarrysMod.g_LuaManager.CreateEntity(((ReadOnlySpan<char>)lowered).SliceNullTerminatedString(), factory != null);
 			if (luaEnt != null)
 				return luaEnt;
 		}
@@ -523,8 +523,8 @@ public static partial class Util
 	public static void PrecacheOther(ReadOnlySpan<char> className, ReadOnlySpan<char> modelName = default) {
 		bool precaching = s_RemoveImmediateSemaphore == 0;
 		if (precaching)
-			Game.Client.GarrysMod.GarrysMod.g_GModPrecaching++;
-		if (Game.Client.GarrysMod.GarrysMod.g_GModPrecaching > 0x20)
+			Game.Server.GarrysMod.GarrysMod.g_GModPrecaching++;
+		if (Game.Server.GarrysMod.GarrysMod.g_GModPrecaching > 0x20)
 			Error("Something seems to have gone wroong");
 
 		BaseEntity? entity = CreateEntityByName(className);
@@ -540,7 +540,7 @@ public static partial class Util
 		}
 
 		if (precaching)
-			Game.Client.GarrysMod.GarrysMod.g_GModPrecaching--;
+			Game.Server.GarrysMod.GarrysMod.g_GModPrecaching--;
 	}
 
 	public static void ClientPrintFilter<Filter>(scoped in Filter filter, HudPrint dest, ReadOnlySpan<char> msgName, ReadOnlySpan<char> param1 = default, ReadOnlySpan<char> param2 = default, ReadOnlySpan<char> param3 = default, ReadOnlySpan<char> param4 = default) where Filter : IRecipientFilter {
@@ -711,7 +711,7 @@ public static partial class Util
 	public static void RemoveSafe(BaseEntity? entity) {
 		if (entity == null)
 			return;
-		if (Game.Client.GarrysMod.GarrysMod.IsSacredEntity(entity.Classname ?? "")) {
+		if (Game.Server.GarrysMod.GarrysMod.IsSacredEntity(entity.Classname ?? "")) {
 			Warning($"Refusing to delete entity '{entity.Classname ?? ""}'!\n");
 			return;
 		}
