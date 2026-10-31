@@ -66,6 +66,13 @@ namespace Game
 			return sphereEnum.GetCount();
 		}
 
+		public static int EntitiesInBox(Span<C_BaseEntity?> list, in Vector3 mins, in Vector3 maxs, EntityFlags flagMask, PartitionListMask partitionMask) {
+			FlaggedEntitiesEnum boxEnum = new(list, flagMask);
+			partition.EnumerateElementsInBox((SpatialPartitionListMask_t)partitionMask, mins, maxs, false, ref boxEnum);
+
+			return boxEnum.GetCount();
+		}
+
 	}
 	public static partial class Util_Globals
 	{

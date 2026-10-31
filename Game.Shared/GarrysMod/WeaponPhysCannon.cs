@@ -762,80 +762,8 @@ public partial class WeaponPhysCannon : BaseHL2MPCombatWeapon
 		return base.DrawModel(flags);
 	}
 
-	// This was added to test enginetrace, can remove later
-	private void DrawTraceTest() {
-		C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
-		if (player == null) return;
-
-		MathLib.AngleVectors(player.EyeAngles(), out Vector3 forward);
-
-		Vector3 start = player.EyePosition();
-		Vector3 end = start + forward * MAX_TRACE_LENGTH;
-
-		Util.TraceLine(start, end, Mask.Shot, player, Source.CollisionGroup.None, out Trace tr);
-
-		GetEffectParameters(EffectType.Core, out Color color, out float scale, out IMaterial material, out Vector3 attachment);
-
-		if (color.A <= 0)
-			return;
-
-		using MatRenderContextPtr renderContext = new(materials);
-		renderContext.Bind(material, this);
-
-		float size = scale;
-		Vector3 origin = tr.EndPos;
-		Vector3 normal = tr.Plane.Normal;
-
-		Vector3 right, up;
-		if (MathF.Abs(normal.Z) < 0.9f) 
-			MathLib.CrossProduct(in normal, new Vector3(0, 0, 1), out right);
-		else 
-			MathLib.CrossProduct(in normal, new Vector3(1, 0, 0), out right);
-		MathLib.VectorNormalize(ref right);
-		MathLib.CrossProduct(in normal, in right, out up);
-		MathLib.VectorNormalize(ref up);
-
-		MeshBuilder meshBuilder = new();
-		Vector3 point = default;
-
-		IMesh pMesh = renderContext.GetDynamicMesh();
-		meshBuilder.Begin(pMesh, MaterialPrimitiveType.Quads, 1);
-
-		meshBuilder.Color4ubv(color);
-		meshBuilder.TexCoord2f(0, 0, 1);
-		MathLib.VectorMA(origin, -size, up, out point);
-		MathLib.VectorMA(point, -size, right, out point);
-		meshBuilder.Position3fv(point);
-		meshBuilder.AdvanceVertex();
-
-		meshBuilder.Color4ubv(color);
-		meshBuilder.TexCoord2f(0, 0, 0);
-		MathLib.VectorMA(origin, size, up, out point);
-		MathLib.VectorMA(point, -size, right, out point);
-		meshBuilder.Position3fv(point);
-		meshBuilder.AdvanceVertex();
-
-		meshBuilder.Color4ubv(color);
-		meshBuilder.TexCoord2f(0, 1, 0);
-		MathLib.VectorMA(origin, size, up, out point);
-		MathLib.VectorMA(point, size, right, out point);
-		meshBuilder.Position3fv(point);
-		meshBuilder.AdvanceVertex();
-
-		meshBuilder.Color4ubv(color);
-		meshBuilder.TexCoord2f(0, 1, 1);
-		MathLib.VectorMA(origin, -size, up, out point);
-		MathLib.VectorMA(point, size, right, out point);
-		meshBuilder.Position3fv(point);
-		meshBuilder.AdvanceVertex();
-
-		meshBuilder.End();
-		pMesh.Draw();
-	}
-
 	public override void ViewModelDrawn(BaseViewModel viewmodelflags) {
 		DrawEffects();
-		DrawTraceTest();
 		base.ViewModelDrawn(viewmodelflags);
 	}
 	public void UpdateElementPosition() {

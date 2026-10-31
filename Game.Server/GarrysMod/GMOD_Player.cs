@@ -8,6 +8,8 @@ using Source.Common;
 using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.GarrysMod.Lua;
+using Source.Common.Hashing;
+using Source.Common.Networking;
 
 using System.Numerics;
 
@@ -37,6 +39,91 @@ public partial class GMOD_Player : HL2MP_Player
 		PlayerColor = new(255, 255, 255);
 		WeaponColor = new(255, 255, 255);
 		Hands = new();
+		NeedsUniqueID = true;
+	}
+
+	TimeUnit_t InitialSpawnTime;
+	bool NeedsUniqueID;
+	uint UniqueIDCRCValue;
+	InlineArray128<char> UniqueID;
+
+	static uint UniqueIDCRC(ReadOnlySpan<char> str) {
+		Span<byte> bytes = stackalloc byte[str.Length];
+		for (int i = 0; i < str.Length; i++)
+			bytes[i] = (byte)str[i];
+		uint crc = 0;
+		CRC32.Init(ref crc);
+		CRC32.ProcessBuffer(ref crc, (ReadOnlySpan<byte>)bytes);
+		CRC32.Final(ref crc);
+		return crc;
+	}
+
+	void CallPlayerAuthed(ReadOnlySpan<char> uniqueID) {
+		if (gGM == null || !gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerAuthed))
+			return;
+		LuaEntity.Push_Entity(this);
+		g_Lua!.PushString(GetNetworkIDString());
+		g_Lua!.PushString(uniqueID);
+		gGM.CallNoReturns(3);
+	}
+
+	public ReadOnlySpan<char> GetUniqueID() {
+		if (gpGlobals.MaxClients == 1) {
+			if (NeedsUniqueID) {
+				NeedsUniqueID = false;
+				CallPlayerAuthed("1");
+			}
+			return "1";
+		}
+
+		if (!NeedsUniqueID)
+			return ((Span<char>)UniqueID).SliceNullTerminatedString();
+
+		if (IsBot() || IsFakeClient()) {
+			ReadOnlySpan<char> name = GetPlayerName();
+			if (name.IsEmpty) {
+				NeedsUniqueID = true;
+				return "0";
+			}
+			UniqueIDCRCValue = UniqueIDCRC(name);
+			NeedsUniqueID = false;
+			sprintf(UniqueID, "%u").U(UniqueIDCRCValue);
+			return ((Span<char>)UniqueID).SliceNullTerminatedString();
+		}
+
+		bool lan = false;
+		ConVar? sv_lan = cvar.FindVar("sv_lan");
+		if (sv_lan != null)
+			lan = sv_lan.GetInt() != 0;
+
+		Span<char> gmID = stackalloc char[128];
+		if (stricmp(GetNetworkIDString(), "STEAM_ID_LAN") == 0 && lan) {
+			UniqueIDCRCValue = 0;
+			INetChannelInfo? netInfo = engine.GetPlayerNetInfo(EntIndex());
+			if (netInfo != null) {
+				sprintf(gmID, "gm_%s_gm").S(netInfo.GetAddress());
+				UniqueIDCRCValue = UniqueIDCRC(gmID.SliceNullTerminatedString());
+			}
+			NeedsUniqueID = netInfo == null;
+			sprintf(UniqueID, "%u").U(UniqueIDCRCValue);
+			return ((Span<char>)UniqueID).SliceNullTerminatedString();
+		}
+
+		if (stricmp(GetNetworkIDString(), "STEAMID_PENDING") != 0 && stricmp(GetNetworkIDString(), "STEAM_ID_LAN") != 0 && stricmp(GetNetworkIDString(), "STEAM_ID_PENDING") != 0) {
+			sprintf(gmID, "gm_%s_gm").S(GetNetworkIDString());
+			UniqueIDCRCValue = UniqueIDCRC(gmID.SliceNullTerminatedString());
+			NeedsUniqueID = false;
+			sprintf(UniqueID, "%u").U(UniqueIDCRCValue);
+			CallPlayerAuthed(((Span<char>)UniqueID).SliceNullTerminatedString());
+			return ((Span<char>)UniqueID).SliceNullTerminatedString();
+		}
+
+		if (InitialSpawnTime + 60.0 < gpGlobals.CurTime) {
+			Span<char> cmd = stackalloc char[64];
+			sprintf(cmd, "kickid %d \"No SteamID\"\n").D(engine.GetPlayerUserId(Edict()!));
+			engine.ServerCommand(cmd.SliceNullTerminatedString());
+		}
+		return "PENDING";
 	}
 
 #if GMOD_DLL
@@ -102,6 +189,7 @@ public partial class GMOD_Player : HL2MP_Player
 	public override void InitialSpawn() {
 		SetModel("models/player.mdl");
 		base.InitialSpawn();
+		InitialSpawnTime = gpGlobals.CurTime;
 
 		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerInitialSpawn)) {
 			LuaEntity.Push_Entity(this);
@@ -213,6 +301,8 @@ public partial class GMOD_Player : HL2MP_Player
 	public partial bool SprintEnabled { get; set; }
 
 	public override void PlayerRunCommand(UserCmd ucmd, IMoveHelper moveHelper) {
+		if (NeedsUniqueID)
+			GetUniqueID();
 		base.PlayerRunCommand(ucmd, moveHelper);
 	}
 

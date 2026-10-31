@@ -121,6 +121,17 @@ public static partial class LuaGlobalFunctions
 	}
 #endif
 
+#if CLIENT_DLL
+	[LuaGlobal]
+	static int GetViewEntity(ILuaInterface lua) {
+		C_BaseEntity? ent = cl_entitylist.GetBaseEntity(render.GetViewEntity());
+		if (ent == null)
+			ent = C_BasePlayer.GetLocalPlayer();
+		LuaEntity.Push_Entity(ent);
+		return 1;
+	}
+#endif
+
 	[LuaGlobal]
 	static int WorldToLocal(ILuaInterface lua) {
 		Vector3 pos = LuaVector.Get_Vector(1);

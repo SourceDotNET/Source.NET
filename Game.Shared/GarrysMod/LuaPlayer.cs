@@ -754,14 +754,12 @@ public static partial class LuaPlayer
 		return 1;
 	}
 
-#if CLIENT_DLL
 	[LuaMethod]
 	static int Player__UniqueID(ILuaInterface lua) {
 		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
 		lua.PushString(player.GetUniqueID());
 		return 1;
 	}
-#endif
 
 #if GAME_DLL
 	[LuaMethod]

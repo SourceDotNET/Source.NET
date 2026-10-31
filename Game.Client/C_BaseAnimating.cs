@@ -1132,7 +1132,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 	public bool ReceivedSequence;
 	public void SetReceivedSequence() => ReceivedSequence = true;
-	public bool ShouldResetSequenceOnNewModel() => ReceivedSequence == false;
+	public virtual bool ShouldResetSequenceOnNewModel() => ReceivedSequence == false;
 	private void UpdateRelevantInterpolatedVars() {
 		if (!IsMarkedForDeletion() && !GetPredictable() && !IsClientCreated() && GetModelPtr() != null && GetModelPtr()!.SequencesAvailable())
 			AddBaseAnimatingInterpolatedVars();

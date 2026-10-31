@@ -276,7 +276,7 @@ public static partial class LuaVector
 		return dx * dx + dy * dy + dz * dz;
 	}
 
-	static void OrderVectors(in Vector3 a, in Vector3 b, out Vector3 mins, out Vector3 maxs) {
+	internal static void OrderVectors(in Vector3 a, in Vector3 b, out Vector3 mins, out Vector3 maxs) {
 		mins = default;
 		maxs = default;
 		for (int i = 0; i < 3; i++) {

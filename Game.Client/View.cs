@@ -99,6 +99,7 @@ public class ViewRender : IViewRender
 
 	static ConVar r_nearz = new(VIEW_NEARZ.ToString(), FCvar.Cheat, "Override the near clipping plane.");
 	static ConVar r_farz = new("-1", FCvar.Cheat, "Override the far clipping plane. -1 means to use the value in env_fog_controller.");
+	static ConVar mat_viewportscale = new("1.0", FCvar.Archive, "Scale down the main viewport (to reduce GPU impact on CPU profiling)", (1.0f / 640f /*BASE_WIDTH*/), 1.0f);
 
 	public ViewSetup CurrentView;
 	bool ForceNoVis;
@@ -321,7 +322,7 @@ public class ViewRender : IViewRender
 			viewEye.FOV = ScaleFOVByWidthRatio(viewEye.FOV, limitedAspectRatio);
 			viewEye.FOVViewmodel = ScaleFOVByWidthRatio(viewEye.FOVViewmodel, limitedAspectRatio);
 
-			float viewportScale = 1.0f; // mat_viewportscale todo
+			float viewportScale = mat_viewportscale.GetFloat();
 			viewEye.UnscaledX = vr.X;
 			viewEye.UnscaledY = vr.Y;
 			viewEye.UnscaledWidth = vr.Width;

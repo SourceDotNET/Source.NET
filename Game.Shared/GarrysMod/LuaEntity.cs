@@ -85,6 +85,17 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__IsMarkedForDeletion(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent)) {
+			lua.PushBool(true);
+			return 1;
+		}
+		lua.PushBool(IsQueuedForRemoval(ent) || ent.IsMarkedForDeletion());
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Entity__Remove(ILuaInterface lua) {
 		if (LuaEnts.IsRendering()) {
 			lua.ErrorNoHalt("Entity:Remove cannot be called while rendering\n");
@@ -488,6 +499,106 @@ public static partial class LuaEntity
 			flags = ent.GetSolidFlags() | SolidFlags.NotSolid;
 		ent.CollisionProp().SetSolidFlags(flags);
 		return 0;
+	}
+
+#if GAME_DLL
+	static bool CanModifyPhysics(BaseEntity ent) {
+		if (ent == GetWorldEntity())
+			return false;
+		if (ent.IsRagdoll() || ent.IsPlayer())
+			return false;
+		return ent is not PropVehicleDriveable;
+	}
+#endif
+
+	[LuaMethod]
+	static int Entity__PhysicsDestroy(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+#if CLIENT_DLL
+		if (ent == C_World.GetClientWorldEntity() || ent.IsRagdoll() || ent.IsPlayer())
+			return 0;
+#else
+		if (!CanModifyPhysics(ent))
+			return 0;
+#endif
+		if (PhysIsInCallback() && ent.VPhysicsGetObject() != null) {
+			lua.ErrorFromLua("Cannot destroy physics in a physics callback!");
+			lua.PushBool(false);
+			return 1;
+		}
+		ent.VPhysicsDestroyObject();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetColor(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Color color = lua.GetColor(2);
+#if CLIENT_DLL
+		ent.ColorRender = color;
+#else
+		ent.SetRenderColor(color.R, color.G, color.B, color.A);
+#endif
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetColor4Part(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		byte r = (byte)(int)lua.GetNumber(2);
+		byte g = (byte)(int)lua.GetNumber(3);
+		byte b = (byte)(int)lua.GetNumber(4);
+		byte a = (byte)(int)lua.GetNumber(5);
+#if CLIENT_DLL
+		ent.ColorRender = new Color(r, g, b, a);
+#else
+		ent.SetRenderColor(r, g, b, a);
+#endif
+		return 0;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__IsConstraint(ILuaInterface lua) {
+		// todo: once physconstraint is ported
+		lua.PushBool(false);
+		return 1;
+	}
+#endif
+
+	[LuaMethod]
+	static int Entity__SetRenderMode(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		RenderMode renderMode = (RenderMode)Math.Clamp((int)lua.GetNumber(2), (int)RenderMode.Normal, (int)RenderMode.Count - 1);
+#if CLIENT_DLL
+		ent.SetRenderMode(renderMode, false);
+#else
+		if (ent.RenderMode != (byte)renderMode)
+			ent.RenderMode = (byte)renderMode;
+#endif
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetSpawnEffect(ILuaInterface lua) {
+#if GAME_DLL
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (!lua.GetBool(2)) {
+			ent.NetworkStateChanged();
+			ent.GModFlags &= ~(1 << 1);
+			return 0;
+		}
+		ent.NetworkStateChanged();
+		ent.GModFlags |= 1 << 1;
+#endif
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetSpawnEffect(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushBool(((ent.GModFlags >> 1) & 1) != 0);
+		return 1;
 	}
 
 	[LuaMethod]

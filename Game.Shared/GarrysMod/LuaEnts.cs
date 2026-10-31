@@ -1,3 +1,6 @@
+using Source.Common;
+
+using System.Numerics;
 #if CLIENT_DLL || GAME_DLL
 using Source.Common.GarrysMod.Lua;
 
@@ -198,7 +201,35 @@ public static partial class LuaEnts
 	}
 
 	// todo: FindInSphere
-	// todo: FindInBox
+#if CLIENT_DLL
+	static readonly C_BaseEntity?[] FindList = new C_BaseEntity?[8192];
+#else
+	static readonly BaseEntity[] FindList = new BaseEntity[8192];
+#endif
+
+	[LuaFunction]
+	static int FindInBox(ILuaInterface lua) {
+		Vector3 a = LuaVector.Get_Vector(1);
+		Vector3 b = LuaVector.Get_Vector(2);
+		LuaVector.OrderVectors(a, b, out Vector3 mins, out Vector3 maxs);
+#if CLIENT_DLL
+		int count = Util.EntitiesInBox(FindList, mins, maxs, 0, PartitionListMask.ClientNonStaticEdicts);
+#else
+		int count = Util.EntitiesInBox(FindList, mins, maxs, 0);
+#endif
+		Span<BaseEntity?> list = FindList;
+		lua.CreateTable();
+		int i = 1;
+		for (int j = 0; j < count; j++) {
+			if (list[j] == null)
+				continue;
+			lua.PushNumber(i++);
+			LuaEntity.Push_Entity(list[j]);
+			lua.SetTable(-3);
+		}
+		list[..count].Clear();
+		return 1;
+	}
 
 	[LuaFunction]
 	static int FindByName(ILuaInterface lua) {
