@@ -1,4 +1,5 @@
 #if CLIENT_DLL || GAME_DLL || MENU_DLL
+using Source;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.Mathematics;
 
@@ -27,6 +28,15 @@ public static partial class LuaVector
 		g_Lua!.CheckType(stackPos, LuaType.String);
 		ReadOnlySpan<byte> str = g_Lua.GetStringBytes(stackPos);
 		return str.IsEmpty ? '\0' : (char)str[0];
+	}
+
+	[LuaMethod]
+	static int Vector____tostring(ILuaInterface lua) {
+		ref Vector3 vec = ref Get_Vector(1);
+		Span<char> str = stackalloc char[128];
+		sprintf(str, "%f %f %f").F(vec.X).F(vec.Y).F(vec.Z);
+		g_Lua!.PushString(((ReadOnlySpan<char>)str).SliceNullTerminatedString());
+		return 1;
 	}
 
 	[LuaMethod]

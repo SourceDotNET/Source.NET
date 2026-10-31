@@ -187,6 +187,29 @@ public static partial class LuaRender
 		return 0;
 	}
 
+	static readonly Vector3[] ModelLighting = new Vector3[6];
+
+	[LuaFunction]
+	static int ResetModelLighting(ILuaInterface lua) {
+		float b = (float)lua.GetNumber(3);
+		float g = (float)lua.GetNumber(2);
+		float r = (float)lua.GetNumber(1);
+		for (int i = 0; i < 6; i++)
+			ModelLighting[i] = new(r, g, b);
+		studiorender.SetAmbientLightColors(ModelLighting);
+		return 0;
+	}
+
+	[LuaFunction]
+	static int SetModelLighting(ILuaInterface lua) {
+		int direction = (int)lua.GetNumber(1);
+		if ((uint)direction < 6) {
+			ModelLighting[direction] = new((float)lua.GetNumber(2), (float)lua.GetNumber(3), (float)lua.GetNumber(4));
+			studiorender.SetAmbientLightColors(ModelLighting);
+		}
+		return 0;
+	}
+
 	[LuaFunction]
 	static int UpdateScreenEffectTexture(ILuaInterface lua) {
 		int textureIndex = 0;
@@ -249,7 +272,7 @@ public static partial class LuaRender
 		return 0;
 	}
 #endif
-	static int RenderTargetStack;
+	internal static int RenderTargetStack;
 
 #if !MENU_DLL
 	[LuaFunction]
@@ -604,7 +627,7 @@ public static partial class LuaRender
 	// todo: RenderView
 	// todo: GetViewSetup
 	// todo: RenderHUD
-	static int CustomClipPlaneCount;
+	internal static int CustomClipPlaneCount;
 
 	[LuaFunction]
 	static int PushCustomClipPlane(ILuaInterface lua) {

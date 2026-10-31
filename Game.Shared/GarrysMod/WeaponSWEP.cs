@@ -374,6 +374,8 @@ public partial class
 	public override ReadOnlySpan<char> GetName() => ScriptedEntity.ScriptNamePooled;
 #else
 	public override ReadOnlySpan<char> GetName() => ScriptedEntity.GetScriptName();
+
+	public void RenderScreen() => ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.RenderScreen, false);
 #endif
 
 	public override int GetSlot() {

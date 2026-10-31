@@ -1261,6 +1261,8 @@ IModelLoader modelloader, ICommandLine commandLine,
 		}
 	}
 
+	public static bool IsDedicated;
+
 	public override bool ProcessServerInfo(SVC_ServerInfo msg) {
 		// Reset client state
 		Clear();
@@ -1299,8 +1301,7 @@ IModelLoader modelloader, ICommandLine commandLine,
 			host_state.IntervalPerTick = msg.TickInterval;
 		}
 
-		// Gmod Specific - a global bool. Should we put this into the host state?
-		// g_bIsDedicated = msg->m_bIsDedicated;
+		IsDedicated = msg.IsDedicated;
 
 		g_ClientDLL?.HudVidInit();
 

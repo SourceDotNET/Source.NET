@@ -82,6 +82,10 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		Animation.SetBodygroup(GetModelPtr(), ref Body, group, value);
 	}
 
+	public int GetBodygroup(int group) => Animation.GetBodygroup(GetModelPtr(), Body, group);
+	public ReadOnlySpan<char> GetBodygroupName(int group) => Animation.GetBodygroupName(GetModelPtr(), group);
+	public int GetBodygroupCount(int group) => Animation.GetBodygroupCount(GetModelPtr(), group);
+
 	float GroundSpeed;
 	const TimeUnit_t MAX_ANIMTIME_INTERVAL = 0.2;
 	public TimeUnit_t GetAnimTimeInterval() => Math.Min(gpGlobals.CurTime - AnimTime, MAX_ANIMTIME_INTERVAL);
@@ -179,7 +183,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		GroundSpeed = (float)GetSequenceGroundSpeed(hdr, GetSequence()) * GetModelScale();
 	}
 
-	public override int VPhysicsGetObjectList(Span<IPhysicsObject?> list){
+	public override int VPhysicsGetObjectList(Span<IPhysicsObject?> list) {
 		if (IsRagdoll()) {
 			int i;
 			for (i = 0; i < Ragdoll.RagdollBoneCount(); ++i) {
@@ -845,7 +849,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		return Animation.GetSequenceName(GetModelPtr(), sequence);
 	}
 
-	public ClientRagdoll? Ragdoll = null; 
+	public ClientRagdoll? Ragdoll = null;
 
 	public override void OnDataChanged(DataUpdateType updateType) {
 		if (Ragdoll != null && GetSequence() != PrevSequence) {
@@ -1043,6 +1047,8 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		for (i = 0; i < hdr.GetNumPoseParameters(); i++) {
 			MStudioPoseParamDesc Pose = hdr.PoseParameter(i);
 			iv_flPoseParameter.SetLooping(Pose.Loop != 0.0f, i);
+			if (!IsServerEntity())
+				SetPoseParameter(hdr, i, 0.0f);
 		}
 
 		EyeAttachment = LookupAttachment("eyes");

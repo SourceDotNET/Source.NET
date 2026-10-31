@@ -87,7 +87,6 @@ public static partial class LuaGame
 	// todo: GetTimeScale
 	// todo: GetSkillLevel
 	// todo: AddParticles
-	// todo: IsDedicated
 
 	[LuaFunction]
 	static int MountGMA(ILuaInterface lua) {
@@ -131,6 +130,12 @@ public static partial class LuaGame
 	[LuaFunction]
 	static int SinglePlayer(ILuaInterface lua) {
 		g_Lua!.PushBool(gpGlobals.MaxClients == 1);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int IsDedicated(ILuaInterface lua) {
+		g_Lua!.PushBool(engine.IsDedicatedServer());
 		return 1;
 	}
 }

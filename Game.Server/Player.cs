@@ -8,6 +8,7 @@ using Source.Common.Client;
 using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Formats.BSP;
+using Source.Common.GarrysMod.Lua;
 using Source.Common.Game.Server;
 using Source.Common.Hashing;
 using Source.Common.Mathematics;
@@ -698,6 +699,22 @@ public partial class BasePlayer : BaseCombatCharacter
 		Local.WearingSuit = true;
 	}
 
+	public void RemoveAllItems(bool removeSuit) {
+		if (GetActiveWeapon() != null) {
+			ResetAutoaim();
+			GetActiveWeapon()!.Holster();
+		}
+
+		Weapon_SetLast(null);
+		RemoveAllWeapons();
+		RemoveAllAmmo();
+
+		if (removeSuit)
+			RemoveSuit();
+
+		UpdateClientData();
+	}
+
 	public virtual void RemoveSuit() {
 		Local.WearingSuit = false;
 	}
@@ -962,7 +979,14 @@ public partial class BasePlayer : BaseCombatCharacter
 				}
 
 				if (tr.Fraction != 1.0) { // line hit something, so paint a decal
-										  // todo
+#if GMOD_DLL
+					if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerSpray)) {
+						Game.Server.GarrysMod.LuaEntity.Push_Entity(this);
+						if (gGM.CallFinish(1))
+							break;
+					}
+#endif
+					// todo
 				}
 
 				break;
@@ -1118,6 +1142,20 @@ public partial class BasePlayer : BaseCombatCharacter
 			ViewModelForModify()[index].Set(vm);
 		}
 	}
+
+	public void DestroyViewModels() {
+		int i;
+		for (i = MAX_VIEWMODELS - 1; i >= 0; i--) {
+			BaseViewModel? vm = GetViewModel(i);
+			if (vm == null)
+				continue;
+
+			Util.Remove(vm);
+			ViewModelForModify()[i].Set(null);
+		}
+	}
+
+	public void SetConnected(PlayerConnectedState connected) => Connected = connected;
 
 	public TimeUnit_t GetDeathTime() => DeathTime;
 

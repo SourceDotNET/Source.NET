@@ -16,7 +16,10 @@ using Source.Common.Filesystem;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.GarrysMod;
 using Source.Common.MaterialSystem;
+using Source.Common.Mathematics;
 using Source.Common.Networking;
+
+using System.Numerics;
 
 using Steamworks;
 
@@ -334,7 +337,11 @@ public class GarrysMod : IGarrysMod
 			return g_Lua.FindAndRunScript(file, run, true, source, true);
 		}
 
+#if CLIENT_DLL
+		public bool ScriptExists(ReadOnlySpan<char> file, ReadOnlySpan<char> pathId) => get.LuaShared()!.LoadFile(file, pathId, true, true) != null;
+#else
 		public bool ScriptExists(ReadOnlySpan<char> file, ReadOnlySpan<char> pathId) => get.LuaShared()!.LoadFile(file, pathId, false, true) != null;
+#endif
 
 #if CLIENT_DLL
 		public C_BaseEntity? CreateEntity(ReadOnlySpan<char> className) => LuaSENTManager.gSENTManager!.CreateEntity(className);
@@ -612,6 +619,84 @@ public class GarrysMod : IGarrysMod
 		Game.Server.GarrysMod.LuaEntity.Push_Entity(ent);
 #endif
 		gGM.CallNoReturns(1);
+	}
+
+#if CLIENT_DLL
+	static readonly ConVarRef volume = new("volume");
+	static readonly ConVarRef volume_sfx = new("volume_sfx");
+	static readonly ConVarRef snd_mute_losefocus = new("snd_mute_losefocus");
+
+	public void UpdateAudioVolume() {
+		if (snd_mute_losefocus.GetBool() && !engine.IsActiveApp()) {
+			get.Audio()!.SetGlobalVolume(0);
+			return;
+		}
+		get.Audio()!.SetGlobalVolume(volume_sfx.GetFloat() * volume.GetFloat());
+	}
+
+	public bool RenderScene(in ViewSetup view) {
+		if (get.Audio() != null) {
+			Vector3 origin = view.Origin;
+			Vector3 velocity = default;
+			MathLib.AngleVectors(view.Angles, out Vector3 forward, out Vector3 right, out Vector3 up);
+			get.Audio()!.SetEar(ref origin, ref velocity, ref forward, ref up);
+			UpdateAudioVolume();
+		}
+
+		LuaCam.CheckMissingEnds();
+		// todo: reset ShouldDrawLocalPlayer cache
+
+		using (MatRenderContextPtr renderContext = new(materials)) {
+			renderContext.GMOD_ForceFilterMode(true, 0);
+			renderContext.GMOD_ForceFilterMode(false, 0);
+			renderContext.OverrideBlend(false, true, -1, -1, -1);
+			renderContext.OverrideBlendSeparateAlpha(false, true, -1, -1, -1);
+		}
+
+		if (g_Lua == null || gGM == null)
+			return false;
+
+		C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
+		if (player != null && player.GetActiveWeapon() is C_WeaponSWEP swep)
+			swep.RenderScreen();
+
+		if (gGM.CallWithArgs((int)LUA_POOLEDSTRING.RenderScene)) {
+			LuaVector.Push_Vector(view.Origin);
+			LuaAngle.Push_Angle(view.Angles);
+			g_Lua.PushNumber(view.FOV);
+			return gGM.CallFinish(3);
+		}
+		return false;
+	}
+#endif
+
+	public void EntityRemoved(BaseEntity ent, bool fullUpdate) {
+#if CLIENT_DLL
+		LuaEntity.RemoveFromRemoveList(ent);
+#else
+		Game.Server.GarrysMod.LuaEntity.RemoveFromRemoveList(ent);
+#endif
+		SoundEnvelopeController.GetController().ShutdownSoundsForEntity(ent.EntIndex());
+		if (g_Lua == null || gGM == null)
+			return;
+
+		if (gGM.CallWithArgs((int)LUA_POOLEDSTRING.EntityRemoved)) {
+#if CLIENT_DLL
+			LuaEntity.Push_Entity(ent);
+#else
+			Game.Server.GarrysMod.LuaEntity.Push_Entity(ent);
+#endif
+			g_Lua.PushBool(fullUpdate);
+			gGM.CallNoReturns(2);
+		}
+		ResetLuaIteratorEntityCache(ent);
+#if !CLIENT_DLL
+		if (ent.IsPlayer()) {
+			ent.GetLuaTable()?.UnReference();
+			ent.GetLuaEntity()?.UnReference();
+		}
+		Game.Server.GarrysMod.LuaNetworkedVars.g_LuaNetworkedVars?.ClearEntity(ent.GetRefEHandle().Index);
+#endif
 	}
 
 	public void Think() {

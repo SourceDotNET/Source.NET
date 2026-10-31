@@ -118,29 +118,46 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 		return true;
 	}
 
-// 	public override void LevelInitPreEntity() => throw new NotImplementedException();
-// 	public override void LevelInitPostEntity() => throw new NotImplementedException();
-// 	public override void LevelShutdownPreEntity() => throw new NotImplementedException();
-// 	public override void LevelShutdownPostEntity() => throw new NotImplementedException();
-#if CLIENT_DLL
-// 	public override void Update(TimeUnit_t frametime) => throw new NotImplementedException();
-#else
-// 	public override void FrameUpdatePreEntityThink() => throw new NotImplementedException();
-#endif
+	// todo LevelShutdownPostEntity
 
 	public void FireGameEvent(IGameEvent ev) {
 #if CLIENT_DLL
 		if (strcmp(ev.GetName(), "server_spawn") == 0) {
 			Gamemode = new(ev.GetString("gamemode", ""));
-			// todo
+			filesystem.Gamemodes().SetActive(Gamemode);
 		}
-		else
 #endif
 		if (strcmp(ev.GetName(), "player_connect") == 0) {
-			// todo
+			if (g_Lua != null && gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerConnect)) {
+				g_Lua.PushString(ev.GetString("name", ""));
+#if CLIENT_DLL
+				gGM.CallFinish(1);
+#else
+				g_Lua.PushString(ev.GetString("address", ""));
+				gGM.CallFinish(2);
+#endif
+			}
 		}
 		else if (strcmp(ev.GetName(), "break_prop") == 0) {
-			// todo
+			if (g_Lua != null && gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PropBreak)) {
+				BasePlayer? player = null;
+				if (ev.GetInt("userid", 0) > 0)
+#if CLIENT_DLL
+					player = ClientModeShared.USERID2PLAYER(ev.GetInt("userid", 0));
+#else
+					player = Util.PlayerByUserId(ev.GetInt("userid", 0));
+#endif
+				LuaEntity.Push_Entity(player);
+				BaseEntity? entity = null;
+				if (ev.GetInt("entindex", 0) > 0)
+#if CLIENT_DLL
+					entity = cl_entitylist.GetBaseEntity(ev.GetInt("entindex", 0));
+#else
+					entity = LuaEntity.GMEntityByIndex(ev.GetInt("entindex", 0));
+#endif
+				LuaEntity.Push_Entity(entity);
+				gGM.CallFinish(2);
+			}
 		}
 #if CLIENT_DLL
 		else if (strcmp(ev.GetName(), "user_data_downloaded") == 0 && !UserDataDownloaded) {

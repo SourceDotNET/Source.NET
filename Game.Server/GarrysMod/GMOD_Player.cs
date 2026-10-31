@@ -5,6 +5,7 @@ using Game.Shared;
 
 using Source;
 using Source.Common;
+using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.GarrysMod.Lua;
 
@@ -37,6 +38,21 @@ public partial class GMOD_Player : HL2MP_Player
 		WeaponColor = new(255, 255, 255);
 		Hands = new();
 	}
+
+#if GMOD_DLL
+	static void CallShowHook(LUA_POOLEDSTRING hook) {
+		BasePlayer? player = Util.GetCommandClient();
+		if (player == null || !player.IsPlayer() || gGM == null || !gGM.CallWithArgs((int)hook))
+			return;
+		LuaEntity.Push_Entity(player);
+		gGM.CallFinish(1);
+	}
+
+	[ConCommand("gm_showhelp")] static void CC_ShowHelp() => CallShowHook(LUA_POOLEDSTRING.ShowHelp);
+	[ConCommand("gm_showteam")] static void CC_ShowTeam() => CallShowHook(LUA_POOLEDSTRING.ShowTeam);
+	[ConCommand("gm_showspare1")] static void CC_ShowSpare1() => CallShowHook(LUA_POOLEDSTRING.ShowSpare1);
+	[ConCommand("gm_showspare2")] static void CC_ShowSpare2() => CallShowHook(LUA_POOLEDSTRING.ShowSpare2);
+#endif
 
 	public static GMOD_Player? CreatePlayer(ReadOnlySpan<char> classname, Edict ed) {
 		s_PlayerEdict = ed;
@@ -125,12 +141,17 @@ public partial class GMOD_Player : HL2MP_Player
 	}
 
 	public override BaseEntity EntSelectSpawnPoint() {
-		BaseEntity? spot = null;
-		while ((spot = gEntList.FindEntityByClassname(spot, "info_player_start")) != null) {
-			if (spot.HasSpawnFlags(1))
-				return spot;
+#if GMOD_DLL
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerSelectSpawn)) {
+			LuaEntity.Push_Entity(this);
+			g_Lua!.PushBool(Transition);
+			if (gGM.CallReturns(2, 1)) {
+				BaseEntity? spot = (BaseEntity?)g_Lua.GetReturn(0).GetEntity();
+				if (spot != null)
+					return spot;
+			}
 		}
-
+#endif
 		return base.EntSelectSpawnPoint();
 	}
 
@@ -167,6 +188,7 @@ public partial class GMOD_Player : HL2MP_Player
 	public partial Vector3 WeaponColor { get; set; }
 
 	public virtual Vector3 GetPlayerColor() => PlayerColor;
+	public virtual Vector3 GetWeaponColor() => WeaponColor;
 
 	public virtual void SetPlayerColor(in Vector3 color) {
 		if (PlayerColor != color) {

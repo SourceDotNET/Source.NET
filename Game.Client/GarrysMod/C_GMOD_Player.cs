@@ -5,9 +5,12 @@ using Source;
 using Source.Common;
 using Source.Common.Commands;
 using Source.Common.GarrysMod.Lua;
+using Source.Common.Hashing;
 using Source.Common.Mathematics;
 
 using System.Numerics;
+
+using ClientModelRenderInfo = Source.Common.Engine.ModelRenderInfo;
 
 namespace Game.Client.GarrysMod;
 
@@ -24,7 +27,7 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 		nameof(PressedWidget),
 		nameof(Driving),
 		nameof(DrivingMode),
-		nameof(PlayerClass),
+		new(nameof(PlayerClass)) { Proxy = typeof(PlayerClassProxy) },
 		nameof(CanZoom),
 		nameof(CanWalk),
 		nameof(IsTyping),
@@ -110,6 +113,94 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 			}
 		}
 		return ent;
+	}
+
+	private static void RecvProxy_PlayerClass(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+		RecvProxy_Int32ToInt32(in data, instance, field);
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerClassChanged)) {
+			C_GMOD_Player player = (C_GMOD_Player)instance;
+			LuaEntity.Push_Entity(player);
+			g_Lua!.PushNumber(player.PlayerClass);
+			gGM.CallNoReturns(2);
+		}
+	}
+
+	public static class PlayerClassProxy
+	{
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) => RecvProxy_PlayerClass(in data, instance, field);
+	}
+
+	InlineArray128<char> UniqueID;
+
+	static uint UniqueIDCRC(ReadOnlySpan<char> str) {
+		Span<byte> bytes = stackalloc byte[str.Length];
+		for (int i = 0; i < str.Length; i++)
+			bytes[i] = (byte)str[i];
+		uint crc = 0;
+		CRC32.Init(ref crc);
+		CRC32.ProcessBuffer(ref crc, (ReadOnlySpan<byte>)bytes);
+		CRC32.Final(ref crc);
+		return crc;
+	}
+
+	public ReadOnlySpan<char> GetUniqueID() {
+		if (gpGlobals.MaxClients == 1)
+			return "1";
+
+		if ((GetFlags() & EntityFlags.FakeClient) != 0) {
+			ReadOnlySpan<char> name = g_pPlayerResource == null ? "" : g_pPlayerResource.GetPlayerName(EntIndex());
+			if (name.IsEmpty)
+				return "0";
+			sprintf(UniqueID, "%u").U(UniqueIDCRC(name));
+			return ((Span<char>)UniqueID).SliceNullTerminatedString();
+		}
+
+		if (stricmp(GetNetworkIDString(), "STEAM_ID_LAN") == 0) {
+			if (engine.GetNetChannelInfo() == null)
+				return "PENDING";
+		}
+		else if (stricmp(GetNetworkIDString(), "STEAMID_PENDING") == 0 || stricmp(GetNetworkIDString(), "STEAM_ID_PENDING") == 0)
+			return "PENDING";
+
+		Span<char> gmID = stackalloc char[128];
+		sprintf(gmID, "gm_%s_gm").S(GetNetworkIDString());
+		sprintf(UniqueID, "%u").U(UniqueIDCRC(gmID.SliceNullTerminatedString()));
+		return ((Span<char>)UniqueID).SliceNullTerminatedString();
+	}
+
+	sbyte PrePlayerDrawDepth;
+	sbyte PostPlayerDrawDepth;
+
+	protected override bool OnInternalDrawModel(ref ClientModelRenderInfo info) {
+		if (PrePlayerDrawDepth < 11) {
+			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PrePlayerDraw)) {
+				LuaEntity.Push_Entity(this);
+				g_Lua!.PushNumber((int)info.Flags);
+				PrePlayerDrawDepth++;
+				bool ret = gGM.CallFinish(2);
+				PrePlayerDrawDepth--;
+				if (ret)
+					return false;
+			}
+		}
+		else
+			g_Lua!.ErrorNoHalt("PrePlayerDraw: We are 10 layers deep, runaway infinite loop?");
+		return base.OnInternalDrawModel(ref info);
+	}
+
+	protected override bool OnPostInternalDrawModel(ref ClientModelRenderInfo info) {
+		if (PostPlayerDrawDepth > 10) {
+			g_Lua!.ErrorNoHalt("PostPlayerDraw: We are 10 layers deep, runaway infinite loop?");
+			return true;
+		}
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PostPlayerDraw)) {
+			LuaEntity.Push_Entity(this);
+			g_Lua!.PushNumber((int)info.Flags);
+			PostPlayerDrawDepth++;
+			gGM.CallNoReturns(2);
+			PostPlayerDrawDepth--;
+		}
+		return true;
 	}
 
 	public override void UpdateClientSideAnimation() {

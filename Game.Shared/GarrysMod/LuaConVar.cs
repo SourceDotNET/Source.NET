@@ -92,6 +92,18 @@ public static partial class LuaConVar
 	}
 
 	[LuaMethod]
+	static int ConVar____tostring(ILuaInterface lua) {
+		if (LC_ConVar.Get(1) is not ConVar convar) {
+			lua.PushString("ConVar [NULL]");
+			return 1;
+		}
+
+		string str = $"ConVar [{convar.GetName()}]";
+		lua.PushString(str.Length > 0x1FF ? str[..0x1FF] : str);
+		return 1;
+	}
+
+	[LuaMethod]
 	static float ConVar__GetFloat(ConVar convar) => convar.GetFloat();
 
 	[LuaMethod]

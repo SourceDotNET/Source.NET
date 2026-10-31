@@ -240,6 +240,78 @@ public static partial class LuaUtil
 	}
 
 #if !MENU_DLL
+	static bool ParseSteam2Number(ref ReadOnlySpan<char> str, out uint value) {
+		value = 0;
+		int i = 0;
+		while (i < str.Length && char.IsAsciiDigit(str[i])) {
+			value = value * 10 + (uint)(str[i] - '0');
+			i++;
+		}
+		if (i == 0)
+			return false;
+		str = str[i..];
+		return true;
+	}
+
+	static bool SetFromSteam2String(ReadOnlySpan<char> str, Steamworks.EUniverse universe, out ulong steamID) {
+		steamID = 0;
+		str = str.SliceNullTerminatedString();
+		if (strnicmp(str, "STEAM_", 6) == 0)
+			str = str[6..];
+
+		uint x = 0, y = 0, z = 0;
+		int count = 0;
+		if (ParseSteam2Number(ref str, out x)) {
+			count++;
+			if (str.Length > 0 && str[0] == ':') {
+				str = str[1..];
+				if (ParseSteam2Number(ref str, out y)) {
+					count++;
+					if (str.Length > 0 && str[0] == ':') {
+						str = str[1..];
+						if (ParseSteam2Number(ref str, out z)) {
+							count++;
+							if (str.Length > 0)
+								count++;
+						}
+					}
+				}
+			}
+		}
+
+		if (count > 3 || count <= 1 || (count <= 2 && (ushort)x != 1))
+			return false;
+
+		Steamworks.CSteamID id = default;
+		id.InstancedSet(new Steamworks.AccountID_t(y + z * 2), 1, universe, Steamworks.EAccountType.k_EAccountTypeIndividual);
+		steamID = id.m_SteamID;
+		return true;
+	}
+
+	[LuaFunction]
+	static int SteamIDTo64(ILuaInterface lua) {
+		string? str = lua.GetString(1);
+		if (str == null)
+			return 0;
+
+		SetFromSteam2String(str, Steamworks.EUniverse.k_EUniversePublic, out ulong steamID);
+		lua.PushString(steamID.ToString());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int SteamIDFrom64(ILuaInterface lua) {
+		string? str = lua.GetString(1);
+		if (str == null)
+			return 0;
+
+		_ = ulong.TryParse(str, out ulong steamID);
+		Span<char> buf = stackalloc char[1024];
+		sprintf(buf, "STEAM_0:%u:%u").U((uint)steamID & 1).U((uint)(steamID >> 1) & 0x7fffffff);
+		lua.PushString(((ReadOnlySpan<char>)buf).SliceNullTerminatedString());
+		return 1;
+	}
+
 	[LuaFunction]
 	static int SharedRandom(ILuaInterface lua) {
 		int seed = 0;

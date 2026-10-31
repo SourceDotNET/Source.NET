@@ -368,7 +368,7 @@ public sealed class VTFTexture : IVTFTexture
 			}
 		}
 
-		if (!IsMultipleOf4(width) || !IsMultipleOf4(height) || !IsMultipleOf4(depth)) {
+		if ((flags & (int)TextureFlags.Procedural) == 0 && (!IsMultipleOf4(width) || !IsMultipleOf4(height) || !IsMultipleOf4(depth))) {
 			Warning("Image dimensions must be multiple of 4!\n");
 			return false;
 		}

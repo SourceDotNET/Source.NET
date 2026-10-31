@@ -15,6 +15,14 @@ public static partial class LuaWeapon
 	static readonly LuaEntityClass LC_Weapon = LuaEntity.LC_Weapon;
 
 	[LuaMethod]
+	static int Weapon____tostring(ILuaInterface lua) {
+		BaseCombatWeapon? weapon = LuaEntity.Get_Weapon(1, true);
+		string str = weapon == null ? "Weapon [NULL]" : $"Weapon [{weapon.EntIndex()}][{weapon.GetClassname()}]";
+		lua.PushString(str.Length > 0xFF ? str[..0xFF] : str);
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Weapon__IsScripted(ILuaInterface lua) {
 		BaseCombatWeapon weapon = LuaEntity.Get_Weapon(1, false)!;
 		ReadOnlySpan<char> name = weapon.GetLuaScriptName();

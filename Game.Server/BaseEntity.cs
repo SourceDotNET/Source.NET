@@ -5,6 +5,8 @@ using Game.Shared;
 using Source;
 using Source.Common;
 using Source.Common.GarrysMod;
+using Source.Common.GarrysMod.Lua;
+using Game.Server.GarrysMod;
 using Source.Common.Audio;
 using Source.Common.Commands;
 using Source.Common.Engine;
@@ -935,6 +937,9 @@ public partial class BaseEntity : IServerEntity
 		Util.g_bReceivedChainedUpdateOnRemove = true;
 
 #if GMOD_DLL
+		if (GetRefEHandle().Index != Constants.INVALID_EHANDLE_INDEX)
+			garrysmod.EntityRemoved(this, false);
+
 		for (int i = 0; i < DeleteOnRemoveList.Count; i++) {
 			BaseEntity? ent = DeleteOnRemoveList[i].Get();
 			if (ent == null)
@@ -2110,6 +2115,24 @@ public partial class BaseEntity : IServerEntity
 		else {
 			TakeDamageInfo info = inputInfo;
 
+#if GMOD_DLL
+			TakeDamageInfoRef infoRef = new() { Info = info };
+			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.EntityTakeDamage)) {
+				LuaEntity.Push_Entity(this);
+				LuaTakeDamageInfo.Push_TakeDamageInfo(infoRef);
+				if (gGM.CallFinish(2))
+					return 0;
+			}
+
+			int ret = OnTakeDamage(infoRef.Info);
+			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PostEntityTakeDamage)) {
+				LuaEntity.Push_Entity(this);
+				LuaTakeDamageInfo.Push_TakeDamageInfo(infoRef);
+				g_Lua!.PushBool(ret != 0);
+				gGM.CallNoReturns(3);
+			}
+			return ret;
+#else
 			// Scale the damage by the attacker's modifier.
 			if (info.GetAttacker() != null)
 				info.ScaleDamage(info.GetAttacker()!.GetAttackDamageScale(this));
@@ -2120,6 +2143,7 @@ public partial class BaseEntity : IServerEntity
 			//Msg("%s took %.2f Damage, at %.2f\n", GetClassname(), info.GetDamage(), gpGlobals.curtime );
 
 			return OnTakeDamage(info);
+#endif
 		}
 		return 0;
 	}
@@ -3042,18 +3066,18 @@ public partial class BaseEntity : IServerEntity
 
 	public static void PrecacheModelComponents(int modelIndex) {
 		Model? model = (Model?)modelinfo.GetModel(modelIndex);
-		if (model != null || modelinfo.GetModelType(model) != ModelType.Studio)
+		if (model == null || modelinfo.GetModelType(model) != ModelType.Studio)
 			return;
 
 		// sounds
 		ReadOnlySpan<char> name = modelinfo.GetModelName(model);
-		if (!g_ModelSoundsCache.TryGetValue(name.Hash(), out _)) {
+		if (!g_ModelSoundsCache.EntryExists(name)) {
 			ReadOnlySpan<char> extension = Path.GetExtension(name);
 
 			if (!stristr(extension, "mdl").IsEmpty)
 				DevMsg(2, $"Late precache of {name}, need to rebuild modelsounds.cache\n");
 			else {
-				if (extension[0] == '\0')
+				if (extension.IsEmpty)
 					Warning($"Precache of {name} ambigious (no extension specified)\n");
 				else
 					Warning($"Late precache of {name} (file missing?)\n");
@@ -3061,11 +3085,31 @@ public partial class BaseEntity : IServerEntity
 			}
 		}
 
-		if (g_ModelSoundsCache.TryGetValue(name.Hash(), out ModelSoundsCache? entry))
-			entry.PrecacheSoundList();
+		ModelSoundsCache? entry = g_ModelSoundsCache.Get(name);
+		Assert(entry != null);
+		entry?.PrecacheSoundList();
 	}
 
-	static readonly Dictionary<UtlSymId_t, ModelSoundsCache> g_ModelSoundsCache = [];
+	public static StudioHdr? ModelSoundsCache_LoadModel(ReadOnlySpan<char> filename) {
+		int idx = engine.PrecacheModel(filename, true);
+		if (idx != -1) {
+			Model? mdl = modelinfo.GetModel(idx);
+			if (mdl != null) {
+				StudioHdr studioHdr = new();
+				studioHdr.Init(modelinfo.GetStudiomodel(mdl), mdlcache);
+				if (studioHdr.IsValid())
+					return studioHdr;
+			}
+		}
+		return null;
+	}
+
+	public static void ModelSoundsCache_FinishModel(StudioHdr hdr) => Assert(hdr != null);
+
+	public static void ModelSoundsCache_PrecacheScriptSound(ReadOnlySpan<char> soundname) => PrecacheScriptSound(soundname);
+
+	const int MODELSOUNDSCACHE_VERSION = 5;
+	static readonly UtlCachedFileData<ModelSoundsCache> g_ModelSoundsCache = new("modelsounds.cache", MODELSOUNDSCACHE_VERSION, null, UtlCachedFileDataType.UseFilesize, false);
 
 	public bool HasSpawnFlags(int flags) => (SpawnFlags & flags) != 0;
 

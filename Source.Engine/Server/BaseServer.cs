@@ -823,6 +823,10 @@ public abstract class BaseServer : IServer
 		serverinfo.SkyName = new(((ReadOnlySpan<char>)Skyname).SliceNullTerminatedString());
 		serverinfo.HostName = new(GetName());
 		serverinfo.IsHLTV = IsHLTV();
+#if GMOD_DLL
+		// todo LoadingURL
+		serverinfo.Gamemode = new(g_pFileSystem.Gamemodes().Active().Name);
+#endif
 	}
 
 	public virtual void UserInfoChanged(int nClientIndex) {

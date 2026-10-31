@@ -318,11 +318,13 @@ public class Button : Label
 	public override void OnCursorEntered() {
 		if (IsEnabled() && !IsSelected())
 			SetArmed(true);
+		base.OnCursorEntered();
 	}
 
 	public override void OnCursorExited() {
 		if ((ButtonFlags & ButtonFlags.ButtonKeyDown) == 0 && !IsSelected())
 			SetArmed(false);
+		base.OnCursorExited();
 	}
 
 	public virtual void SetSelected(bool state) {

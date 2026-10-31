@@ -103,6 +103,8 @@ public partial class C_HL2MP_Player : C_BaseHLPlayer
 		AngEyeAngles = EyeAngles();
 	}
 
+	public void DoAnimationEvent(PlayerAnimEvent evt, int data, bool predicted) => PlayerAnimState.DoAnimationEvent(evt, data);
+
 #if GMOD_DLL
 	public override void UpdateClientSideAnimation() {
 		QAngle eyeAngles = EyeAngles();

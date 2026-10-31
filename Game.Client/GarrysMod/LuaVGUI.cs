@@ -196,7 +196,7 @@ public static partial class LuaVGUI
 			return new SpawnIcon(null, "ModelImage");
 
 		if (stricmp(className, "AvatarImage") == 0)
-			return null; // AvatarImage
+			return new AvatarImage(null, "AvatarImage");
 #endif
 
 		if (stricmp(className, "HTML") == 0)

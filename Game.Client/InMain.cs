@@ -190,7 +190,16 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 	[ConCommand(name: "+reload")] void IN_ReloadDown(in TokenizedCommand args) => KeyDown(ref in_reload, args[1]);
 	[ConCommand(name: "+alt1")] void IN_Alt1Down(in TokenizedCommand args) => KeyDown(ref in_alt1, args[1]);
 	[ConCommand(name: "+alt2")] void IN_Alt2Down(in TokenizedCommand args) => KeyDown(ref in_alt2, args[1]);
-	[ConCommand(name: "+score")] void IN_ScoreDown(in TokenizedCommand args) => KeyDown(ref in_score, args[1]);
+	[ConCommand(name: "+score")]
+	void IN_ScoreDown(in TokenizedCommand args) {
+		KeyDown(ref in_score, args[1]);
+#if GMOD_DLL
+		gGM?.Call((int)LUA_POOLEDSTRING.ScoreboardShow);
+#endif
+	}
+#if GMOD_DLL
+	[ConCommand(name: "+showscores")] void IN_ShowScoresDown(in TokenizedCommand args) => IN_ScoreDown(in args);
+#endif
 	[ConCommand(name: "+graph")] void IN_GraphDown(in TokenizedCommand args) => KeyDown(ref in_graph, args[1]);
 	[ConCommand(name: "+break")] void IN_BreakDown(in TokenizedCommand args) => KeyDown(ref in_break, args[1]);
 	[ConCommand(name: "+zoom")] void IN_ZoomDown(in TokenizedCommand args) => KeyDown(ref in_zoom, args[1]);
@@ -221,7 +230,16 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 	[ConCommand(name: "-reload")] void IN_ReloadUp(in TokenizedCommand args) => KeyUp(ref in_reload, args[1]);
 	[ConCommand(name: "-alt1")] void IN_Alt1Up(in TokenizedCommand args) => KeyUp(ref in_alt1, args[1]);
 	[ConCommand(name: "-alt2")] void IN_Alt2Up(in TokenizedCommand args) => KeyUp(ref in_alt2, args[1]);
-	[ConCommand(name: "-score")] void IN_ScoreUp(in TokenizedCommand args) => KeyUp(ref in_score, args[1]);
+	[ConCommand(name: "-score")]
+	void IN_ScoreUp(in TokenizedCommand args) {
+		KeyUp(ref in_score, args[1]);
+#if GMOD_DLL
+		gGM?.Call((int)LUA_POOLEDSTRING.ScoreboardHide);
+#endif
+	}
+#if GMOD_DLL
+	[ConCommand(name: "-showscores")] void IN_ShowScoresUp(in TokenizedCommand args) => IN_ScoreUp(in args);
+#endif
 	[ConCommand(name: "-graph")] void IN_GraphUp(in TokenizedCommand args) => KeyUp(ref in_graph, args[1]);
 	[ConCommand(name: "-break")] void IN_BreakUp(in TokenizedCommand args) => KeyUp(ref in_break, args[1]);
 	[ConCommand(name: "-zoom")] void IN_ZoomUp(in TokenizedCommand args) => KeyUp(ref in_zoom, args[1]);

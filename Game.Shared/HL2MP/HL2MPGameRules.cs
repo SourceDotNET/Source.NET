@@ -18,7 +18,9 @@ using Source.Common;
 using Source;
 
 using Game.Shared;
+using Game.Shared.GarrysMod;
 using Source.Common.Engine;
+using Source.Common.GarrysMod.Lua;
 
 [LinkEntityToClass("hl2mp_gamerules")]
 [NetworkName("CHL2MPGameRulesProxy")]
@@ -104,7 +106,20 @@ public partial class
 public class VoiceGameMgrHelper : IVoiceGameMgrHelper
 {
 	public bool CanPlayerHearPlayer(BasePlayer listener, BasePlayer talker, ref bool proximity) {
+#if GMOD_DLL
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerCanHearPlayersVoice)) {
+			LuaEntity.Push_Entity(listener);
+			LuaEntity.Push_Entity(talker);
+			if (gGM.CallReturns(2, 2)) {
+				bool canHear = g_Lua!.GetReturn(1).GetBool();
+				proximity = g_Lua.GetReturn(0).GetBool();
+				return canHear;
+			}
+		}
+		return true;
+#else
 		return listener.GetTeamNumber() == talker.GetTeamNumber();
+#endif
 	}
 }
 #endif

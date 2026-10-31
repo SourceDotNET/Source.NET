@@ -181,7 +181,29 @@ public class Material : IMaterialInternal
 	}
 
 	private void SetupErrorShader() {
-		throw new NotImplementedException();
+		int flags = 0;
+		if (ShaderParams != null && ShaderParams[(int)ShaderMaterialVars.Flags] != null)
+			flags = ShaderParams[(int)ShaderMaterialVars.Flags].GetIntValue() & (int)MaterialVarFlags.Model;
+
+		CleanUpShaderParams();
+		CleanUpMaterialProxy();
+
+		Shader = materials.ShaderSystem.FindShader(MissingShaderName());
+		Assert(Shader);
+
+		VarCount = Shader!.GetNumParams();
+		ShaderParams = new IMaterialVar[VarCount];
+
+		for (int i = 0; i < VarCount; ++i)
+			ShaderParams[i] = new MaterialVar(this, Shader.GetParamName(i));
+
+		SetMaterialVarFlags((MaterialVarFlags)flags, true);
+
+		materials.ShaderSystem.InitShaderParameters(Shader, ShaderParams, "Error", null);
+
+		materials.ShaderSystem.InitShaderInstance(Shader, ShaderParams, "Error", GetTextureGroupName());
+
+		InitializeRenderState();
 	}
 
 	static readonly ConVarRef mat_reduceparticles = new("mat_reduceparticles");

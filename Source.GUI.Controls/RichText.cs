@@ -185,10 +185,12 @@ public class RichText : Panel
 
 	public override void OnCursorEntered() {
 		MouseDragSelection = false;
+		base.OnCursorEntered();
 	}
 
 	public override void OnCursorExited() {
 		if (MouseSelection) MouseDragSelection = true;
+		base.OnCursorExited();
 	}
 
 	public override void OnCursorMoved(int x, int y) {

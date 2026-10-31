@@ -16,9 +16,11 @@ namespace Game.Server.GarrysMod;
 
 using Source.Common;
 using Source.Common.Engine;
+using Source.Common.GarrysMod.Lua;
 using Source;
 
 using Game.Shared;
+using Game.Shared.GarrysMod;
 using Source.GUI.Controls;
 
 public static class GMOD_GameRules_Globals
@@ -95,7 +97,43 @@ public partial class
 		return base.FlPlayerFallDeathDoesScreenFade(player);
 	}
 	public override float FlPlayerFallDamage(BasePlayer player) {
-		return 10; // todo: lua hook
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.GetFallDamage)) {
+			LuaEntity.Push_Entity(player);
+			g_Lua!.PushNumber(player.Local.FallVelocity);
+			if (gGM.CallReturns(2, 1))
+				return g_Lua.GetReturn(0).GetFloat();
+		}
+		return 10;
+	}
+
+	public override void ClientDisconnected(Edict client) {
+		BasePlayer? player = (BasePlayer?)BaseEntity.Instance(client);
+		if (player != null && player.IsPlayer()) {
+			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerDisconnected)) {
+				LuaEntity.Push_Entity(player);
+				gGM.CallNoReturns(1);
+			}
+			base.ClientDisconnected(client);
+		}
+	}
+
+	public override void DeathNotice(BasePlayer victim, in TakeDamageInfo info) {
+		if (gGM == null || !gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerDeath))
+			return;
+		LuaEntity.Push_Entity(victim);
+		LuaEntity.Push_Entity(info.GetInflictor());
+		LuaEntity.Push_Entity(info.GetAttacker());
+		gGM.CallNoReturns(3);
+	}
+
+	public override bool CanHaveItem(BasePlayer player, Item item) {
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerCanPickupItem)) {
+			LuaEntity.Push_Entity(player);
+			LuaEntity.Push_Entity(item);
+			if (!gGM.CallFinish(2))
+				return false;
+		}
+		return true;
 	}
 
 	public override void InitDefaultAIRelationships() {

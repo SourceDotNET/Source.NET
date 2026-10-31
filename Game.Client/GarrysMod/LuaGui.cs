@@ -20,16 +20,16 @@ public static partial class LuaGui
 	[LuaFunction]
 	static int EnableScreenClicker(ILuaInterface lua) {
 		if (!g_Lua!.GetBool(1)) {
-			GModBase.GetMouseInput()!.SetKeyboardInputEnabled(false);
+			GModBase.GetMouseInput()!.SetMouseInputEnabled(false);
 			GModBase.GetMouseInput()!.SetVisible(false);
 			return 0;
 		}
 
-		GModBase.GetGModBasePanel(true)!.SetKeyboardInputEnabled(true);
+		GModBase.GetGModBasePanel(true)!.SetMouseInputEnabled(true);
 		GModBase.GetMouseInput()!.SetVisible(true);
 		GModBase.GetMouseInput()!.MakePopup(true, false);
-		GModBase.GetMouseInput()!.SetKeyboardInputEnabled(true);
-		GModBase.GetMouseInput()!.SetMouseInputEnabled(false);
+		GModBase.GetMouseInput()!.SetMouseInputEnabled(true);
+		GModBase.GetMouseInput()!.SetKeyboardInputEnabled(false);
 		return 0;
 	}
 #endif

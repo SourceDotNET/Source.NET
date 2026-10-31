@@ -148,7 +148,95 @@ public class MDLCache : IMDLCache, IStudioDataCache
 	}
 
 	public void Flush(MDLHandle_t handle, MDLCacheFlush flushFlags = MDLCacheFlush.All) {
-		throw new NotImplementedException();
+		StudioData studioData = HandleToMDLDict[handle];
+		Assert(studioData != null);
+
+		bool ignoreLock = (flushFlags & MDLCacheFlush.IgnoreLock) != 0;
+
+		if ((flushFlags & MDLCacheFlush.StudioHWData) != 0)
+			UnloadHardwareData(handle, true, ignoreLock);
+
+		if ((flushFlags & MDLCacheFlush.VCollide) != 0)
+			DestroyVCollide(handle);
+
+		if ((flushFlags & MDLCacheFlush.VirtualModel) != 0)
+			FreeVirtualModel(handle);
+
+		if ((flushFlags & MDLCacheFlush.AnimBlock) != 0)
+			FreeAnimBlocks(handle);
+
+		if ((flushFlags & MDLCacheFlush.Autoplay) != 0)
+			FreeAutoplaySequences(studioData);
+
+		if ((flushFlags & MDLCacheFlush.StudioHDR) != 0) {
+			MdlCacheMsg($"MDLCache: Free studiohdr {GetModelName(handle)}\n");
+
+			if ((studioData.Flags & StudioDataFlags.LockedMDL) != 0)
+				studioData.Flags &= ~StudioDataFlags.LockedMDL;
+			studioData.Header = null;
+		}
+
+		if ((flushFlags & MDLCacheFlush.Vertexes) != 0) {
+			MdlCacheMsg($"MDLCache: Free VVD {GetModelName(handle)}\n");
+			studioData.VertexCache = null;
+		}
+
+		if (!IsDataLoaded(handle, MDLCacheDataType.StudioHDR))
+			NotifyFileUnloaded(handle, ".mdl");
+
+		if (!IsDataLoaded(handle, MDLCacheDataType.StudioHWData))
+			NotifyFileUnloaded(handle, GetVTXExtension());
+
+		if (!IsDataLoaded(handle, MDLCacheDataType.Vertexes))
+			NotifyFileUnloaded(handle, ".vvd");
+
+		if (!IsDataLoaded(handle, MDLCacheDataType.VCollide))
+			NotifyFileUnloaded(handle, ".phy");
+	}
+
+	private void UnloadHardwareData(MDLHandle_t handle, bool cacheRemove, bool lockedOk) {
+		// todo
+	}
+
+	private void DestroyVCollide(MDLHandle_t handle) {
+		StudioData studioData = HandleToMDLDict[handle];
+
+		if ((studioData.Flags & StudioDataFlags.VCollisionShared) != 0)
+			return;
+
+		if ((studioData.Flags & StudioDataFlags.VCollisionLoaded) != 0) {
+			studioData.Flags &= ~StudioDataFlags.VCollisionLoaded;
+			if (studioData.VCollisionData.SolidCount != 0) {
+				CacheNotify?.OnDataUnloaded(MDLCacheDataType.VCollide, handle);
+
+				MdlCacheMsg($"MDLCache: Unload vcollide {GetModelName(handle)}\n");
+
+				physcollision.VCollideUnload(studioData.VCollisionData);
+			}
+		}
+	}
+
+	private void FreeAnimBlocks(MDLHandle_t handle) {
+		StudioData studioData = HandleToMDLDict[handle];
+
+		if (studioData.AnimBlock != null) {
+			for (int i = 0; i < studioData.AnimBlockCount; ++i) {
+				MdlCacheMsg($"MDLCache: Free Anim block: {i}\n");
+				studioData.AnimBlock[i] = null;
+			}
+
+			studioData.AnimBlock = null;
+		}
+
+		studioData.AnimBlockCount = 0;
+	}
+
+	private void FreeAutoplaySequences(StudioData studioData) {
+		studioData.AutoplaySequenceList = [];
+	}
+
+	private void NotifyFileUnloaded(MDLHandle_t handle, ReadOnlySpan<char> extension) {
+		// todo
 	}
 
 	public Memory<byte> GetAnimBlock(MDLHandle_t handle, int block) {
@@ -808,13 +896,18 @@ public class MDLCache : IMDLCache, IStudioDataCache
 		if (nRefCount <= 0) {
 			ShutdownStudioData(handle);
 			HandleToMDLDict.Remove(handle, out _);
+			if (HandleToFileDict.Remove(handle, out UtlSymbol name))
+				FileToMDLDict.Remove(name, out _);
 		}
 
 		return nRefCount;
 	}
 
 	private void ShutdownStudioData(MDLHandle_t handle) {
-		throw new NotImplementedException();
+		Flush(handle);
+
+		Assert(HandleToMDLDict.ContainsKey(handle));
+		HandleToMDLDict[handle] = null!;
 	}
 
 	public void ResetErrorModelStatus(MDLHandle_t handle) {

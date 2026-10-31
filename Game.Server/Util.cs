@@ -11,6 +11,7 @@ using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Formats.BSP;
 using Source.Common.Mathematics;
+using Source.Common.Networking;
 using Source.Common.Physics;
 using Source.Engine.Server;
 
@@ -591,6 +592,46 @@ public static partial class Util
 		}
 
 		return player;
+	}
+
+	public static void GetPlayerConnectionInfo(int playerIndex, out int ping, out int packetloss) {
+		BasePlayer? player = PlayerByIndex(playerIndex);
+
+		INetChannelInfo? nci = engine.GetPlayerNetInfo(playerIndex);
+
+		if (nci != null && player != null && !player.IsBot()) {
+			double latency = nci.GetAverageLatency(NetFlow.FLOW_OUTGOING);
+
+			ReadOnlySpan<char> cmdRateStr = engine.GetClientConVarValue(playerIndex, "cl_cmdrate");
+
+			int cmdRate = Math.Max(1, atoi(cmdRateStr));
+			latency -= (0.5f / cmdRate) + TICKS_TO_TIME(1);
+
+			latency -= TICK_INTERVAL * 0.5f;
+
+			ping = (int)(latency * 1000.0f);
+			ping = Math.Clamp(ping, 5, 1000);
+
+			packetloss = (int)(100.0f * nci.GetAverageLoss(NetFlow.FLOW_INCOMING));
+			packetloss = Math.Clamp(packetloss, 0, 100);
+		}
+		else {
+			ping = 0;
+			packetloss = 0;
+		}
+	}
+
+	public static BasePlayer? PlayerByUserId(int userID) {
+		for (int i = 1; i <= gpGlobals.MaxClients; i++) {
+			BasePlayer? player = PlayerByIndex(i);
+			if (player == null || !player.IsConnected())
+				continue;
+
+			if (engine.GetPlayerUserId(player.Edict()) == userID)
+				return player;
+		}
+
+		return null;
 	}
 
 	public static BaseEntity? EntityByIndex(int entityIndex) {

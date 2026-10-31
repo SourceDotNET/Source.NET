@@ -876,6 +876,7 @@ public partial class C_BaseEntity : IClientEntity
 	public int Health;
 	[NetworkVar("m_iMaxHealth")]
 	public int MaxHealth;
+	public virtual int GetMaxHealth() => MaxHealth;
 	[NetworkVar("m_spawnflags")]
 	public int SpawnFlags;
 	[NetworkVar("m_iGModFlags")]
@@ -1246,7 +1247,29 @@ public partial class C_BaseEntity : IClientEntity
 
 	public virtual ref readonly Vector3 GetRenderOrigin() => ref GetAbsOrigin();
 	public virtual ref readonly QAngle GetRenderAngles() => ref GetAbsAngles();
+#if GMOD_DLL
+	Vector3 RenderBoundsOverrideMins;
+	Vector3 RenderBoundsOverrideMaxs;
+	bool HasRenderBoundsOverride;
+
+	public virtual void SetRenderBounds(in Vector3 mins, in Vector3 maxs) {
+		RenderBoundsOverrideMins = mins;
+		RenderBoundsOverrideMaxs = maxs;
+		HasRenderBoundsOverride = true;
+	}
+
+	public virtual bool GetRenderBoundsOverride(out Vector3 mins, out Vector3 maxs) {
+		mins = RenderBoundsOverrideMins;
+		maxs = RenderBoundsOverrideMaxs;
+		return HasRenderBoundsOverride;
+	}
+#endif
+
 	public void GetRenderBounds(out Vector3 mins, out Vector3 maxs) {
+#if GMOD_DLL
+		if (GetRenderBoundsOverride(out mins, out maxs))
+			return;
+#endif
 		ModelType nModelType = modelinfo.GetModelType(Model);
 		if (nModelType == ModelType.Studio || nModelType == ModelType.Brush)
 			modelinfo.GetModelRenderBounds(GetModel(), out mins, out maxs);
@@ -1274,6 +1297,10 @@ public partial class C_BaseEntity : IClientEntity
 	}
 
 	public virtual void UpdateOnRemove() {
+#if GMOD_DLL
+		if (GetRefEHandle().Index != Constants.INVALID_EHANDLE_INDEX)
+			garrysmod.EntityRemoved(this, DestroyedOnRecreateEntities);
+#endif
 		VPhysicsDestroyObject();
 
 		Assert(GetMoveParent() == null);
@@ -2536,7 +2563,7 @@ public partial class C_BaseEntity : IClientEntity
 	public bool IsDormant() => IsServerEntity() && Dormant;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private bool IsServerEntity() => Index != -1;
+	public bool IsServerEntity() => Index != -1;
 
 	public int EntIndex() {
 		return Index;
@@ -3538,7 +3565,7 @@ public partial class C_BaseEntity : IClientEntity
 
 	EHANDLE ShadowDirUseOtherEntity = new();
 
-	public bool GetShadowCastDirection(ref Vector3 direction, ShadowType shadowType) {
+	public virtual bool GetShadowCastDirection(ref Vector3 direction, ShadowType shadowType) {
 		if (ShadowDirUseOtherEntity.Get() != null)
 			return ShadowDirUseOtherEntity.Get()!.GetShadowCastDirection(ref direction, shadowType);
 		return false;

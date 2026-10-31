@@ -775,6 +775,18 @@ public partial class BaseCombatCharacter : BaseFlex
 		return GiveAmmo(count, ammoType, suppressSound);
 	}
 
+	public void ClearActiveWeapon() => SetActiveWeapon(null);
+
+	public void RemoveAllWeapons() {
+		ClearActiveWeapon();
+		for (int i = 0; i < MAX_WEAPONS; i++) {
+			if (MyWeapons[i].Get() != null) {
+				MyWeapons[i].Get()!.Delete();
+				MyWeaponsForModify()[i].Set(null);
+			}
+		}
+	}
+
 	public void SetActiveWeapon(BaseCombatWeapon? newWeapon) {
 		BaseCombatWeapon? oldWeapon = ActiveWeapon.Get();
 		if (newWeapon != oldWeapon) {

@@ -5,6 +5,7 @@ using System.Numerics;
 using Source.Common;
 using Source.Common.Commands;
 using Source.Common.Engine;
+using Source.Common.GarrysMod.Lua;
 using Source.Common.Mathematics;
 using Source.Common.Physics;
 using Source;
@@ -469,6 +470,17 @@ public partial class HL2_Player : BaseMultiplayerPlayer
 
 		// Found an object
 		if (useEntity != null) {
+#if GMOD_DLL
+			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerUse)) {
+				Game.Server.GarrysMod.LuaEntity.Push_Entity(this);
+				Game.Server.GarrysMod.LuaEntity.Push_Entity(useEntity);
+				if (gGM.CallReturns(2, 1)) {
+					ILuaObject ret = g_Lua!.GetReturn(0);
+					if (ret.GetType() == LuaType.Bool && !ret.GetBool())
+						return;
+				}
+			}
+#endif
 			//!!!UNDONE: traceline here to prevent +USEing buttons through walls
 			EntityCapabilities caps = useEntity.ObjectCaps();
 			Variant_t emptyVariant = default;
