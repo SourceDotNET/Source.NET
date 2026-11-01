@@ -322,7 +322,11 @@ public static partial class LuaNet
 
 			filter.AddRecipient(ToBasePlayer(ent)!);
 		}
-		// todo: else if (obj.GetType() == LuaType.RecipientFilter) for each recipient in Get_CRecipientFilter(1): filter.AddRecipient(UTIL_PlayerByIndex(...))
+		else if (obj.GetType() == LuaType.RecipientFilter) {
+			RecipientFilter other = LuaRecipientFilter.Get_RecipientFilter(1);
+			for (int i = 0; i < other.GetRecipientCount(); i++)
+				filter.AddRecipient(Util.PlayerByIndex(other.GetRecipientIndex(i))!);
+		}
 		else {
 			g_Started = false;
 			LuaEntity.Get_Entity(1, false);
@@ -391,7 +395,11 @@ public static partial class LuaNet
 
 			filter.RemoveRecipient(ToBasePlayer(ent)!);
 		}
-		// todo: else if (obj.GetType() == LuaType.RecipientFilter) for each recipient in Get_CRecipientFilter(1): filter.RemoveRecipient(UTIL_PlayerByIndex(...))
+		else if (obj.GetType() == LuaType.RecipientFilter) {
+			RecipientFilter other = LuaRecipientFilter.Get_RecipientFilter(1);
+			for (int i = 0; i < other.GetRecipientCount(); i++)
+				filter.RemoveRecipient(Util.PlayerByIndex(other.GetRecipientIndex(i))!);
+		}
 		else {
 			g_Started = false;
 			LuaEntity.Get_Entity(1, false);
