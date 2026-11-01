@@ -42,12 +42,34 @@ public class PhysicsSystem : AutoGameSystemPerFrame
 
 	static readonly ConVar cl_phys_timescale = new("cl_phys_timescale", "1.0", FCvar.Cheat, "Sets the scale of time for client-side physics (ragdolls)");
 
+#if GMOD_DLL
+	public static float g_GMOD_PhysTimeScale = 1.0f;
+	public static bool g_GMOD_PhysicsPaused;
+	public static TimeUnit_t g_GMOD_LastSimulationTime;
+
+	public static void GMOD_PhysicsSetTimeScale(float scale) {
+		if (scale <= 0.001f)
+			scale = 0.001f;
+		if (5.0f <= scale)
+			scale = 5.0f;
+		g_GMOD_PhysTimeScale = scale;
+	}
+
+	public static float GMOD_PhysicsGetTotalTimeScale() => cl_phys_timescale.GetFloat() * g_GMOD_PhysTimeScale;
+#endif
 
 	internal void PhysicsSimulate() {
 		TimeUnit_t frametime = gpGlobals.FrameTime;
 		if (physenv != null) {
+#if GMOD_DLL
+			TimeUnit_t startTime = engine.Time();
+#endif
 			physenv.DebugCheckContacts();
+#if GMOD_DLL
+			physenv.Simulate(GMOD_PhysicsGetTotalTimeScale() * frametime);
+#else
 			physenv.Simulate(frametime * cl_phys_timescale.GetDouble());
+#endif
 
 			int activeCount = physenv.GetActiveObjectCount();
 			IPhysicsObject?[]? activeList = null;
@@ -67,6 +89,9 @@ public class PhysicsSystem : AutoGameSystemPerFrame
 
 				ArrayPool<IPhysicsObject>.Shared.Return(activeList, true);
 			}
+#if GMOD_DLL
+			g_GMOD_LastSimulationTime = engine.Time() - startTime;
+#endif
 
 			// g_Collisions.BufferTouchEvents(false);
 			// g_Collisions.FrameUpdate();
