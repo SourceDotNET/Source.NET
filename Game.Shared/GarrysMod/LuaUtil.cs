@@ -553,7 +553,6 @@ public static partial class LuaUtil
 		return filter;
 	}
 #endif
-#if CLIENT_DLL || MENU_DLL
 	static void TableToKeyValues(ILuaInterface lua, ILuaObject table, System.Text.StringBuilder output, string name, int depth) {
 		output.Append('\t', depth).Append('"').Append(name).Append("\"\n");
 		output.Append('\t', depth).Append("{\n");
@@ -904,7 +903,6 @@ public static partial class LuaUtil
 		}
 		return 1;
 	}
-#endif
 
 #if GAME_DLL
 	[LuaFunction]

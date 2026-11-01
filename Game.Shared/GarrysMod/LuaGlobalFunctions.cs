@@ -273,6 +273,17 @@ public static partial class LuaGlobalFunctions
 
 #if GAME_DLL
 	static ConVar? hostnameCvar;
+
+	static readonly ConVarRef sv_logecho = new("sv_logecho");
+
+	[LuaGlobal]
+	static int ServerLog(ILuaInterface lua) {
+		if (sv_logecho.GetInt() == 0)
+			return 0;
+		Dbg.Msg($"ServerLog: {lua.GetString(1)}");
+		engine.LogPrint(lua.GetString(1));
+		return 0;
+	}
 #endif
 
 #if !MENU_DLL

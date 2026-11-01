@@ -559,7 +559,11 @@ IModelLoader modelloader, ICommandLine commandLine,
 				CL.FullyConnected();
 				if (NetChannel != null) {
 					NetChannel.SetTimeout(cl_timeout.GetDouble());
+#if GMOD_DLL
+					NetChannel.SetMaxBufferSize(true, Protocol.MAX_PAYLOAD);
+#else
 					NetChannel.SetMaxBufferSize(true, Protocol.MAX_DATAGRAM_PAYLOAD);
+#endif
 				}
 
 				HostState.OnClientConnected();

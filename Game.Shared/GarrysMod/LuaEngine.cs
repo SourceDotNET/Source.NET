@@ -2,6 +2,7 @@
 using Source.Common.Formats.BSP;
 using Source.Common.GarrysMod;
 using Source.Common.GarrysMod.Lua;
+using Source.Common.Hashing;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
@@ -213,6 +214,80 @@ public static partial class LuaEngine
 		}
 		lua.ErrorFromLua($"Invalid lightstyle id {style}\n");
 		return 0;
+	}
+#endif
+
+#if CLIENT_DLL
+	[LuaFunction]
+	static int WriteDupe(ILuaInterface lua) {
+		ReadOnlySpan<byte> data = lua.GetStringBytes(1);
+		ReadOnlySpan<byte> jpeg = lua.GetStringBytes(2);
+		string name = MD5Value.Compute(data).ToString();
+
+		byte[] buffer = new byte[4 + data.Length];
+		buffer[0] = (byte)'D';
+		buffer[1] = (byte)'U';
+		buffer[2] = (byte)'P';
+		buffer[3] = (byte)'3';
+		data.CopyTo(buffer.AsSpan(4));
+
+		string path = $"dupes/{name}.dupe";
+		if (!filesystem.FileExists(path, "MOD"))
+			filesystem.WriteFile(path, "MOD", buffer);
+
+		filesystem.WriteFile($"dupes/{name}.jpg", "MOD", jpeg);
+		lua.PushBool(true);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int OpenDupe(ILuaInterface lua) {
+		string path = new(lua.CheckString(1));
+		if (!GMOD.IsValidPath(path))
+			return 0;
+
+		if (path.Length > 13 && strncmp(path, "content/4000/", 13) == 0) {
+			int slash = path.IndexOf('/', 13);
+			if (slash != -1 && ulong.TryParse(path.AsSpan(13, slash - 13), out ulong workshopID) && workshopID != 0)
+				path = filesystem.Addons().GetAddonFilepath(workshopID, false);
+		}
+
+		long size = filesystem.Size(path, "MOD");
+		if (size < 4)
+			return 0;
+
+		byte[] file = new byte[size];
+		if (!filesystem.ReadFile(path, "MOD", file, 0))
+			return 0;
+
+		if (file[0] != 'D' || file[1] != 'U' || file[2] != 'P')
+			return 0;
+
+		int headerSize;
+		if (file[3] == '1')
+			headerSize = 16;
+		else if (file[3] == '3')
+			headerSize = 4;
+		else
+			return 0;
+
+		int dataSize = (int)size - headerSize;
+		if ((uint)(dataSize - 1) > 2097151) {
+			Warning($"Dupe Filesize is crazy ({dataSize})\n");
+			return 0;
+		}
+
+		lua.PushString(file.AsSpan(headerSize, dataSize));
+		LuaObject data = new();
+		data.SetFromStack(-1);
+		lua.Pop(1);
+
+		LuaTable table = new(null, 0);
+		table.SetMember("data", data);
+		table.Push();
+		table.UnReference();
+		data.UnReference();
+		return 1;
 	}
 #endif
 }
