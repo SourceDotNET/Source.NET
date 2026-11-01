@@ -6,7 +6,7 @@ namespace Game.Server;
 [LinkEntityToClass("light_directional")]
 [LinkEntityToClass("light_glspot")]
 [LinkEntityToClass("light_spot")]
-public class Light : PointEntity // TODO, server only
+public class Light : ServerOnlyPointEntity
 {
 
 }
