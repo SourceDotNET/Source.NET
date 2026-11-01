@@ -97,5 +97,11 @@ public static partial class LuaSound
 		data.UnReference();
 		return 0;
 	}
+
+	[LuaFunction]
+	static int AddSoundOverrides(ILuaInterface lua) {
+		soundemitterbase.AddSoundOverrides(lua.CheckString(1), false);
+		return 0;
+	}
 }
 #endif

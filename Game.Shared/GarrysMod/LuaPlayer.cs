@@ -1080,5 +1080,236 @@ public static partial class LuaPlayer
 	// 	return 1;
 	// }
 #endif
+
+	[LuaMethod]
+	static int Player__GetCanWalk(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		lua.PushBool(player.CanWalk);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetCanZoom(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		lua.PushBool(player.CanZoom);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetDrivingMode(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		lua.PushNumber(player.DrivingMode);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetJumpPower(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		lua.PushNumber(player.JumpPower);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetStepSize(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		lua.PushNumber(player.StepSize);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetViewOffsetDucked(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		LuaVector.Push_Vector(player.ViewOffsetDucked);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetLaggedMovementValue(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber(player.LaggedMovementValue);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__IsSuitEquipped(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(player.IsSuitEquipped());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__IsWorldClickingDisabled(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(player.DisableWorldClicking);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__SetCanWalk(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		player.CanWalk = lua.GetBool(2);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetCanZoom(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		player.CanZoom = lua.GetBool(2);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetStepSize(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		player.StepSize = (float)lua.CheckNumber(2);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__SetViewOffsetDucked(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		player.ViewOffsetDucked = LuaVector.Get_Vector(2);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__GetMaxSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber(player.MaxSpeed());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__SetMaxSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.SetMaxSpeed((float)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__GetWalkSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber(player.GetWalkSpeed());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetSlowWalkSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber(player.GetSlowWalkSpeed());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetDuckSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber(player.GetDuckSpeed());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetUnDuckSpeed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber(player.GetUnDuckSpeed());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__IsFrozen(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool((player.GetFlags() & EntityFlags.Frozen) != 0);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetAllowFullRotation(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		lua.PushBool((player.GModPlayerFlags & 16) != 0);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__SetAllowFullRotation(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		player.GModPlayerFlags = lua.GetBool(2) ? player.GModPlayerFlags | 16 : player.GModPlayerFlags & ~16;
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__GetAvoidPlayers(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		lua.PushBool((player.GModPlayerFlags & 8) != 0);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetNoCollideWithTeammates(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		lua.PushBool((player.GModPlayerFlags & 2) != 0);
+		return 1;
+	}
+
+#if CLIENT_DLL
+	[LuaMethod]
+	static int Player__IsMuted(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(GetClientVoiceMgr().IsPlayerBlocked(player.EntIndex()));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__SetMuted(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		bool muted = lua.GetBool(2);
+		GetClientVoiceMgr().SetPlayerBlockedState(player.EntIndex(), muted);
+		return 0;
+	}
+#endif
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Player__SetLaggedMovementValue(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		float value = (float)lua.CheckNumber(2);
+		if (0.0f <= value)
+			player.LaggedMovementValue = value;
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__FlashlightIsOn(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(player.FlashlightIsOn());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__IsConnected(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(player.IsConnected());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetActivity(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushNumber((int)player.GetActivity());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GodEnable(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.AddFlag(EntityFlags.GodMode);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__GodDisable(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.RemoveFlag(EntityFlags.GodMode);
+		return 0;
+	}
+#endif
 }
 #endif

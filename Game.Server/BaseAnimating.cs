@@ -140,6 +140,23 @@ public partial class BaseAnimating : BaseEntity
 	[NetworkVar("m_pFlexManipulator")]
 	public partial EHANDLE FlexManipulator { get; set; }
 
+	public virtual void SetBoneManipulator(BaseEntity? manipulator) => BoneManipulator = EHANDLE.FromEntity(manipulator);
+
+	public virtual BaseEntity? GetBoneManipulator(bool create) {
+		if (BoneManipulator.Get() == null && create) {
+			BaseEntity? manipulator = CreateEntityByName("manipulate_bone");
+			if (manipulator == null)
+				return null;
+
+			manipulator.SetParent(this, -1);
+			manipulator.SetLocalOrigin(default);
+			manipulator.Spawn();
+			SetBoneManipulator(manipulator);
+		}
+
+		return BoneManipulator.Get();
+	}
+
 	public virtual void SetFlexManipulator(BaseEntity? manipulator) => FlexManipulator = EHANDLE.FromEntity(manipulator);
 
 	public virtual BaseEntity? GetFlexManipulator(bool create) {

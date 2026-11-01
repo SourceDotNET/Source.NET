@@ -30,6 +30,57 @@ namespace Game.Server
 		int IKCounter;
 #endif
 
+		public void SetModelScale(float scale, float changeDuration = 0.0f) {
+			if (changeDuration > 0.0f) {
+				ref ModelScaleData mvs = ref CreateDataObject<ModelScaleData>(DataObjectType.ModelScale);
+				mvs.ModelScaleStart = ModelScale;
+				mvs.ModelScaleGoal = scale;
+				mvs.ModelScaleStartTime = (float)gpGlobals.CurTime;
+				mvs.ModelScaleFinishTime = mvs.ModelScaleStartTime + changeDuration;
+#if !CLIENT_DLL
+				SetContextThink(UpdateModelScale, gpGlobals.CurTime, "UpdateModelScaleThink");
+#endif
+			}
+			else {
+				ModelScale = scale;
+				RefreshCollisionBounds();
+
+				if (HasDataObjectType(DataObjectType.ModelScale))
+					DestroyDataObject(DataObjectType.ModelScale);
+			}
+		}
+
+#if CLIENT_DLL
+		public virtual void UpdateModelScale() {
+#else
+		public void UpdateModelScale() {
+#endif
+			ref ModelScaleData mvs = ref GetDataObject<ModelScaleData>(DataObjectType.ModelScale);
+			if (Unsafe.IsNullRef(ref mvs))
+				return;
+
+			float dt = mvs.ModelScaleFinishTime - mvs.ModelScaleStartTime;
+			Assert(dt > 0.0f);
+
+			float frac = ((float)gpGlobals.CurTime - mvs.ModelScaleStartTime) / dt;
+			frac = Math.Clamp(frac, 0.0f, 1.0f);
+
+			if (gpGlobals.CurTime >= mvs.ModelScaleFinishTime) {
+				ModelScale = mvs.ModelScaleGoal;
+				DestroyDataObject(DataObjectType.ModelScale);
+			}
+			else
+				ModelScale = MathLib.Lerp(frac, mvs.ModelScaleStart, mvs.ModelScaleGoal);
+
+			RefreshCollisionBounds();
+#if !CLIENT_DLL
+			if (frac < 1.0f)
+				SetContextThink(UpdateModelScale, gpGlobals.CurTime, "UpdateModelScaleThink");
+#endif
+		}
+
+		public void RefreshCollisionBounds() => CollisionProp().RefreshScaledCollisionBounds();
+
 		Vector3 GetIKOrigin() {
 #if CLIENT_DLL
 			return GetRenderOrigin();

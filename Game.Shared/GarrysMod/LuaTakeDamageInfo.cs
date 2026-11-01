@@ -1,6 +1,8 @@
 #if CLIENT_DLL || GAME_DLL
 using Game.Shared;
 
+using Source;
+
 using Source.Common.GarrysMod.Lua;
 
 #if CLIENT_DLL
@@ -31,6 +33,20 @@ public static partial class LuaTakeDamageInfo
 	[LuaGlobal]
 	static int DamageInfo(ILuaInterface lua) {
 		Push_TakeDamageInfo(new TakeDamageInfoRef { Info = new() });
+		return 1;
+	}
+
+	[LuaMethod]
+	static int CTakeDamageInfo____tostring(ILuaInterface lua) {
+		Span<char> str = stackalloc char[256];
+		sprintf(str, "CTakeDamageInfo [%.1f dmg]").F(Get_TakeDamageInfo(1).GetDamage());
+		lua.PushString(((ReadOnlySpan<char>)str).SliceNullTerminatedString());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int CTakeDamageInfo__IsValid(ILuaInterface lua) {
+		lua.PushBool(LC_TakeDamageInfo.Get(1) is TakeDamageInfoRef);
 		return 1;
 	}
 

@@ -138,7 +138,24 @@ public class ED
 	}
 
 	private static void SpewEdicts() {
-		DevWarning("SpewEdicts not implemented\n");
+		Dictionary<string, int> mapEnts = [];
+
+		int edictNum = 1;
+		for (int i = 0; i < sv.NumEdicts; ++i) {
+			Edict e = sv.Edicts![i];
+			++edictNum;
+			string className = new(e.GetClassName());
+			mapEnts[className] = mapEnts.GetValueOrDefault(className) + 1;
+		}
+
+		List<KeyValuePair<string, int>> vecEnts = [.. mapEnts];
+		vecEnts.Sort((p1, p2) => p1.Value - p2.Value);
+
+		// todo: g_Log.Printf
+		Msg("Spewing edict counts:\n");
+		foreach (KeyValuePair<string, int> ent in vecEnts)
+			Msg($"({ent.Value / (float)edictNum * 100.0f:F2}%) {ent.Value}\t{ent.Key}\n");
+		Msg($"Total edicts: {edictNum}\n");
 	}
 
 	public static void ClearEdict(Edict e) {

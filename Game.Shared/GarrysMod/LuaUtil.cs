@@ -906,6 +906,31 @@ public static partial class LuaUtil
 	}
 #endif
 
+#if GAME_DLL
+	[LuaFunction]
+	static int Effect(ILuaInterface lua) {
+		EffectData data = LuaEffectData.Get_EffectData(2);
+		data.AllowOverride = true;
+		if (lua.GetType(3) == LuaType.Bool)
+			data.AllowOverride = lua.GetBool(3);
+
+		if (lua.GetType(4) == LuaType.Bool && lua.GetBool(4)) {
+			PASFilter filter = new(data.Origin);
+			filter.SetIgnorePredictionCull(true);
+			TempEnts.DispatchEffect(lua.CheckString(1), data, filter);
+			return 0;
+		}
+
+		if (lua.GetType(4) == LuaType.RecipientFilter) {
+			TempEnts.DispatchEffect(lua.CheckString(1), data, LuaRecipientFilter.Get_RecipientFilter(4));
+			return 0;
+		}
+
+		TempEnts.DispatchEffect(lua.CheckString(1), data);
+		return 0;
+	}
+#endif
+
 #if MENU_DLL
 	[LuaFunction]
 	static int FullPathToRelative_Menu(ILuaInterface lua) {

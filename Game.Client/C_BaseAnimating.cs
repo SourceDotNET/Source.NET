@@ -234,9 +234,6 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 			return 0;
 	}
 
-	public virtual void UpdateModelScale() {
-		// todo
-	}
 
 	bool SequenceLoops;
 	bool SequenceFinished;

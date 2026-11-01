@@ -202,6 +202,49 @@ public class GlobalEntityList : BaseEntityList
 	public int NumberOfEdicts() => NumEdicts;
 	public bool IsClearingEntities() => ClearingEntities;
 
+	public BaseEntity? FindEntityInSphere(BaseEntity? startEntity, in Vector3 center, float radius) {
+		EntInfo? info = startEntity != null ? NextEntInfo(GetEntInfoPtr(startEntity.GetRefEHandle())) : FirstEntInfo();
+
+		for (; info != null; info = NextEntInfo(info)) {
+			BaseEntity? ent = (BaseEntity?)info.Entity;
+			if (ent == null) {
+				DevWarning("NULL entity in global entity list!\n");
+				continue;
+			}
+
+			if (ent.Edict() == null)
+				continue;
+
+			Vector3 relativeCenter = ent.CollisionProp().WorldToCollisionSpace(center);
+			if (!CollisionUtils.IsBoxIntersectingSphere(ent.CollisionProp().OBBMins(), ent.CollisionProp().OBBMaxs(), relativeCenter, radius))
+				continue;
+
+			return ent;
+		}
+
+		return null;
+	}
+
+	public BaseEntity? FindEntityByModel(BaseEntity? startEntity, ReadOnlySpan<char> modelName) {
+		EntInfo? info = startEntity != null ? NextEntInfo(GetEntInfoPtr(startEntity.GetRefEHandle())) : FirstEntInfo();
+
+		for (; info != null; info = NextEntInfo(info)) {
+			BaseEntity? ent = (BaseEntity?)info.Entity;
+			if (ent == null) {
+				DevWarning("NULL entity in global entity list!\n");
+				continue;
+			}
+
+			if (ent.Edict() == null || ent.GetModelName().IsEmpty)
+				continue;
+
+			if (FStrEq(ent.GetModelName(), modelName))
+				return ent;
+		}
+
+		return null;
+	}
+
 	public BaseEntity? FirstEnt() => NextEnt(null);
 
 	public BaseEntity? NextEnt(BaseEntity? currentEnt) {

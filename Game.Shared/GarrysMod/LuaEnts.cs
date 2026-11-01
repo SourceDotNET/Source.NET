@@ -2,6 +2,8 @@ using Source.Common;
 
 using System.Numerics;
 #if CLIENT_DLL || GAME_DLL
+using Game.Shared;
+
 using Source.Common.GarrysMod.Lua;
 
 #if CLIENT_DLL
@@ -200,7 +202,32 @@ public static partial class LuaEnts
 		return 1;
 	}
 
-	// todo: FindInSphere
+	[LuaFunction]
+	static int FindInSphere(ILuaInterface lua) {
+		Vector3 center = LuaVector.Get_Vector(1);
+		float radius = (float)lua.CheckNumber(2);
+		lua.CreateTable();
+		int i = 1;
+#if CLIENT_DLL
+		for (BaseEntity? ent = cl_entitylist.FirstBaseEntity(); ent != null; ent = cl_entitylist.NextBaseEntity(ent)) {
+			if (ent.IsEFlagSet(EFL.KillMe))
+				continue;
+			Vector3 relativeCenter = ent.CollisionProp().WorldToCollisionSpace(center);
+			if (!CollisionUtils.IsBoxIntersectingSphere(ent.CollisionProp().OBBMins(), ent.CollisionProp().OBBMaxs(), relativeCenter, radius))
+				continue;
+			lua.PushNumber(i++);
+			LuaEntity.Push_Entity(ent);
+			lua.SetTable(-3);
+		}
+#else
+		for (BaseEntity? ent = gEntList.FindEntityInSphere(null, center, radius); ent != null; ent = gEntList.FindEntityInSphere(ent, center, radius)) {
+			lua.PushNumber(i++);
+			LuaEntity.Push_Entity(ent);
+			lua.SetTable(-3);
+		}
+#endif
+		return 1;
+	}
 #if CLIENT_DLL
 	static readonly C_BaseEntity?[] FindList = new C_BaseEntity?[8192];
 #else
@@ -246,7 +273,21 @@ public static partial class LuaEnts
 		return 1;
 	}
 
-	// todo: FindByModel
+#if GAME_DLL
+	[LuaFunction]
+	static int FindByModel(ILuaInterface lua) {
+		string model = new(lua.CheckString(1));
+		lua.CreateTable();
+		int i = 1;
+		for (BaseEntity? ent = gEntList.FindEntityByModel(null, model); ent != null; ent = gEntList.FindEntityByModel(ent, model)) {
+			lua.PushNumber(i++);
+			LuaEntity.Push_Entity(ent);
+			lua.SetTable(-3);
+		}
+		return 1;
+	}
+#endif
+	// todo: client FindByModel
 
 	[LuaFunction]
 	static int GetByIndex(ILuaInterface lua) {

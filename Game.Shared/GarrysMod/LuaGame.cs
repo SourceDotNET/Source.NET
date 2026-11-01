@@ -82,11 +82,39 @@ public static partial class LuaGame
 	// todo: GetMapNext
 	// todo: ConsoleCommand
 	// todo: RemoveRagdolls
-	// todo: SetTimeScale
-	// todo: SetSkillLevel
-	// todo: GetTimeScale
-	// todo: GetSkillLevel
-	// todo: AddParticles
+#if GAME_DLL
+	[LuaFunction]
+	static int SetTimeScale(ILuaInterface lua) {
+		if (g_pGameRules is not GMODGameRules rules)
+			return 0;
+		rules.TimeScale = (float)g_Lua!.CheckNumber(1);
+		return 0;
+	}
+
+	[LuaFunction]
+	static int SetSkillLevel(ILuaInterface lua) {
+		if (g_pGameRules is not GMODGameRules rules)
+			return 0;
+		rules.SkillLevel = (int)g_Lua!.CheckNumber(1);
+		return 0;
+	}
+#endif
+
+	[LuaFunction]
+	static int GetTimeScale(ILuaInterface lua) {
+		if (g_pGameRules is not GMODGameRules rules)
+			return 0;
+		g_Lua!.PushNumber(rules.TimeScale);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetSkillLevel(ILuaInterface lua) {
+		if (g_pGameRules is not GMODGameRules rules)
+			return 0;
+		g_Lua!.PushNumber(rules.SkillLevel);
+		return 1;
+	}
 
 	[LuaFunction]
 	static int MountGMA(ILuaInterface lua) {
@@ -123,8 +151,11 @@ public static partial class LuaGame
 #endif
 		return 1;
 	}
-	// todo: MaxPlayers
-	// todo: GetAmmoID
+	[LuaFunction]
+	static int GetAmmoID(ILuaInterface lua) {
+		g_Lua!.PushNumber(GetAmmoDef().Index(g_Lua.CheckString(1)));
+		return 1;
+	}
 	// todo: GetAmmoTypes
 
 	[LuaFunction]

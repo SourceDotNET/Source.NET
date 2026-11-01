@@ -1,4 +1,5 @@
 #if CLIENT_DLL || GAME_DLL || MENU_DLL
+using Source.Common.Formats.BSP;
 using Source.Common.GarrysMod;
 using Source.Common.GarrysMod.Lua;
 
@@ -201,5 +202,18 @@ public static partial class LuaEngine
 		table.UnReference();
 		return 1;
 	}
+
+#if GAME_DLL
+	[LuaFunction]
+	static int LightStyle(ILuaInterface lua) {
+		uint style = (uint)lua.CheckNumber(1);
+		if (style < BSPFileCommon.MAX_LIGHTSTYLES) {
+			engine.LightStyle((int)style, lua.CheckString(2));
+			return 0;
+		}
+		lua.ErrorFromLua($"Invalid lightstyle id {style}\n");
+		return 0;
+	}
+#endif
 }
 #endif

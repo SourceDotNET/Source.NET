@@ -715,6 +715,14 @@ public struct StepSimulationStep
 	public Quaternion Rotation;
 }
 
+public struct ModelScaleData
+{
+	public float ModelScaleStart;
+	public float ModelScaleGoal;
+	public float ModelScaleFinishTime;
+	public float ModelScaleStartTime;
+}
+
 public struct StepSimulationData
 {
 	public bool OriginActive;

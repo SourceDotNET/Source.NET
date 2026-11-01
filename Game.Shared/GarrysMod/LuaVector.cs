@@ -130,7 +130,10 @@ public static partial class LuaVector
 			vec.Y *= other.Y;
 			vec.Z *= other.Z;
 		}
-		// todo: type == LuaType.Matrix: *vec = *Get_VMatrix(2) * *vec;
+#if !MENU_DLL
+		else if (type == LuaType.Matrix)
+			vec = MathLib.VMul4x3(ref LuaVMatrix.Get_VMatrix(2), vec);
+#endif
 		else {
 			float scale = (float)g_Lua.CheckNumber(2);
 			vec.X *= scale;

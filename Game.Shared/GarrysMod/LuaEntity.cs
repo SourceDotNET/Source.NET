@@ -530,6 +530,70 @@ public static partial class LuaEntity
 		return 0;
 	}
 
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__PhysicsInit(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (!CanModifyPhysics(ent)) {
+			lua.PushBool(false);
+			return 1;
+		}
+
+		if (PhysIsInCallback() && ent.VPhysicsGetObject() != null) {
+			lua.ErrorFromLua("Cannot destroy physics in a physics callback!");
+			lua.PushBool(false);
+			return 1;
+		}
+
+		Solid solid = default;
+		if (!PhysModelParseSolid(ref solid, ent, ent.GetModelIndex())) {
+			lua.PushBool(false);
+			return 1;
+		}
+
+		int solidType = Math.Clamp((int)lua.CheckNumber(2), 0, 6);
+		if (lua.GetType(3) != LuaType.Nil)
+			solid.MassCenterOverride = LuaVector.Get_Vector(3);
+
+		ent.VPhysicsDestroyObject();
+		IPhysicsObject? phys = ent.VPhysicsInitNormal((SolidType)solidType, 0, true, ref solid);
+		if (phys == null && solidType != 0) {
+			Warning("Entity:PhysicsInit() - Failed to create physics for entity\n");
+			lua.PushBool(false);
+			return 1;
+		}
+		lua.PushBool(true);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__PhysicsInitStatic(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (!CanModifyPhysics(ent)) {
+			lua.PushBool(false);
+			return 1;
+		}
+
+		if (PhysIsInCallback() && ent.VPhysicsGetObject() != null) {
+			lua.ErrorFromLua("Cannot destroy physics in a physics callback!");
+			lua.PushBool(false);
+			return 1;
+		}
+
+		ent.VPhysicsDestroyObject();
+		int solidType = Math.Clamp((int)lua.CheckNumber(2), 0, 6);
+		ent.CollisionProp().SetSolid((SolidType)solidType);
+		IPhysicsObject? phys = ent.VPhysicsInitStatic();
+		if (phys == null && solidType != 0) {
+			Warning("Entity:VPhysicsInitStatic() - Failed to create physics for entity\n");
+			lua.PushBool(false);
+			return 1;
+		}
+		lua.PushBool(true);
+		return 1;
+	}
+#endif
+
 	[LuaMethod]
 	static int Entity__SetColor(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
@@ -1763,8 +1827,13 @@ public static partial class LuaEntity
 		if (ent.IsPlayer() && prediction.InPrediction())
 			filter.UsePredictionRules();
 #else
-		// if (lua.GetType(9) == LuaType.RecipientFilter) { filter = Get_CRecipientFilter(9) ... } // really important TODO
-		PASAttenuationFilter filter = new(soundEnt, ATTN_NORM);
+		RecipientFilter filter;
+		if (lua.GetType(9) == LuaType.RecipientFilter) {
+			filter = new();
+			filter.CopyFrom(LuaRecipientFilter.Get_RecipientFilter(9));
+		}
+		else
+			filter = new PASAttenuationFilter(soundEnt, ATTN_NORM);
 		if (ent.IsPlayer())
 			filter.UsePredictionRules();
 #endif
@@ -2471,6 +2540,509 @@ public static partial class LuaEntity
 			ent.LuaCalcAbsolutePosition.SetFromStack(3);
 		else
 			ent.LuaCalcAbsolutePosition.UnReference();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetEffects(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber(ent.Effects);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetElasticity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber(ent.Elasticity);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetFriction(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber(ent.Friction);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetGravity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber(ent.GetGravity());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetAbsVelocity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaVector.Push_Vector(ent.GetAbsVelocity());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetBaseVelocity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaVector.Push_Vector(ent.GetBaseVelocity());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetLocalAngularVelocity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaAngle.Push_Angle(ent.GetLocalAngularVelocity());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetMoveCollide(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber(ent.MoveCollide);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetParentAttachment(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber(ent.ParentAttachment);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetRenderFX(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber(ent.RenderFX);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetRenderMode(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber(ent.RenderMode);
+		return 1;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__GetEFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber((int)ent.GetEFlags());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__MapCreationID(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber(ent.HammerID);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__CreatedByMap(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushBool(ent.HammerID != -1);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetElasticity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.Elasticity = (float)lua.CheckNumber(2);
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
+	static int Entity__IsEFlagSet(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushBool(ent.IsEFlagSet((EFL)(int)lua.CheckNumber(2)));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__IsEffectActive(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushBool(ent.IsEffectActive((EntityEffects)(int)lua.CheckNumber(2)));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__RemoveEffects(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.RemoveEffects((EntityEffects)(int)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__AddSolidFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.AddSolidFlags((SolidFlags)(int)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__RemoveSolidFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.RemoveSolidFlags((SolidFlags)(int)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetSolidFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetSolidFlags((SolidFlags)(int)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetSolidFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber((int)ent.CollisionProp().GetSolidFlags());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetSolid(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber((int)ent.CollisionProp().GetSolid());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetSolid(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int solid = Math.Clamp((int)lua.CheckNumber(2), 0, 6);
+		ent.CollisionProp().SetSolid((SolidType)solid);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__IsSolid(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushBool(ent.IsSolid());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__OBBCenter(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaVector.Push_Vector(ent.CollisionProp().OBBCenter());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__BoundingRadius(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushNumber(ent.CollisionProp().BoundingRadius());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetFriction(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.Friction = (float)lua.CheckNumber(2);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetGravity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetGravity((float)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetRenderFX(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.RenderFX = (byte)(int)lua.CheckNumber(2);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetMoveCollide(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int moveCollide = Math.Clamp((int)lua.CheckNumber(2), 0, 3);
+		ent.SetMoveCollide((MoveCollide)moveCollide);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetLocalAngles(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaAngle.Push_Angle(ent.GetLocalAngles());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetLocalAngles(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetLocalAngles(LuaAngle.Get_Angle(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetLocalPos(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaVector.Push_Vector(ent.GetLocalOrigin());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetFlexNum(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe)) {
+			lua.PushNumber(0);
+			return 1;
+		}
+		lua.PushNumber((int)animating.GetNumFlexControllers());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetColor(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushColor(ent.ColorRender);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetVelocity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetBaseVelocity(LuaVector.Get_Vector(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetChildren(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.CreateTable();
+		int i = 1;
+		for (BaseEntity? child = ent.FirstMoveChild(); child != null; child = child.NextMovePeer()) {
+			lua.PushNumber(i++);
+			LuaEntity.Push_Entity(child);
+			lua.SetTable(-3);
+		}
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetCollisionGroup(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent) || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+		int group = Math.Clamp((int)lua.CheckNumber(2), 0, 33);
+		ent.SetCollisionGroup((CollisionGroup)group);
+		return 0;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__HasBoneManipulations(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		lua.PushBool(animating != null && !ent.IsEFlagSet(EFL.KillMe) && animating.GetBoneManipulator(false) != null);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetManipulateBonePosition(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe) || animating.GetBoneManipulator(false) is not BoneManipulate manipulator) {
+			LuaVector.Push_Vector(default);
+			return 1;
+		}
+		LuaVector.Push_Vector(manipulator.GetBonePosition((byte)(int)lua.CheckNumber(2)));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetManipulateBoneAngles(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe) || animating.GetBoneManipulator(false) is not BoneManipulate manipulator) {
+			LuaAngle.Push_Angle(default);
+			return 1;
+		}
+		Vector3 ang = manipulator.GetBoneAngles((byte)(int)lua.CheckNumber(2));
+		LuaAngle.Push_Angle(new QAngle(ang.X, ang.Y, ang.Z));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetManipulateBoneScale(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe) || animating.GetBoneManipulator(false) is not BoneManipulate manipulator) {
+			LuaVector.Push_Vector(new Vector3(1.0f, 1.0f, 1.0f));
+			return 1;
+		}
+		LuaVector.Push_Vector(manipulator.GetBoneScale((byte)(int)lua.CheckNumber(2)));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__ManipulateBonePosition(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || IsQueuedForRemoval(ent) || ent.IsEFlagSet(EFL.KillMe) || animating.GetBoneManipulator(true) is not BoneManipulate manipulator)
+			return 0;
+		bool networkUpdate = lua.GetType(4) == LuaType.Nil || lua.GetBool(4);
+		Vector3 pos = LuaVector.Get_Vector(3);
+		manipulator.SetBonePosition((byte)(int)lua.CheckNumber(2), pos, networkUpdate);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__ManipulateBoneAngles(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || IsQueuedForRemoval(ent) || ent.IsEFlagSet(EFL.KillMe) || animating.GetBoneManipulator(true) is not BoneManipulate manipulator)
+			return 0;
+		bool networkUpdate = lua.GetType(4) == LuaType.Nil || lua.GetBool(4);
+		QAngle ang = LuaAngle.Get_Angle(3);
+		manipulator.SetBoneAngles((byte)(int)lua.CheckNumber(2), new Vector3(ang.X, ang.Y, ang.Z), networkUpdate);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__ManipulateBoneScale(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe) || animating.GetBoneManipulator(true) is not BoneManipulate manipulator)
+			return 0;
+		Vector3 scale = LuaVector.Get_Vector(3);
+		manipulator.SetBoneScale((byte)(int)lua.CheckNumber(2), scale);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetName(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushString(ent.GetEntityName() ?? "");
+		return 1;
+	}
+#endif
+
+	[LuaMethod]
+	static int Entity__GetCollisionBounds(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaVector.Push_Vector(ent.CollisionProp().OBBMins());
+		LuaVector.Push_Vector(ent.CollisionProp().OBBMaxs());
+		return 2;
+	}
+
+	[LuaMethod]
+	static int Entity__SetCollisionBounds(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		LuaVector.OrderVectors(LuaVector.Get_Vector(2), LuaVector.Get_Vector(3), out Vector3 mins, out Vector3 maxs);
+		if (lua.GetType(4) == LuaType.Vector) {
+			mins -= LuaVector.Get_Vector(4);
+			maxs -= LuaVector.Get_Vector(4);
+		}
+		ent.SetCollisionBounds(mins, maxs);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetCollisionBoundsWS(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Vector3 a = LuaVector.Get_Vector(2) - ent.GetAbsOrigin();
+		Vector3 b = LuaVector.Get_Vector(3) - ent.GetAbsOrigin();
+		LuaVector.OrderVectors(a, b, out Vector3 mins, out Vector3 maxs);
+		if (lua.GetType(4) == LuaType.Vector) {
+			mins -= LuaVector.Get_Vector(4);
+			maxs += LuaVector.Get_Vector(4);
+		}
+		ent.SetCollisionBounds(mins, maxs);
+		return 0;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__GetFlexWeight(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe)) {
+			lua.PushNumber(0);
+			return 1;
+		}
+		int index = Math.Clamp((int)lua.CheckNumber(2), 0, 95);
+		if (animating.GetFlexManipulator(false) is not FlexManipulate manipulator) {
+			lua.PushNumber(0);
+			return 1;
+		}
+		lua.PushNumber(manipulator.FlexWeights[index]);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetFlexScale(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe) || animating.GetFlexManipulator(false) is not FlexManipulate manipulator) {
+			lua.PushNumber(1.0);
+			return 1;
+		}
+		lua.PushNumber(manipulator.ExScale);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetFlexScale(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || IsQueuedForRemoval(ent) || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+		animating.GetFlexManipulator(false);
+		if (animating.GetFlexManipulator(true) is FlexManipulate manipulator)
+			manipulator.ExScale = (float)lua.CheckNumber(2);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__HasFlexManipulatior(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		lua.PushBool(animating != null && !ent.IsEFlagSet(EFL.KillMe) && animating.GetFlexManipulator(false) != null);
+		return 1;
+	}
+#endif
+
+#if CLIENT_DLL
+	[LuaMethod]
+	static int Entity__InvalidateBoneCache(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.GetBaseAnimating()?.InvalidateBoneCache();
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
+	static int Entity__GetModelScale(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+		lua.PushNumber(animating.GetModelScale());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetModelScale(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || IsQueuedForRemoval(ent) || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+		float scale = (float)lua.CheckNumber(2);
+		float duration = lua.GetType(3) == LuaType.Number ? (float)lua.CheckNumber(3) : 0.0f;
+		animating.SetModelScale(scale, duration);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetLocalPos(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetLocalOrigin(LuaVector.Get_Vector(2));
 		return 0;
 	}
 }

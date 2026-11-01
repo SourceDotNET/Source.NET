@@ -219,6 +219,13 @@ public static partial class LuaVMatrix
 	}
 
 	[LuaMethod]
+	static int VMatrix__InvertTR2(ILuaInterface lua) {
+		ref Matrix4x4 m = ref Get_VMatrix(1);
+		MathLib.MatrixInverseTR(in m, out m);
+		return 0;
+	}
+
+	[LuaMethod]
 	static int VMatrix__GetInverseTR(ILuaInterface lua) {
 		ref Matrix4x4 m = ref Get_VMatrix(1);
 		MathLib.MatrixInverseTR(in m, out Matrix4x4 inverse);

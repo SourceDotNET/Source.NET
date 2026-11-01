@@ -2520,7 +2520,8 @@ public partial class C_BaseEntity : IClientEntity
 		RemoveEFlags(EFL.DirtyAbsTransform);
 
 		AbsOrigin = absOrigin;
-		// TODO: Coordinate frame...
+		MathLib.MatrixSetColumn(absOrigin, 3, ref CoordinateFrame);
+
 		C_BaseEntity? moveParent = GetMoveParent();
 
 		if (moveParent == null) {
@@ -2528,7 +2529,8 @@ public partial class C_BaseEntity : IClientEntity
 			return;
 		}
 
-		// TODO: Handle move parents...
+		MathLib.VectorITransform(absOrigin, moveParent.EntityToWorldTransform(), out Vector3 origin);
+		Origin = origin;
 	}
 
 	public void SetAbsAngles(in QAngle absAngles) {
@@ -2541,7 +2543,8 @@ public partial class C_BaseEntity : IClientEntity
 		RemoveEFlags(EFL.DirtyAbsTransform);
 
 		AbsRotation = absAngles;
-		// TODO: Set coordinate frame
+		MathLib.AngleMatrix(absAngles, out CoordinateFrame);
+		MathLib.MatrixSetColumn(AbsOrigin, 3, ref CoordinateFrame);
 
 		C_BaseEntity? moveParent = GetMoveParent();
 
@@ -2550,7 +2553,14 @@ public partial class C_BaseEntity : IClientEntity
 			return;
 		}
 
-		// TODO: Handle move parents...
+		if (AbsRotation == moveParent.GetAbsAngles())
+			Rotation = default;
+		else {
+			MathLib.MatrixInvert(moveParent.EntityToWorldTransform(), out Matrix3x4 worldToParent);
+			MathLib.ConcatTransforms(worldToParent, CoordinateFrame, out Matrix3x4 localMatrix);
+			MathLib.MatrixAngles(localMatrix, out QAngle rotation);
+			Rotation = rotation;
+		}
 	}
 
 	public void MoveToAimEnt() {
