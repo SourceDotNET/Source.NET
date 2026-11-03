@@ -137,6 +137,13 @@ public static partial class LuaPlayer
 		lua.PushString(engine.GMOD_GetPlayerOwnerSteamID(player.Edict()).m_SteamID.ToString());
 		return 1;
 	}
+
+	[LuaMethod]
+	static int Player__Kill(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		player.Kill();
+		return 0;
+	}
 #endif
 
 	[LuaMethod]

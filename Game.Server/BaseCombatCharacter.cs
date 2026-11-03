@@ -301,6 +301,27 @@ public partial class BaseCombatCharacter : BaseFlex
 		// TODO
 	}
 
+	public override void Event_Killed(in TakeDamageInfo info) {
+		LifeState = (int)Source.LifeState.Dying;
+
+		// todo CalcDamageForceVector, CRagdollMagnet::FindBestMagnet, Weapon_Drop(m_hActiveWeapon, null, weaponForce)
+
+		if (HasSpawnFlags((int)AI_BaseNPC.SF.DropHealthkit))
+			Create("item_healthvial", GetAbsOrigin(), GetAbsAngles());
+
+		EmitSound("BaseCombatCharacter.StopWeaponSounds");
+
+		if (info.GetAttacker() != null) {
+			info.GetAttacker()!.Event_KilledOther(this, info);
+			g_EventQueue.AddEvent(info.GetAttacker(), "KilledNPC", 0.3f, this, this);
+		}
+		// todo SendOnKilledGameEvent(info), ShouldGib, Dissolve, BecomeRagdoll
+
+		ClearLastKnownArea();
+
+		// todo TheNextBots().OnKilled(this, info)
+	}
+
 	public string? RelationshipString;
 
 	public AI_HullType Hull;

@@ -67,6 +67,12 @@ public partial class GMOD_Player : HL2MP_Player
 		gGM.CallNoReturns(3);
 	}
 
+	public void Kill() {
+		Health = 0;
+		Event_Killed(new TakeDamageInfo(this, this, 0, DamageType.NeverGib));
+		Event_Dying(new TakeDamageInfo(this, this, 0, DamageType.NeverGib));
+	}
+
 	public ReadOnlySpan<char> GetUniqueID() {
 		if (gpGlobals.MaxClients == 1) {
 			if (NeedsUniqueID) {
