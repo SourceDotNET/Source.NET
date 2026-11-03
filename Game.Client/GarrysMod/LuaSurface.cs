@@ -388,10 +388,13 @@ public static partial class LuaSurface
 			vertex.UnReference();
 		}
 
-		if (count < 3)
+		if (count < 3) {
+			vertices.UnReference();
 			lua.ArgError(1, "table must contain at least three vertices");
-		else
-			surface.DrawTexturedPolygon(((Span<SurfaceVertex>)PolyVerts)[..count], true);
+			return 0;
+		}
+
+		surface.DrawTexturedPolygon(((Span<SurfaceVertex>)PolyVerts)[..count], true);
 		vertices.UnReference();
 		return 0;
 	}
