@@ -155,15 +155,15 @@ public class LuaNetworkedVars
 		g_Lua.Pop(1);
 	}
 
-	void CallProxy(LuaNetworkedVar var, uint handle, string name, ILuaObject value) {
+	void CallProxy(LuaNetworkedVar var, uint handle, string name, ILuaObject oldValue) {
 		if (g_Lua == null || !var.Proxy.isFunction())
 			return;
 
 		var.Proxy.Push();
 		LuaEntity.Push_Entity(EntityFromHandle(handle));
 		g_Lua.PushString(name);
+		oldValue.Push();
 		var.Value.Push();
-		value.Push();
 		g_Lua.CallInternalNoReturns(4);
 	}
 
@@ -174,11 +174,16 @@ public class LuaNetworkedVars
 			return;
 		}
 
+		LuaObject oldValue = new();
+		oldValue.Set(var.Value);
+
 		TruncateString(value);
 
 #if GAME_DLL
-		if (g_Lua!.IsEqual(var.Value, value))
+		if (g_Lua!.IsEqual(var.Value, value)) {
+			oldValue.UnReference();
 			return;
+		}
 
 		var.Value.Set(value);
 		var.NextUpdate = 0;
@@ -189,7 +194,8 @@ public class LuaNetworkedVars
 		var.Time = (float)gpGlobals.CurTime;
 #endif
 
-		CallProxy(var, handle, name, value);
+		CallProxy(var, handle, name, oldValue);
+		oldValue.UnReference();
 	}
 
 	public void SetNetworkedVarProxy(uint handle, string name, ILuaObject func) {

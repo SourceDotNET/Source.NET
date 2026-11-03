@@ -388,7 +388,10 @@ public static partial class LuaSurface
 			vertex.UnReference();
 		}
 
-		surface.DrawTexturedPolygon(((Span<SurfaceVertex>)PolyVerts)[..count], true);
+		if (count < 3)
+			lua.ArgError(1, "table must contain at least three vertices");
+		else
+			surface.DrawTexturedPolygon(((Span<SurfaceVertex>)PolyVerts)[..count], true);
 		vertices.UnReference();
 		return 0;
 	}
@@ -414,12 +417,16 @@ public static partial class LuaSurface
 	}
 	[LuaFunction]
 	static int DrawTexturedRectUV(ILuaInterface lua) {
-		int x = (int)lua.GetNumber(1);
-		int y = (int)lua.GetNumber(2);
-		int w = (int)lua.GetNumber(3);
-		int h = (int)lua.GetNumber(4);
+		int x = (int)lua.CheckNumber(1);
+		int y = (int)lua.CheckNumber(2);
+		int w = (int)lua.CheckNumber(3);
+		int h = (int)lua.CheckNumber(4);
 		// TODO: poster cmd split scaling (?)
-		surface.DrawTexturedSubRect(x, y, w + x, h + y, (float)lua.GetNumber(5), (float)lua.GetNumber(6), (float)lua.GetNumber(7), (float)lua.GetNumber(8));
+		float v1 = (float)lua.CheckNumber(8);
+		float u1 = (float)lua.CheckNumber(7);
+		float v0 = (float)lua.CheckNumber(6);
+		float u0 = (float)lua.CheckNumber(5);
+		surface.DrawTexturedSubRect(x, y, w + x, h + y, u0, v0, u1, v1);
 		return 0;
 	}
 

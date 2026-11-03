@@ -1315,6 +1315,11 @@ public static partial class LuaEntity
 	static int Entity__SetPos(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		ref Vector3 pos = ref LuaVector.Get_Vector(2);
+#if GAME_DLL
+		bool touchTriggers = false;
+		if (lua.GetType(3) != LuaType.Nil)
+			touchTriggers = lua.GetBool(3);
+#endif
 		float max = MAX_COORD_FLOAT * 8;
 		if (!(-max < pos.X && pos.X < max && -max < pos.Y && pos.Y < max && -max < pos.Z && pos.Z < max)) {
 			Warning($"{ent.GetClassname()}[{ent.EntIndex()}]:SetPos( {pos.X:F6} {pos.Y:F6} {pos.Z:F6} ): Ignoring unreasonable position.\n");
@@ -1322,6 +1327,10 @@ public static partial class LuaEntity
 		}
 
 		ent.SetAbsOrigin(pos);
+#if GAME_DLL
+		if (touchTriggers && !IsQueuedForRemoval(ent) && !ent.IsMarkedForDeletion())
+			ent.PhysicsTouchTriggers();
+#endif
 		if (ent.GetMoveType() == MoveType.None || ent.VPhysicsGetObject() == null || ent.IsRagdollProp() || ent.IsJeep())
 			return 0;
 #if CLIENT_DLL
