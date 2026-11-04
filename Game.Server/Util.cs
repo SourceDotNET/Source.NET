@@ -201,6 +201,21 @@ public static partial class Util
 {
 	public static float AngleMod(float a) => MathLib.AngleMod(a);
 
+	public static void SnapDirectionToAxis(ref Vector3 direction, float epsilon = 0.002f) {
+		float proj = 1 - epsilon;
+		for (int i = 0; i < 3; i++) {
+			if (MathF.Abs(direction[i]) > proj) {
+				if (direction[i] < 0)
+					direction[i] = -1.0f;
+				else
+					direction[i] = 1.0f;
+				direction[(i + 1) % 3] = 0;
+				direction[(i + 2) % 3] = 0;
+				return;
+			}
+		}
+	}
+
 	public static float AngleDiff(float destAngle, float srcAngle) {
 		float delta;
 

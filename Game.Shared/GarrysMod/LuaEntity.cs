@@ -346,11 +346,113 @@ public static partial class LuaEntity
 		return 0;
 	}
 
+	[LuaMethod]
+	static int Entity__AlignAngles(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		QAngle from = LuaAngle.Get_Angle(2);
+		QAngle to = LuaAngle.Get_Angle(3);
+
+		QAngle entAngles = ent.GetAbsAngles();
+
+		MathLib.AngleMatrix(from, out Matrix3x4 fromMatrix);
+		MathLib.AngleMatrix(entAngles, out Matrix3x4 entMatrix);
+		MathLib.MatrixInvert(entMatrix, out Matrix3x4 entInverse);
+
+		Matrix4x4 a = entInverse;
+		Matrix4x4 b = fromMatrix;
+		MathLib.MatrixMultiply(a, b, out Matrix4x4 local);
+		MathLib.MatrixToAngles(local, out QAngle localAngles);
+
+		MathLib.AngleMatrix(to, out Matrix3x4 toMatrix);
+		MathLib.AngleMatrix(localAngles, out Matrix3x4 localMatrix);
+		MathLib.MatrixInvert(localMatrix, out Matrix3x4 localInverse);
+
+		Matrix4x4 c = toMatrix;
+		Matrix4x4 d = localInverse;
+		MathLib.MatrixMultiply(c, d, out Matrix4x4 result);
+		MathLib.MatrixToAngles(result, out QAngle resultAngles);
+
+		LuaAngle.Push_Angle(resultAngles);
+		return 1;
+	}
+
 #if GAME_DLL
+	[LuaMethod]
+	static int Entity__Fire(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent))
+			return 0;
+
+		Variant_t value = new();
+		if (lua.GetType(3) == LuaType.Number)
+			value.SetFloat((float)lua.GetNumber(3));
+		else if (lua.GetType(3) == LuaType.Bool)
+			value.SetBool(lua.GetBool(3));
+		else
+			value.SetString(lua.GetType(3) == LuaType.String ? lua.GetString(3) : "");
+
+		float delay = (float)lua.CheckNumberOpt(4, 0);
+		BaseEntity? caller = Get_Entity(6, true);
+		BaseEntity? activator = Get_Entity(5, true);
+		g_EventQueue.AddEvent(ent, lua.GetString(2), value, delay, activator, caller, 0);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__StartMotionController(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (PhysIsInCallback()) {
+			lua.ErrorFromLua("Cannot call StartMotionController in a physics callback!");
+			return 0;
+		}
+		ent.StartMotionController();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetEntity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseEntity? other = Get_Entity(3, true);
+		ent.SetEntity(lua.CheckString(2), other);
+		return 0;
+	}
+
 	[LuaMethod]
 	static int Entity__DeleteOnRemove(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		ent.DeleteOnRemove(Get_Entity(2, false));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__Input(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent))
+			return 0;
+
+		Variant_t value = new();
+		if (lua.GetType(5) == LuaType.Number)
+			value.SetFloat((float)lua.GetNumber(5));
+		else if (lua.GetType(5) == LuaType.Bool)
+			value.SetBool(lua.GetBool(5));
+		else
+			value.SetString(lua.GetType(5) == LuaType.String ? lua.GetString(5) : "");
+
+		BaseEntity? caller = Get_Entity(4, true);
+		BaseEntity? activator = Get_Entity(3, true);
+		lua.PushBool(ent.AcceptInput(lua.GetString(2), activator, caller, value, 0));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetPhysConstraintObjects(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (!IsQueuedForRemoval(ent)) {
+			IPhysicsObject? obj0 = LuaPhysObj.Get_IPhysicsObject(2, false);
+			IPhysicsObject? obj1 = LuaPhysObj.Get_IPhysicsObject(3, false);
+			ent.SetPhysObject(0, obj0);
+			ent.SetPhysObject(1, obj1);
+		}
 		return 0;
 	}
 #endif
@@ -624,8 +726,8 @@ public static partial class LuaEntity
 #if GAME_DLL
 	[LuaMethod]
 	static int Entity__IsConstraint(ILuaInterface lua) {
-		// todo: once physconstraint is ported
-		lua.PushBool(false);
+		BaseEntity? ent = Get_Entity(1, false);
+		lua.PushBool(ent is PhysConstraint);
 		return 1;
 	}
 #endif
@@ -1956,7 +2058,7 @@ public static partial class LuaEntity
 		}
 
 		bool isArray = td.FieldSize > 1 && lua.GetType(3) == LuaType.Table;
-		Array? array = isArray ? (Array?)td.FieldInfo.GetValue(ent) : null;
+		Array? array = isArray ? td.Accessor.GetValue<Array?>(ent) : null;
 
 		object? Convert1(LuaObject elem) {
 			return td.FieldType switch {
@@ -2019,64 +2121,64 @@ public static partial class LuaEntity
 			case FieldType.EHandle:
 				if (!IsSettableHandle(name))
 					break;
-				EHANDLE handle = (EHANDLE)td.FieldInfo.GetValue(ent)!;
+				EHANDLE handle = td.Accessor.GetValue<EHANDLE>(ent);
 				handle.Set(Get_Entity(3, true));
-				td.FieldInfo.SetValue(ent, handle);
+				td.Accessor.SetValue(ent, handle);
 				lua.PushBool(true);
 				return 1;
 			case FieldType.String:
 			case FieldType.ModelName:
 			case FieldType.SoundName:
-				td.FieldInfo.SetValue(ent, new string(lua.CheckString(3)));
+				td.Accessor.SetValue(ent, new string(lua.CheckString(3)));
 				lua.PushBool(true);
 				return 1;
 			case FieldType.Integer:
-				td.FieldInfo.SetValue(ent, (int)lua.CheckNumber(3));
+				td.Accessor.SetValue(ent, (int)lua.CheckNumber(3));
 				lua.PushBool(true);
 				return 1;
 			case FieldType.Float:
-				td.FieldInfo.SetValue(ent, (float)lua.CheckNumber(3));
+				td.Accessor.SetValue(ent, (float)lua.CheckNumber(3));
 				lua.PushBool(true);
 				return 1;
 			case FieldType.Double:
-				td.FieldInfo.SetValue(ent, lua.CheckNumber(3));
+				td.Accessor.SetValue(ent, lua.CheckNumber(3));
 				lua.PushBool(true);
 				return 1;
 			case FieldType.Short:
-				td.FieldInfo.SetValue(ent, (short)(int)lua.CheckNumber(3));
+				td.Accessor.SetValue(ent, (short)(int)lua.CheckNumber(3));
 				lua.PushBool(true);
 				return 1;
 			case FieldType.Character:
-				td.FieldInfo.SetValue(ent, (byte)(int)lua.CheckNumber(3));
+				td.Accessor.SetValue(ent, (byte)(int)lua.CheckNumber(3));
 				lua.PushBool(true);
 				return 1;
 			case FieldType.Boolean:
-				td.FieldInfo.SetValue(ent, lua.GetBool(3));
+				td.Accessor.SetValue(ent, lua.GetBool(3));
 				lua.PushBool(true);
 				return 1;
 			case FieldType.ModelIndex:
 #if GAME_DLL
-				td.FieldInfo.SetValue(ent, BaseEntity.PrecacheModel(lua.CheckString(3), true));
+				td.Accessor.SetValue(ent,BaseEntity.PrecacheModel(lua.CheckString(3), true));
 #endif
 				lua.PushBool(true);
 				return 1;
 			case FieldType.MaterialIndex: {
 					string material = lua.CheckString(3);
 #if CLIENT_DLL
-					td.FieldInfo.SetValue(ent, HLClient.GetMaterialIndex(material));
+					td.Accessor.SetValue(ent, HLClient.GetMaterialIndex(material));
 #else
-					td.FieldInfo.SetValue(ent, GameInterface.GetMaterialIndex(material));
+					td.Accessor.SetValue(ent, GameInterface.GetMaterialIndex(material));
 					GameInterface.PrecacheMaterial(material);
 #endif
 					lua.PushBool(true);
 					return 1;
 				}
 			case FieldType.Time:
-				td.FieldInfo.SetValue(ent, lua.CheckNumber(3) + gpGlobals.CurTime);
+				td.Accessor.SetValue(ent, lua.CheckNumber(3) + gpGlobals.CurTime);
 				lua.PushBool(true);
 				return 1;
 			case FieldType.Tick:
-				td.FieldInfo.SetValue(ent, gpGlobals.TickCount + (int)lua.CheckNumber(3));
+				td.Accessor.SetValue(ent, gpGlobals.TickCount + (int)lua.CheckNumber(3));
 				lua.PushBool(true);
 				return 1;
 			case FieldType.Vector:
@@ -2089,7 +2191,7 @@ public static partial class LuaEntity
 					}
 					else
 						vec = LuaVector.Get_Vector(3);
-					td.FieldInfo.SetValue(ent, vec);
+					td.Accessor.SetValue(ent, vec);
 					lua.PushBool(true);
 					return 1;
 				}
@@ -2191,7 +2293,7 @@ public static partial class LuaEntity
 		if (td == null)
 			return 0;
 
-		object? value = td.FieldInfo.GetValue(ent);
+		object? value = td.Accessor.GetValue<object?>(ent);
 
 		switch (td.FieldType) {
 			case FieldType.Float:
@@ -2929,6 +3031,13 @@ public static partial class LuaEntity
 		BaseEntity ent = Get_Entity(1, false)!;
 		lua.PushString(ent.GetEntityName() ?? "");
 		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetName(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetName(lua.CheckString(2));
+		return 0;
 	}
 #endif
 

@@ -14,6 +14,8 @@ namespace Game.Server;
 
 public static class EntityListGlobals
 {
+	public static readonly INotify g_pNotify = NotifyList.g_NotifyList;
+
 	[ConCommand("report_entities", "List all entities")]
 	static void report_entities() {
 		if (!Util.IsCommandIssuedByServerAdmin())
@@ -759,6 +761,80 @@ public class EntityTouchManager : IEntityListener
 	}
 }
 
+public struct EntityNotify
+{
+	public BaseEntity Notify;
+	public BaseEntity Watched;
+}
+
+public class NotifyList : INotify, IEntityListener
+{
+	public static readonly NotifyList g_NotifyList = new();
+
+	readonly List<EntityNotify> List = [];
+
+	public void AddEntity(BaseEntity notify, BaseEntity watched) {
+		watched.AddEFlags(EFL.Notify);
+		List.Add(new() { Notify = notify, Watched = watched });
+	}
+
+	public void RemoveEntity(BaseEntity notify, BaseEntity watched) {
+		for (int i = List.Count; --i >= 0;) {
+			if (List[i].Notify == notify && List[i].Watched == watched)
+				FastRemove(i);
+		}
+	}
+
+	public void ReportNamedEvent(BaseEntity entity, ReadOnlySpan<char> inputName) {
+		Variant_t emptyVariant = default;
+
+		if (!entity.IsEFlagSet(EFL.Notify))
+			return;
+
+		for (int i = 0; i < List.Count; i++) {
+			if (List[i].Watched == entity)
+				List[i].Notify.AcceptInput(inputName, entity, entity, emptyVariant, 0);
+		}
+	}
+
+	public void LevelInitPreEntity() => gEntList.AddListenerEntity(this);
+
+	public void LevelShutdownPreEntity() {
+		gEntList.RemoveListenerEntity(this);
+		List.Clear();
+	}
+
+	public void OnEntityCreated(BaseEntity entity) { }
+
+	public void OnEntityDeleted(BaseEntity entity) {
+		((INotify)this).ReportDestroyEvent(entity);
+		ClearEntity(entity);
+	}
+
+	public void ClearEntity(BaseEntity notify) {
+		for (int i = List.Count; --i >= 0;) {
+			if (List[i].Notify == notify || List[i].Watched == notify)
+				FastRemove(i);
+		}
+	}
+
+	public void ReportSystemEvent(BaseEntity entity, NotifySystemEvent eventType, in NotifySystemEventParams parms) {
+		if (!entity.IsEFlagSet(EFL.Notify))
+			return;
+
+		for (int i = 0; i < List.Count; i++) {
+			if (List[i].Watched == entity)
+				List[i].Notify.NotifySystemEvent(entity, eventType, parms);
+		}
+	}
+
+	void FastRemove(int i) {
+		int last = List.Count - 1;
+		List[i] = List[last];
+		List.RemoveAt(last);
+	}
+}
+
 public class EntityListSystem : AutoGameSystemPerFrame
 {
 	public static EntityListSystem g_EntityListSystem = new();
@@ -766,8 +842,12 @@ public class EntityListSystem : AutoGameSystemPerFrame
 	bool RespawnAllEntities;
 
 	public override void LevelInitPreEntity() {
-		SimThinkManager.g_SimThinkManager.LevelInitPreEntity();
+		NotifyList.g_NotifyList.LevelInitPreEntity();
 		EntityTouchManager.g_TouchManager.LevelInitPreEntity();
+		SimThinkManager.g_SimThinkManager.LevelInitPreEntity();
+	}
+	public override void LevelShutdownPreEntity() {
+		NotifyList.g_NotifyList.LevelShutdownPreEntity();
 	}
 	public override void LevelShutdownPostEntity() {
 		SimThinkManager.g_SimThinkManager.LevelShutdownPostEntity();

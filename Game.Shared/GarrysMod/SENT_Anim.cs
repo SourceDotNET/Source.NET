@@ -24,7 +24,7 @@ public partial class
 #if CLIENT_DLL
 	C_SENT_Anim : C_BaseAnimatingOverlay
 #elif GAME_DLL
-	SENT_Anim : BaseAnimatingOverlay
+	SENT_Anim : BaseAnimatingOverlay, IMotionEvent
 #endif
 {
 	[NetworkTable]
@@ -52,6 +52,71 @@ public partial class
 	}
 
 #if GAME_DLL
+	IPhysicsMotionController? MotionController;
+
+	public override void StartMotionController() {
+		if (MotionController != null) {
+			physenv.DestroyMotionController(MotionController);
+			MotionController = null;
+		}
+		MotionController = physenv.CreateMotionController(this);
+		IPhysicsObject? phys = VPhysicsGetObject();
+		if (phys != null)
+			MotionController.AttachObject(phys, true);
+	}
+
+	public SimResult Simulate(IPhysicsMotionController? controller, IPhysicsObject? obj, TimeUnit_t deltaTime, out Vector3 linear, out Vector3 angular) {
+		linear = vec3_origin;
+		angular = vec3_origin;
+		if (ScriptedEntity.StartFunction((int)LUA_POOLEDSTRING.PhysicsSimulate)) {
+			LuaPhysObj.Push_PhysObj(obj);
+			g_Lua!.PushNumber(deltaTime);
+			if (ScriptedEntity.Call(2, 3) && g_Lua.GetReturn(0).isNumber()) {
+				int result = g_Lua.GetReturn(0).GetInt();
+				if (result > 0) {
+					ILuaObject linearObj = g_Lua.GetReturn(1);
+					ILuaObject angularObj = g_Lua.GetReturn(2);
+					if (linearObj.isVector() && angularObj.isVector()) {
+						linear = linearObj.GetVector();
+						angular = angularObj.GetVector();
+					}
+				}
+				return (SimResult)result;
+			}
+		}
+		return SimResult.Nothing;
+	}
+
+	public override void Term() {
+		if (MotionController != null) {
+			physenv.DestroyMotionController(MotionController);
+			MotionController = null;
+		}
+		base.Term();
+	}
+
+	public override void Spawn() {
+		string model = new(GetModelName());
+		PrecacheModel(model, true);
+		SetModel(model);
+		if (DynamicModelPending || StudioHdr == null) {
+			if (!DynamicModelPending && GetModel() != null)
+				LockStudioHdr();
+			if (DynamicModelPending || StudioHdr == null)
+				SetModel("models/error.mdl");
+		}
+
+		base.Spawn();
+		SetThink(Think);
+		SetNextThink(gpGlobals.CurTime + 0.1);
+		m_takedamage = (byte)Damage.Yes;
+
+		bool allowPrecache = IsPrecacheAllowed();
+		SetAllowPrecache(true);
+		ScriptedEntity.CallFunction("Initialize", false);
+		SetAllowPrecache(allowPrecache);
+	}
+
 	public override void Use(BaseEntity? activator, BaseEntity? caller, UseType useType, float value) {
 		if (IsMarkedForDeletion() || !ScriptedEntity.StartFunction((int)LUA_POOLEDSTRING.Use))
 			return;

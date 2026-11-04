@@ -1770,6 +1770,9 @@ public partial class BaseEntity : IServerEntity
 	public virtual bool PhysicsSplash(in Vector3 centerPoint, in Vector3 normal, float rawSpeed, float scaledSpeed) => false;
 
 	public IPhysicsObject? VPhysicsGetObject() => PhysicsObject;
+#if GMOD_DLL
+	public virtual IPhysicsObject? VPhysicsGetElement(int index) => PhysicsObject;
+#endif
 
 	public void VPhysicsSetObject(IPhysicsObject? physics) {
 		if (PhysicsObject != null && physics != null)
@@ -3012,6 +3015,14 @@ public partial class BaseEntity : IServerEntity
 
 	}
 
+	public virtual void NotifySystemEvent(BaseEntity notify, NotifySystemEvent eventType, in NotifySystemEventParams parms) { }
+
+#if GMOD_DLL
+	public virtual void SetPhysObject(int index, IPhysicsObject? obj) { }
+	public virtual void SetEntity(ReadOnlySpan<char> name, BaseEntity? entity) { }
+	public virtual void StartMotionController() { }
+#endif
+
 	static bool _AllowPrecache;
 	public static bool IsPrecacheAllowed() => _AllowPrecache;
 	public static bool SetAllowPrecache(bool allow) => _AllowPrecache = allow;
@@ -3551,6 +3562,8 @@ public partial class BaseEntity : IServerEntity
 
 	static void TeleportEntity(BaseEntity sourceEntity, ref TeleportListEntry entry, Vector3? newPosition, QAngle? newAngles, Vector3? newVelocity) {
 		BaseEntity teleport = entry.Entity;
+		Vector3 prevOrigin = entry.PrevAbsOrigin;
+		QAngle prevAngles = entry.PrevAbsAngles;
 
 		SolidFlags solidFlags = (SolidFlags)teleport.GetSolidFlags();
 		teleport.AddSolidFlags(SolidFlags.NotSolid);
@@ -3580,6 +3593,7 @@ public partial class BaseEntity : IServerEntity
 			teleport.CalcAbsolutePosition();
 		}
 		IPhysicsObject? phys = teleport.VPhysicsGetObject();
+		bool rotatePhysics = false;
 
 		// handle physics objects / shadows
 		if (phys != null) {
@@ -3591,9 +3605,13 @@ public partial class BaseEntity : IServerEntity
 			// don't rotate physics on players or bbox entities
 			if (teleport.IsPlayer() || teleport.GetSolid() == SolidType.BBox)
 				rotAngles = vec3_angle;
+			else
+				rotatePhysics = true;
 
 			phys.SetPosition(teleport.GetAbsOrigin(), rotAngles, true);
 		}
+
+		g_pNotify.ReportTeleportEvent(teleport, prevOrigin, prevAngles, rotatePhysics);
 
 		teleport.SetSolidFlags(solidFlags);
 	}

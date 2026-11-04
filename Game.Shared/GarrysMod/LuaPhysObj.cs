@@ -16,6 +16,8 @@ public static partial class LuaPhysObj
 {
 	const int MAX_OBJECT_LIST = 0x400;
 
+	public static bool gPhysCallback;
+
 	[LuaClass(typeof(IPhysicsObject), NullError = "Tried to use a NULL physics object!")]
 	public static readonly LuaClass LC_PhysObj = new("PhysObj", LuaType.PhysObj, null, null);
 

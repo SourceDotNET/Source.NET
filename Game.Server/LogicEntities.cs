@@ -6,6 +6,10 @@ using Source.Common.Commands;
 using Source.Common.Physics;
 using Source.Common.Server;
 
+#if GMOD_DLL
+using Game.Server.GarrysMod;
+#endif
+
 using System.Numerics;
 
 namespace Game.Server;
@@ -1687,12 +1691,30 @@ public class LogicCollisionPair : LogicalEntity
 	string? NameAttach2;
 	bool Disabled;
 	bool Succeeded;
+#if GMOD_DLL
+	InlineArray2<IPhysicsObject?> PhysObjects;
+	InlineArray2<EHANDLE> Entities;
+	InlineArray2<int> PhysIndices;
+	bool DisableOnRemove;
+
+	public LogicCollisionPair() {
+		Entities[0] = new();
+		Entities[1] = new();
+	}
+#endif
 
 	public static readonly new DataMap DataDesc = new(typeof(LogicCollisionPair), LogicalEntity.DataDesc, [
 		DEFINE<LogicCollisionPair>.KEYFIELD(nameof(NameAttach1), FieldType.String, "attach1"),
 		DEFINE<LogicCollisionPair>.KEYFIELD(nameof(NameAttach2), FieldType.String, "attach2"),
 		DEFINE<LogicCollisionPair>.KEYFIELD(nameof(Disabled), FieldType.Boolean, "startdisabled"),
 		DEFINE<LogicCollisionPair>.FIELD(nameof(Succeeded), FieldType.Boolean),
+#if GMOD_DLL
+		DEFINE<LogicCollisionPair>.KEYFIELD(nameof(DisableOnRemove), FieldType.Boolean, "disable_on_remove"),
+		DEFINE<LogicCollisionPair>.FIELD("Entities[0]", FieldType.EHandle),
+		DEFINE<LogicCollisionPair>.FIELD("Entities[1]", FieldType.EHandle),
+		DEFINE<LogicCollisionPair>.FIELD("PhysIndices[0]", FieldType.Integer),
+		DEFINE<LogicCollisionPair>.FIELD("PhysIndices[1]", FieldType.Integer),
+#endif
 
 		// Inputs
 		DEFINE<LogicCollisionPair>.INPUTFUNC(FieldType.Void, "DisableCollisions", nameof(InputDisableCollisions), (INPUTFUNCPTR)((self, data) => ((LogicCollisionPair)self).InputDisableCollisions(data))),
@@ -1709,14 +1731,65 @@ public class LogicCollisionPair : LogicalEntity
 			return g_PhysWorldObject;
 
 		IPhysicsObject? physics = PhysicsHook.FindPhysicsObjectByName(name, errorEntity);
-		if (physics == null)
+		if (physics == null) {
 			DevWarning($"{errorEntity.GetClassname()}: can't find {name}\n");
+#if GMOD_DLL
+			physics = g_PhysWorldObject;
+#endif
+		}
 		return physics;
 	}
 
+#if GMOD_DLL
+	public override void SetPhysObject(int index, IPhysicsObject? obj) {
+		PhysObjects[index] = obj;
+		BaseEntity? entity = (BaseEntity?)obj!.GetGameData();
+		Entities[index].Set(entity);
+		PhysIndices[index] = 0;
+		entity = Entities[index].Get();
+		if (entity != null) {
+			IPhysicsObject?[] list = new IPhysicsObject?[VPHYSICS_MAX_OBJECT_LIST_COUNT];
+			int count = entity.VPhysicsGetObjectList(list);
+			if (count > 1) {
+				for (int i = 0; i < count; i++) {
+					if (list[i] == obj)
+						PhysIndices[index] = i;
+				}
+			}
+		}
+	}
+
+	public override void OnRestore() {
+		BaseEntity? entity0 = Entities[0].Get();
+		if (entity0 != null)
+			PhysObjects[0] = entity0.VPhysicsGetElement(PhysIndices[0]);
+		BaseEntity? entity1 = Entities[1].Get();
+		if (entity1 != null)
+			PhysObjects[1] = entity1.VPhysicsGetElement(PhysIndices[1]);
+		Activate();
+	}
+
+	public override void UpdateOnRemove() {
+		if (DisableOnRemove && (!Succeeded || Disabled))
+			EnableCollisions(true);
+		base.UpdateOnRemove();
+	}
+#endif
+
 	public void EnableCollisions(bool enable) {
+#if GMOD_DLL
+		if (PhysObjects[0] != null || PhysObjects[1] != null) {
+			if (!LuaPhysObj.IsPhysicsObjectValid(PhysObjects[0]))
+				PhysObjects[0] = null;
+			if (!LuaPhysObj.IsPhysicsObjectValid(PhysObjects[1]))
+				PhysObjects[1] = null;
+		}
+		IPhysicsObject? physics0 = PhysObjects[0] ?? FindPhysicsObjectByNameOrWorld(NameAttach1, this);
+		IPhysicsObject? physics1 = PhysObjects[1] ?? FindPhysicsObjectByNameOrWorld(NameAttach2, this);
+#else
 		IPhysicsObject? physics0 = FindPhysicsObjectByNameOrWorld(NameAttach1, this);
 		IPhysicsObject? physics1 = FindPhysicsObjectByNameOrWorld(NameAttach2, this);
+#endif
 
 		// need two different objects to do anything
 		if (physics0 != null && physics1 != null && physics0 != physics1) {

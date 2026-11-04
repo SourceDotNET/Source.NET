@@ -379,7 +379,7 @@ public partial class BaseAnimating : BaseEntity
 	public bool IsModelScaled() => ModelScale > 1.0f + FLT_EPSILON || ModelScale < 1.0f - FLT_EPSILON;
 	public float GetModelScale() => ModelScale;
 
-	StudioHdr? StudioHdr;
+	protected StudioHdr? StudioHdr;
 	public Model? GetModel() => modelinfo.GetModel(GetModelIndex());
 
 	// todo...
@@ -830,6 +830,26 @@ public partial class BaseAnimating : BaseEntity
 		return GetAttachment(LookupAttachment(attachmentName), out absOrigin, out absAngles);
 	}
 
+
+	public int GetAttachmentBone(int attachment) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return 0;
+
+		if (attachment < 1 || attachment > studioHdr.GetNumAttachments())
+			return 0;
+
+		return studioHdr.GetAttachmentBone(attachment - 1);
+	}
+
+	public int GetPhysicsBone(int boneIndex) {
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr != null) {
+			if (boneIndex >= 0 && boneIndex < studioHdr.NumBones())
+				return studioHdr.Bone(boneIndex).PhysicsBone;
+		}
+		return 0;
+	}
 
 	public bool GetAttachment(int attachment, out Vector3 absOrigin, out QAngle absAngles) {
 		Matrix3x4 attachmentToWorld;
