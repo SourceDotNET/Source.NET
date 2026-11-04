@@ -295,6 +295,16 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 
 		cmd.RandomSeed = (int)(MD5Value.PseudoRandom((uint)sequenceNumber) & 0x7fffffff);
 #if GMOD_DLL
+		int buttonsPressed = 0;
+		for (ButtonCode code = ButtonCode.Key0; code < ButtonCode.Last; code++) {
+			bool isMouse = code >= ButtonCode.MouseFirst && code <= ButtonCode.MouseLast;
+			if (vguiInput.GetFocus() == null || isMouse) {
+				if (inputsystem.IsButtonDown(code) || (isMouse && vguiInput.IsMouseDown(code)))
+					cmd.ButtonsPressed[buttonsPressed++] = (byte)code;
+				if (buttonsPressed > 4)
+					break;
+			}
+		}
 		MouseWheel = 0;
 #endif
 	}

@@ -76,7 +76,8 @@ namespace Source.Common
 		public readonly string FieldName = "";
 		public readonly FieldInfo FieldInfo;
 		DynamicAccessor? accessor;
-		public DynamicAccessor Accessor => accessor ??= FieldAccessorRegistry.TryCreate(FieldInfo.DeclaringType!, FieldInfo.Name, null)
+		public DynamicAccessor Accessor => accessor ??= (FieldName.AsSpan().IndexOfAny('.', '[') >= 0 ? FieldAccessorRegistry.Create(FieldInfo.DeclaringType!, FieldName, null) : null)
+			?? FieldAccessorRegistry.TryCreate(FieldInfo.DeclaringType!, FieldInfo.Name, null)
 			?? FieldAccessorRegistry.Create(FieldInfo.DeclaringType!, FieldInfo.Name.StartsWith("__nv_", StringComparison.Ordinal) ? FieldInfo.Name[5..] : FieldInfo.Name, null);
 		public nuint PackedOffset = nuint.MaxValue;
 		public readonly ushort FieldSize;
@@ -781,11 +782,16 @@ namespace Source
 			throw new Exception($"can't find field {name}");
 		}
 
+		static ReadOnlySpan<char> RootName(ReadOnlySpan<char> name) {
+			int end = name.IndexOfAny('.', '[');
+			return end >= 0 ? name[..end] : name;
+		}
+
 		static TypeDescription _FIELD(ReadOnlySpan<char> name, FieldType fieldType, int count, FieldTypeDescFlags flags, ReadOnlySpan<char> mapname, float tolerance) {
-			return new(fieldType, name, GetField_R(typeof(T), new(name)), (ushort)count, flags, mapname, null, null, tolerance);
+			return new(fieldType, name, GetField_R(typeof(T), new(RootName(name))), (ushort)count, flags, mapname, null, null, tolerance);
 		}
 		static TypeDescription _FIELD_ARRAY(ReadOnlySpan<char> name, FieldType fieldType, int count, FieldTypeDescFlags flags, ReadOnlySpan<char> mapname, float tolerance) {
-			return new(fieldType, name, GetField_R(typeof(T), new(name)), (ushort)count, flags, mapname, null, null, tolerance);
+			return new(fieldType, name, GetField_R(typeof(T), new(RootName(name))), (ushort)count, flags, mapname, null, null, tolerance);
 		}
 
 		public static TypeDescription FIELD(ReadOnlySpan<char> name, FieldType fieldType) {

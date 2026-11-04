@@ -621,6 +621,35 @@ public static partial class LuaRender
 	}
 
 	[LuaFunction]
+	static int SetMaterial(ILuaInterface lua) {
+		IMaterial? material = (IMaterial?)LuaMaterial.LC_IMaterial.Get(1);
+		if (material == null)
+			return 0;
+		using MatRenderContextPtr renderContext = new(materials);
+		CurrentMaterial.Init(material);
+		if (CurrentMaterial.IsNotNull)
+			renderContext.Bind(CurrentMaterial.Get());
+		return 0;
+	}
+
+	static readonly MaterialReference CurrentMaterial = new();
+
+#if CLIENT_DLL
+	[LuaFunction]
+	static int DrawSprite(ILuaInterface lua) {
+		Vector3 pos = LuaVector.Get_Vector(1);
+		ILuaObject? colorObj = lua.GetObject(4);
+		Color color = new(255, 255, 255, 255);
+		if (colorObj != null && colorObj.isTable())
+			color = new((byte)(int)colorObj.GetMemberFloat("r", 255), (byte)(int)colorObj.GetMemberFloat("g", 255), (byte)(int)colorObj.GetMemberFloat("b", 255), (byte)(int)colorObj.GetMemberFloat("a", 255));
+		float height = (float)lua.GetNumber(3);
+		float width = (float)lua.GetNumber(2);
+		BeamDraw.DrawSprite(pos, width, height, color);
+		return 0;
+	}
+#endif
+
+	[LuaFunction]
 	static int ClearDepth(ILuaInterface lua) {
 		bool stencil = lua.GetType(1) == (int)LuaType.Nil || lua.GetBool(1);
 		using MatRenderContextPtr renderContext = new(materials);

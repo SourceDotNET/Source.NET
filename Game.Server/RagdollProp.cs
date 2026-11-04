@@ -41,6 +41,14 @@ public partial class RagdollProp : BaseAnimating
 	readonly Ragdoll ragdoll = new();
 	public Ragdoll GetRagdoll() => ragdoll;
 
+#if GMOD_DLL
+	public override IPhysicsObject? VPhysicsGetElement(int index) {
+		if (index < 0 || ragdoll.ListCount <= index || ragdoll.List[index].Object == null)
+			return VPhysicsGetObject();
+		return ragdoll.List[index].Object;
+	}
+#endif
+
 	public static bool Ragdoll_IsPropRagdoll(BaseEntity entity) => entity is RagdollProp;
 
 	public static Ragdoll? Ragdoll_GetRagdoll(BaseEntity entity) => (entity as RagdollProp)?.GetRagdoll();

@@ -1,5 +1,9 @@
 using Game.Server;
 using Game.Shared;
+#if GMOD_DLL
+using Game.Server.GarrysMod;
+using Source.Common.GarrysMod.Lua;
+#endif
 
 using Source.Common.Commands;
 using Source.Common.GUI;
@@ -158,6 +162,20 @@ public class PlayerMove
 
 	void RunPostThink(BasePlayer player) => player.PostThink();
 
+#if GMOD_DLL
+	static void CallButtonHooks(BasePlayer player, ReadOnlySpan<byte> buttons, ReadOnlySpan<byte> others, LUA_POOLEDSTRING hook) {
+		foreach (byte button in buttons) {
+			if (button == 0)
+				break;
+			if (others.Contains(button) || gGM == null || !gGM.CallWithArgs((int)hook))
+				continue;
+			LuaEntity.Push_Entity(player);
+			g_Lua!.PushNumber(button);
+			gGM.CallNoReturns(2);
+		}
+	}
+#endif
+
 	static double lastWarningTime;
 	public void RunCommand(BasePlayer player, AnonymousSafeFieldPointer<UserCmd> ucmd, IMoveHelper moveHelper) {
 		ref UserCmd cmd = ref ucmd.Get();
@@ -195,6 +213,12 @@ public class PlayerMove
 		}
 
 		g_pGameMovement.StartTrackPredictionErrors(player);
+
+#if GMOD_DLL
+		CallButtonHooks(player, cmd.ButtonsPressed, player.ButtonsPressed, LUA_POOLEDSTRING.PlayerButtonDown);
+		CallButtonHooks(player, player.ButtonsPressed, cmd.ButtonsPressed, LUA_POOLEDSTRING.PlayerButtonUp);
+		player.ButtonsPressed = cmd.ButtonsPressed;
+#endif
 
 		// CommentarySystem_PePlayerRunCommand( player, ucmd );
 
