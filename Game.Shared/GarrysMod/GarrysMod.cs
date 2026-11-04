@@ -88,6 +88,29 @@ public class GarrysMod : IGarrysMod
 		}
 		filesystem.FindClose(handle);
 	}
+
+	void AddCustomFontsFromFolder(string folder) {
+		HashSet<string> workshopFonts = [];
+		ReadOnlySpan<char> fileName = filesystem.FindFirstEx($"{folder}/*.ttf", "workshop", out ulong handle);
+		while (!fileName.IsEmpty) {
+			workshopFonts.Add(new(fileName));
+			fileName = filesystem.FindNext(handle);
+		}
+		filesystem.FindClose(handle);
+
+		fileName = filesystem.FindFirstEx($"{folder}/*.ttf", "GAME", out handle);
+		while (!fileName.IsEmpty) {
+			if (!workshopFonts.Contains(new(fileName)))
+				Surface.AddCustomFontFile(fileName, $"{folder}/{fileName}");
+			fileName = filesystem.FindNext(handle);
+		}
+		filesystem.FindClose(handle);
+	}
+
+	void AddCustomFonts() {
+		AddCustomFontsFromFolder("resource/fonts");
+		AddCustomFontsFromFolder("cache/workshop/resource/fonts");
+	}
 #endif
 
 	public void InitializeMod(IServiceProvider services) {
@@ -98,8 +121,9 @@ public class GarrysMod : IGarrysMod
 #endif
 #if !SWDS
 		get.IntroScreen()?.Update("Adding Custom Fonts", true);
-		// todo: AddCustomFonts
 #if CLIENT_DLL
+		AddCustomFonts();
+
 		if (filesystem == null)
 			Error("g_pFullFileSystem is NULL!?");
 		if (filesystem!.Language() == null)
@@ -157,7 +181,7 @@ public class GarrysMod : IGarrysMod
 		get.Audio()?.StopAllPlayback();
 
 		engine.ClientCmd("net_maxroutable 1260");
-		// todo: AddCustomFonts();
+		AddCustomFonts();
 
 		if (gpGlobals.MaxClients > 1) {
 			// todo: ParseParticleEffects(true, false);

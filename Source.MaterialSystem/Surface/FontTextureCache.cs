@@ -276,7 +276,11 @@ public class FontTextureCache
 				newPage.Wide,
 				newPage.Tall,
 				ImageFormat.RGBA8888,
+#if GMOD_DLL
+				TextureFlags.ClampS | TextureFlags.ClampT |
+#else
 				TextureFlags.PointSample | TextureFlags.ClampS | TextureFlags.ClampT |
+#endif
 				TextureFlags.NoMip | TextureFlags.NoLOD | TextureFlags.Procedural | TextureFlags.SingleCopy
 			);
 
@@ -286,6 +290,14 @@ public class FontTextureCache
 			// allocate for 32bpp format
 			int nByteCount = TEXTURE_PAGE_WIDTH * TEXTURE_PAGE_HEIGHT * 4;
 			Span<byte> rgba = stackalloc byte[nByteCount];
+#if GMOD_DLL
+			for (int i = 0; i < nByteCount; i += 4) {
+				rgba[i + 0] = 255;
+				rgba[i + 1] = 255;
+				rgba[i + 2] = 255;
+				rgba[i + 3] = 0;
+			}
+#endif
 			int typePageNonAdditive = (int)FontDrawType.NonAdditive - 1;
 			surface.DrawSetTextureRGBA(newPage.TextureID[typePageNonAdditive], rgba, newPage.Wide, newPage.Tall, 0, false);
 		}

@@ -164,6 +164,13 @@ public static class Clip2D
 		return clipPolygon.ClipCount;
 	}
 
+	static bool StretchTexture = false;
+
+	static float InterpTCoord(float val, float mins, float maxs, float tMin, float tMax) {
+		float percent = (mins != maxs) ? (val - mins) / (maxs - mins) : 0.5f;
+		return tMin + (tMax - tMin) * percent;
+	}
+
 	public static bool ClipRect(in ScissorRectState scissorRect, in SurfaceVertex inUL, in SurfaceVertex inLR, out SurfaceVertex outUL, out SurfaceVertex outLR) {
 		if (scissorRect.Scissor) {
 			outUL = default;
@@ -178,8 +185,17 @@ public static class Clip2D
 			if (outUL.Position.X > outLR.Position.X || outUL.Position.Y > outLR.Position.Y)
 				return false;
 
-			outUL.TexCoord = inUL.TexCoord;
-			outLR.TexCoord = inLR.TexCoord;
+			if (!StretchTexture) {
+				outUL.TexCoord.X = InterpTCoord(outUL.Position.X, inUL.Position.X, inLR.Position.X, inUL.TexCoord.X, inLR.TexCoord.X);
+				outUL.TexCoord.Y = InterpTCoord(outUL.Position.Y, inUL.Position.Y, inLR.Position.Y, inUL.TexCoord.Y, inLR.TexCoord.Y);
+
+				outLR.TexCoord.X = InterpTCoord(outLR.Position.X, inUL.Position.X, inLR.Position.X, inUL.TexCoord.X, inLR.TexCoord.X);
+				outLR.TexCoord.Y = InterpTCoord(outLR.Position.Y, inUL.Position.Y, inLR.Position.Y, inUL.TexCoord.Y, inLR.TexCoord.Y);
+			}
+			else {
+				outUL.TexCoord = inUL.TexCoord;
+				outLR.TexCoord = inLR.TexCoord;
+			}
 		}
 		else {
 			outUL = inUL;
