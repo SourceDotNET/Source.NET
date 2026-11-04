@@ -86,7 +86,26 @@ public class RecipientFilter : IRecipientFilter
 			AddPlayersFromBitMask(ref playerbits);
 		}
 	}
-	public void RemoveRecipientsByPVS(in Vector3 origin) { }
+	public void RemovePlayersFromBitMask(ref PlayerBitSet playerbits) {
+		int index = playerbits.FindNextSetBit(0);
+
+		while (index > -1) {
+			BasePlayer? player = Util.PlayerByIndex(index + 1);
+			if (player != null)
+				RemoveRecipient(player);
+
+			index = playerbits.FindNextSetBit(index + 1);
+		}
+	}
+	public void RemoveRecipientsByPVS(in Vector3 origin) {
+		if (gpGlobals.MaxClients == 1)
+			Recipients.Clear();
+		else {
+			PlayerBitSet playerbits = default;
+			engine.Message_DetermineMulticastRecipients(false, origin, ref playerbits);
+			RemovePlayersFromBitMask(ref playerbits);
+		}
+	}
 	public void AddRecipientsByPAS(in Vector3 origin) {
 		if (gpGlobals.MaxClients == 1)
 			AddAllPlayers();
@@ -141,8 +160,16 @@ public class RecipientFilter : IRecipientFilter
 	public bool IgnorePredictionCull() => IgnoringPredictionCull;
 
 #if GMOD_DLL
-	public bool GMOD_HasRecipient(int slot) => throw new NotImplementedException();
-	public bool GMOD_RemoveRecipientsByPAS(in Vector3 origin) => throw new NotImplementedException();
+	public bool GMOD_HasRecipient(int playerIndex) => Recipients.Contains(playerIndex);
+	public void GMOD_RemoveRecipientsByPAS(in Vector3 origin) {
+		if (gpGlobals.MaxClients == 1) {
+			Recipients.Clear();
+			return;
+		}
+		PlayerBitSet playerbits = default;
+		engine.Message_DetermineMulticastRecipients(true, origin, ref playerbits);
+		RemovePlayersFromBitMask(ref playerbits);
+	}
 #endif
 }
 

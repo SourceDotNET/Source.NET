@@ -17,5 +17,5 @@ void main()
 {
     gl_Position = projectionMatrix * viewMatrix * vec4(v_Position, 1.0);
     WriteUserClipDistances(gl_Position);
-    vs_TexCoord = vec2(v_TexCoord.x, 1.0 - v_TexCoord.y);
+    vs_TexCoord = v_TexCoord;
 }

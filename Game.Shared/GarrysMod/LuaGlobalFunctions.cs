@@ -121,6 +121,17 @@ public static partial class LuaGlobalFunctions
 	}
 #endif
 
+#if CLIENT_DLL
+	[LuaGlobal]
+	static int GetViewEntity(ILuaInterface lua) {
+		C_BaseEntity? ent = cl_entitylist.GetBaseEntity(render.GetViewEntity());
+		if (ent == null)
+			ent = C_BasePlayer.GetLocalPlayer();
+		LuaEntity.Push_Entity(ent);
+		return 1;
+	}
+#endif
+
 	[LuaGlobal]
 	static int WorldToLocal(ILuaInterface lua) {
 		Vector3 pos = LuaVector.Get_Vector(1);
@@ -262,6 +273,17 @@ public static partial class LuaGlobalFunctions
 
 #if GAME_DLL
 	static ConVar? hostnameCvar;
+
+	static readonly ConVarRef sv_logecho = new("sv_logecho");
+
+	[LuaGlobal]
+	static int ServerLog(ILuaInterface lua) {
+		if (sv_logecho.GetInt() == 0)
+			return 0;
+		Dbg.Msg($"ServerLog: {lua.GetString(1)}");
+		engine.LogPrint(lua.GetString(1));
+		return 0;
+	}
 #endif
 
 #if !MENU_DLL

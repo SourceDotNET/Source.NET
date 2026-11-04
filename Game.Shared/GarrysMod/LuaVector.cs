@@ -130,7 +130,10 @@ public static partial class LuaVector
 			vec.Y *= other.Y;
 			vec.Z *= other.Z;
 		}
-		// todo: type == LuaType.Matrix: *vec = *Get_VMatrix(2) * *vec;
+#if !MENU_DLL
+		else if (type == LuaType.Matrix)
+			vec = MathLib.VMul4x3(ref LuaVMatrix.Get_VMatrix(2), vec);
+#endif
 		else {
 			float scale = (float)g_Lua.CheckNumber(2);
 			vec.X *= scale;
@@ -276,7 +279,7 @@ public static partial class LuaVector
 		return dx * dx + dy * dy + dz * dz;
 	}
 
-	static void OrderVectors(in Vector3 a, in Vector3 b, out Vector3 mins, out Vector3 maxs) {
+	internal static void OrderVectors(in Vector3 a, in Vector3 b, out Vector3 mins, out Vector3 maxs) {
 		mins = default;
 		maxs = default;
 		for (int i = 0; i < 3; i++) {

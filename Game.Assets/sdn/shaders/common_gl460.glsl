@@ -8,6 +8,12 @@ const vec3 bumpBasis[3] = vec3[3](
     vec3( -0.40824821591377258, -0.7071068286895752, OO_SQRT_3 )
 );
 
+vec3 NormalizeD3D9(vec3 v)
+{
+    float lenSq = dot(v, v);
+    return lenSq > 0.0 ? v * inversesqrt(lenSq) : vec3(0.0);
+}
+
 vec3 CalcReflectionVectorUnnormalized(vec3 normal, vec3 eyeVector)
 {
     // FIXME: might be better of normalizing with a normalizing cube map and

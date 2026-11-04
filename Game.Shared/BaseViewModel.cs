@@ -99,6 +99,8 @@ public partial class
 			model.SetCycle(0);
 		}
 	}
+
+	public override bool ShouldResetSequenceOnNewModel() => false;
 #endif
 	[NetworkVar("m_nViewModelIndex")]
 	public partial int _ViewModelIndex { get; set; }

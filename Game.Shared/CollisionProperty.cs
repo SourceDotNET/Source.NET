@@ -601,6 +601,50 @@ public partial class CollisionProperty : ICollideable
 		return ref Size;
 	}
 
+	public void SetSurroundingBoundsType(SurroundingBoundsType type) {
+		SurroundType = (byte)type;
+		Assert(type != SurroundingBoundsType.UseSpecifiedBounds);
+		MarkSurroundingBoundsDirty();
+	}
+
+	public void SetSurroundingBoundsType(SurroundingBoundsType type, in Vector3 mins, in Vector3 maxs) {
+		SurroundType = (byte)type;
+		if (type != SurroundingBoundsType.UseSpecifiedBounds) {
+			MarkSurroundingBoundsDirty();
+			return;
+		}
+
+		SpecifiedSurroundingMinsPreScaledForModify() = mins;
+		SpecifiedSurroundingMaxsPreScaledForModify() = maxs;
+
+		BaseAnimating? anim = Outer.GetBaseAnimating();
+		if (anim != null && anim.GetModelScale() != 1.0f) {
+			Vector3 newMins = mins * anim.GetModelScale();
+			Vector3 newMaxs = maxs * anim.GetModelScale();
+
+			SpecifiedSurroundingMinsForModify() = newMins;
+			SpecifiedSurroundingMaxsForModify() = newMaxs;
+			SurroundingMins = newMins;
+			SurroundingMaxs = newMaxs;
+		}
+		else {
+			SpecifiedSurroundingMinsForModify() = mins;
+			SpecifiedSurroundingMaxsForModify() = maxs;
+			SurroundingMins = mins;
+			SurroundingMaxs = maxs;
+		}
+	}
+
+	public void RefreshScaledCollisionBounds() {
+		SetCollisionBounds(MinsPreScaled, MaxsPreScaled);
+
+		SurroundingBoundsType surroundType = (SurroundingBoundsType)SurroundType;
+		if (surroundType == SurroundingBoundsType.UseSpecifiedBounds)
+			SetSurroundingBoundsType(surroundType, SpecifiedSurroundingMinsPreScaled, SpecifiedSurroundingMaxsPreScaled);
+		else
+			SetSurroundingBoundsType(surroundType);
+	}
+
 	public void SetCollisionBounds(in Vector3 mins, in Vector3 maxs) {
 		if (MinsPreScaled != mins || MaxsPreScaled != maxs) {
 			MinsPreScaledForModify() = mins;

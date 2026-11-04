@@ -3977,15 +3977,32 @@ public class PointEntity : BaseEntity
 
 public class ServerOnlyEntity : BaseEntity
 {
+	public ServerOnlyEntity() : base(true) { }
 
+	public override EntityCapabilities ObjectCaps() => base.ObjectCaps() & ~EntityCapabilities.AcrossTransition;
 }
 
 public class ServerOnlyPointEntity : ServerOnlyEntity
 {
+	public override bool KeyValue(ReadOnlySpan<char> keyName, ReadOnlySpan<char> value) {
+		if (FStrEq(keyName, "mins") || FStrEq(keyName, "maxs")) {
+			Warning($"Warning! Can't specify mins/maxs for point entities! ({GetClassname()})\n");
+			return true;
+		}
 
+		return base.KeyValue(keyName, value);
+	}
 }
 
 public class LogicalEntity : ServerOnlyEntity
 {
+	public override bool KeyValue(ReadOnlySpan<char> keyName, ReadOnlySpan<char> value) {
+		if (FStrEq(keyName, "mins") || FStrEq(keyName, "maxs")) {
+			Warning($"Warning! Can't specify mins/maxs for point entities! ({GetClassname()})\n");
+			return true;
+		}
+
+		return base.KeyValue(keyName, value);
+	}
 
 }

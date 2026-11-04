@@ -824,7 +824,7 @@ namespace Game.Shared
 			//StepSimulation
 			new EntityDataInstantiator<StepSimulationData>(),
 			//ModelScale
-			null!,
+			new EntityDataInstantiator<ModelScaleData>(),
 			//PositionWatcher
 			new EntityDataInstantiator<WatcherList>(),
 			//PhysicsPushList

@@ -98,41 +98,43 @@ public static partial class LuaFileLibrary
 		if (str.Length > 0x103)
 			return false;
 
+		bool isData = path == "DATA";
 		if (write) {
-			if (path != "DATA")
+			if (!isData)
 				return false;
 
 			if (!anyExtension && Array.IndexOf(AllowedWriteExtensions, ext) == -1)
 				return false;
 		}
+		else if (!isData) {
+			if (Bootil.String.Test.Contains(str, "cache/chromium", true))
+				return false;
+			if (Bootil.String.Test.Contains(str, "ChromiumCache", true))
+				return false;
+			if (Bootil.String.Test.Contains(str, "GameConfig.txt", true))
+				return false;
+			if (Bootil.String.Test.Contains(str, "srcds_addons.txt", true))
+				return false;
+			if (Bootil.String.Test.Contains(str, "CmdSeq.wc", true))
+				return false;
+			if (Bootil.String.Test.Contains(str, "debug_dump.txt", true))
+				return false;
 
-		if (Bootil.String.Test.Contains(str, "cache/chromium", true))
-			return false;
-		if (Bootil.String.Test.Contains(str, "ChromiumCache", true))
-			return false;
-		if (Bootil.String.Test.Contains(str, "GameConfig.txt", true))
-			return false;
-		if (Bootil.String.Test.Contains(str, "srcds_addons.txt", true))
-			return false;
-		if (Bootil.String.Test.Contains(str, "CmdSeq.wc", true))
-			return false;
-		if (Bootil.String.Test.Contains(str, "debug_dump.txt", true))
-			return false;
+			if (ext == "vdf"
+				|| Bootil.String.Test.Contains(str, "mount.cfg", true)
+				|| Bootil.String.Test.Contains(str, "server.cfg", true)
+				|| Bootil.String.Test.Contains(str, "sourcetv.cfg", true)
+				|| Bootil.String.Test.Contains(str, "listenserver.cfg", true)
+				|| Bootil.String.Test.Contains(str, "autoexec.cfg", true)
+				|| Bootil.String.Test.Contains(str, "config.cfg", true))
+				return false;
 
-		if (ext == "vdf"
-			|| Bootil.String.Test.Contains(str, "mount.cfg", true)
-			|| Bootil.String.Test.Contains(str, "server.cfg", true)
-			|| Bootil.String.Test.Contains(str, "sourcetv.cfg", true)
-			|| Bootil.String.Test.Contains(str, "listenserver.cfg", true)
-			|| Bootil.String.Test.Contains(str, "autoexec.cfg", true)
-			|| Bootil.String.Test.Contains(str, "config.cfg", true))
-			return false;
+			if (ext is "dmp" or "mdmp" or "db" or "log")
+				return false;
 
-		if (ext is "dmp" or "mdmp" or "db" or "log")
-			return false;
-
-		if (ext == "txt" && Bootil.String.Test.Contains(str, "crashes/", true))
-			return false;
+			if (Bootil.String.Test.Contains(str, "crashes/", true))
+				return false;
+		}
 
 		if (!Bootil.String.Test.ContainsOnly(str, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890-_ ./*!@#$%^&()=+;',~`[]{}"))
 			return false;
@@ -849,7 +851,7 @@ public static partial class LuaFileLibrary
 		else {
 			ReadOnlySpan<char> name = filesystem.FindFirstEx(wildcard, path, out ulong handle);
 			while (!name.IsEmpty) {
-				if (name[0] != '.') {
+				if (name[0] != '.' && stricmp(name, "/") != 0) {
 					FileInfo info = new() { Name = name.ToString() };
 					if (g_SortMethod == "datedesc" || g_SortMethod == "dateasc")
 						info.Time = (long)(filesystem.GetFileTime(basePath + info.Name, path) - DateTime.UnixEpoch).TotalSeconds;

@@ -168,7 +168,7 @@ public unsafe class SDL3_Window : IWindow
 
 						WindowEvent newEvent = new();
 						newEvent.EventType = pressed ? WindowEventType.MouseButtonDown : WindowEventType.MouseButtonUp;
-						newEvent.MousePos = new((int)(ev.motion.x * MouseXScale), (int)(ev.motion.x * MouseYScale));
+						newEvent.MousePos = new((int)(ev.button.x * MouseXScale), (int)(ev.button.y * MouseYScale));
 						newEvent.MouseButtonFlags = MouseButtons;
 						newEvent.MouseClickCount = (uint)(doublePress ? 2 : 1);
 						newEvent.MouseButton = evButton;

@@ -553,7 +553,6 @@ public static partial class LuaUtil
 		return filter;
 	}
 #endif
-#if CLIENT_DLL || MENU_DLL
 	static void TableToKeyValues(ILuaInterface lua, ILuaObject table, System.Text.StringBuilder output, string name, int depth) {
 		output.Append('\t', depth).Append('"').Append(name).Append("\"\n");
 		output.Append('\t', depth).Append("{\n");
@@ -903,6 +902,30 @@ public static partial class LuaUtil
 			PushJSONElement(lua, document.RootElement, 1, ignoreLimits, ignoreConversions);
 		}
 		return 1;
+	}
+
+#if GAME_DLL
+	[LuaFunction]
+	static int Effect(ILuaInterface lua) {
+		EffectData data = LuaEffectData.Get_EffectData(2);
+		data.AllowOverride = true;
+		if (lua.GetType(3) == LuaType.Bool)
+			data.AllowOverride = lua.GetBool(3);
+
+		if (lua.GetType(4) == LuaType.Bool && lua.GetBool(4)) {
+			PASFilter filter = new(data.Origin);
+			filter.SetIgnorePredictionCull(true);
+			TempEnts.DispatchEffect(lua.CheckString(1), data, filter);
+			return 0;
+		}
+
+		if (lua.GetType(4) == LuaType.RecipientFilter) {
+			TempEnts.DispatchEffect(lua.CheckString(1), data, LuaRecipientFilter.Get_RecipientFilter(4));
+			return 0;
+		}
+
+		TempEnts.DispatchEffect(lua.CheckString(1), data);
+		return 0;
 	}
 #endif
 

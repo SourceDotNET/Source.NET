@@ -212,10 +212,13 @@ public static partial class LuaRender
 
 	[LuaFunction]
 	static int UpdateScreenEffectTexture(ILuaInterface lua) {
-		int textureIndex = 0;
-		if (lua.GetType(1) == LuaType.Number)
-			textureIndex = (int)lua.GetNumber(1);
-		ViewScene.UpdateScreenEffectTexture(textureIndex, 0, 0, ScreenWidth(), ScreenHeight(), false);
+		uint textureIndex = 0;
+		if (lua.GetType(1) == LuaType.Number) {
+			textureIndex = (uint)lua.CheckNumber(1);
+			if (textureIndex > 4)
+				return 0;
+		}
+		ViewScene.UpdateScreenEffectTexture((int)textureIndex, 0, 0, ScreenWidth(), ScreenHeight(), false);
 		return 0;
 	}
 #endif

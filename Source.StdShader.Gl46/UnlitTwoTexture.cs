@@ -105,8 +105,9 @@ public class UnlitTwoTexture : BaseVSShader
 
 		if (!parms[CLOAKPASSENABLED].IsDefined())
 			parms[CLOAKPASSENABLED].SetIntValue(0);
-		else if (parms[CLOAKPASSENABLED].GetIntValue() != 0)
-			throw new NotImplementedException();
+		else if (parms[CLOAKPASSENABLED].GetIntValue() != 0) {
+			// todo: InitParamsCloakBlendedPass
+		}
 	}
 
 	protected override void OnInitShaderInstance(IMaterialVar[] parms, ReadOnlySpan<char> materialName) {
@@ -115,15 +116,16 @@ public class UnlitTwoTexture : BaseVSShader
 		if (parms[TEXTURE2].IsDefined())
 			LoadTexture(TEXTURE2, (int)TextureFlags.SRGB);
 
-		if (parms[CLOAKPASSENABLED].GetIntValue() != 0)
-			throw new NotImplementedException();
+		if (parms[CLOAKPASSENABLED].GetIntValue() != 0) {
+			// todo: InitCloakBlendedPass
+		}
 	}
 
 	protected override void OnDrawElements(IMaterialVar[] parms, IShaderDynamicAPI shaderAPI, VertexCompressionType vertexCompression) {
-		if (parms[CLOAKPASSENABLED].GetIntValue() != 0)
-			throw new NotImplementedException();
-
 		bool drawStandardPass = true;
+		if (parms[CLOAKPASSENABLED].GetIntValue() != 0) {
+			// todo: CloakBlendedPassIsFullyOpaque
+		}
 
 		bool newFlashlightPath = r_flashlight_version2.GetInt() != 0;
 		if (drawStandardPass && (ShaderShadow == null) && (ShaderAPI != null) &&

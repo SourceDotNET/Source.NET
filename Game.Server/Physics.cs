@@ -36,6 +36,17 @@ public static class PhysicsHookGlobals {
 
 	public static readonly ConVar phys_timescale = new("phys_timescale", "1", FCvar.Replicated, "Scale time for physics", callback: TimescaleChanged);
 	public static float g_GMOD_PhysTimeScale = 1.0f;
+	public static bool g_GMOD_PhysicsPaused;
+	public static TimeUnit_t g_GMOD_LastSimulationTime;
+
+	public static void GMOD_PhysicsSetTimeScale(float scale) {
+		if (scale <= 0.001f)
+			scale = 0.001f;
+		if (5.0f <= scale)
+			scale = 5.0f;
+		g_GMOD_PhysTimeScale = scale;
+		physenv?.ResetSimulationClock();
+	}
 
 	static void TimescaleChanged(IConVar var, in ConVarChangeContext ctx) => physenv?.ResetSimulationClock();
 
@@ -419,11 +430,18 @@ public class PhysicsHook : BaseGameSystemPerFrame
 		Paused = false;
 	}
 
+#if GMOD_DLL
+	public bool ShouldSimulate() => !g_GMOD_PhysicsPaused && physenv != null && !Paused;
+#else
 	public bool ShouldSimulate() => physenv != null && !Paused;
+#endif
 
 	void PhysFrame(TimeUnit_t deltaTime) {
 		if (!ShouldSimulate())
 			return;
+#if GMOD_DLL
+		TimeUnit_t startTime = engine.Time();
+#endif
 
 		// Trap interrupts and clock changes
 		if (deltaTime > 1.0 || deltaTime < 0.0)
@@ -462,6 +480,9 @@ public class PhysicsHook : BaseGameSystemPerFrame
 		}
 
 		g_Collisions.BufferTouchEvents(false);
+#if GMOD_DLL
+		g_GMOD_LastSimulationTime = engine.Time() - startTime;
+#endif
 		g_Collisions.FrameUpdate();
 	}
 	public override void LevelShutdownPreEntity() {

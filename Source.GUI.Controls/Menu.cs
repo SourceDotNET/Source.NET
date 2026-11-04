@@ -1022,7 +1022,7 @@ public class Menu : Panel
 	}
 
 	public int GetMenuID(int index) {
-		if (SortedItems[index] == -1)
+		if (index < 0 || index >= SortedItems.Count)
 			return -1;
 
 		return SortedItems[index];

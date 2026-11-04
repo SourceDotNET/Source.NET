@@ -512,8 +512,11 @@ public class ListPanel : Panel
 			bSortAscending = true;
 			SortFuncSecondary = null;
 
-			newitem.SortedTreeIndexes[i] = rbtree.Count;
-			rbtree.Add(rbtree.Count, item);
+			int index = rbtree.Count;
+			while (rbtree.ContainsKey(index))
+				index++;
+			newitem.SortedTreeIndexes[i] = index;
+			rbtree.Add(index, item);
 		}
 	}
 

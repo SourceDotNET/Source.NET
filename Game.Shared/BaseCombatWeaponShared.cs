@@ -899,6 +899,9 @@ public partial class
 			return false;
 
 		BasePlayer? owner = ToBasePlayer(GetOwner());
+#if GMOD_DLL
+		float deploySpeed = GetDeploySpeed();
+#endif
 		if (owner != null) {
 			// Dead men deploy no weapons
 			if (owner.IsAlive() == false)
@@ -908,13 +911,27 @@ public partial class
 
 			SetViewModel();
 			SendWeaponAnim(activity);
+#if GMOD_DLL
+			BaseViewModel? vm = owner.GetViewModel(nViewModelIndex);
+			if (vm != null)
+				vm.SetPlaybackRate(float.IsFinite(deploySpeed) ? deploySpeed : 1.0f);
 
+			owner.SetNextAttack(gpGlobals.CurTime + SequenceDuration() / deploySpeed);
+#else
 			owner.SetNextAttack(gpGlobals.CurTime + SequenceDuration());
+#endif
 		}
 
 		// Can't shoot again until we've finished deploying
+#if GMOD_DLL
+		if (NextPrimaryAttack <= gpGlobals.CurTime + SequenceDuration() / deploySpeed)
+			NextPrimaryAttack = gpGlobals.CurTime + SequenceDuration() / deploySpeed;
+		if (NextSecondaryAttack <= gpGlobals.CurTime + SequenceDuration() / deploySpeed)
+			NextSecondaryAttack = gpGlobals.CurTime + SequenceDuration() / deploySpeed;
+#else
 		NextPrimaryAttack = gpGlobals.CurTime + SequenceDuration();
 		NextSecondaryAttack = gpGlobals.CurTime + SequenceDuration();
+#endif
 		HudHintMinDisplayTime = 0;
 
 		AltFireHudHintDisplayed = false;
