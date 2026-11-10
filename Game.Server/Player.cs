@@ -678,6 +678,9 @@ public partial class BasePlayer : BaseCombatCharacter
 	public InButtons AfButtonLast;
 	public InButtons AfButtonDisabled;
 	public InButtons AfButtonForced;
+#if GMOD_DLL
+	public Source.InlineArray5<byte> ButtonsPressed;
+#endif
 
 	//-----------------------------------------------------------------------------
 	// Purpose: Strips off IN_xxx flags from the player's input

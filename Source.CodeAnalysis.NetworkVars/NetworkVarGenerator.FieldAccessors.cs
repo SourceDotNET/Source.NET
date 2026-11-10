@@ -106,7 +106,9 @@ namespace Source.CodeAnalysis.NetworkVars
 			if (container.Name == "DEFINE") {
 				if (method.Parameters.Length == 0 || method.Parameters[0].Name != "name")
 					return null;
-				INamedTypeSymbol? declaring = FindDataMapField(owner, expression)?.ContainingType ?? FindNetworkVarProperty(owner, expression)?.ContainingType;
+				int rootEnd = expression.IndexOfAny(new[] { '.', '[' });
+				string root = rootEnd >= 0 ? expression.Substring(0, rootEnd) : expression;
+				INamedTypeSymbol? declaring = FindDataMapField(owner, root)?.ContainingType ?? FindNetworkVarProperty(owner, root)?.ContainingType;
 				model = declaring == null ? null : BuildScalar(compilation, declaring, expression, null, failure);
 			}
 			else {

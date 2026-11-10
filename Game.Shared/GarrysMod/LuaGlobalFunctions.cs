@@ -1,4 +1,8 @@
 ﻿#if CLIENT_DLL || GAME_DLL || MENU_DLL
+#if CLIENT_DLL || GAME_DLL
+using Game.Shared;
+#endif
+
 using Source;
 using Source.Common.Commands;
 using Source.Common.Mathematics;
@@ -102,6 +106,21 @@ public static partial class LuaGlobalFunctions
 		}
 		v = maxInt / 255.0f;
 	}
+
+#if CLIENT_DLL || GAME_DLL
+	public static EHANDLE g_PhysConstrantSystem = new();
+
+#if GAME_DLL
+	public static BaseEntity? GetGlobalConstraintSystem() => g_PhysConstrantSystem.Get();
+#endif
+
+	[LuaGlobal]
+	static int SetPhysConstraintSystem(ILuaInterface lua) {
+		BaseEntity? ent = LuaEntity.Get_Entity(1, true);
+		g_PhysConstrantSystem.Set(ent);
+		return 0;
+	}
+#endif
 
 #if !MENU_DLL
 	[LuaGlobal]

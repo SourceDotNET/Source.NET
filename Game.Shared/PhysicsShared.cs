@@ -26,14 +26,15 @@ public struct Friction
 	public TimeUnit_t LastEffectTime;
 }
 
-public struct GameVCollisionEvent {
+public struct GameVCollisionEvent
+{
 	public VCollisionEvent VCollisionEvent;
 	public InlineArray2<Vector3> PreVelocity;
 	public InlineArray2<Vector3> PostVelocity;
 	public InlineArray2<Vector3> PreAngularVelocity;
 	public InlineArray2<BaseEntity?> Entities;
 
-	public void Init(ref VCollisionEvent ev){
+	public void Init(ref VCollisionEvent ev) {
 		this.VCollisionEvent = ev;
 		Entities[0] = null;
 		Entities[1] = null;
