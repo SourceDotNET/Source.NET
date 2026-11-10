@@ -162,7 +162,12 @@ public unsafe class FontManager
 	}
 
 	List<FontAmalgam> FontAmalgams = [];
+#if WIN32
+	List<Win32Font> Win32Fonts = [];
+	List<string> CustomFontFileNames = [];
+#else
 	List<FreeTypeFont> FreeTypeFonts = [];
+#endif
 
 	static ulong FontHash(ReadOnlySpan<char> name, int weight) => sprintf(stackalloc char[name.Length + 16], "%s-%i").S(name).I(weight).ToSpan().Hash();
 
@@ -171,7 +176,13 @@ public unsafe class FontManager
 	Dictionary<ulong, string> CustomFontFiles = [];
 
 	public void ClearAllFonts() {
+#if WIN32
+		for (int i = 0; i < Win32Fonts.Count; i++)
+			Win32Fonts[i].Dispose();
+		Win32Fonts.Clear();
+#else
 		FreeTypeFonts.Clear();
+#endif
 
 		for (int i = 0; i < FontAmalgams.Count; i++)
 			FontAmalgams[i].RemoveAll();
@@ -192,7 +203,7 @@ public unsafe class FontManager
 		if (fontAmalgam.GetCount() > 0)
 			fontAmalgam.RemoveAll();
 
-		FreeTypeFont? baseFont = CreateOrFindFreeTypeFont(fontName, tall, weight, blur, scanlines, flags);
+		BaseFont? baseFont = CreateOrFindFont(fontName, tall, weight, blur, scanlines, flags);
 
 		do {
 			if (IsFontForeignLanguageCapable(fontName)) {
@@ -208,7 +219,7 @@ public unsafe class FontManager
 					return true;
 				}
 
-				FreeTypeFont? extendedFont = CreateOrFindFreeTypeFont(localizedFontName, tall, weight, blur, scanlines, flags);
+				BaseFont? extendedFont = CreateOrFindFont(localizedFontName, tall, weight, blur, scanlines, flags);
 				if (baseFont != null && extendedFont != null) {
 					int min = 0x0000, max = 0x00FF;
 
@@ -300,6 +311,40 @@ public unsafe class FontManager
 		return (byte*)binary;
 	}
 
+	private BaseFont? CreateOrFindFont(ReadOnlySpan<char> fontName, int tall, int weight, int blur, int scanlines, SurfaceFontFlags flags) {
+#if WIN32
+		return CreateOrFindWin32Font(fontName, tall, weight, blur, scanlines, flags);
+#else
+		return CreateOrFindFreeTypeFont(fontName, tall, weight, blur, scanlines, flags);
+#endif
+	}
+
+#if WIN32
+	private Win32Font? CreateOrFindWin32Font(ReadOnlySpan<char> windowsFontName, int tall, int weight, int blur, int scanlines, SurfaceFontFlags flags) {
+		Win32Font? winFont = null;
+		int i;
+		for (i = 0; i < Win32Fonts.Count; i++) {
+			if (Win32Fonts[i].IsEqualTo(windowsFontName, tall, weight, blur, scanlines, flags)) {
+				winFont = Win32Fonts[i];
+				break;
+			}
+		}
+
+		if (winFont == null) {
+			Win32Font font = new();
+			if (font.Create(windowsFontName, tall, weight, blur, scanlines, flags)) {
+				Win32Fonts.Add(font);
+				winFont = font;
+			}
+			else {
+				font.Dispose();
+				return null;
+			}
+		}
+
+		return winFont;
+	}
+#else
 	private FreeTypeFont? CreateOrFindFreeTypeFont(ReadOnlySpan<char> fontName, int tall, int weight, int blur, int scanlines, SurfaceFontFlags flags) {
 		if (!FontsReady) InitFontSettings();
 
@@ -342,6 +387,7 @@ public unsafe class FontManager
 		}
 		return foundFont;
 	}
+#endif
 
 	public struct FT_SfntName
 	{
@@ -354,6 +400,33 @@ public unsafe class FontManager
 	}
 
 	internal bool AddCustomFontFile(ReadOnlySpan<char> fontName, ReadOnlySpan<char> fontFileName) {
+#if WIN32
+		ReadOnlySpan<char> fullPath = fileSystem.RelativePathToFullPath(fontFileName, null, stackalloc char[260]);
+		if (fullPath.IsEmpty) {
+			Warning($"Couldn't find custom font file '{fontFileName}'\n");
+			return false;
+		}
+
+		string path = new(fullPath);
+		int i;
+		for (i = 0; i < CustomFontFileNames.Count; i++) {
+			if (CustomFontFileNames[i] == path)
+				break;
+		}
+		if (i >= CustomFontFileNames.Count) {
+			CustomFontFileNames.Add(path);
+			fileSystem.GetLocalCopy(path);
+		}
+
+		if (Win32Font.AddFontResourceExA(path, Win32Font.FR_PRIVATE, 0) > 0)
+			return true;
+
+		if (Win32Font.AddFontResourceA(path) < 1) {
+			Warning($"Failed to load custom font file '{path}'\n");
+			return false;
+		}
+		return true;
+#else
 		ReadOnlySpan<char> fontFilepath = fileSystem.RelativePathToFullPath(fontFileName, null, stackalloc char[512]);
 
 		if (fontFilepath.IsEmpty) {
@@ -403,6 +476,7 @@ public unsafe class FontManager
 		CustomFontFiles[fontName.Hash()] = new(fontFilepath);
 
 		return true;
+#endif
 	}
 
 	internal int GetFontTall(IFont? font) => ((FontAmalgam?)font)?.GetFontHeight() ?? 0;
