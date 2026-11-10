@@ -23,9 +23,14 @@ public static class SourceDllMain
 	public static IGarrysMod garrysmod = null!;
 	public static INetworkStringTableContainer? networkstringtable;
 
+	[Dependency] public static ICvar cvar { get; private set; } = null!;
+	[Dependency] public static IFileSystem filesystem { get; private set; } = null!;
+	[Dependency] public static IMaterialSystem materials { get; private set; } = null!;
+	[Dependency] public static ICommandLine commandLine { get; private set; } = null!;
+#if !SWDS
+	[Dependency] public static IGameUIFuncs gameuifuncs { get; private set; } = null!;
 	[Dependency] public static IEngineClient engine { get; private set; } = null!;
 	[Dependency] public static IEngineVGui enginevgui { get; private set; } = null!;
-	[Dependency] public static IGameUIFuncs gameuifuncs { get; private set; } = null!;
 	[Dependency] public static IGameUI gameUI { get; private set; } = null!;
 	[Dependency] public static IMatSystemSurface surface { get; private set; } = null!;
 	[Dependency] public static ISurface Surface { get; private set; } = null!;
@@ -36,9 +41,6 @@ public static class SourceDllMain
 	[Dependency] public static ISchemeManager vguiSchemeManager { get; private set; } = null!;
 	[Dependency] public static ILocalize localize { get; private set; } = null!;
 	[Dependency] public static ILocalize Localize { get; private set; } = null!;
-	[Dependency] public static ICvar cvar { get; private set; } = null!;
-	[Dependency] public static IFileSystem filesystem { get; private set; } = null!;
-	[Dependency] public static IMaterialSystem materials { get; private set; } = null!;
-	[Dependency] public static ICommandLine commandLine { get; private set; } = null!;
 	[Dependency] public static ISystem system { get; private set; } = null!;
+#endif
 }

@@ -338,6 +338,7 @@ public class StaticPropMgrImpl : IStaticPropMgrEngine, IStaticPropMgrClient, ISt
 	}
 
 	public void DrawStaticProps(ref InlineArray512<IClientRenderable> props, int count, bool shadowDepth, bool drawVCollideWireframe) {
+#if !SWDS
 		if (!r_drawstaticprops.GetBool())
 			return;
 
@@ -352,8 +353,10 @@ public class StaticPropMgrImpl : IStaticPropMgrEngine, IStaticPropMgrClient, ISt
 			else
 				DrawStaticProps_Fast(ref props, count, shadowDepth);
 		}
+#endif
 	}
 
+#if !SWDS
 	void DrawStaticProps_Slow(ref InlineArray512<IClientRenderable> props, int count, bool shadowDepth, bool drawVCollideWireframe) {
 		StudioFlags flags = StudioFlags.Render;
 		if (shadowDepth)
@@ -368,7 +371,7 @@ public class StaticPropMgrImpl : IStaticPropMgrEngine, IStaticPropMgrClient, ISt
 	}
 
 	void DrawStaticProps_Fast(ref InlineArray512<IClientRenderable> props, int count, bool shadowDepth) => throw new NotImplementedException();
-
+	
 	const int MAX_OBJECTS = 2048;
 	readonly StaticPropRenderInfo[] PropList = new StaticPropRenderInfo[MAX_OBJECTS];
 
@@ -392,7 +395,7 @@ public class StaticPropMgrImpl : IStaticPropMgrEngine, IStaticPropMgrClient, ISt
 		}
 		modelrender.DrawStaticPropArrayFast(propList, listCount, shadowDepth);
 	}
-
+#endif
 	static readonly ConVar pipeline_static_props = new("pipeline_static_props", "1");
 
 	void OutputLevelStats() => throw new NotImplementedException();

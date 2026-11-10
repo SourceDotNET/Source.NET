@@ -211,7 +211,6 @@ public class EngineBuilder(ICommandLine cmdLine) : ServiceCollection
 		this.AddSingleton<IServerPluginHelpers, ServerPlugin>(x => x.GetRequiredService<ServerPlugin>());
 		this.AddSingleton<IUniformRandomStream, UniformRandomStream>();
 		this.AddSingleton<ISoundServices, EngineSoundServices>();
-		this.AddSingleton<IGameUIFuncs, GameUIFuncs>();
 		this.AddSingleton<DtCommonEng>();
 		this.AddSingleton<EngineToolImpl>();
 		this.AddSingleton<IEngineToolInternal>(x => x.GetRequiredService<EngineToolImpl>());
@@ -326,6 +325,7 @@ public class EngineBuilder(ICommandLine cmdLine) : ServiceCollection
 		this.AddSingleton<IEngineVGui, EngineVGui>(x => x.GetRequiredService<EngineVGui>());
 		// These interfaces go to client and game dll's
 		this.AddSingleton<IEngineClient, EngineClient>();
+		this.AddSingleton<IGameUIFuncs, GameUIFuncs>();
 		this.AddSingleton<ClientLauncherAPI>();
 		this.AddSingleton<IEngineAPI, ClientLauncherAPI>(x => x.GetRequiredService<ClientLauncherAPI>());
 		this.AddSingleton<IClientLauncherAPI, ClientLauncherAPI>(x => x.GetRequiredService<ClientLauncherAPI>());
