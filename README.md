@@ -32,7 +32,7 @@ It can currently create singleplayer games (WIP,) connect to real Garry's Mod se
 ## Building
 You need the following:
 - A C#-compatible IDE obviously (Visual Studio 2026 is what I use for now, although I'm sure it would work fine on Rider or VS Code)
-- The .NET 10.0 SDK
+- The .NET 11.0 SDK
 - A license for Garry's Mod on Steam
 
 ## Structure
