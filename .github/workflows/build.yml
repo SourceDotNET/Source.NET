@@ -11,30 +11,30 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-15-intel, macos-latest]
-        configuration: [Debug, Release]
+        configuration: [Debug, Release, "Debug (Dedicated)", "Release (Dedicated)"]
         include:
           - os: ubuntu-latest
             configuration: Release
             coverage: true
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
-      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+      - uses: actions/setup-dotnet@v5.4.0
         with:
           dotnet-version: 11.0.x
 
       - name: Build
-        run: dotnet build Source.NET.slnx -c ${{ matrix.configuration }}
+        run: dotnet build Source.NET.slnx -c "${{ matrix.configuration }}"
 
       - name: Test
-        run: dotnet test --project Source.Common.Tests/Source.Common.Tests.csproj -c ${{ matrix.configuration }} --no-build ${{ matrix.coverage && '--coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml --coverage-settings Source.Common.Tests/coverage.settings.xml --results-directory TestResults' || '' }}
+        run: dotnet test --project Source.Common.Tests/Source.Common.Tests.csproj -c "${{ matrix.configuration }}" --no-build ${{ matrix.coverage && '--coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml --coverage-settings Source.Common.Tests/coverage.settings.xml --results-directory TestResults' || '' }}
 
       - name: Coverage report
         if: matrix.coverage
-        uses: danielpalme/ReportGenerator-GitHub-Action@5f3701a41d14548c9b8e575a5c235230e515cbc0 # v5.6.0
+        uses: danielpalme/ReportGenerator-GitHub-Action@v5
         with:
           reports: TestResults/coverage.cobertura.xml
           targetdir: CoverageReport

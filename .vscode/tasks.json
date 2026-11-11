@@ -22,8 +22,7 @@
         "--no-restore",
         "${workspaceFolder}/Source.Dedicated/Source.Dedicated.csproj",
         "-p:WarningLevel=0",
-        "-c",
-        "Debug (Dedicated)"
+        "-p:Configuration=Debug%20(Dedicated)"
       ],
       "problemMatcher": "$msCompile"
     }
