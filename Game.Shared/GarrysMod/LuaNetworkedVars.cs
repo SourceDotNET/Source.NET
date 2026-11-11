@@ -426,7 +426,7 @@ public class LuaNetworkedVars
 		messages.HookMessage("NetworkedVar", MsgFunc_NetworkedVar);
 	}
 
-	static uint ReadEHandle(bf_read msg) {
+	internal static uint ReadEHandle(bf_read msg) {
 		uint value = (uint)msg.ReadLong();
 		if (value == Constants.INVALID_NETWORKED_EHANDLE_VALUE)
 			return 0xFFFFFFFF;
