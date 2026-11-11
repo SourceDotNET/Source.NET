@@ -1,10 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<TargetFramework>net10.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<Configurations>Debug;Release;Debug (Dedicated);Release (Dedicated)</Configurations>
 		<ApplicationIcon>SourceDotNET.ico</ApplicationIcon>
 	</PropertyGroup>
 	<PropertyGroup>
@@ -48,8 +44,8 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(SNClientBuild)'=='true'">
-		<PackageReference Include="cef.runtime.win-x64" Version="154.0.34" Condition="'$(IsWindows)'=='true'" />
-		<PackageReference Include="cef.runtime.linux-x64" Version="154.0.34" Condition="'$(IsLinux)'=='true'" />
+		<PackageReference Include="cef.runtime.win-x64" Condition="'$(IsWindows)'=='true'" />
+		<PackageReference Include="cef.runtime.linux-x64" Condition="'$(IsLinux)'=='true'" />
 		<ProjectReference Include="..\HTML.CEF.Process\HTML.CEF.Process.csproj" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 

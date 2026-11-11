@@ -1,10 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<Configurations>Debug;Release;Debug (Dedicated);Release (Dedicated)</Configurations>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -23,15 +19,15 @@
 	<ItemGroup> <Compile Include="..\Usings\MaterialUsings.cs" Link="Usings/Globals/MaterialUsings.cs" /> </ItemGroup>
 	<ItemGroup> <Compile Include="..\Usings\ShaderUsings.cs" Link="Usings/Globals/ShaderUsings.cs" /> </ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="Aspose.Drawing" Version="25.9.0" />
-		<PackageReference Include="CommunityToolkit.HighPerformance" Version="8.4.0" />
-		<PackageReference Include="DStruct.NET" Version="1.2.0" />
-		<PackageReference Include="K4os.Hash.xxHash" Version="1.0.8" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.5.26302.115" />
-		<PackageReference Include="Pastel" Version="6.0.1" />
-		<PackageReference Include="Snappier" Version="1.3.1" />
-		<PackageReference Include="SevenZip" Version="19.0.0" />
-		<PackageReference Include="SharpCompress" Version="0.49.1" />
+		<PackageReference Include="Aspose.Drawing" />
+		<PackageReference Include="CommunityToolkit.HighPerformance" />
+		<PackageReference Include="DStruct.NET" />
+		<PackageReference Include="K4os.Hash.xxHash" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<PackageReference Include="Pastel" />
+		<PackageReference Include="Snappier" />
+		<PackageReference Include="SevenZip" />
+		<PackageReference Include="SharpCompress" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Dependencies\Steamworks\Steamworks.csproj" />

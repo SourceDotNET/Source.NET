@@ -1,11 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-	<!-- Project Settings -->
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-		<Configurations>Debug;Release;Debug (Dedicated);Release (Dedicated)</Configurations>
 	</PropertyGroup>
 
 	<!-- Project References -->
@@ -41,6 +36,6 @@
 		<ProjectReference Include="../Source.CodeAnalysis.EntityFactories/Source.CodeAnalysis.EntityFactories.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+		<PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
 	</ItemGroup>
 </Project>
