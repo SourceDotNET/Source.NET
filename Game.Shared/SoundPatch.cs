@@ -252,6 +252,10 @@ public class SoundPatch : IDisposable
 
 #if GMOD_DLL
 	public void SetSoundLevel(float volume) => SoundLevel = (SoundLevel)(int)volume;
+#if GMOD_DLL
+	public SoundLevel GetSoundLevel() => SoundLevel;
+	public void SetSoundLevel(SoundLevel soundLevel) => SoundLevel = soundLevel;
+#endif
 	public void SetDSP(int dsp) => DSP = dsp;
 	public int GetDSP() => DSP;
 #endif
@@ -673,6 +677,13 @@ public class SoundEnvelopeController() : AutoGameSystemPerFrame("CSoundControlle
 #if GMOD_DLL
 	public int GetDSP(SoundPatch sound) => sound.GetDSP();
 	public void SetDSP(SoundPatch sound, int dsp) => sound.SetDSP(dsp);
+	public void SetSoundLevel(SoundPatch sound, SoundLevel soundLevel) => sound.SetSoundLevel(soundLevel);
+	public SoundLevel GetSoundLevel(SoundPatch sound) => sound.GetSoundLevel();
+
+	public void GMOD_OnLuaObjectDeleted(SoundPatch? sound) {
+		if (sound != null)
+			CommandAdd(sound, 0, SoundCommands.Destroy, 0, 0);
+	}
 #endif
 
 #if CLIENT_DLL
