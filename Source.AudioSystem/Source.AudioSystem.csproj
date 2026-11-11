@@ -1,18 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<Configurations>Debug;Release;Debug (Dedicated);Release (Dedicated)</Configurations>
 	</PropertyGroup>
+
 	<ItemGroup>
 		<Compile Include="..\Usings\GlobalUsings.cs" Link="Usings/GlobalUsings.cs" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="NLayer" Version="1.16.0" />
-		<PackageReference Include="ppy.SDL3-CS" Version="2025.703.0" />
+		<PackageReference Include="NLayer" />
+		<PackageReference Include="ppy.SDL3-CS" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -2929,7 +2929,7 @@ public static class MathLib
 
 	static void SetupMatrixAnglesInternal(ref this Matrix4x4 m, in QAngle angles) {
 		fltx4 sine, cosine;
-		fltx4 radians = Vector128.Multiply(LoadFloat3(MemoryMarshal.Cast<QAngle, float>(new(in angles))), Vector128.Create(MathF.PI / 180f));
+		fltx4 radians = Vector128.Multiply(LoadFloat3(MemoryMarshal.Cast<QAngle, float>(new ReadOnlySpan<QAngle>(in angles))), Vector128.Create(MathF.PI / 180f));
 		(sine, cosine) = Vector128.SinCos(radians);
 
 		float sp = sine[0], sy = sine[1], sr = sine[2];

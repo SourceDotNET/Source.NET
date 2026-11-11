@@ -1,10 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<Configurations>Debug;Release;Debug (Dedicated);Release (Dedicated)</Configurations>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 	  <DefineConstants>$(DefineConstants);DBGFLAG_ASSERT</DefineConstants>
@@ -18,7 +14,7 @@
 		<Compile Include="..\Usings\ShaderUsings.cs" Link="Usings/ShaderUsings.cs" />
 	</ItemGroup>
 	<ItemGroup>
-	  <PackageReference Include="FreeTypeSharp" Version="3.0.1" />
+	  <PackageReference Include="FreeTypeSharp" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Source.Bitmap\Source.Bitmap.csproj" />

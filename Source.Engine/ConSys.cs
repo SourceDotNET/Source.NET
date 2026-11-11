@@ -381,7 +381,7 @@ public class ConPanel : BasePanel
 		else
 			da_notify[info.Index].Expire = Host.RealTime + info.TimeToLive;
 
-		MemoryMarshal.Cast<Vector3, float>(new(in info.Color)).CopyTo(da_notify[info.Index].Color);
+		MemoryMarshal.Cast<Vector3, float>(new ReadOnlySpan<Vector3>(in info.Color)).CopyTo(da_notify[info.Index].Color);
 		da_notify[info.Index].FixedWidthFont = info.FixedWidthFont;
 		drawDebugAreas = true;
 	}
