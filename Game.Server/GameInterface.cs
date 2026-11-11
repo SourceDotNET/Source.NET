@@ -37,9 +37,48 @@ public static class GameInterface
 	public const int MAX_MATERIAL_STRING_BITS = 10;
 	public const int MAX_MATERIAL_STRINGS = 1 << MAX_MATERIAL_STRING_BITS;
 
+	public const int MAX_PARTICLESYSTEMS_STRING_BITS = 12;
+	public const int MAX_PARTICLESYSTEMS_STRINGS = 1 << MAX_PARTICLESYSTEMS_STRING_BITS;
+
+	public const int MAX_VGUI_SCREEN_STRING_BITS = 8;
+	public const int MAX_VGUI_SCREEN_STRINGS = 1 << MAX_VGUI_SCREEN_STRING_BITS;
+
+	public static INetworkStringTable? g_pStringTableParticleEffectNames;
 	public static INetworkStringTable? g_pStringTableEffectDispatch;
+	public static INetworkStringTable? g_pStringTableVguiScreen;
 	public static INetworkStringTable? g_pStringTableClientSideChoreoScenes;
 	public static INetworkStringTable? g_pStringTableMaterials;
+
+	public static void PrecacheParticleSystem(ReadOnlySpan<char> particleSystemName) {
+		if (particleSystemName.IsStringEmpty)
+			return;
+		g_pStringTableParticleEffectNames?.AddString(true, particleSystemName);
+	}
+
+	public static int GetParticleSystemIndex(ReadOnlySpan<char> particleSystemName) {
+		if (particleSystemName.IsEmpty)
+			return 0;
+
+		int index = g_pStringTableParticleEffectNames!.FindStringIndex(particleSystemName);
+		if (index != INetworkStringTable.INVALID_STRING_INDEX)
+			return index;
+
+		if (!particleSystemName.IsStringEmpty) {
+			PrecacheParticleSystem(particleSystemName);
+			index = g_pStringTableParticleEffectNames.FindStringIndex(particleSystemName);
+			if (index != INetworkStringTable.INVALID_STRING_INDEX)
+				return index;
+		}
+
+		DevWarning($"Server: Missing precache for particle system \"{particleSystemName}\"!\n");
+		return 0;
+	}
+
+	public static ReadOnlySpan<char> GetParticleSystemNameFromIndex(int index) {
+		if (index < g_pStringTableParticleEffectNames!.GetMaxStrings())
+			return g_pStringTableParticleEffectNames.GetString(index);
+		return "error";
+	}
 
 	public static void PrecacheMaterial(ReadOnlySpan<char> materialName) {
 		g_pStringTableMaterials!.AddString(true, materialName);
@@ -260,9 +299,14 @@ public class ServerGameDLL(IFileSystem filesystem, ICommandLine CommandLine) : I
 	public void CreateNetworkStringTables() {
 		// throw new NotImplementedException();
 
+		g_pStringTableParticleEffectNames = networkstringtable.CreateStringTable("ParticleEffectNames", MAX_PARTICLESYSTEMS_STRINGS);
 		g_pStringTableEffectDispatch = networkstringtable.CreateStringTable("EffectDispatch", EffectData.MAX_EFFECT_DISPATCH_STRINGS);
-		g_pStringTableClientSideChoreoScenes = networkstringtable.CreateStringTable("Scenes", MAX_CHOREO_SCENES_STRINGS);
+		g_pStringTableVguiScreen = networkstringtable.CreateStringTable("VguiScreen", MAX_VGUI_SCREEN_STRINGS);
 		g_pStringTableMaterials = networkstringtable.CreateStringTable("Materials", MAX_MATERIAL_STRINGS);
+		g_pStringTableClientSideChoreoScenes = networkstringtable.CreateStringTable("Scenes", MAX_CHOREO_SCENES_STRINGS);
+
+		g_pStringTableMaterials!.AddString(true, "debug/debugempty");
+		PrecacheParticleSystem("error");
 
 		GameRulesRegister.CreateNetworkStringTables_GameRules();
 
@@ -445,7 +489,11 @@ public class ServerGameDLL(IFileSystem filesystem, ICommandLine CommandLine) : I
 	}
 
 	public void GMOD_OnStringTablesRemoved() {
-		// todo: g_pStringTableParticleEffectNames, g_pStringTableEffectDispatch, g_pStringTableVguiScreen, g_pStringTableMaterials, g_pStringTableClientSideChoreoScenes = null
+		g_pStringTableParticleEffectNames = null;
+		g_pStringTableEffectDispatch = null;
+		g_pStringTableVguiScreen = null;
+		g_pStringTableMaterials = null;
+		g_pStringTableClientSideChoreoScenes = null;
 		GameRulesRegister.ResetNetworkStringTables_GameRules();
 #if GMOD_DLL
 		Game.Server.GarrysMod.NetworkString.Reset();

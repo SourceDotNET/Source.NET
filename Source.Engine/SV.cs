@@ -308,8 +308,7 @@ public partial class SV(IServiceProvider services, Cbuf Cbuf, ED ED, Host Host, 
 		// Only send in multiplayer. Otherwise, we don't want voice.
 
 		ReadOnlySpan<char> codec = sv.IsMultiplayer() ? sv_voicecodec.GetString() : null;
-		int sampleRate = !codec.IsEmpty ? Voice.GetDefaultSampleRate(codec) : 0;
-		SVC_VoiceInit voiceinit = new(codec, sampleRate);
+		SVC_VoiceInit voiceinit = new(codec, 5);
 		voiceinit.WriteToBuffer(buf);
 	}
 
