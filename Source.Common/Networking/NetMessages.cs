@@ -496,13 +496,14 @@ public class SVC_UpdateStringTable : NetMessage
 public class SVC_VoiceInit : NetMessage
 {
 	public SVC_VoiceInit() : base(SVC.VoiceInit) { }
-	public SVC_VoiceInit(ReadOnlySpan<char> codec, int sampleRate) : base(SVC.VoiceInit) {
+	public SVC_VoiceInit(ReadOnlySpan<char> codec, int quality) : base(SVC.VoiceInit) {
 		VoiceCodec = codec.IsEmpty ? "" : new(codec.SliceNullTerminatedString());
-		SampleRate = sampleRate;
+		Quality = quality;
 	}
 	public override NetChannelGroup GetGroup() => NetChannelGroup.SignOn;
 
 	public string VoiceCodec = "";
+	public int Quality;
 	public int SampleRate;
 
 	public override bool ReadFromBuffer(bf_read buffer) {
@@ -513,6 +514,7 @@ public class SVC_VoiceInit : NetMessage
 			VoiceCodec = "steam";
 
 		byte legacyQuality = buffer.ReadByte();
+		Quality = legacyQuality;
 		if (legacyQuality == 255) {
 			// v2 packet
 			SampleRate = buffer.ReadShort();
@@ -544,8 +546,7 @@ public class SVC_VoiceInit : NetMessage
 	public override bool WriteToBuffer(bf_write buffer) {
 		buffer.WriteNetMessageType(this);
 		buffer.WriteString(VoiceCodec);
-		buffer.WriteByte( /* Legacy Quality Field */ 255);
-		buffer.WriteShort(SampleRate);
+		buffer.WriteByte(Quality);
 		return !buffer.Overflowed;
 	}
 }
