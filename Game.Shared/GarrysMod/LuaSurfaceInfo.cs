@@ -2,6 +2,7 @@
 using Game.Shared;
 
 using Source.Common;
+using Source.Common.Engine;
 using Source.Common.Formats.BSP;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.MaterialSystem;

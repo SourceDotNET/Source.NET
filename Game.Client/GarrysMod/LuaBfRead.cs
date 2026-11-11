@@ -1,3 +1,5 @@
+using Game.Shared;
+
 using Source.Common;
 using Source.Common.Bitbuffers;
 using Source.Common.GarrysMod.Lua;
