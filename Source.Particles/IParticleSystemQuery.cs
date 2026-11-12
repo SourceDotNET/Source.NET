@@ -13,6 +13,20 @@ public struct ModelHitBoxInfo
 	public Matrix3x4 Transform;
 }
 
+public sealed class ModelHitBoxesInfo
+{
+	public const int MAX_HITBOXES = 128;
+
+	public float LastUpdateTime = -1;
+	public float PrevLastUpdateTime;
+	public int NumHitBoxes;
+	public int NumPrevHitBoxes;
+	public ModelHitBoxInfo[]? HitBoxes;
+	public ModelHitBoxInfo[]? PrevBoxes;
+
+	public bool CurAndPrevValid() => NumHitBoxes != 0 && NumPrevHitBoxes == NumHitBoxes;
+}
+
 public interface IParticleSystemQuery
 {
 	void GetLightingAtPoint(in Vector3 origin, out Color tint);
@@ -23,7 +37,16 @@ public interface IParticleSystemQuery
 	int GetCollisionGroupFromName(ReadOnlySpan<char> collisionGroupName) => 0;
 
 	void GetRandomPointsOnControllingObjectHitBox(ParticleCollection particles, int controlPointNumber, int numPtsOut, float bboxScale, int numTrysToGetAPointInsideTheModel,
-		Span<Vector3> pntsOut, Vector3 directionBias, Span<Vector3> hitBoxRelativeCoordOut = default, Span<int> hitBoxIndexOut = default);
+		Span<Vector3> pntsOut, Vector3 directionBias, Span<Vector3> hitBoxRelativeCoordOut = default, Span<int> hitBoxIndexOut = default) {
+		Vector3 position = particles.ControlPoints[controlPointNumber].Position;
+		for (int i = 0; i < numPtsOut; i++) {
+			pntsOut[i] = position;
+			if (!hitBoxRelativeCoordOut.IsEmpty)
+				hitBoxRelativeCoordOut[i] = Vector3.Zero;
+			if (!hitBoxIndexOut.IsEmpty)
+				hitBoxIndexOut[i] = -1;
+		}
+	}
 
 	int GetControllingObjectHitBoxInfo(ParticleCollection particles, int controlPointNumber, Span<ModelHitBoxInfo> hitBoxOutputBuffer) => 0;
 

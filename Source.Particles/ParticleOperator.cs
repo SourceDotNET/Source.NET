@@ -62,11 +62,47 @@ public abstract class ParticleOperatorInstance
 
 	public virtual void InitParams(ParticleSystemDefinition def, Element element) { }
 	public virtual int GetRequiredContextBytes() => 0;
+	public virtual void InitializeContextData(ParticleCollection particles, Span<byte> context) { }
 
 	public abstract uint GetWrittenAttributes();
 	public abstract uint GetReadAttributes();
 	public virtual ulong GetReadControlPointMask() => 0;
 	public virtual uint GetReadInitialAttributes() => 0;
+
+	public virtual void Operate(ParticleCollection particles, float opStrength, Span<byte> context) { }
+
+	public virtual uint Emit(ParticleCollection particles, float opCurStrength, Span<byte> context) => 0;
+	public virtual void StopEmission(ParticleCollection particles, Span<byte> context, bool infiniteOnly = false) { }
+	public virtual void StartEmission(ParticleCollection particles, Span<byte> context, bool infiniteOnly = false) { }
+	public virtual void Restart(ParticleCollection particles, Span<byte> context) { }
+	public virtual bool MayCreateMoreParticles(ParticleCollection particles, Span<byte> context) => false;
+	public virtual void SkipToTime(float time, ParticleCollection particles, Span<byte> context) { }
+
+	public virtual void InitNewParticlesScalar(ParticleCollection particles, int firstParticle, int numParticles, int attributeWriteMask, Span<byte> context) { }
+	public virtual void InitNewParticlesBlock(ParticleCollection particles, int startBlock, int numBlocks, int attributeWriteMask, Span<byte> context)
+		=> InitNewParticlesScalar(particles, 4 * startBlock, 4 * numBlocks, attributeWriteMask, context);
+
+	public void InitNewParticles(ParticleCollection particles, int firstParticle, int particleCount, int attributeWriteMask, Span<byte> context) {
+		if (particleCount == 0)
+			return;
+
+		if (particleCount < 16) {
+			InitNewParticlesScalar(particles, firstParticle, particleCount, attributeWriteMask, context);
+			return;
+		}
+
+		if ((firstParticle & 3) != 0) {
+			int head = 4 - (firstParticle & 3);
+			InitNewParticlesScalar(particles, firstParticle, head, attributeWriteMask, context);
+			particleCount -= head;
+			firstParticle += head;
+		}
+
+		InitNewParticlesBlock(particles, firstParticle / 4, particleCount / 4, attributeWriteMask, context);
+
+		if ((particleCount & 3) != 0)
+			InitNewParticlesScalar(particles, firstParticle + (particleCount & ~3), particleCount & 3, attributeWriteMask, context);
+	}
 
 	public virtual bool IsBatchable() => true;
 	public virtual bool IsFinalConstraint() => false;

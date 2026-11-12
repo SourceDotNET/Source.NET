@@ -176,6 +176,65 @@ public sealed class ParticleSystemMgr
 	public ParticleSystemDefinition? FindParticleSystem(string? name) => Dictionary!.FindParticleSystem(name);
 	public ParticleSystemDefinition? FindParticleSystem(Guid id) => Dictionary!.FindParticleSystem(id);
 
+	public ParticleCollection? CreateParticleCollection(string? name, float delay = 0.0f, int randomSeed = 0) {
+		if (name == null)
+			return null;
+
+		ParticleSystemDefinition? def = Dictionary!.FindParticleSystem(name);
+		if (def == null) {
+			Warning($"Attempted to create unknown particle system type {name}\n");
+			return null;
+		}
+
+		ParticleCollection collection = new();
+		collection.Init(def, delay, randomSeed);
+		return collection;
+	}
+
+	public ParticleCollection? CreateParticleCollection(Guid id, float delay = 0.0f, int randomSeed = 0) {
+		if (id == Guid.Empty)
+			return null;
+
+		ParticleSystemDefinition? def = Dictionary!.FindParticleSystem(id);
+		if (def == null) {
+			Warning($"Attempted to create unknown particle system id {id}\n");
+			return null;
+		}
+
+		ParticleCollection collection = new();
+		collection.Init(def, delay, randomSeed);
+		return collection;
+	}
+
+	const int NUM_KILL_LISTS = 16;
+	readonly int[]?[] FreeKillLists = new int[]?[NUM_KILL_LISTS];
+	int NumFreeKillLists = -1;
+	readonly Lock KillListLock = new();
+
+	internal void AttachKillList(ParticleCollection particles) {
+		lock (KillListLock) {
+			if (NumFreeKillLists < 0) {
+				for (int i = 0; i < NUM_KILL_LISTS; i++)
+					FreeKillLists[i] = new int[MAX_PARTICLES_IN_A_SYSTEM];
+				NumFreeKillLists = NUM_KILL_LISTS;
+			}
+
+			if (NumFreeKillLists == 0)
+				Error("Out of particle kill lists!\n");
+
+			particles.NumParticlesToKill = 0;
+			particles.ParticleKillList = FreeKillLists[--NumFreeKillLists];
+			FreeKillLists[NumFreeKillLists] = null;
+		}
+	}
+
+	internal void DetachKillList(ParticleCollection particles) {
+		lock (KillListLock) {
+			FreeKillLists[NumFreeKillLists++] = particles.ParticleKillList;
+			particles.ParticleKillList = null;
+		}
+	}
+
 	public void PrecacheParticleSystem(string? name) {
 		if (string.IsNullOrEmpty(name))
 			return;
