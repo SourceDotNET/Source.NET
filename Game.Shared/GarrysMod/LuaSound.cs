@@ -1,5 +1,6 @@
 #if CLIENT_DLL || GAME_DLL
 using Source.Common.Audio;
+using Source.Common.GarrysMod;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.Mathematics;
 using Source.Common.SoundEmitterSystem;
@@ -15,10 +16,123 @@ namespace Game.Client.GarrysMod;
 namespace Game.Server.GarrysMod;
 #endif
 
+#if CLIENT_DLL
+public class PlaySoundThread : ILuaThreadedCall
+{
+	public IGModAudioChannel? Channel;
+	public string Path = "";
+	public string Flags = "";
+	public LuaObject Callback = new();
+	public int Type;
+	public int ErrorCode;
+	Thread? WorkerThread;
+	volatile bool Running;
+
+	public void Start() {
+		Running = true;
+		WorkerThread = new Thread(Run) { Name = "PlaySoundThread", IsBackground = true };
+		WorkerThread.Start();
+	}
+
+	public void Run() {
+		Span<int> error = stackalloc int[1];
+		if (Type == 0)
+			Channel = get.Audio()!.PlayURL(Path, Flags, error);
+		else if (Type == 1)
+			Channel = get.Audio()!.PlayFile(Path, Flags, error);
+		ErrorCode = error[0];
+		Running = false;
+	}
+
+	public void OnThreadFinished() { }
+
+	public bool IsFinished() => !Running;
+
+	public void DoFinish(ILuaBase lua) {
+		if (Running)
+			Error("DoFinish called while still running!");
+
+		ILuaInterface luaInterface = (ILuaInterface)lua;
+		if (Callback.isFunction()) {
+			if (Channel == null) {
+				Callback.Push();
+				lua.PushNil();
+				lua.PushNumber(ErrorCode);
+				lua.PushString(get.Audio()!.GetErrorString(ErrorCode));
+				luaInterface.CallFunctionProtected(3, 0, true);
+				return;
+			}
+
+			Callback.Push();
+			LuaAudioChannel.Push_IGModAudioChannel(Channel);
+			luaInterface.CallFunctionProtected(1, 0, true);
+			Channel = null;
+			return;
+		}
+
+		Channel?.Destroy();
+		Channel = null;
+		DestroyForced();
+	}
+
+	public void DestroyForced() {
+		WorkerThread?.Join();
+		if (Channel != null) {
+			Channel.Stop();
+			Channel.Destroy();
+			Channel = null;
+		}
+		Callback.UnReference();
+	}
+}
+#endif
+
 public static partial class LuaSound
 {
 	[LuaLibrary]
 	static readonly LuaLibrary LL_Factory_sound = new("sound");
+
+#if CLIENT_DLL
+	[LuaFunction]
+	static int PlayURL(ILuaInterface lua) {
+		if (commandLine.CheckParm("-disablehttp")) {
+			lua.ErrorFromLua($"sound.PlayURL blocked by -disablehttp launch parameter. URL: {lua.CheckString(1)}\n");
+			return 0;
+		}
+
+		garrysmod.UpdateAudioVolume();
+
+		lua.CheckType(3, LuaType.Function);
+		PlaySoundThread thread = new();
+		thread.Callback.SetFromStack(3);
+		thread.Flags = lua.CheckString(2).ToString();
+		thread.Path = lua.CheckString(1).ToString();
+		thread.Type = 0;
+		lua.AddThreadedCall(thread);
+		thread.Start();
+		return 0;
+	}
+
+	[LuaFunction]
+	static int PlayFile(ILuaInterface lua) {
+		garrysmod.UpdateAudioVolume();
+
+		string path = lua.CheckString(1).ToString().Replace("\\", "/");
+		while (path.Contains("//"))
+			path = path.Replace("//", "/");
+		path = path.Trim(' ');
+
+		lua.CheckType(3, LuaType.Function);
+		PlaySoundThread thread = new();
+		thread.Callback.SetFromStack(3);
+		thread.Flags = lua.CheckString(2).ToString();
+		thread.Path = path;
+		thread.Type = 1;
+		lua.AddThreadedCall(thread);
+		thread.Start();
+		return 0;
+	}
+#endif
 
 	[LuaFunction]
 	static int Add(ILuaInterface lua) {

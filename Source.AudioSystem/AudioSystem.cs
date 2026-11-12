@@ -8,6 +8,7 @@ using Source.Common.Client;
 using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Filesystem;
+using Source.Common.GarrysMod;
 
 namespace Source.AudioSystem;
 
@@ -17,6 +18,9 @@ public static class AudioGlobals
 	[Dependency] public static IFileSystem filesystem = null!;
 	[Dependency] public static ISoundServices soundServices = null!;
 	[Dependency] public static ICommandLine CommandLine = null!;
+#if GMOD_DLL
+	[Dependency] public static IGet? get = null;
+#endif
 }
 
 public class AudioSystem : IAudioSystem

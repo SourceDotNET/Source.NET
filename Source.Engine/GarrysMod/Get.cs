@@ -139,7 +139,11 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 			introScreen = appSystemFactory.GetRequiredService<IIntroScreen>();
 			materials = appSystemFactory.GetRequiredService<IMaterialSystem>();
 			resources = appSystemFactory.GetRequiredService<IResources>();
-			// todo: audio
+			audio = appSystemFactory.GetService<IGMod_Audio>();
+			if (audio == null) {
+				Msg("Couldn't locate library [gmod_audio] or couldn't find module [IGModAudio001]\n");
+				Error("Couldn't Load Library 'gmod_audio' (looking for interface IGModAudio001)");
+			}
 			serverAddons = appSystemFactory.GetRequiredService<IServerAddons>();
 
 			if (html == null) {
