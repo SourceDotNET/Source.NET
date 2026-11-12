@@ -56,6 +56,7 @@ public static class SourceDllMain
 	[Dependency] public static IViewRender view { get; private set; } = null!;
 	[Dependency] public static IRenderView render { get; private set; } = null!;
 	[Dependency] public static IEngineClient engine { get; private set; } = null!;
+	[Dependency] public static IGameUIFuncs gameuifuncs { get; private set; } = null!;
 	[Dependency] public static IMatSystemSurface surface { get; private set; } = null!;
 	[Dependency] public static IEngineVGui enginevgui { get; private set; } = null!;
 	[Dependency] public static ISpatialPartition partition { get; private set; } = null!;

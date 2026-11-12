@@ -110,7 +110,9 @@ public class HtmlPanel : EditablePanel, IHtmlClientListener
 			return;
 
 		if (code >= ButtonCode.KeyF1 && code <= ButtonCode.KeyF12) {
-			// todo: run key binding
+			ReadOnlySpan<char> binding = gameuifuncs.GetBindingForButtonCode(code);
+			if (!binding.IsEmpty && binding[0] != '\0')
+				engine.ClientCmd_Unrestricted(binding);
 			return;
 		}
 
