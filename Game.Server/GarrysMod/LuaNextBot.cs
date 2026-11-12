@@ -23,7 +23,7 @@ public partial class LuaNextBot : NextBotCombatCharacter
 		ScriptedEntity.Init(this, 1);
 	}
 
-	int UseTypeCaps;
+	int UseTypeCaps = (int)EntityCapabilities.ContinuousUse;
 
 	public override void SetUseType(int type) => UseTypeCaps = type;
 

@@ -1095,6 +1095,7 @@ public partial class C_BaseEntity : IClientEntity
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public void AddSolidFlags(SolidFlags flags) => CollisionProp().AddSolidFlags(flags);
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public void RemoveSolidFlags(SolidFlags flags) => CollisionProp().RemoveSolidFlags(flags);
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public bool IsSolid() => CollisionProp().IsSolid();
+	[MethodImpl(MethodImplOptions.AggressiveInlining)] public bool IsPointSized() => CollisionProp().BoundingRadius() == 0.0f;
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public void SetSolid(SolidType val) => CollisionProp().SetSolid(val);
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public SolidType GetSolid() => CollisionProp().GetSolid();
 
@@ -1712,7 +1713,7 @@ public partial class C_BaseEntity : IClientEntity
 			// Make sure player is driving simulation (field is only ever sent to local player)
 			SetPlayerSimulated(local);
 
-		// TODO: Partition/leaf stuff
+		UpdatePartitionListEntry();
 
 		if (!IsClientCreated())
 			if (Teleported() || IsNoInterpolationFrame())
@@ -2135,6 +2136,8 @@ public partial class C_BaseEntity : IClientEntity
 			case ShouldTransmiteState.Start: {
 					SetDormant(false);
 
+					UpdatePartitionListEntry();
+
 					if (PredictableID.IsActive()) {
 						PredictableID.SetAcknowledged(true);
 
@@ -2265,7 +2268,22 @@ public partial class C_BaseEntity : IClientEntity
 			AddEFlags(EFL.DontBlockLOS);
 	}
 
-	public virtual CollideType GetCollideType() => CollideType.ShouldNotCollide;
+	public virtual CollideType GetCollideType() {
+		if (ModelIndex == 0 || Model == null)
+			return CollideType.ShouldNotCollide;
+
+		if (!IsSolid())
+			return CollideType.ShouldNotCollide;
+
+		ModelType type = modelinfo.GetModelType(Model);
+		if (type != ModelType.Brush && type != ModelType.Studio)
+			return CollideType.ShouldNotCollide;
+
+		if (ModelIndex != 1 && IsPointSized())
+			return CollideType.ShouldNotCollide;
+
+		return CollideType.ShouldCollide;
+	}
 
 	public void UpdatePartitionListEntry() {
 		PartitionListMask list = PartitionListMask.ClientNonStaticEdicts;
