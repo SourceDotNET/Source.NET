@@ -1,5 +1,6 @@
 ﻿using Source.Common.Client;
 using Source.Common.Engine;
+using Source.Common.Formats.BSP;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 using Source.Common.Physics;
@@ -93,6 +94,17 @@ public interface IVModelInfo
 	// Automatically adds reference, pair with ReleaseDynamicModel.
 	bool RegisterModelLoadCallback(int modelindex, IModelLoadCallback callback, bool callImmediatelyIfLoaded = true);
 	void UnregisterModelLoadCallback(int modelindex, IModelLoadCallback callback);
+
+#if GMOD_DLL
+	int GetBrushModelSurfaceCount(Model? model);
+	bool GetBrushModelSurfaces(Model? model, Span<int> surfaces);
+	ReadOnlySpan<ushort> GetBrushSurfaceVertIndices(int surfID);
+	BSPDertex[]? GetBrushSurfaceVertices(int surfID, out int count);
+	IMaterial? GetBrushSurfaceMaterial(int surfID);
+	bool IsBrushSurfaceWater(int surfID);
+	bool IsBrushSurfaceSky(int surfID);
+	bool IsBrushSurfaceNoDraw(int surfID);
+#endif
 }
 
 public interface IVModelInfoClient : IVModelInfo

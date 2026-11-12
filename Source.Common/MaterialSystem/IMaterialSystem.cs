@@ -216,6 +216,15 @@ public struct FlashlightState
 	public float ShadowJitterSeed;
 	public float ShadowAtten;
 	public int ShadowQuality;
+#if GMOD_DLL
+	public float OrthoLeft;
+	public float OrthoTop;
+	public float OrthoRight;
+	public float OrthoBottom;
+	public bool Ortho;
+	public bool NoCull;
+	public bool SkipShadowUpdates;
+#endif
 
 	// Getters for scissor members
 	public bool DoScissor() => Scissor;

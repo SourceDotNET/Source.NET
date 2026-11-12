@@ -18,7 +18,7 @@ public class DLight
 	public Vector3 Origin;
 	public float Radius;
 	public ColorRGBExp32 Color;
-	public float Die;
+	public TimeUnit_t Die;
 	public float Decay;
 	public float MinLight;
 	public int Key;

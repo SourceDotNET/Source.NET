@@ -96,6 +96,15 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 		gGM?.Call((int)LUA_POOLEDSTRING.InitPostEntity);
 	}
 
+	public override void LevelShutdownPreEntity() {
+#if CLIENT_DLL
+		LuaProjectedTexture.RemoveAll();
+		// todo: IMesh delete list
+#else
+		// todo: server LevelShutdownPreEntity
+#endif
+	}
+
 	public void StopListeningForAllEvents() {
 		if (RegisteredForEvents) {
 			gameeventmanager?.RemoveListener(this);

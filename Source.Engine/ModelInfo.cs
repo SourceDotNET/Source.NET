@@ -403,6 +403,78 @@ public abstract class ModelInfo(IFileSystem filesystem, IModelLoader modelloader
 		throw new NotImplementedException();
 	}
 
+#if GMOD_DLL
+	public int GetBrushModelSurfaceCount(Model? model) {
+		if (model == null || model.Type != ModelType.Brush || model.Brush.Shared != SourceDllMain.host_state.WorldBrush)
+			return 0;
+		return model.Brush.NumModelSurfaces;
+	}
+
+	public bool GetBrushModelSurfaces(Model? model, Span<int> surfaces) {
+		if (model == null || model.Type != ModelType.Brush || model.Brush.Shared != SourceDllMain.host_state.WorldBrush || surfaces.Length != model.Brush.NumModelSurfaces)
+			return false;
+		for (int i = 0; i < model.Brush.NumModelSurfaces; i++)
+			surfaces[i] = model.Brush.FirstModelSurface + i;
+		return true;
+	}
+
+	public ReadOnlySpan<ushort> GetBrushSurfaceVertIndices(int surfID) {
+		WorldBrushData worldBrush = SourceDllMain.host_state.WorldBrush!;
+		if (surfID < 0 || surfID >= worldBrush.NumSurfaces)
+			return default;
+		ref BSPMSurface2 surf = ref ModelLoader.SurfaceHandleFromIndex(surfID, worldBrush);
+		if ((ModelLoader.MSurf_Flags(ref surf) & SurfDraw.HasDisp) != 0)
+			return default;
+		return worldBrush.VertIndices.AsSpan(ModelLoader.MSurf_FirstVertIndex(ref surf));
+	}
+
+	public BSPDertex[]? GetBrushSurfaceVertices(int surfID, out int count) {
+		WorldBrushData worldBrush = SourceDllMain.host_state.WorldBrush!;
+		if (surfID < 0 || surfID >= worldBrush.NumSurfaces) {
+			count = 0;
+			return null;
+		}
+		ref BSPMSurface2 surf = ref ModelLoader.SurfaceHandleFromIndex(surfID, worldBrush);
+		if ((ModelLoader.MSurf_Flags(ref surf) & SurfDraw.HasDisp) != 0) {
+			count = 0;
+			return null;
+		}
+		count = ModelLoader.MSurf_VertCount(ref surf);
+		return worldBrush.Vertexes;
+	}
+
+	public IMaterial? GetBrushSurfaceMaterial(int surfID) {
+		WorldBrushData worldBrush = SourceDllMain.host_state.WorldBrush!;
+		if (surfID < 0 || surfID >= worldBrush.NumSurfaces)
+			surfID = 0;
+		ref BSPMSurface2 surf = ref ModelLoader.SurfaceHandleFromIndex(surfID, worldBrush);
+		if (surf.TexInfo >= worldBrush.NumTexInfo)
+			Error("MSurf_TexInfo OOB");
+		return ModelLoader.MSurf_TexInfo(ref surf, worldBrush).Material;
+	}
+
+	public bool IsBrushSurfaceWater(int surfID) {
+		WorldBrushData worldBrush = SourceDllMain.host_state.WorldBrush!;
+		if (surfID < 0 || surfID >= worldBrush.NumSurfaces)
+			surfID = 0;
+		return (ModelLoader.MSurf_Flags(ref ModelLoader.SurfaceHandleFromIndex(surfID, worldBrush)) & SurfDraw.WaterSurface) != 0;
+	}
+
+	public bool IsBrushSurfaceSky(int surfID) {
+		WorldBrushData worldBrush = SourceDllMain.host_state.WorldBrush!;
+		if (surfID < 0 || surfID >= worldBrush.NumSurfaces)
+			surfID = 0;
+		return (ModelLoader.MSurf_Flags(ref ModelLoader.SurfaceHandleFromIndex(surfID, worldBrush)) & SurfDraw.Sky) != 0;
+	}
+
+	public bool IsBrushSurfaceNoDraw(int surfID) {
+		WorldBrushData worldBrush = SourceDllMain.host_state.WorldBrush!;
+		if (surfID < 0 || surfID >= worldBrush.NumSurfaces)
+			surfID = 0;
+		return (ModelLoader.MSurf_Flags(ref ModelLoader.SurfaceHandleFromIndex(surfID, worldBrush)) & SurfDraw.NoDraw) != 0;
+	}
+#endif
+
 	readonly List<Model> NetworkedDynamicModels = [];
 }
 
