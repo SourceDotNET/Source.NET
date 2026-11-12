@@ -103,6 +103,13 @@ public class Steam3ServerImpl : IDisposable
 			return EServerMode.eServerModeAuthenticationAndSecure;
 	}
 
+	const ushort MASTERSERVERUPDATERPORT_USEGAMESOCKETSHARE = 0xFFFF;
+
+	static readonly ConVar sv_master_share_game_socket = new("sv_master_share_game_socket", "1", 0, "Use the game's socket to communicate to the master server. If this is 0, then it will create a socket on -steamport + 1 to communicate to the master server on.");
+
+	public ushort GetQueryPort() => QueryPort;
+	public bool IsMasterServerUpdaterSharingGameSocket() => MasterServerUpdaterSharingGameSocket;
+
 	public bool BSecure() => SteamGameServer()?.BSecure() ?? false;
 	public bool BIsActive() => SteamGameServer() != null && (ServerMode >= EServerMode.eServerModeNoAuthentication);
 	public bool BLanOnly() => ServerMode == EServerMode.eServerModeNoAuthentication;
@@ -131,6 +138,21 @@ public class Steam3ServerImpl : IDisposable
 		if (serverType == ServerType.Normal)
 			gamePort = (ushort)Net.GetUDPPort(NetSocketType.Server);
 
+		ushort masterServerUpdaterPort;
+		if (sv_master_share_game_socket.GetBool()) {
+			MasterServerUpdaterSharingGameSocket = true;
+			masterServerUpdaterPort = MASTERSERVERUPDATERPORT_USEGAMESOCKETSHARE;
+			if (serverType == ServerType.TVRelay)
+				QueryPort = (ushort)Net.GetUDPPort(NetSocketType.HLTV);
+			else
+				QueryPort = gamePort;
+		}
+		else {
+			MasterServerUpdaterSharingGameSocket = false;
+			masterServerUpdaterPort = Port;
+			QueryPort = Port;
+		}
+
 		switch (ServerMode) {
 			case EServerMode.eServerModeNoAuthentication:
 				Msg("Initializing Steam libraries for LAN server\n");
@@ -147,7 +169,7 @@ public class Steam3ServerImpl : IDisposable
 				break;
 		}
 
-		Steamworks.GameServer.Init(IP, gamePort, (ushort)(Port + 1), ServerMode, GetSteamInfIDVersionInfo().PatchVersion);
+		Steamworks.GameServer.Init(IP, gamePort, masterServerUpdaterPort, ServerMode, GetSteamInfIDVersionInfo().PatchVersion);
 
 		if (!Init()) {
 			Assert(false);
@@ -524,7 +546,7 @@ public class Steam3ServerImpl : IDisposable
 		double CurTime = Platform.Time;
 		if (CurTime - LastRunCallback > 0.1f) {
 			LastRunCallback = CurTime;
-			SteamGameServer_RunCallbacks();
+			Steamworks.GameServer.RunCallbacks();
 		}
 	}
 

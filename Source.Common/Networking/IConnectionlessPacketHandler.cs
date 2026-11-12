@@ -105,7 +105,7 @@ public class NetAddress
 
 	public NetAddress Copy() => new() {
 		Type = Type,
-		Endpoint = Endpoint
+		Endpoint = Endpoint == null ? null : new IPEndPoint(Endpoint.Address, Endpoint.Port)
 	};
 	static char[][] renderBuffers;
 	static int curRenderBuffer;
@@ -236,10 +236,10 @@ public class NetAddress
 	}
 
 	public void SetIP(uint v) {
-		IP = new(v);
+		IP = new(System.Buffers.Binary.BinaryPrimitives.ReverseEndianness(v));
 	}
 	public void SetIP(uint v, ushort port) {
-		IP = new(v);
+		SetIP(v);
 		Port = port;
 	}
 }

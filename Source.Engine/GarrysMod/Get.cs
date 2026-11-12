@@ -207,7 +207,7 @@ public class Get(IServiceProvider appSystemFactory, EngineParms host_parms) : IG
 
 	public void RunSteamCallbacks() {
 		if (IsDedicatedServer())
-			SteamGameServer_RunCallbacks();
+			Steamworks.GameServer.RunCallbacks();
 		else
 			SteamAPI.RunCallbacks();
 	}
