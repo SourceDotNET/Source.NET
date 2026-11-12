@@ -3,6 +3,7 @@ using Datamodel;
 using Source.Common.Filesystem;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.MaterialSystem;
+using Source.Common.Mathematics;
 
 using DM = Datamodel.Datamodel;
 
@@ -56,6 +57,7 @@ public sealed class ParticleSystemMgr
 			ShadowDepthMaterial = Singleton<IMaterialSystem>().CreateMaterial("__particlesDepthWrite", vmtKeyValues);
 		}
 
+		RandSIMD.Seed(12345678);
 		DidInit = true;
 		return true;
 	}
@@ -303,6 +305,8 @@ public sealed class ParticleSystemMgr
 		BuiltinParticleOperators.AddBuiltInParticleOperators(this);
 		BuiltinParticleInitializers.AddBuiltInParticleInitializers(this);
 		BuiltinParticleEmitters.AddBuiltInParticleEmitters(this);
+		BuiltinParticleForces.AddBuiltInParticleForceGenerators(this);
+		BuiltinParticleConstraints.AddBuiltInParticleConstraints(this);
 	}
 
 	public void AddBuiltinRenderingOperators() {

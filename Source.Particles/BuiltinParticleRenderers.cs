@@ -13,6 +13,10 @@ public static class BuiltinParticleRenderers
 {
 	public static void AddBuiltInParticleRenderers(ParticleSystemMgr mgr) {
 		mgr.AddParticleOperator(ParticleFunctionType.Renderer, C_OP_RenderSprites.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Renderer, C_OP_RenderSpritesTrail.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Renderer, C_OP_RenderScreenVelocityRotate.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Renderer, C_OP_RenderRope.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Renderer, C_OP_RenderModels.Definition);
 	}
 
 	internal static readonly SheetSequenceSample DefaultSheetSequence = CreateDefaultSheetSequence();

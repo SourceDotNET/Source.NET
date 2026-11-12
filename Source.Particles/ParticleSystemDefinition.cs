@@ -250,6 +250,7 @@ public sealed class ParticleSystemDefinition(ParticleSystemMgr mgr)
 			ParticleOperatorInstance op2 = opDef.CreateInstance(op.ID)!;
 			opDef.GetUnpackStructure()?.UnpackIntoStructure(op, op2);
 			op2.InitParams(this, element);
+			op2.ComputeStrengthFastPath();
 
 			AttributeReadMask |= (int)op2.GetReadAttributes();
 			ControlPointReadMask |= op2.GetReadControlPointMask();
@@ -257,6 +258,8 @@ public sealed class ParticleSystemDefinition(ParticleSystemMgr mgr)
 			switch (functionType) {
 				case ParticleFunctionType.Renderer:
 				case ParticleFunctionType.Operator:
+				case ParticleFunctionType.ForceGenerator:
+				case ParticleFunctionType.Constraint:
 					PerParticleUpdatedAttributeMask |= (int)op2.GetWrittenAttributes();
 					InitialAttributeReadMask |= (int)op2.GetReadInitialAttributes();
 					break;
@@ -321,6 +324,9 @@ public sealed class ParticleSystemDefinition(ParticleSystemMgr mgr)
 
 		IsPrecached = true;
 		Material.Init(MaterialName, TEXTURE_GROUP_OTHER, true);
+
+		foreach (ParticleOperatorInstance renderer in Renderers)
+			renderer.Precache(this);
 
 		foreach (ParticleChildrenInfo child in Children) {
 			ParticleSystemDefinition? childDef = FindChild(child);

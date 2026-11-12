@@ -178,7 +178,4 @@
       <Platform Project="x64" />
     </Project>
   </Folder>
-  <Project Path="Source.Particles/Source.Particles.csproj">
-    <Platform Project="x64" />
-  </Project>
 </Solution>

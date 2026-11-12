@@ -1,9 +1,11 @@
 using Source;
 using Source.Common;
 using Source.Common.Formats.BSP;
+using Source.Common.Mathematics;
 using Source.Particles;
 
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 #if CLIENT_DLL
 using Game.Client;
@@ -69,6 +71,186 @@ public sealed class ParticleSystemQuery : IParticleSystemQuery
 #else
 		return true;
 #endif
+	}
+
+#if CLIENT_DLL
+	static C_BaseEntity? GetControlPointMoveParent(ParticleCollection particles, int controlPointNumber)
+		=> particles.ControlPoints[controlPointNumber].Object is StrongBox<EHANDLE> handle ? handle.Value.Get() : null;
+
+	static bool IsPointInsideEntity(in Vector3 point, C_BaseEntity entity) {
+		Ray ray = default;
+		ray.Init(point, point);
+		Trace tr = default;
+		enginetrace.ClipRayToEntity(in ray, Mask.All, entity, ref tr);
+		return tr.StartSolid;
+	}
+
+	static bool IsZero(in Vector3 v, float tolerance)
+		=> v.X > -tolerance && v.X < tolerance && v.Y > -tolerance && v.Y < tolerance && v.Z > -tolerance && v.Z < tolerance;
+#endif
+
+#if CLIENT_DLL
+	static MStudioHitboxSet ResolveHitboxSet(StudioHdr studioHdr, C_BaseAnimating animating, string? hitboxSetName) {
+		if (hitboxSetName != null) {
+			for (int s = 0; s < studioHdr.NumHitboxSets(); s++) {
+				MStudioHitboxSet candidate = studioHdr.HitboxSet(s);
+				if (candidate.Name().Equals(hitboxSetName, StringComparison.OrdinalIgnoreCase))
+					return candidate;
+			}
+		}
+		return studioHdr.HitboxSet(animating.GetHitboxSet());
+	}
+#endif
+
+	public void GetRandomPointsOnControllingObjectHitBox(ParticleCollection particles, int controlPointNumber, int numPtsOut, float bboxScale, int numTrysToGetAPointInsideTheModel,
+		Span<Vector3> pntsOut, Vector3 directionBias, Span<Vector3> hitBoxRelativeCoordOut = default, Span<int> hitBoxIndexOut = default, string? hitboxSetName = null) {
+		bool success = false;
+
+#if CLIENT_DLL
+		C_BaseEntity? moveParent = GetControlPointMoveParent(particles, controlPointNumber);
+		if (moveParent != null) {
+			float randMax = bboxScale;
+			float randMin = 1.0f - bboxScale;
+			particles.GetControlPointAtTime(controlPointNumber, particles.CurTime, out Vector3 basePos);
+
+			int numIters = numTrysToGetAPointInsideTheModel;
+			if (!IsZero(directionBias, 0.0001f))
+				numIters = Math.Max(numIters, 5);
+
+			C_BaseAnimating? animating = moveParent.GetBaseAnimating();
+			Span<int> boneIndices = stackalloc int[Studio.MAXSTUDIOBONES];
+			if (animating != null && animating.HitboxToWorldTransforms(out Span<Matrix3x4> bones, boneIndices)) {
+				StudioHdr? studioHdr = animating.GetModelPtr();
+				if (studioHdr != null) {
+					MStudioHitboxSet set = ResolveHitboxSet(studioHdr, animating, hitboxSetName);
+					success = true;
+					float modelScale = animating.GetModelScale();
+
+					for (int i = 0; i < numPtsOut; i++) {
+						Vector3 worldPosition = Vector3.Zero;
+						float u = 0, v = 0, w = 0;
+						int hitbox = 0;
+						int tryCnt = numIters;
+						float bestPointGoodness = -1.0e20f;
+						do {
+							int tryHitbox = particles.RandomInt(0, set.NumHitboxes - 1);
+							MStudioBBox box = set.Hitbox(tryHitbox);
+
+							float tryU = particles.RandomFloat(randMin, randMax);
+							float tryV = particles.RandomFloat(randMin, randMax);
+							float tryW = particles.RandomFloat(randMin, randMax);
+
+							Vector3 localPosition = new(
+								MathLib.Lerp(tryU, box.BBMin.X * modelScale, box.BBMax.X * modelScale),
+								MathLib.Lerp(tryV, box.BBMin.Y * modelScale, box.BBMax.Y * modelScale),
+								MathLib.Lerp(tryW, box.BBMin.Z * modelScale, box.BBMax.Z * modelScale));
+
+							MathLib.VectorTransform(in localPosition, in bones[boneIndices[box.Bone]], out Vector3 tryWorldPosition);
+
+							float pointGoodness = particles.RandomFloat(0, 72) + Vector3.Dot(tryWorldPosition - basePos, directionBias);
+							if (numTrysToGetAPointInsideTheModel != 0 && IsPointInsideEntity(tryWorldPosition, moveParent))
+								pointGoodness += 1000.0f;
+
+							if (pointGoodness > bestPointGoodness) {
+								u = tryU;
+								v = tryV;
+								w = tryW;
+								worldPosition = tryWorldPosition;
+								hitbox = tryHitbox;
+								bestPointGoodness = pointGoodness;
+							}
+						} while (tryCnt-- != 0);
+
+						pntsOut[i] = worldPosition;
+						if (!hitBoxRelativeCoordOut.IsEmpty)
+							hitBoxRelativeCoordOut[i] = new(u, v, w);
+						if (!hitBoxIndexOut.IsEmpty)
+							hitBoxIndexOut[i] = hitbox;
+					}
+				}
+			}
+
+			if (moveParent.IsBrushModel()) {
+				moveParent.GetRenderBounds(out Vector3 min, out Vector3 max);
+				ref readonly Matrix3x4 orientation = ref moveParent.EntityToWorldTransform();
+
+				for (int i = 0; i < numPtsOut; i++) {
+					Vector3 worldPosition = Vector3.Zero;
+					float u = 0, v = 0, w = 0;
+					int tryCnt = numIters;
+					float bestPointGoodness = -1.0e20f;
+					do {
+						float tryU = particles.RandomFloat(randMin, randMax);
+						float tryV = particles.RandomFloat(randMin, randMax);
+						float tryW = particles.RandomFloat(randMin, randMax);
+
+						Vector3 localPosition = new(MathLib.Lerp(tryU, min.X, max.X), MathLib.Lerp(tryV, min.Y, max.Y), MathLib.Lerp(tryW, min.Z, max.Z));
+						MathLib.VectorTransform(in localPosition, in orientation, out Vector3 tryWorldPosition);
+
+						float pointGoodness = particles.RandomFloat(0, 72) + Vector3.Dot(tryWorldPosition - basePos, directionBias);
+						if (numTrysToGetAPointInsideTheModel != 0 && IsPointInsideEntity(tryWorldPosition, moveParent))
+							pointGoodness += 1000.0f;
+
+						if (pointGoodness > bestPointGoodness) {
+							u = tryU;
+							v = tryV;
+							w = tryW;
+							worldPosition = tryWorldPosition;
+							bestPointGoodness = pointGoodness;
+						}
+					} while (tryCnt-- != 0);
+
+					pntsOut[i] = worldPosition;
+					if (!hitBoxRelativeCoordOut.IsEmpty)
+						hitBoxRelativeCoordOut[i] = new(u, v, w);
+					if (!hitBoxIndexOut.IsEmpty)
+						hitBoxIndexOut[i] = 0;
+				}
+			}
+		}
+#endif
+
+		if (!success) {
+			for (int i = 0; i < numPtsOut; i++) {
+				pntsOut[i] = particles.ControlPoints[controlPointNumber].Position;
+				if (!hitBoxIndexOut.IsEmpty)
+					hitBoxIndexOut[i] = 0;
+				if (!hitBoxRelativeCoordOut.IsEmpty)
+					hitBoxRelativeCoordOut[i] = Vector3.Zero;
+			}
+		}
+	}
+
+	public int GetControllingObjectHitBoxInfo(ParticleCollection particles, int controlPointNumber, Span<ModelHitBoxInfo> hitBoxOutputBuffer, string? hitboxSetName = null) {
+		int ret = 0;
+#if CLIENT_DLL
+		C_BaseEntity? moveParent = GetControlPointMoveParent(particles, controlPointNumber);
+		if (moveParent != null) {
+			C_BaseAnimating? animating = moveParent.GetBaseAnimating();
+			Span<int> boneIndices = stackalloc int[Studio.MAXSTUDIOBONES];
+			if (animating != null && animating.HitboxToWorldTransforms(out Span<Matrix3x4> bones, boneIndices)) {
+				StudioHdr? studioHdr = animating.GetModelPtr();
+				if (studioHdr != null) {
+					MStudioHitboxSet set = ResolveHitboxSet(studioHdr, animating, hitboxSetName);
+					ret = Math.Min(hitBoxOutputBuffer.Length, set.NumHitboxes);
+					for (int i = 0; i < ret; i++) {
+						MStudioBBox box = set.Hitbox(i);
+						hitBoxOutputBuffer[i].BoxMins = box.BBMin;
+						hitBoxOutputBuffer[i].BoxMaxes = box.BBMax;
+						hitBoxOutputBuffer[i].Transform = bones[boneIndices[box.Bone]];
+					}
+				}
+			}
+			if (moveParent.IsBrushModel()) {
+				moveParent.GetRenderBounds(out Vector3 min, out Vector3 max);
+				hitBoxOutputBuffer[0].BoxMins = min;
+				hitBoxOutputBuffer[0].BoxMaxes = max;
+				hitBoxOutputBuffer[0].Transform = moveParent.EntityToWorldTransform();
+				ret = 1;
+			}
+		}
+#endif
+		return ret;
 	}
 
 	static readonly (string Name, CollisionGroup Group)[] NameMap = [
