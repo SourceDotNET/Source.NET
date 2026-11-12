@@ -40,6 +40,15 @@ public partial class WeaponPistol : HL2MPMachineGun
 	public const TimeUnit_t PISTOL_ACCURACY_SHOT_PENALTY_TIME = 0.2;// Applied amount of time each shot adds to the time we must recover from
 	public const TimeUnit_t PISTOL_ACCURACY_MAXIMUM_PENALTY_TIME = 1.5;// Maximum penalty to deal out
 
+	public override bool Reload() {
+		bool ret = DefaultReload(GetMaxClip1(), GetMaxClip2(), Activity.ACT_VM_RELOAD);
+		if (ret) {
+			WeaponSound(Shared.WeaponSound.Reload);
+			AccuracyPenalty = 0.0f;
+		}
+		return ret;
+	}
+
 	public override void ItemPostFrame() {
 		base.ItemPostFrame();
 
