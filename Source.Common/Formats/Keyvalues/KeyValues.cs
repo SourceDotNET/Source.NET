@@ -165,47 +165,63 @@ public class KeyValues : IEnumerable<KeyValues>
 		writer.Write(value);
 	}
 
-	private bool WriteToBuffer(StreamWriter writer, int recursionLevel = 0) {
-		writer.Write(new string('\t', recursionLevel));
-		writer.Write("\"");
-		WriteStringToBuffer(writer, Name);
-		writer.WriteLine("\"");
-		if (children.Count != 0) {
-			writer.WriteLine("\"");
-			writer.WriteLine("{");
-			foreach (var child in children)
-				child.WriteToBuffer(writer, 1);
-			writer.WriteLine("}");
-		}
-		else {
-			switch (Type) {
-				case Types.None:
-					writer.WriteLine();
-					break;
-				case Types.String:
-					writer.Write("\"");
-					WriteStringToBuffer(writer, Value is string str ? (str ?? "") : "");
-					writer.WriteLine("\"");
-					break;
-				case Types.Int:
-					writer.Write("\"");
-					WriteStringToBuffer(writer, (Value is long l ? l : Value is int i1 ? i1 : 0).ToString());
-					writer.WriteLine("\"");
-					break;
-				case Types.Double:
-					writer.Write("\"");
-					WriteStringToBuffer(writer, ((float)(Value is double d ? d : Value is int i2 ? i2 : 0)).ToString("F6", CultureInfo.InvariantCulture));
-					writer.WriteLine("\"");
-					break;
-				case Types.Pointer:
-					throw new NotImplementedException();
-				case Types.Color:
-					throw new NotImplementedException();
-				case Types.Uint64:
-					throw new NotImplementedException();
-			}
-		}
+	private bool WriteToBuffer(StreamWriter writer, int indentLevel = 0) {
+		RecursiveSaveToFile(writer, indentLevel);
 		return true;
+	}
+
+	private static void WriteIndents(StreamWriter writer, int indentLevel) {
+		for (int i = 0; i < indentLevel; i++)
+			writer.Write('\t');
+	}
+
+	private void RecursiveSaveToFile(StreamWriter writer, int indentLevel) {
+		WriteIndents(writer, indentLevel);
+		writer.Write('"');
+		WriteStringToBuffer(writer, Name);
+		writer.Write("\"\n");
+		WriteIndents(writer, indentLevel);
+		writer.Write("{\n");
+
+		foreach (KeyValues dat in children)
+			SaveKeyToFile(dat, writer, indentLevel);
+
+		WriteIndents(writer, indentLevel);
+		writer.Write("}\n");
+	}
+
+	private static void SaveKeyToFile(KeyValues dat, StreamWriter writer, int indentLevel) {
+		if (dat.children.Count != 0) {
+			dat.RecursiveSaveToFile(writer, indentLevel + 1);
+			return;
+		}
+
+		string value;
+		switch (dat.Type) {
+			case Types.String:
+				if (dat.Value is not string str || str.Length == 0)
+					return;
+				value = str;
+				break;
+			case Types.Int:
+				value = (dat.Value is long l ? l : dat.Value is int i ? i : 0).ToString(CultureInfo.InvariantCulture);
+				break;
+			case Types.Uint64:
+				value = $"0x{(dat.Value is ulong u ? u : 0):x16}";
+				break;
+			case Types.Double:
+				value = ((float)(dat.Value is double d ? d : dat.Value is int i2 ? i2 : 0)).ToString("F6", CultureInfo.InvariantCulture);
+				break;
+			default:
+				return;
+		}
+
+		WriteIndents(writer, indentLevel + 1);
+		writer.Write('"');
+		dat.WriteStringToBuffer(writer, dat.Name);
+		writer.Write("\"\t\t\"");
+		dat.WriteStringToBuffer(writer, value);
+		writer.Write("\"\n");
 	}
 
 
@@ -623,6 +639,9 @@ public class KeyValues : IEnumerable<KeyValues>
 	public void ChainKeyValue(KeyValues? chain) => Chain = chain;
 
 	public KeyValues? FindKey(ReadOnlySpan<char> searchStr, bool create = false) {
+		if (searchStr.IsEmpty || searchStr[0] == '\0')
+			return this;
+
 		foreach (var child in this.children) {
 			if (stricmp(child.Name, searchStr) == 0)
 				return child;
