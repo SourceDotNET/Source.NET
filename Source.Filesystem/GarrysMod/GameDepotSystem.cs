@@ -22,6 +22,10 @@ public class GameDepotSystem : GameDepot.System
 	void MountGame(ref IGameDepotSystem.Information game) {
 		if (game.Mounted || !game.Installed) return;
 		Msg($"Mounting game '{game.Title}' ({game.Folder}, {(uint)game.AppID})\n");
+		if (game.Folder.Equals("hl2", StringComparison.OrdinalIgnoreCase)) {
+			game.Mounted = true;
+			return;
+		}
 		SteamApps.GetAppInstallDir(game.AppID, out string dir, MAX_PATH);
 		foreach (string extra in game.ExtraFolders)
 			MountContentDir(Path.Combine(dir, extra), game.Folder);
