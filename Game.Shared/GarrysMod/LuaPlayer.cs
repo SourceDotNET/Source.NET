@@ -130,6 +130,13 @@ public static partial class LuaPlayer
 		return 1;
 	}
 
+	[LuaMethod]
+	static int Player__IsListenServerHost(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(!engine.IsDedicatedServer() && player.EntIndex() == 1);
+		return 1;
+	}
+
 #if GAME_DLL
 	[LuaMethod]
 	static int Player__OwnerSteamID64(ILuaInterface lua) {
