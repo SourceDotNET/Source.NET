@@ -45,14 +45,7 @@ public class ParticleCollection
 	public const int NUM_COLLISION_CACHE_MODES = 4;
 	const int CONSTANT_FLOATS = MAX_PARTICLE_ATTRIBUTES * 12;
 
-	static readonly float[] RandomFloats = LoadRandomFloats();
-
-	static float[] LoadRandomFloats() {
-		float[] floats = new float[MAX_RANDOM_FLOATS];
-		using Stream stream = typeof(ParticleCollection).Assembly.GetManifestResourceStream("Source.Particles.random_floats.bin")!;
-		stream.ReadExactly(MemoryMarshal.AsBytes(floats.AsSpan()));
-		return floats;
-	}
+	static readonly float[] RandomFloats = Source.Particles.RandomFloats.Table;
 
 	public static ReadOnlySpan<float> RandomFloatTable => RandomFloats;
 
@@ -61,7 +54,7 @@ public class ParticleCollection
 	public int ActiveParticles;
 	public float Dt;
 	public float PreviousDt = 0.05f;
-	public float NextSleepTime;
+	public double NextSleepTime;
 
 	public ParticleSystemMgr? Mgr;
 	public ParticleSystemDefinition? Def;

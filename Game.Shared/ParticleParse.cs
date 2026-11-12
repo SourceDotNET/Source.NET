@@ -2,9 +2,16 @@
 
 using Source.Common;
 using Source.Common.Formats.Keyvalues;
+using Source.Common.Mathematics;
 using Source.Particles;
 
 using System.Numerics;
+
+#if CLIENT_DLL
+using Game.Client;
+#elif GAME_DLL
+using Game.Server;
+#endif
 
 namespace Game.Shared;
 
@@ -71,6 +78,12 @@ public static class ParticleParse
 		g_pParticleSystemMgr.DecommitTempMemory();
 	}
 
+	public static void GMOD_LoadParticleConfigFile(string file) {
+		g_pParticleSystemMgr.ShouldLoadSheets(true);
+		g_pParticleSystemMgr.ReadParticleConfigFile(file, true, false);
+		g_pParticleSystemMgr.DecommitTempMemory();
+	}
+
 	public static void ParseParticleEffectsMap(ReadOnlySpan<char> mapName, bool loadSheets) {
 		List<string> files = [];
 		string mapManifestFilename = mapName.IsEmpty ? "" : $"maps/{mapName}_particles.txt";
@@ -108,6 +121,121 @@ public static class ParticleParse
 			g_pParticleSystemMgr.ReadParticleConfigFile(file, true, true);
 
 		g_pParticleSystemMgr.DecommitTempMemory();
+	}
+
+	static readonly string?[] AttachmentNames = [
+		"start_at_origin",
+		"follow_origin",
+		"start_at_customorigin",
+		"start_at_attachment",
+		"follow_attachment",
+		"follow_rootbone",
+		null,
+	];
+
+	public static int GetAttachTypeFromString(ReadOnlySpan<char> str) {
+		if (str.IsEmpty)
+			return -1;
+
+		for (int i = 0; i < (int)ParticleAttachment.Max; i++) {
+			if (AttachmentNames[i] != null && str.Equals(AttachmentNames[i], StringComparison.OrdinalIgnoreCase))
+				return i;
+		}
+
+		return -1;
+	}
+
+	public const int PARTICLE_DISPATCH_FROM_ENTITY = 1 << 0;
+	public const int PARTICLE_DISPATCH_RESET_PARTICLES = 1 << 1;
+
+	static int ParticleSystemIndex(ReadOnlySpan<char> particleName) {
+#if CLIENT_DLL
+		return Game.Client.HLClient.GetParticleSystemIndex(particleName);
+#else
+		return Game.Server.GameInterface.GetParticleSystemIndex(particleName);
+#endif
+	}
+
+	static void SetEffectEntity(EffectData data, BaseEntity? entity) {
+#if CLIENT_DLL
+		data.Entity = entity != null ? entity.GetRefEHandle() : new BaseHandle();
+#else
+		data.EntIndex = entity != null ? entity.EntIndex() : 0;
+#endif
+	}
+
+	public static void DispatchParticleEffect(ReadOnlySpan<char> particleName, ParticleAttachment attachType, BaseEntity? entity, ReadOnlySpan<char> attachmentName, bool resetAllParticlesOnEntity = false) {
+		int attachment = -1;
+		BaseAnimating? animating = entity?.GetBaseAnimating();
+		if (animating != null) {
+			attachment = animating.LookupAttachment(attachmentName);
+			if (attachment <= 0)
+				return;
+		}
+
+		DispatchParticleEffect(particleName, attachType, entity, attachment, resetAllParticlesOnEntity);
+	}
+
+	public static void DispatchParticleEffect(ReadOnlySpan<char> particleName, ParticleAttachment attachType, BaseEntity? entity = null, int attachmentPoint = -1, bool resetAllParticlesOnEntity = false) {
+		EffectData data = new();
+
+		data.HitBox = ParticleSystemIndex(particleName);
+		if (entity != null) {
+			SetEffectEntity(data, entity);
+			data.Flags |= PARTICLE_DISPATCH_FROM_ENTITY;
+			data.Origin = entity.GetAbsOrigin();
+		}
+		data.DamageType = (int)attachType;
+		data.AttachmentIndex = attachmentPoint;
+
+		if (resetAllParticlesOnEntity)
+			data.Flags |= PARTICLE_DISPATCH_RESET_PARTICLES;
+
+#if GAME_DLL
+		if ((data.Flags & PARTICLE_DISPATCH_FROM_ENTITY) != 0 && (attachType == ParticleAttachment.AbsOriginFollow || attachType == ParticleAttachment.PointFollow || attachType == ParticleAttachment.RootBoneFollow)) {
+			ReliableBroadcastRecipientFilter filter = new();
+			DispatchEffect("ParticleEffect", data, filter);
+			return;
+		}
+#endif
+		DispatchEffect("ParticleEffect", data);
+	}
+
+	public static void DispatchParticleEffect(int effectIndex, in Vector3 origin, in Vector3 start, in QAngle angles, BaseEntity? entity = null) {
+		EffectData data = new() {
+			HitBox = effectIndex,
+			Origin = origin,
+			Start = start,
+			Angles = angles
+		};
+
+		SetEffectEntity(data, entity);
+		if (entity != null) {
+			data.Flags |= PARTICLE_DISPATCH_FROM_ENTITY;
+			data.DamageType = (int)ParticleAttachment.CustomOrigin;
+		}
+
+		DispatchEffect("ParticleEffect", data);
+	}
+
+	public static void DispatchParticleEffect(ReadOnlySpan<char> particleName, in Vector3 origin, in QAngle angles, BaseEntity? entity = null)
+		=> DispatchParticleEffect(ParticleSystemIndex(particleName), origin, origin, angles, entity);
+
+	public static void DispatchParticleEffect(ReadOnlySpan<char> particleName, in Vector3 origin, in Vector3 start, in QAngle angles, BaseEntity? entity = null)
+		=> DispatchParticleEffect(ParticleSystemIndex(particleName), origin, start, angles, entity);
+
+	public static void StopParticleEffects(BaseEntity? entity) {
+		EffectData data = new();
+
+		if (entity != null)
+			SetEffectEntity(data, entity);
+
+#if GAME_DLL
+		ReliableBroadcastRecipientFilter filter = new();
+		DispatchEffect("ParticleEffectStop", data, filter);
+#else
+		DispatchEffect("ParticleEffectStop", data);
+#endif
 	}
 
 #if GAME_DLL

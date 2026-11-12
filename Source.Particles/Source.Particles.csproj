@@ -6,9 +6,6 @@
 		<Compile Include="..\Usings\GlobalUsings.cs" Link="Usings/GlobalUsings.cs" />
 	</ItemGroup>
 	<ItemGroup>
-		<EmbeddedResource Include="random_floats.bin" LogicalName="Source.Particles.random_floats.bin" />
-	</ItemGroup>
-	<ItemGroup>
 		<ProjectReference Include="..\Source.Common\Source.Common.csproj" />
 	</ItemGroup>
 	<ItemGroup>

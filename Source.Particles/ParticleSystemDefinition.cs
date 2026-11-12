@@ -104,7 +104,8 @@ public sealed class ParticleSystemDefinition(ParticleSystemMgr mgr)
 		.Float("time to sleep when not drawn", "8", (d, v) => d.NoDrawTimeToGoToSleep = v)
 		.Bool("Sort particles", "1", (d, v) => d.ShouldSort = v)
 		.Bool("batch particle systems", "0", (d, v) => d.ShouldBatch = v)
-		.Bool("view model effect", "0", (d, v) => d.ViewModelEffect = v);
+		.Bool("view model effect", "0", (d, v) => d.ViewModelEffect = v)
+		.Bool("screen space effect", "0", (d, v) => d.ScreenSpaceEffect = v);
 
 	public static IDmxElementUnpackStructure GetUnpackStructure() => UnpackStructure;
 
@@ -139,6 +140,7 @@ public sealed class ParticleSystemDefinition(ParticleSystemMgr mgr)
 	public float MinimumSimTime;
 	public int MinimumFrames;
 	public bool ViewModelEffect;
+	public bool ScreenSpaceEffect;
 
 	public int ContextDataSize;
 	public Guid Id;
@@ -178,6 +180,7 @@ public sealed class ParticleSystemDefinition(ParticleSystemMgr mgr)
 	public IMaterial? GetMaterial() => Material.Get();
 	public bool ShouldAlwaysPrecache() => AlwaysPrecache;
 	public bool IsViewModelEffect() => ViewModelEffect;
+	public bool IsScreenSpaceEffect() => ScreenSpaceEffect;
 	public float GetCullRadius() => CullRadius;
 	public float GetCullFillCost() => CullFillCost;
 	public int GetCullControlPoint() => CullControlPoint;

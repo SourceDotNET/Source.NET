@@ -67,6 +67,13 @@ public class ClientEntityList : BaseEntityList, IClientEntityList
 		MaxUsedServerIndex = -1;
 	}
 
+	public BaseHandle EntIndexToHandle(int entnum) {
+		if (entnum < -1)
+			return INVALID_CLIENTENTITY_HANDLE;
+		IClientUnknown? unk = GetListedEntity(entnum);
+		return unk != null ? unk.GetRefEHandle() : INVALID_CLIENTENTITY_HANDLE;
+	}
+
 	public IClientUnknown? GetClientUnknownFromHandle(in BaseHandle ent) {
 		return (IClientUnknown?)LookupEntity(ent);
 	}
