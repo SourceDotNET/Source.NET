@@ -4,8 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using SDL;
 
 using Source;
+using Source.Common.Commands;
 using Source.Common.Input;
 using Source.Common.Launcher;
+
+using System.Runtime.InteropServices;
 
 namespace Nucleus.SDL3Window;
 
@@ -175,8 +178,87 @@ public class SDL3_InputSystem(IServiceProvider services) : IInputSystem
 		scantokey[(int)SDL_Scancode.SDL_SCANCODE_RALT] = ButtonCode.KeyRAlt;
 		scantokey[(int)SDL_Scancode.SDL_SCANCODE_RGUI] = ButtonCode.KeyRWin;
 
+		scantokey_QWERTY = (ButtonCode[])scantokey.Clone();
+
 		ButtonCode_InitKeyTranslationTable();
+		ButtonCode_UpdateScanCodeLayout();
 	}
+
+	static ButtonCode[] scantokey_QWERTY;
+
+#if WIN32
+	static readonly ButtonCode[] s_pScanToButtonCode_QWERTY = [
+		ButtonCode.None, ButtonCode.KeyEscape, ButtonCode.Key1, ButtonCode.Key2, ButtonCode.Key3, ButtonCode.Key4, ButtonCode.Key5, ButtonCode.Key6,
+		ButtonCode.Key7, ButtonCode.Key8, ButtonCode.Key9, ButtonCode.Key0, ButtonCode.KeyMinus, ButtonCode.KeyEqual, ButtonCode.KeyBackspace, ButtonCode.KeyTab,
+		ButtonCode.KeyQ, ButtonCode.KeyW, ButtonCode.KeyE, ButtonCode.KeyR, ButtonCode.KeyT, ButtonCode.KeyY, ButtonCode.KeyU, ButtonCode.KeyI,
+		ButtonCode.KeyO, ButtonCode.KeyP, ButtonCode.KeyLBracket, ButtonCode.KeyRBracket, ButtonCode.KeyEnter, ButtonCode.KeyLControl, ButtonCode.KeyA, ButtonCode.KeyS,
+		ButtonCode.KeyD, ButtonCode.KeyF, ButtonCode.KeyG, ButtonCode.KeyH, ButtonCode.KeyJ, ButtonCode.KeyK, ButtonCode.KeyL, ButtonCode.KeySemicolon,
+		ButtonCode.KeyApostrophe, ButtonCode.KeyBackquote, ButtonCode.KeyLShift, ButtonCode.KeyBackslash, ButtonCode.KeyZ, ButtonCode.KeyX, ButtonCode.KeyC, ButtonCode.KeyV,
+		ButtonCode.KeyB, ButtonCode.KeyN, ButtonCode.KeyM, ButtonCode.KeyComma, ButtonCode.KeyPeriod, ButtonCode.KeySlash, ButtonCode.KeyRShift, ButtonCode.KeyPadMultiply,
+		ButtonCode.KeyLAlt, ButtonCode.KeySpace, ButtonCode.KeyCapsLock, ButtonCode.KeyF1, ButtonCode.KeyF2, ButtonCode.KeyF3, ButtonCode.KeyF4, ButtonCode.KeyF5,
+		ButtonCode.KeyF6, ButtonCode.KeyF7, ButtonCode.KeyF8, ButtonCode.KeyF9, ButtonCode.KeyF10, ButtonCode.KeyNumLock, ButtonCode.KeyScrollLock, ButtonCode.KeyHome,
+		ButtonCode.KeyUp, ButtonCode.KeyPageUp, ButtonCode.KeyPadMinus, ButtonCode.KeyLeft, ButtonCode.KeyPad5, ButtonCode.KeyRight, ButtonCode.KeyPadPlus, ButtonCode.KeyEnd,
+		ButtonCode.KeyDown, ButtonCode.KeyPageDown, ButtonCode.KeyInsert, ButtonCode.KeyDelete, ButtonCode.None, ButtonCode.None, ButtonCode.None, ButtonCode.KeyF11,
+		ButtonCode.KeyF12, ButtonCode.KeyBreak,
+	];
+
+	static readonly SDL_Scancode[] s_pScanToSDLScancode = [
+		SDL_Scancode.SDL_SCANCODE_UNKNOWN, SDL_Scancode.SDL_SCANCODE_ESCAPE, SDL_Scancode.SDL_SCANCODE_1, SDL_Scancode.SDL_SCANCODE_2, SDL_Scancode.SDL_SCANCODE_3, SDL_Scancode.SDL_SCANCODE_4, SDL_Scancode.SDL_SCANCODE_5, SDL_Scancode.SDL_SCANCODE_6,
+		SDL_Scancode.SDL_SCANCODE_7, SDL_Scancode.SDL_SCANCODE_8, SDL_Scancode.SDL_SCANCODE_9, SDL_Scancode.SDL_SCANCODE_0, SDL_Scancode.SDL_SCANCODE_MINUS, SDL_Scancode.SDL_SCANCODE_EQUALS, SDL_Scancode.SDL_SCANCODE_BACKSPACE, SDL_Scancode.SDL_SCANCODE_TAB,
+		SDL_Scancode.SDL_SCANCODE_Q, SDL_Scancode.SDL_SCANCODE_W, SDL_Scancode.SDL_SCANCODE_E, SDL_Scancode.SDL_SCANCODE_R, SDL_Scancode.SDL_SCANCODE_T, SDL_Scancode.SDL_SCANCODE_Y, SDL_Scancode.SDL_SCANCODE_U, SDL_Scancode.SDL_SCANCODE_I,
+		SDL_Scancode.SDL_SCANCODE_O, SDL_Scancode.SDL_SCANCODE_P, SDL_Scancode.SDL_SCANCODE_LEFTBRACKET, SDL_Scancode.SDL_SCANCODE_RIGHTBRACKET, SDL_Scancode.SDL_SCANCODE_RETURN, SDL_Scancode.SDL_SCANCODE_LCTRL, SDL_Scancode.SDL_SCANCODE_A, SDL_Scancode.SDL_SCANCODE_S,
+		SDL_Scancode.SDL_SCANCODE_D, SDL_Scancode.SDL_SCANCODE_F, SDL_Scancode.SDL_SCANCODE_G, SDL_Scancode.SDL_SCANCODE_H, SDL_Scancode.SDL_SCANCODE_J, SDL_Scancode.SDL_SCANCODE_K, SDL_Scancode.SDL_SCANCODE_L, SDL_Scancode.SDL_SCANCODE_SEMICOLON,
+		SDL_Scancode.SDL_SCANCODE_APOSTROPHE, SDL_Scancode.SDL_SCANCODE_GRAVE, SDL_Scancode.SDL_SCANCODE_LSHIFT, SDL_Scancode.SDL_SCANCODE_BACKSLASH, SDL_Scancode.SDL_SCANCODE_Z, SDL_Scancode.SDL_SCANCODE_X, SDL_Scancode.SDL_SCANCODE_C, SDL_Scancode.SDL_SCANCODE_V,
+		SDL_Scancode.SDL_SCANCODE_B, SDL_Scancode.SDL_SCANCODE_N, SDL_Scancode.SDL_SCANCODE_M, SDL_Scancode.SDL_SCANCODE_COMMA, SDL_Scancode.SDL_SCANCODE_PERIOD, SDL_Scancode.SDL_SCANCODE_SLASH, SDL_Scancode.SDL_SCANCODE_RSHIFT, SDL_Scancode.SDL_SCANCODE_KP_MULTIPLY,
+		SDL_Scancode.SDL_SCANCODE_LALT, SDL_Scancode.SDL_SCANCODE_SPACE, SDL_Scancode.SDL_SCANCODE_CAPSLOCK, SDL_Scancode.SDL_SCANCODE_F1, SDL_Scancode.SDL_SCANCODE_F2, SDL_Scancode.SDL_SCANCODE_F3, SDL_Scancode.SDL_SCANCODE_F4, SDL_Scancode.SDL_SCANCODE_F5,
+		SDL_Scancode.SDL_SCANCODE_F6, SDL_Scancode.SDL_SCANCODE_F7, SDL_Scancode.SDL_SCANCODE_F8, SDL_Scancode.SDL_SCANCODE_F9, SDL_Scancode.SDL_SCANCODE_F10, SDL_Scancode.SDL_SCANCODE_NUMLOCKCLEAR, SDL_Scancode.SDL_SCANCODE_SCROLLLOCK, SDL_Scancode.SDL_SCANCODE_KP_7,
+		SDL_Scancode.SDL_SCANCODE_KP_8, SDL_Scancode.SDL_SCANCODE_KP_9, SDL_Scancode.SDL_SCANCODE_KP_MINUS, SDL_Scancode.SDL_SCANCODE_KP_4, SDL_Scancode.SDL_SCANCODE_KP_5, SDL_Scancode.SDL_SCANCODE_KP_6, SDL_Scancode.SDL_SCANCODE_KP_PLUS, SDL_Scancode.SDL_SCANCODE_KP_1,
+		SDL_Scancode.SDL_SCANCODE_KP_2, SDL_Scancode.SDL_SCANCODE_KP_3, SDL_Scancode.SDL_SCANCODE_KP_0, SDL_Scancode.SDL_SCANCODE_KP_PERIOD, SDL_Scancode.SDL_SCANCODE_UNKNOWN, SDL_Scancode.SDL_SCANCODE_UNKNOWN, SDL_Scancode.SDL_SCANCODE_NONUSBACKSLASH, SDL_Scancode.SDL_SCANCODE_F11,
+		SDL_Scancode.SDL_SCANCODE_F12,
+	];
+
+	[DllImport("user32.dll")] static extern nint GetKeyboardLayout(uint idThread);
+	[DllImport("user32.dll")] static extern int GetKeyboardLayoutList(int nBuff, [Out] nint[] lpList);
+	[DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern nint LoadKeyboardLayoutW(string pwszKLID, uint flags);
+	[DllImport("user32.dll")] static extern bool UnloadKeyboardLayout(nint hkl);
+	[DllImport("user32.dll")] static extern uint MapVirtualKeyExW(uint uCode, uint uMapType, nint dwhkl);
+#endif
+
+	static void ButtonCode_UpdateScanCodeLayout() {
+		Array.Copy(scantokey_QWERTY, scantokey, scantokey.Length);
+
+#if WIN32
+		nint[] layoutList = new nint[128];
+		int layoutCount = GetKeyboardLayoutList(layoutList.Length, layoutList);
+		nint currentKb = GetKeyboardLayout(0);
+		nint englishKb = LoadKeyboardLayoutW("00000409", 0);
+
+		if (englishKb != 0 && englishKb != currentKb) {
+			for (uint i = 0; i < 128; i++) {
+				ButtonCode code = i < s_pScanToButtonCode_QWERTY.Length ? s_pScanToButtonCode_QWERTY[i] : ButtonCode.None;
+
+				if (code != ButtonCode.None && code != ButtonCode.KeyBackquote && code >= ButtonCode.Key0 && code <= ButtonCode.KeyEqual) {
+					uint vk = MapVirtualKeyExW(i, 1, englishKb);
+					uint newScanCode = MapVirtualKeyExW(vk, 0, currentKb) & 0x0000007F;
+
+					if (newScanCode < s_pScanToSDLScancode.Length) {
+						SDL_Scancode sdlScanCode = s_pScanToSDLScancode[newScanCode];
+						if (sdlScanCode != SDL_Scancode.SDL_SCANCODE_UNKNOWN)
+							scantokey[(int)sdlScanCode] = code;
+					}
+				}
+			}
+
+			if (Array.IndexOf(layoutList, englishKb, 0, Math.Max(layoutCount, 0)) < 0)
+				UnloadKeyboardLayout(englishKb);
+		}
+#endif
+
+		scantokey[(int)SDL_Scancode.SDL_SCANCODE_UNKNOWN] = ButtonCode.None;
+	}
+
+	[ConCommand(helpText: "Updates game keyboard layout to current windows keyboard setting.")]
+	static void key_updatelayout() => ButtonCode_UpdateScanCodeLayout();
 
 	static ButtonCode[] virtualKeyToButtonCode = null!;
 	static int[] buttonCodeToVirtual = null!;
@@ -253,15 +335,52 @@ public class SDL3_InputSystem(IServiceProvider services) : IInputSystem
 	}
 
 
+#if OSX
+	static readonly ButtonCode[] s_pCocoaKeyToButtonCode = [
+		ButtonCode.KeyA, ButtonCode.KeyS, ButtonCode.KeyD, ButtonCode.KeyF, ButtonCode.KeyH, ButtonCode.KeyG, ButtonCode.KeyZ, ButtonCode.KeyX,
+		ButtonCode.KeyC, ButtonCode.KeyV, ButtonCode.KeyBackquote, ButtonCode.KeyB, ButtonCode.KeyQ, ButtonCode.KeyW, ButtonCode.KeyE, ButtonCode.KeyR,
+		ButtonCode.KeyY, ButtonCode.KeyT, ButtonCode.Key1, ButtonCode.Key2, ButtonCode.Key3, ButtonCode.Key4, ButtonCode.Key6, ButtonCode.Key5,
+		ButtonCode.KeyEqual, ButtonCode.Key9, ButtonCode.Key7, ButtonCode.KeyMinus, ButtonCode.Key8, ButtonCode.Key0, ButtonCode.KeyRBracket, ButtonCode.KeyO,
+		ButtonCode.KeyU, ButtonCode.KeyLBracket, ButtonCode.KeyI, ButtonCode.KeyP, ButtonCode.KeyEnter, ButtonCode.KeyL, ButtonCode.KeyJ, ButtonCode.KeyApostrophe,
+		ButtonCode.KeyK, ButtonCode.KeySemicolon, ButtonCode.KeyBackslash, ButtonCode.KeyComma, ButtonCode.KeySlash, ButtonCode.KeyN, ButtonCode.KeyM, ButtonCode.KeyPeriod,
+		ButtonCode.KeyTab, ButtonCode.KeySpace, ButtonCode.KeyBackquote, ButtonCode.KeyBackspace, ButtonCode.None, ButtonCode.KeyEscape, ButtonCode.KeyRWin, ButtonCode.KeyLWin,
+		ButtonCode.KeyLShift, ButtonCode.KeyCapsLock, ButtonCode.KeyLAlt, ButtonCode.KeyLControl, ButtonCode.KeyLShift, ButtonCode.None, ButtonCode.KeyRControl, ButtonCode.None,
+		ButtonCode.None, ButtonCode.KeyPadDecimal, ButtonCode.None, ButtonCode.KeyPadMultiply, ButtonCode.None, ButtonCode.KeyPadPlus, ButtonCode.None, ButtonCode.KeyNumLock,
+		ButtonCode.None, ButtonCode.None, ButtonCode.None, ButtonCode.KeyPadDivide, ButtonCode.KeyPadEnter, ButtonCode.None, ButtonCode.KeyPadMinus, ButtonCode.None,
+		ButtonCode.None, ButtonCode.KeyPadDivide, ButtonCode.KeyPad0, ButtonCode.KeyPad1, ButtonCode.KeyPad2, ButtonCode.KeyPad3, ButtonCode.KeyPad4, ButtonCode.KeyPad5,
+		ButtonCode.KeyPad6, ButtonCode.KeyPad7, ButtonCode.None, ButtonCode.KeyPad8, ButtonCode.KeyPad9, ButtonCode.None, ButtonCode.None, ButtonCode.None,
+		ButtonCode.KeyF5, ButtonCode.KeyF6, ButtonCode.KeyF7, ButtonCode.KeyF3, ButtonCode.KeyF8, ButtonCode.KeyF9, ButtonCode.None, ButtonCode.KeyF11,
+		ButtonCode.None, ButtonCode.None, ButtonCode.None, ButtonCode.None, ButtonCode.None, ButtonCode.KeyF10, ButtonCode.KeyApp, ButtonCode.KeyF12,
+		ButtonCode.None, ButtonCode.None, ButtonCode.KeyInsert, ButtonCode.KeyHome, ButtonCode.KeyPageUp, ButtonCode.KeyDelete, ButtonCode.KeyF4, ButtonCode.KeyEnd,
+		ButtonCode.KeyF2, ButtonCode.KeyPageDown, ButtonCode.KeyF1, ButtonCode.KeyLeft, ButtonCode.KeyRight, ButtonCode.KeyDown, ButtonCode.KeyUp, ButtonCode.None,
+	];
+#endif
+
 	static bool MapVirtualKeyToButtonCode(int virtualKeyCode, out ButtonCode pOut) {
 		if (virtualKeyCode < 0)
 			pOut = (ButtonCode)(-1 * virtualKeyCode);
 		else {
+#if OSX
+			if (virtualKeyCode >= s_pCocoaKeyToButtonCode.Length) {
+				pOut = ButtonCode.None;
+				return false;
+			}
+			pOut = s_pCocoaKeyToButtonCode[virtualKeyCode];
+#else
 			virtualKeyCode &= 0x000000ff;
 			pOut = (ButtonCode)scantokey[virtualKeyCode];
+#endif
 		}
 
 		return true;
+	}
+
+	static ButtonCode WindowEventVirtualCode(WindowEvent ev, ButtonCode scanCode) {
+#if WIN32
+		if (ev.WindowsVirtualKey > 0)
+			return virtualKeyToButtonCode[ev.WindowsVirtualKey];
+#endif
+		return scanCode;
 	}
 
 	public void PostButtonPressedEvent(InputEventType type, int tick, ButtonCode scanCode, ButtonCode virtualCode) {
@@ -354,21 +473,21 @@ public class SDL3_InputSystem(IServiceProvider services) : IInputSystem
 							newEv.Data = ev.WasWindowFocused ? 1 : 0;
 
 							PostUserEvent(in newEv);
-							if (ev.ModifierKeyMask == 0) {
+							if (!ev.WasWindowFocused) {
 								ResetInputState();
 							}
 						}
 						break;
 					case WindowEventType.KeyDown: {
-							if (MapVirtualKeyToButtonCode(ev.VirtualKeyCode, out ButtonCode virtualCode)) {
-								ButtonCode scancode = virtualCode;
+							if (MapVirtualKeyToButtonCode(ev.VirtualKeyCode, out ButtonCode scancode)) {
+								ButtonCode virtualCode = WindowEventVirtualCode(ev, scancode);
 								if (scancode != ButtonCode.None)
 									PostButtonPressedEvent(InputEventType.IE_ButtonPressed, LastSampleTick, scancode, virtualCode);
 
 								InputEvent newEv = new() {
 									Tick = GetPollTick(),
 									Type = InputEventType.Gui_KeyCodeTyped,
-									Data = (int)scancode
+									Data = (int)virtualCode
 								};
 								PostUserEvent(newEv);
 							}
@@ -385,8 +504,8 @@ public class SDL3_InputSystem(IServiceProvider services) : IInputSystem
 						break;
 
 					case WindowEventType.KeyUp: {
-							if (MapVirtualKeyToButtonCode(ev.VirtualKeyCode, out ButtonCode virtualCode)) {
-								ButtonCode scancode = virtualCode;
+							if (MapVirtualKeyToButtonCode(ev.VirtualKeyCode, out ButtonCode scancode)) {
+								ButtonCode virtualCode = WindowEventVirtualCode(ev, scancode);
 								if (scancode != ButtonCode.None)
 									PostButtonReleasedEvent(InputEventType.IE_ButtonReleased, LastSampleTick, scancode, virtualCode);
 							}

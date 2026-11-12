@@ -5,6 +5,8 @@ using Source.Common.Launcher;
 
 using System.Collections.Concurrent;
 using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Source.SDLManager;
 
@@ -256,9 +258,16 @@ public unsafe class SDL3_Window : IWindow
 		bool pressed = ev.Type == SDL_EventType.SDL_EVENT_KEY_DOWN;
 		WindowEvent newEvent = new WindowEvent();
 		newEvent.EventType = pressed ? WindowEventType.KeyDown : WindowEventType.KeyUp;
-		newEvent.VirtualKeyCode = (int)ev.key.scancode;
 		newEvent.UTF8Key = '\0';
 		newEvent.UTF8KeyUnmodified = '\0';
+#if OSX
+		if (!HandleCocoaKeyEvent(ref ev, newEvent, pressed))
+			return;
+#else
+		newEvent.VirtualKeyCode = (int)ev.key.scancode;
+#if WIN32
+		newEvent.WindowsVirtualKey = WindowsVirtualKeys[WindowsScanCodeIndex(ev.key.raw)];
+#endif
 
 		switch (ev.key.key) {
 			case SDL_Keycode.SDLK_CAPSLOCK: KeySymCase(newEvent, GranularKeyModifier.CapsLock, pressed, ButtonCode.KeyCapsLock); break;
@@ -275,6 +284,7 @@ public unsafe class SDL3_Window : IWindow
 			case SDL_Keycode.SDLK_LALT: KeySymCase(newEvent, GranularKeyModifier.AltL, pressed, ButtonCode.KeyLAlt); break;
 			case SDL_Keycode.SDLK_RALT: KeySymCase(newEvent, GranularKeyModifier.AltR, pressed, ButtonCode.KeyRAlt); break;
 		}
+#endif
 
 		KeyModifierMask = 0;
 
@@ -294,6 +304,45 @@ public unsafe class SDL3_Window : IWindow
 		PostEvent(newEvent);
 	}
 
+#if OSX
+	private bool HandleCocoaKeyEvent(ref SDL_Event ev, WindowEvent newEvent, bool pressed) {
+		switch (ev.key.key) {
+			case SDL_Keycode.SDLK_CAPSLOCK: {
+					if (!pressed)
+						return false;
+					bool locked = (ev.key.mod & SDL_Keymod.SDL_KMOD_CAPS) != 0;
+					newEvent.EventType = locked ? WindowEventType.KeyDown : WindowEventType.KeyUp;
+					KeySymCase(newEvent, GranularKeyModifier.CapsLock, locked, ButtonCode.KeyCapsLock);
+					return true;
+				}
+
+			case SDL_Keycode.SDLK_LSHIFT: return CocoaModifierCase(newEvent, GranularKeyModifier.ShiftL, GranularKeyModifier.ShiftR, pressed, ButtonCode.KeyLShift);
+			case SDL_Keycode.SDLK_RSHIFT: return CocoaModifierCase(newEvent, GranularKeyModifier.ShiftR, GranularKeyModifier.ShiftL, pressed, ButtonCode.KeyLShift);
+
+			case SDL_Keycode.SDLK_LCTRL: return CocoaModifierCase(newEvent, GranularKeyModifier.ControlL, GranularKeyModifier.ControlR, pressed, ButtonCode.KeyLControl);
+			case SDL_Keycode.SDLK_RCTRL: return CocoaModifierCase(newEvent, GranularKeyModifier.ControlR, GranularKeyModifier.ControlL, pressed, ButtonCode.KeyLControl);
+
+			case SDL_Keycode.SDLK_LGUI: return CocoaModifierCase(newEvent, GranularKeyModifier.CommandL, GranularKeyModifier.CommandR, pressed, ButtonCode.KeyLWin);
+			case SDL_Keycode.SDLK_RGUI: return CocoaModifierCase(newEvent, GranularKeyModifier.CommandR, GranularKeyModifier.CommandL, pressed, ButtonCode.KeyLWin);
+
+			case SDL_Keycode.SDLK_LALT: return CocoaModifierCase(newEvent, GranularKeyModifier.AltL, GranularKeyModifier.AltR, pressed, ButtonCode.KeyLAlt);
+			case SDL_Keycode.SDLK_RALT: return CocoaModifierCase(newEvent, GranularKeyModifier.AltR, GranularKeyModifier.AltL, pressed, ButtonCode.KeyLAlt);
+		}
+
+		if (ev.key.raw == 0 && ev.key.scancode != SDL_Scancode.SDL_SCANCODE_A)
+			return false;
+
+		newEvent.VirtualKeyCode = ev.key.raw;
+		return true;
+	}
+
+	private bool CocoaModifierCase(WindowEvent ev, GranularKeyModifier side, GranularKeyModifier otherSide, bool pressed, ButtonCode key) {
+		bool otherSideHeld = (KeyModifiers & otherSide) != 0;
+		KeySymCase(ev, side, pressed, key);
+		return !otherSideHeld;
+	}
+#endif
+
 	private ConcurrentQueue<WindowEvent> Events = [];
 	private WindowEvent PostEvent(WindowEvent newEvent, bool debugEvent = false) {
 		Events.Enqueue(newEvent);
@@ -302,7 +351,36 @@ public unsafe class SDL3_Window : IWindow
 
 	public SDL3_Window Create(string title, int width, int height, SDL_WindowFlags flags) {
 		window = SDL3.SDL_CreateWindow(title, width, height, flags);
+#if WIN32
+		SDL3.SDL_SetWindowsMessageHook(&WindowsMessageHook, 0);
+#endif
 
 		return this;
 	}
+
+#if WIN32
+	const uint WM_KEYDOWN = 0x0100, WM_KEYUP = 0x0101, WM_SYSKEYDOWN = 0x0104, WM_SYSKEYUP = 0x0105;
+	const int KF_EXTENDED = 0x0100;
+
+	static readonly int[] WindowsVirtualKeys = new int[512];
+
+	static int WindowsScanCodeIndex(int scanCode) => (scanCode & 0xFF) | ((scanCode & 0xFF00) != 0 ? 0x100 : 0);
+
+	[UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+	static SDLBool WindowsMessageHook(nint userdata, MSG* msg) {
+		uint message = msg->message;
+		if (message == WM_KEYDOWN || message == WM_KEYUP || message == WM_SYSKEYDOWN || message == WM_SYSKEYUP) {
+			int keyFlags = (int)(((long)msg->lParam >> 16) & 0xFFFF);
+			int scanCode = keyFlags & 0x7F;
+			if (scanCode != 0) {
+				if ((keyFlags & KF_EXTENDED) == KF_EXTENDED)
+					scanCode |= 0xE000;
+				else if (scanCode == 0x45)
+					scanCode = 0xE046;
+				WindowsVirtualKeys[WindowsScanCodeIndex(scanCode)] = (int)(nuint)msg->wParam & 0xFF;
+			}
+		}
+		return true;
+	}
+#endif
 }
