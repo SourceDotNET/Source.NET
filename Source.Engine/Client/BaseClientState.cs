@@ -169,7 +169,7 @@ public abstract class BaseClientState(
 
 		FreeEntityBaselines();
 
-		// ?? review RecvTable.Term(false);
+		engineRecvTable.Term(false);
 
 		NetChannel?.Reset();
 
