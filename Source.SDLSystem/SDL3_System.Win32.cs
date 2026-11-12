@@ -32,7 +32,13 @@ public unsafe partial class SDL3_System
 				foreach (var valueName in baseKey.GetValueNames()) {
 					var value = baseKey.GetValue(valueName);
 
-					string absPath = Path.Combine(fontsPath, (string)value!);
+					string fontFileName = (string)value!;
+					string absPath = Path.IsPathFullyQualified(fontFileName) ? fontFileName : Path.Combine(fontsPath, fontFileName);
+					if (!Path.Exists(absPath)) {
+						Warning("Font '%s' refers to a missing file '%s'\n", valueName, fontFileName);
+						continue;
+					}
+
 					int i = 0;
 					foreach (var fontfile in GetFontConditions(absPath)) {
 						Entries.Add(new() {
