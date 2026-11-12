@@ -18,6 +18,9 @@ public class OptionsSubAudio : PropertyPage
 	ComboBox SoundQualityCombo;
 	CvarSlider SFXSlider;
 	CvarSlider MusicSlider;
+#if GMOD_DLL
+	CvarSlider GModSFXSlider;
+#endif
 	ComboBox CloseCaptionCombo;
 	bool RequireRestart;
 	ComboBox SpokenLanguageCombo;
@@ -28,6 +31,9 @@ public class OptionsSubAudio : PropertyPage
 	public OptionsSubAudio(Panel? parent, ReadOnlySpan<char> name) : base(parent, name) {
 		SFXSlider = new(this, "SFXSlider", "#GameUI_SoundEffectVolume", 0.0f, 1.0f, "volume");
 		MusicSlider = new(this, "MusicSlider", "#GameUI_MusicVolume", 0.0f, 1.0f, "Snd_MusicVolume");
+#if GMOD_DLL
+		GModSFXSlider = new(this, "GModSFXSlider", "#GameUI_SoundFXVolume", 0.0f, 1.0f, "volume_sfx");
+#endif
 
 		CloseCaptionCombo = new(this, "CloseCaptionCheck", 6, false);
 		CloseCaptionCombo.AddItem("#GameUI_NoClosedCaptions", null);
@@ -60,6 +66,9 @@ public class OptionsSubAudio : PropertyPage
 		RequireRestart = false;
 		SFXSlider.Reset();
 		MusicSlider.Reset();
+#if GMOD_DLL
+		GModSFXSlider.Reset();
+#endif
 
 		ConVarRef closecaption = new("closecaption");
 		ConVarRef cc_subtitles = new("cc_subtitles");
@@ -103,6 +112,9 @@ public class OptionsSubAudio : PropertyPage
 	public override void OnApplyChanges() {
 		SFXSlider.ApplyChanges();
 		MusicSlider.ApplyChanges();
+#if GMOD_DLL
+		GModSFXSlider.ApplyChanges();
+#endif
 
 		// More to do
 	}
