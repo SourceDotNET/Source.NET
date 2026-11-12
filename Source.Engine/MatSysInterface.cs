@@ -297,6 +297,7 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 		MaterialWorldWireframe = GL_LoadMaterial("debug/debugworldwireframe", MaterialDefines.TEXTURE_GROUP_OTHER);
 		MaterialWorldWireframeZBuffer = GL_LoadMaterial("debug/debugworldwireframezbuffer", MaterialDefines.TEXTURE_GROUP_OTHER);
 		MaterialShadowBuild = GL_LoadMaterial("engine/shadowbuild", MaterialDefines.TEXTURE_GROUP_OTHER);
+		MaterialAmbientCube = GL_LoadMaterial("debug/debugambientcube", MaterialDefines.TEXTURE_GROUP_OTHER);
 		// TODO: the rest of these important materials
 #endif
 	}
@@ -997,6 +998,7 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 	public IMaterial? MaterialWorldWireframe;
 	public IMaterial? MaterialWorldWireframeZBuffer;
 	public IMaterial? MaterialShadowBuild;
+	public IMaterial? MaterialAmbientCube;
 #endif
 
 	public void GL_UnloadMaterial(IMaterial? material) => material?.DecrementReferenceCount();

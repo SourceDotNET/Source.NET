@@ -378,4 +378,213 @@ public class RenderUtils(IMaterialSystem materials)
 		meshBuilder.End();
 		pMesh.Draw();
 	}
+
+	internal void RenderSphere(in Vector3 center, float radius, int theta, int phi, in Color c, IMaterial material) {
+		InitializeStandardMaterials();
+
+		using MatRenderContextPtr renderContext = new(materials);
+
+		byte chRed = c.R;
+		byte chGreen = c.G;
+		byte chBlue = c.B;
+		byte chAlpha = c.A;
+
+		int triangles = 2 * theta * (phi - 1);
+		int indices = 2 * (theta + 1) * (phi - 1);
+		if (triangles == 0)
+			return;
+
+		renderContext.Bind(material);
+		IMesh mesh = renderContext.GetDynamicMesh();
+		MeshBuilder meshBuilder = new();
+
+		meshBuilder.Begin(mesh, MaterialPrimitiveType.TriangleStrip, triangles, indices);
+
+		float OONPhi = 1.0f / (phi - 1);
+		float OONTheta = 1.0f / (theta - 1);
+
+		int i, j;
+		for (i = 0; i < phi; ++i) {
+			for (j = 0; j < theta; ++j) {
+				float u = j / (float)(theta - 1);
+				float v = i / (float)(phi - 1);
+				float t = 2.0f * MathF.PI * u;
+				float p = MathF.PI * v;
+
+				(float sinTheta, float cosTheta) = MathF.SinCos(t);
+				(float sinPhi, float cosPhi) = MathF.SinCos(p);
+
+				Vector3 pos;
+				pos.X = radius * sinPhi * cosTheta;
+				pos.Y = radius * sinPhi * sinTheta;
+				pos.Z = radius * cosPhi;
+
+				Vector3 normal = pos;
+				MathLib.VectorNormalize(ref normal);
+
+				pos += center;
+
+				meshBuilder.Position3f(pos.X, pos.Y, pos.Z);
+				meshBuilder.Normal3f(normal.X, normal.Y, normal.Z);
+				meshBuilder.Color4ub(chRed, chGreen, chBlue, chAlpha);
+				meshBuilder.TexCoord2f(0, j * OONTheta, i * OONPhi);
+				meshBuilder.AdvanceVertex();
+			}
+		}
+
+		int idx = 0;
+		for (i = 0; i < phi - 1; ++i) {
+			for (j = 0; j < theta; ++j) {
+				idx = theta * i + j;
+
+				meshBuilder.Index((ushort)(idx + theta));
+				meshBuilder.AdvanceIndex();
+
+				meshBuilder.Index((ushort)idx);
+				meshBuilder.AdvanceIndex();
+			}
+
+			if (i < phi - 2) {
+				meshBuilder.Index((ushort)idx);
+				meshBuilder.AdvanceIndex();
+
+				meshBuilder.Index((ushort)(idx + theta + 1));
+				meshBuilder.AdvanceIndex();
+			}
+		}
+
+		meshBuilder.End();
+		mesh.Draw();
+	}
+
+	internal void RenderSphere(in Vector3 center, float radius, int theta, int phi, in Color c, bool zBuffer) {
+		IMaterial material = zBuffer ? VertexColor : VertexColorIgnoreZ;
+		Color actual = new(c.R, c.G, c.B, c.A);
+		RenderSphere(center, radius, theta, phi, actual, material);
+	}
+
+	static void DrawAxes(in Vector3 origin, Span<Vector3> pts, int idx, in Color c, ref MeshBuilder meshBuilder) {
+		MathLib.VectorAdd(pts[idx], origin, out Vector3 start);
+		meshBuilder.Position3fv(start);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		int endidx = (idx & 0x1) != 0 ? idx - 1 : idx + 1;
+		MathLib.VectorAdd(pts[endidx], origin, out Vector3 temp);
+		meshBuilder.Position3fv(temp);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3fv(start);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		endidx = (idx & 0x2) != 0 ? idx - 2 : idx + 2;
+		MathLib.VectorAdd(pts[endidx], origin, out temp);
+		meshBuilder.Position3fv(temp);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3fv(start);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		endidx = (idx & 0x4) != 0 ? idx - 4 : idx + 4;
+		MathLib.VectorAdd(pts[endidx], origin, out temp);
+		meshBuilder.Position3fv(temp);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+	}
+
+	static void DrawExtrusionFace(in Vector3 start, in Vector3 end, Span<Vector3> pts, int idx1, int idx2, in Color c, ref MeshBuilder meshBuilder) {
+		MathLib.VectorAdd(pts[idx1], start, out Vector3 temp);
+		meshBuilder.Position3fv(temp);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		MathLib.VectorAdd(pts[idx2], start, out temp);
+		meshBuilder.Position3fv(temp);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3fv(temp);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		MathLib.VectorAdd(pts[idx2], end, out temp);
+		meshBuilder.Position3fv(temp);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3fv(temp);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		MathLib.VectorAdd(pts[idx1], end, out temp);
+		meshBuilder.Position3fv(temp);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3fv(temp);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+
+		MathLib.VectorAdd(pts[idx1], start, out temp);
+		meshBuilder.Position3fv(temp);
+		meshBuilder.Color4ub(c.R, c.G, c.B, c.A);
+		meshBuilder.AdvanceVertex();
+	}
+
+	internal void RenderWireframeSweptBox(in Vector3 start, in Vector3 end, in QAngle angles, in Vector3 mins, in Vector3 maxs, in Color c, bool zBuffer) {
+		InitializeStandardMaterials();
+
+		using MatRenderContextPtr renderContext = new(materials);
+		renderContext.Bind(zBuffer ? Wireframe : WireframeIgnoreZ);
+
+		Color actual = new(c.R, c.G, c.B, c.A);
+
+		MathLib.AngleMatrix(angles, out Matrix3x4 rotateMatrix);
+
+		IMesh mesh = renderContext.GetDynamicMesh();
+		MeshBuilder meshBuilder = new();
+		meshBuilder.Begin(mesh, MaterialPrimitiveType.Lines, 30);
+
+		MathLib.VectorSubtract(end, start, out Vector3 delta);
+
+		Vector3 temp;
+		Span<Vector3> pts = stackalloc Vector3[8];
+		Span<float> dot = stackalloc float[8];
+		int minidx = 0;
+		for (int i = 0; i < 8; ++i) {
+			temp.X = (i & 0x1) != 0 ? maxs[0] : mins[0];
+			temp.Y = (i & 0x2) != 0 ? maxs[1] : mins[1];
+			temp.Z = (i & 0x4) != 0 ? maxs[2] : mins[2];
+
+			MathLib.VectorRotate(temp, rotateMatrix, out pts[i]);
+
+			dot[i] = MathLib.DotProduct(pts[i], delta);
+			if (dot[i] < dot[minidx])
+				minidx = i;
+		}
+
+		int maxidx = minidx ^ 0x7;
+
+		DrawAxes(start, pts, minidx, actual, ref meshBuilder);
+		DrawAxes(end, pts, maxidx, actual, ref meshBuilder);
+
+		for (int j = 0; j < 3; ++j) {
+			int dirflag1 = 1 << ((j + 1) % 3);
+			int dirflag2 = 1 << ((j + 2) % 3);
+
+			int idx1, idx2, idx3;
+			idx1 = (minidx & dirflag1) != 0 ? minidx - dirflag1 : minidx + dirflag1;
+			idx2 = (minidx & dirflag2) != 0 ? minidx - dirflag2 : minidx + dirflag2;
+			idx3 = (minidx & dirflag2) != 0 ? idx1 - dirflag2 : idx1 + dirflag2;
+
+			DrawExtrusionFace(start, end, pts, idx1, idx3, actual, ref meshBuilder);
+			DrawExtrusionFace(start, end, pts, idx2, idx3, actual, ref meshBuilder);
+		}
+		meshBuilder.End();
+		mesh.Draw();
+	}
 }
