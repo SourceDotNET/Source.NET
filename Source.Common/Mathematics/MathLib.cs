@@ -4010,6 +4010,21 @@ public static class MathLib
 		}
 		return true;
 	}
+
+	static InlineArray128<Vector3> tempVectors = default;
+	static int tempVectorIndex;
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static ref Vector3 AllocTempVector() {
+		int Index;
+		while (true) {
+			int OldIndex = tempVectorIndex;
+			Index = (OldIndex + 0x10001) & 0x7F;
+
+			if (Interlocked.CompareExchange(ref tempVectorIndex, Index, OldIndex) == OldIndex)
+				break;
+		}
+		return ref tempVectors[Index];
+	}
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 16, Size = sizeof(float) * 4 * 3)]
