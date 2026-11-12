@@ -6,6 +6,7 @@
 	<!-- Project References -->
 	<ItemGroup>
 		<ProjectReference Include="..\Source.Engine\Source.Engine.csproj" />
+		<ProjectReference Include="..\Source.Particles\Source.Particles.csproj" />
 	</ItemGroup>
 
 	<!-- Global Usings -->

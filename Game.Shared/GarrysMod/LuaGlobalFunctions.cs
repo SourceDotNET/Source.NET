@@ -173,8 +173,8 @@ public static partial class LuaGlobalFunctions
 		string name = lua.CheckString(1);
 #if GAME_DLL
 		GameInterface.PrecacheParticleSystem(name);
-#else
-		// PrecacheParticleSystem(name); // TODO!
+#elif CLIENT_DLL
+		HLClient.PrecacheParticleSystem(name);
 #endif
 		return 0;
 	}
