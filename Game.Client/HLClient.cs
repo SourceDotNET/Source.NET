@@ -82,6 +82,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		ParseParticleEffectsMap(mapname, true);
 
 		modemanager.LevelInit(mapname);
+		ParticleMgr.Instance.LevelInit();
 		ResetToneMapping(1.0f);
 		IGameSystem.LevelInitPreEntityAllSystems(mapname);
 #if GMOD_DLL
@@ -140,8 +141,8 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		get.IntroScreen()!.Update("Initializing Objects", true);
 		get.IntroScreen()!.Update("Initializing Particles", true);
 #endif
-		g_pParticleSystemMgr.Init(null, filesystem);
-		ParseParticleEffects(true, false);
+		if (!ParticleMgr.Instance.Init(ParticleMgr.MAX_TOTAL_PARTICLES, materials))
+			return false;
 #if GMOD_DLL
 		get.IntroScreen()!.Update("Initializing VGUI", true);
 		get.IntroScreen()!.Update("Adding Game Systems", true);
@@ -210,7 +211,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 	public void Shutdown() {
 		ClientVoiceMgr_Shutdown();
-		g_pParticleSystemMgr.UncacheAllParticleSystems();
+		ParticleMgr.Instance.Term();
 #if GMOD_DLL
 		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
 		get.MenuSystem()?.Shutdown();
@@ -244,6 +245,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 	public static bool g_bLevelInitialized;
 	public static INetworkStringTable? g_pStringTableClientSideChoreoScenes;
 	public static INetworkStringTable? g_pStringTableMaterials;
+	public static INetworkStringTable? g_pStringTableEffectDispatch;
 	public static INetworkStringTable? g_pStringTableParticleEffectNames;
 
 	public static void PrecacheParticleSystem(ReadOnlySpan<char> particleSystemName) {
@@ -330,7 +332,9 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 			case "Materials":
 				g_pStringTableMaterials = networkstringtable.FindTable(tableName);
 				break;
-			case "EffectDispatch": Warning("FIXME: EffectDispatch string table not being processed yet\n"); break;
+			case "EffectDispatch":
+				g_pStringTableEffectDispatch = networkstringtable.FindTable(tableName);
+				break;
 			// I don't think InfoPanel is a thing?
 			case "Scenes":
 				g_pStringTableClientSideChoreoScenes = networkstringtable.FindTable(tableName);
@@ -432,6 +436,8 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 			// tempents.Update();
 			beams.UpdateTempEntBeams();
 		}
+
+		ParticleMgr.Instance.Simulate((float)gpGlobals.FrameTime);
 
 		C_BaseEntity.CalcAimEntPositions();
 
@@ -580,7 +586,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		view.LevelShutdown();
 		beams.ClearBeams();
 
-		// ParticleMgr().RemoveAllEffects();
+		ParticleMgr.Instance.RemoveAllEffects();
 
 		// StopAllRumbleEffects();
 

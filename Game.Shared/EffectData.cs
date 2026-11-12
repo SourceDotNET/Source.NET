@@ -32,7 +32,7 @@ public partial class EffectData
 		new(nameof(Material)) { Bits = 13, Flags = PropFlags.Unsigned },
 		new(nameof(DamageType)) { Bits = 32, Flags = PropFlags.Unsigned },
 		new(nameof(HitBox)) { Bits = 12, Flags = PropFlags.Unsigned },
-		new(nameof(EntIndex)) { Bits = Constants.MAX_EDICT_BITS, Flags = PropFlags.Unsigned },
+		new(nameof(EntIndex)) { Bits = Constants.MAX_EDICT_BITS, Flags = PropFlags.Unsigned, Proxy = typeof(EntIndexProxy) },
 		new(nameof(Color)) { Bits = 8, Flags = PropFlags.Unsigned },
 		new(nameof(Radius)) { Bits = 10, Flags = PropFlags.RoundDown, Low = 0.0f, High = 1023.0f },
 		nameof(HasCustomColors),
@@ -48,6 +48,18 @@ public partial class EffectData
 	{
 #if GAME_DLL
 		public static void Send(SendProp prop, object instance, IFieldAccessor field, ref DVariant outData, int element, int objectID) => Game.Server.SendProxy.SendProxy_ShortAddOne(prop, instance, field, ref outData, element, objectID);
+#endif
+	}
+
+	public static class EntIndexProxy
+	{
+#if CLIENT_DLL
+		public static void Recv(ref readonly RecvProxyData data, object instance, IFieldAccessor field) {
+			EffectData effectData = (EffectData)instance;
+			int entIndex = data.Value.Int;
+			effectData.EntIndex = entIndex;
+			effectData.Entity = entIndex < 0 ? Game.Client.ClientEntityGlobals.INVALID_CLIENTENTITY_HANDLE : Game.Client.SourceDllMain.cl_entitylist.EntIndexToHandle(entIndex);
+		}
 #endif
 	}
 
@@ -71,7 +83,7 @@ public partial class EffectData
 	[NetworkVar("m_flMagnitude")]
 	public float Magnitude;
 	[NetworkVar("m_flScale")]
-	public float Scale;
+	public float Scale = 1.0f;
 	[NetworkVar("m_nAttachmentIndex")]
 	public int AttachmentIndex;
 	[NetworkVar("m_nSurfaceProp")]
@@ -105,8 +117,12 @@ public partial class EffectData
 	[NetworkVar("m_ControlPoint1")]
 	public ParticleEffectsControlPoint ControlPoint1;
 	[NetworkVar("m_bAllowOverride")]
-	public bool AllowOverride;
+	public bool AllowOverride = true;
 
 	public EffectData Copy() => (EffectData)MemberwiseClone();
+
+	static bool SuppressParticleEffects_;
+	public static bool SuppressingParticleEffects() => SuppressParticleEffects_;
+	public static void SuppressParticleEffects(bool suppress) => SuppressParticleEffects_ = suppress;
 }
 #endif

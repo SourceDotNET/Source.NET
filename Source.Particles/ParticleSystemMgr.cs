@@ -21,7 +21,7 @@ public sealed class ParticleSystemMgr
 	IParticleSystemQuery Query_ = new DefaultParticleSystemQuery();
 	IFileSystem? FileSystem;
 	IMaterial? ShadowDepthMaterial;
-	float LastSimulationTime;
+	double LastSimulationTime;
 	bool DidInit;
 	bool UsingDefaultQuery = true;
 	bool ShouldLoadSheets_ = true;
@@ -72,8 +72,8 @@ public sealed class ParticleSystemMgr
 
 	public void DecommitTempMemory() { }
 
-	public void SetLastSimulationTime(float time) => LastSimulationTime = time;
-	public float GetLastSimulationTime() => LastSimulationTime;
+	public void SetLastSimulationTime(double time) => LastSimulationTime = time;
+	public double GetLastSimulationTime() => LastSimulationTime;
 
 	public bool ReadParticleConfigFile(string fileName, bool precache, bool decommitTempMemory = true) {
 		if (fileName.StartsWith('!')) {

@@ -179,6 +179,27 @@ public static partial class LuaGlobalFunctions
 		return 0;
 	}
 
+#if CLIENT_DLL || GAME_DLL
+	[LuaGlobal]
+	static int ParticleEffect(ILuaInterface lua) {
+		QAngle angles = LuaAngle.Get_Angle(3);
+		Vector3 start = LuaVector.Get_Vector(2);
+		Vector3 origin = LuaVector.Get_Vector(2);
+		BaseEntity? entity = LuaEntity.Get_Entity(4, true);
+		DispatchParticleEffect(lua.CheckString(1), origin, start, angles, entity);
+		return 0;
+	}
+
+	[LuaGlobal]
+	static int ParticleEffectAttach(ILuaInterface lua) {
+		int attachment = (int)lua.CheckNumber(4);
+		BaseEntity? entity = LuaEntity.Get_Entity(3, true);
+		int attachType = (int)lua.CheckNumber(2);
+		DispatchParticleEffect(lua.CheckString(1), (ParticleAttachment)attachType, entity, attachment, false);
+		return 0;
+	}
+#endif
+
 	[LuaGlobal]
 	static int CompileFile(ILuaInterface lua) {
 		bool showErrors = true;

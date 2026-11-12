@@ -286,6 +286,24 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 	BoneMergeCache? BoneMergeCache;
 
+	public void GetBoneTransform(int bone, out Matrix3x4 boneToWorld) {
+		BoneCache cache = GetBoneCache(null);
+		ref Matrix3x4 matrix = ref cache.GetCachedBone(bone);
+		if (Unsafe.IsNullRef(ref matrix)) {
+			MathLib.MatrixCopy(EntityToWorldTransform(), out boneToWorld);
+			return;
+		}
+		MathLib.MatrixCopy(matrix, out boneToWorld);
+	}
+
+	public bool GetRootBone(out Matrix3x4 rootBone) {
+		if (IsEffectActive(EntityEffects.BoneMerge) && GetMoveParent() != null && BoneMergeCache != null)
+			return BoneMergeCache.GetRootBone(out rootBone);
+
+		GetBoneTransform(0, out rootBone);
+		return true;
+	}
+
 	static long ModelBoneCounter;
 	long MostRecentModelBoneCounter;
 	long MostRecentBoneSetupRequest;
@@ -408,11 +426,83 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 			case (int)AnimEventId.AE_CL_STOPSOUND:
 				StopSound(GetSoundSourceIndex(), options);
 				break;
+			case (int)AnimEventId.AE_CL_CREATE_PARTICLE_EFFECT: {
+					int attachment = -1;
+					nexttoken(out ReadOnlySpan<char> token, options, ' ', out ReadOnlySpan<char> next);
+					ReadOnlySpan<char> mtoken = ModifyEventParticles(token);
+					if (mtoken.IsEmpty)
+						return;
+					string particleEffect = mtoken.ToString();
+
+					nexttoken(out token, next, ' ', out next);
+					int attachType = GetAttachTypeFromString(token);
+					if (attachType == -1) {
+						Warning($"Invalid attach type specified for particle effect anim event. Trying to spawn effect '{particleEffect}' with attach type of '{token}'\n");
+						return;
+					}
+
+					nexttoken(out token, next, ' ', out _);
+					if (!token.IsEmpty) {
+						attachment = atoi(token);
+						if (token[0] != '0' && attachment == 0) {
+							attachment = LookupAttachment(token);
+							if (attachment <= 0) {
+								Warning($"Failed to find attachment point specified for particle effect anim event. Trying to spawn effect '{particleEffect}' on attachment named '{token}'\n");
+								return;
+							}
+						}
+					}
+
+					ParticleProp().Create(particleEffect, (ParticleAttachment)attachType, attachment);
+				}
+				break;
+			case (int)AnimEventId.AE_CL_STOP_PARTICLE_EFFECT: {
+					nexttoken(out ReadOnlySpan<char> token, options, ' ', out ReadOnlySpan<char> next);
+					string particleEffect = token.ToString();
+					nexttoken(out token, next, ' ', out _);
+					ParticleProp().StopParticlesNamed(particleEffect, token.Equals("instantly", StringComparison.OrdinalIgnoreCase));
+				}
+				break;
+			case (int)AnimEventId.AE_CL_ADD_PARTICLE_EFFECT_CP: {
+					nexttoken(out ReadOnlySpan<char> token, options, ' ', out ReadOnlySpan<char> next);
+					string particleEffect = token.ToString();
+
+					nexttoken(out token, next, ' ', out next);
+					int controlPoint = atoi(token);
+
+					nexttoken(out token, next, ' ', out next);
+					int attachType = GetAttachTypeFromString(token);
+					if (attachType == -1) {
+						Warning($"Invalid attach type specified for particle effect anim event. Trying to spawn effect '{particleEffect}' with attach type of '{token}'\n");
+						return;
+					}
+
+					nexttoken(out token, next, ' ', out _);
+					int attachment = atoi(token);
+					if ((token.IsEmpty || token[0] != '0') && attachment == 0) {
+						attachment = LookupAttachment(token);
+						if (attachment == -1) {
+							Warning($"Failed to find attachment point specified for particle effect anim event. Trying to spawn effect '{particleEffect}' on attachment named '{token}'\n");
+							return;
+						}
+					}
+
+					int effectIndex = ParticleProp().FindEffect(particleEffect);
+					if (effectIndex == -1) {
+						Warning($"Failed to find specified particle effect. Trying to add CP to '{particleEffect}' on attachment named '{token}'\n");
+						return;
+					}
+
+					ParticleProp().AddControlPoint(effectIndex, controlPoint, this, (ParticleAttachment)attachType, attachment);
+				}
+				break;
 			case CL_EVENT_SOUND:
 				FireObsoleteEvent(in origin, in angles, ev, options);
 				break;
 		}
 	}
+
+	public virtual ReadOnlySpan<char> ModifyEventParticles(ReadOnlySpan<char> token) => token;
 
 	public virtual void FireObsoleteEvent(in Vector3 origin, in QAngle angles, int ev, string options) {
 		switch (ev) {
@@ -556,7 +646,51 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		}
 	}
 
-	public void DelayedInitModelEffects() { /* todo */ }
+	public void InitModelEffects() {
+		DelayInitModelEffects = true;
+		ParticleProp().StopParticlesInvolving(this);
+		HasAttachedParticles = false;
+	}
+
+	public void DelayedInitModelEffects() {
+		if (!ShouldDraw())
+			return;
+
+		DelayInitModelEffects = false;
+
+		ReadOnlySpan<char> keyValueText = modelinfo.GetModelKeyValueText(GetModel());
+		KeyValues modelKeyValues = new("");
+		if (keyValueText.IsEmpty || !modelKeyValues.LoadFromBuffer(modelinfo.GetModelName(GetModel()), keyValueText))
+			return;
+
+		KeyValues? allParticleEffects = modelKeyValues.FindKey("Particles");
+		if (allParticleEffects == null)
+			return;
+
+		for (KeyValues? singleEffect = allParticleEffects.GetFirstSubKey(); singleEffect != null; singleEffect = singleEffect.GetNextKey()) {
+			string particleEffect = singleEffect.GetString("name", "").ToString();
+			ReadOnlySpan<char> attachmentName = singleEffect.GetString("attachment_point", "");
+			ReadOnlySpan<char> attachTypeName = singleEffect.GetString("attachment_type", "");
+
+			int attachType = GetAttachTypeFromString(attachTypeName);
+			if (attachType == -1) {
+				Warning($"Invalid attach type specified for particle effect in model '{GetModelName()}' keyvalues section. Trying to spawn effect '{particleEffect}' with attach type of '{attachTypeName}'\n");
+				return;
+			}
+
+			int attachment = atoi(attachmentName);
+			if ((attachmentName.IsEmpty || attachmentName[0] != '0') && attachment == 0) {
+				attachment = LookupAttachment(attachmentName);
+				if (attachment <= 0) {
+					Warning($"Failed to find attachment point specified for particle effect in model '{GetModelName()}' keyvalues section. Trying to spawn effect '{particleEffect}' on attachment named '{attachmentName}'\n");
+					return;
+				}
+			}
+
+			ParticleProp().Create(particleEffect, (ParticleAttachment)attachType, attachment);
+			HasAttachedParticles = true;
+		}
+	}
 	public void ClearRagdoll() { /* todo */ }
 
 	public override void Simulate() {
@@ -1168,6 +1302,8 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 				SetPoseParameter(hdr, i, 0.0f);
 		}
 
+		InitModelEffects();
+
 		EyeAttachment = LookupAttachment("eyes");
 
 		if (ShouldInterpolate())
@@ -1339,15 +1475,15 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		DynamicModelPending = false;
 		ResetSequenceInfoOnLoad = false;
 
-		InitModelEffects = false;
 		DelayInitModelEffects = false;
+		HasAttachedParticles = false;
 
 		Cycle = 0;
 		OldCycle = 0;
 	}
 
 	bool DelayInitModelEffects;
-	bool InitModelEffects;
+	bool HasAttachedParticles;
 	bool DynamicModelAllowed;
 	bool DynamicModelPending;
 
@@ -1469,6 +1605,14 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 			if (hdr != null && (hdr.Flags() & StudioHdrFlags.StaticProp) == 0) {
 				iv_Cycle.Reset();
 			}
+		}
+
+		bool shouldDraw = ShouldDraw();
+		if (shouldDraw && shouldDraw != OldShouldDraw)
+			InitModelEffects();
+		else if (!shouldDraw && HasAttachedParticles) {
+			ParticleProp().StopParticlesInvolving(this);
+			HasAttachedParticles = false;
 		}
 	}
 

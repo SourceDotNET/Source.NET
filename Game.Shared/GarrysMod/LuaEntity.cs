@@ -85,6 +85,12 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__StopParticles(ILuaInterface lua) {
+		StopParticleEffects(Get_Entity(1, false));
+		return 0;
+	}
+
+	[LuaMethod]
 	static int Entity__IsMarkedForDeletion(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		if (IsQueuedForRemoval(ent)) {

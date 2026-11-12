@@ -2359,6 +2359,12 @@ public static class MathLib
 		outVec.Y = inMatrix[1][column];
 		outVec.Z = inMatrix[2][column];
 	}
+	public static void MatrixVectors(in Matrix3x4 matrix, out Vector3 forward, out Vector3 right, out Vector3 up) {
+		MatrixGetColumn(matrix, 0, out forward);
+		MatrixGetColumn(matrix, 1, out right);
+		MatrixGetColumn(matrix, 2, out up);
+		right *= -1.0f;
+	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static void PositionMatrix(in Vector3 position, ref Matrix3x4 mat) {
 		MatrixSetColumn(in position, 3, ref mat);
