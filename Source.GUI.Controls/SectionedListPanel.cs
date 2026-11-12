@@ -1126,8 +1126,19 @@ public class SectionedListPanel : Panel
 		return -1;
 	}
 
-	public void GetCellBounds() {
+	public bool GetCellBounds(int itemID, int column, out int x, out int y, out int wide, out int tall) {
+		x = y = wide = tall = 0;
+		if (!IsItemIDValid(itemID))
+			return false;
 
+		ItemButton item = Items[itemID];
+
+		if (!item.IsVisible())
+			return false;
+
+		item.GetBounds(out x, out y, out wide, out tall);
+		item.GetCellBounds(column, ref x, ref wide);
+		return true;
 	}
 
 	public void GetSectionHeaderBounds() {

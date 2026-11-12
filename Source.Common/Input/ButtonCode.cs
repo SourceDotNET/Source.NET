@@ -228,4 +228,12 @@ public static class ButtonCodeExts {
 	public static bool IsMouseCode(this ButtonCode code) {
 		return (code >= ButtonCode.MouseFirst) && (code <= ButtonCode.MouseLast);
 	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool IsNovintCode(this ButtonCode code) {
+		return (code >= ButtonCode.NovintFirst) && (code <= ButtonCode.NovintLast);
+	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool IsJoystickCode(this ButtonCode code) {
+		return (code >= ButtonCode.JoystickFirst) && (code <= ButtonCode.JoystickLast);
+	}
 }

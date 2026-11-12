@@ -100,11 +100,11 @@ public class OptionsSubKeyboard : PropertyPage
 		Span<char> binding = stackalloc char[256];
 		Span<char> description = stackalloc char[256];
 
-		long size = g_pFileSystem.Size("scripts/kb_act.lst");
+		long size = g_pFileSystem.Size("scripts/kb_act.lst", "MOD");
 		if (size <= 0) return;
 
 		Span<byte> fileData = stackalloc byte[(int)size];
-		if (!g_pFileSystem.ReadFile("scripts/kb_act.lst", null, fileData.AsBytes(), 0))
+		if (!g_pFileSystem.ReadFile("scripts/kb_act.lst", "MOD", fileData.AsBytes(), 0))
 			return;
 
 		ReadOnlySpan<byte> data = fileData;
@@ -126,7 +126,7 @@ public class OptionsSubKeyboard : PropertyPage
 			strcpy(description, token);
 
 			if (description[0] != '=') {
-				if (streq(binding, "blank")) {
+				if (strieq(binding, "blank")) {
 					KeyBindList.AddSection(++sectionIndex, description);
 					KeyBindList.AddColumnToSection(sectionIndex, "Action", description, SectionedListPanel.ColumnBright, 286);
 					KeyBindList.AddColumnToSection(sectionIndex, "Key", "#GameUI_KeyButton", SectionedListPanel.ColumnBright, 128);
@@ -151,7 +151,7 @@ public class OptionsSubKeyboard : PropertyPage
 			KeyValues bindingItem = item.FindKey("Binding")!;
 			ReadOnlySpan<char> bindString = bindingItem.GetString();
 
-			if (strcmp(bindString, binding) == 0)
+			if (stricmp(bindString, binding) == 0)
 				return item;
 		}
 
@@ -159,10 +159,10 @@ public class OptionsSubKeyboard : PropertyPage
 	}
 
 	public void AddBinding(KeyValues item, ReadOnlySpan<char> keyName) {
-		if (stricmp(item.GetString("key", ""), keyName) == 0)
+		if (stricmp(item.GetString("Key", ""), keyName) == 0)
 			return;
 
-		// RemoveKeyFromBindItems(item, keyName);
+		RemoveKeyFromBindItems(item, keyName);
 
 		ReadOnlySpan<char> binding = item.GetString("Binding", "");
 
@@ -175,7 +175,7 @@ public class OptionsSubKeyboard : PropertyPage
 
 			if (stricmp(curBinding, binding) == 0) {
 				curItem.SetString("Key", keyName);
-				KeyBindList.InvalidateLayout();
+				KeyBindList.InvalidateItem(i);
 			}
 		}
 	}
@@ -186,7 +186,7 @@ public class OptionsSubKeyboard : PropertyPage
 			if (item == null)
 				continue;
 
-			item.SetString("key", "");
+			item.SetString("Key", "");
 
 			KeyBindList.InvalidateItem(i);
 		}
@@ -194,8 +194,35 @@ public class OptionsSubKeyboard : PropertyPage
 		KeyBindList.InvalidateLayout();
 	}
 
-	public void RemoveKeyFromBindItems() {
+	public void RemoveKeyFromBindItems(KeyValues? orgItem, ReadOnlySpan<char> key) {
+		if (key.IsEmpty)
+			return;
 
+		string keyName = new(key);
+
+		for (int i = 0; i < KeyBindList.GetItemCount(); i++) {
+			KeyValues? item = KeyBindList.GetItemData(KeyBindList.GetItemIDFromRow(i));
+			if (item == null)
+				continue;
+
+			if (stricmp(keyName, item.GetString("Key", "")) == 0) {
+				bool clearEntry = true;
+
+				if (orgItem != null) {
+					ReadOnlySpan<char> orgBinding = orgItem.GetString("Binding", "");
+					ReadOnlySpan<char> binding = item.GetString("Binding", "");
+					if (stricmp(orgBinding, binding) == 0)
+						clearEntry = false;
+				}
+
+				if (clearEntry) {
+					item.SetString("Key", "");
+					KeyBindList.InvalidateItem(i);
+				}
+			}
+		}
+
+		KeyBindList.InvalidateLayout();
 	}
 
 	public void FillInCurrentBindings() {
@@ -203,15 +230,10 @@ public class OptionsSubKeyboard : PropertyPage
 
 		ClearBindItems();
 
-		// bool Joystick = false;
-		// ConVarRef joy = new("joystick");
-		// if (joy.IsValid())
-		// 	Joystick = joy.GetBool();
-
-		// bool Falcon = false;
-		// ConVarRef falcon = new("hap_HasDevice");
-		// if (falcon.IsValid())
-		// 	Falcon = falcon.GetBool();
+		bool joystick = false;
+		ConVarRef joystickVar = new("joystick");
+		if (joystickVar.IsValid())
+			joystick = joystickVar.GetBool();
 
 		for (int i = 0; i < KeyBindings.Length; i++) {
 			ReadOnlySpan<char> binding = gameuifuncs.GetBindingForButtonCode((ButtonCode)i);
@@ -221,19 +243,26 @@ public class OptionsSubKeyboard : PropertyPage
 			KeyValues? item = GetItemForBinding(binding);
 			if (item != null) {
 				ReadOnlySpan<char> keyName = inputSystem.ButtonCodeToString((ButtonCode)i);
-				ReadOnlySpan<char> currentKey = item.GetString("key", "");
 
+				ReadOnlySpan<char> currentKey = item.GetString("Key", "");
 				if (!currentKey.IsEmpty) {
-					// ButtonCode currentBC = gameuifuncs.GetButtonCodeForBind(currentKey);
-					KeysToUnbind.Remove(currentKey.ToString());
+					ButtonCode currentBC = gameuifuncs.GetButtonCodeForBind(currentKey);
+
+					bool shouldOverride = joystick && IsJoystickOrNovintCode((ButtonCode)i) && !IsJoystickOrNovintCode(currentBC);
+					if (!shouldOverride)
+						continue;
+
+					KeysToUnbind.Remove(new(currentKey));
 				}
 
 				AddBinding(item, keyName);
 
-				KeysToUnbind.Add(keyName.ToString());
+				KeysToUnbind.Add(new(keyName));
 			}
 		}
 	}
+
+	static bool IsJoystickOrNovintCode(ButtonCode code) => code.IsJoystickCode() || code.IsNovintCode();
 
 	public void DeleteSavedBindings() {
 		for (int i = 0; i < KeyBindings.Length; i++) {
@@ -247,23 +276,43 @@ public class OptionsSubKeyboard : PropertyPage
 
 		for (int i = 0; i < (int)ButtonCode.Last; i++) {
 			ReadOnlySpan<char> binding = gameuifuncs.GetBindingForButtonCode((ButtonCode)i);
-			if (!binding.IsEmpty)
+			if (binding.IsEmpty)
 				continue;
 
 			KeyBindings[i].Binding = new(binding);
 		}
 	}
 
-	public void BindKey() {
+	public void BindKey(ReadOnlySpan<char> key, ReadOnlySpan<char> binding) => engine.ClientCmd_Unrestricted($"bind \"{key}\" \"{binding}\"\n");
 
-	}
-
-	public void UnbindKey() {
-
-	}
+	public void UnbindKey(ReadOnlySpan<char> key) => engine.ClientCmd_Unrestricted($"unbind \"{key}\"\n");
 
 	public void ApplyAllBindings() {
+		for (int i = 0; i < KeysToUnbind.Count; i++)
+			UnbindKey(KeysToUnbind[i]);
+		KeysToUnbind.Clear();
 
+		DeleteSavedBindings();
+
+		for (int i = 0; i < KeyBindList.GetItemCount(); i++) {
+			KeyValues? item = KeyBindList.GetItemData(KeyBindList.GetItemIDFromRow(i));
+			if (item == null)
+				continue;
+
+			ReadOnlySpan<char> binding = item.GetString("Binding", "");
+			if (binding.IsEmpty)
+				continue;
+
+			ReadOnlySpan<char> keyName = item.GetString("Key", "");
+			if (!keyName.IsEmpty) {
+				BindKey(keyName, binding);
+				ButtonCode code = inputSystem.StringToButtonCode(keyName);
+				if (code != ButtonCode.Invalid)
+					KeyBindings[(int)code].Binding = new(binding);
+			}
+		}
+
+		engine.ClientCmd_Unrestricted("exec userconfig.cfg\nhost_writeconfig\n");
 	}
 
 	public void FillInDefaultBindings() {
@@ -276,7 +325,40 @@ public class OptionsSubKeyboard : PropertyPage
 
 		ClearBindItems();
 
-		// todo
+		ReadOnlySpan<byte> data = fileData;
+		Span<char> cmd = stackalloc char[1024];
+		Span<char> keyName = stackalloc char[1024];
+		Span<char> binding = stackalloc char[1024];
+
+		while (true) {
+			data = engine.ParseFile(data, cmd);
+			if (strlen(cmd) == 0)
+				break;
+
+			if (stricmp(cmd, "bind") == 0) {
+				data = engine.ParseFile(data, keyName);
+				if (strlen(keyName) == 0)
+					break;
+
+				data = engine.ParseFile(data, binding);
+				if (strlen(keyName) == 0)
+					break;
+
+				KeyValues? item = GetItemForBinding(binding[..(int)strlen(binding)]);
+				if (item != null)
+					AddBinding(item, keyName[..(int)strlen(keyName)]);
+			}
+		}
+
+		PostActionSignal(KV_ApplyButtonEnable);
+
+		KeyValues? consoleItem = GetItemForBinding("toggleconsole");
+		if (consoleItem != null)
+			AddBinding(consoleItem, "`");
+
+		KeyValues? escapeItem = GetItemForBinding("cancelselect");
+		if (escapeItem != null)
+			AddBinding(escapeItem, "ESCAPE");
 	}
 
 	[UiMessage("ItemSelected")]
@@ -294,7 +376,7 @@ public class OptionsSubKeyboard : PropertyPage
 				else
 					ClearBindingButton.SetEnabled(false);
 
-				if (kv.GetInt("Header") > 0)
+				if (kv.GetInt("Header") != 0)
 					SetBindingButton.SetEnabled(false);
 			}
 		}
@@ -333,8 +415,28 @@ public class OptionsSubKeyboard : PropertyPage
 	}
 
 	public override void OnKeyCodePressed(ButtonCode code) {
-		base.OnKeyCodePressed(code);
+		if (!KeyBindList.IsCapturing()) {
+			int r = KeyBindList.GetItemOfInterest();
 
+			bool visible = KeyBindList.GetCellBounds(r, 1, out _, out _, out _, out _);
+			if (visible) {
+				if (code == ButtonCode.KeyDelete) {
+					KeyValues? kv = KeyBindList.GetItemData(r);
+
+					ReadOnlySpan<char> key = kv != null ? kv.GetString("Key", null) : null;
+					if (!key.IsEmpty)
+						RemoveKeyFromBindItems(null, key);
+
+					ClearBindingButton.SetEnabled(false);
+					KeyBindList.InvalidateItem(r);
+					PostActionSignal(KV_ApplyButtonEnable);
+
+					return;
+				}
+			}
+		}
+
+		base.OnKeyCodePressed(code);
 	}
 
 	[UiCommand("Advanced")]
@@ -355,6 +457,11 @@ class OptionsSubKeyboardAdvancedDlg : Frame
 		SetDeleteSelfOnClose(true);
 	}
 
+#if GMOD_DLL
+	public override void Activate() => base.Activate();
+
+	public void OnApplyData() { }
+#else
 	public override void Activate() {
 		base.Activate();
 
@@ -375,6 +482,7 @@ class OptionsSubKeyboardAdvancedDlg : Frame
 		ConVarRef hud_fastswitch = new("hud_fastswitch");
 		hud_fastswitch.SetValue(GetControlInt("FastSwitchCheck", 0));
 	}
+#endif
 
 	[UiCommand("OK")]
 	private void OnOK() {
