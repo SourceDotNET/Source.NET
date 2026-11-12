@@ -3,6 +3,8 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- V8 crashes under CET shadow stacks -->
+    <CETCompat>false</CETCompat>
   </PropertyGroup>
 
   <ItemGroup>
