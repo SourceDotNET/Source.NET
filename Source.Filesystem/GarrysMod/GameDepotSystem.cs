@@ -38,6 +38,24 @@ public class GameDepotSystem : GameDepot.System
 		game.Mounted = false;
 	}
 
+	static string FallbackVPK(string folder) => Path.Combine(AppContext.BaseDirectory, "sourceengine", $"content_{folder}_dir.vpk");
+
+	static void MountFallback(ref IGameDepotSystem.Information game) {
+		string vpk = FallbackVPK(game.Folder);
+		if (!File.Exists(vpk)) return;
+		Msg($"Mounting game '{game.Title}' as fallback ({game.Folder}, {(uint)game.AppID})\n");
+		g_FullFileSystem.AddSearchPath(vpk, "GAME", groupName: PathGroupName.GameContent);
+		g_FullFileSystem.AddSearchPath(vpk, game.Folder, groupName: PathGroupName.GameContent);
+		g_FullFileSystem.MarkPathIDByRequestOnly(game.Folder, true);
+	}
+
+	static void UnmountFallback(ref IGameDepotSystem.Information game) {
+		string vpk = FallbackVPK(game.Folder);
+		if (!File.Exists(vpk)) return;
+		g_FullFileSystem.RemoveSearchPath(vpk, "GAME");
+		g_FullFileSystem.RemoveSearchPath(vpk, game.Folder);
+	}
+
 	static void MountContentDir(string absDir, ReadOnlySpan<char> mountID) {
 		if (!Directory.Exists(absDir)) return;
 		foreach (string vpk in Directory.EnumerateFiles(absDir, "*_dir.vpk")) {
@@ -97,6 +115,12 @@ public class GameDepotSystem : GameDepot.System
 			if (game.Enabled)
 				MountGame(ref game);
 		}
+
+		for (int i = 0; i < games.Length; i++) {
+			ref IGameDepotSystem.Information game = ref games[i];
+			if (!game.Mounted && game.Bundled)
+				MountFallback(ref game);
+		}
 	}
 
 	private void LoadMountPrefs() {
@@ -126,7 +150,11 @@ public class GameDepotSystem : GameDepot.System
 			return;
 
 		foreach (KeyValues game in manifest) {
-			string[] extra = new string(game.GetString("extra")).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+			List<string> extra = [];
+			KeyValues? extraKV = game.FindKey("extra");
+			if (extraKV != null)
+				foreach (KeyValues folder in extraKV)
+					extra.Add(new(folder.GetString()));
 			AppId_t appID = (AppId_t)uint.Parse(game.Name);
 			Games.Add(new IGameDepotSystem.Information {
 				AppID = appID,
@@ -150,6 +178,8 @@ public class GameDepotSystem : GameDepot.System
 			ref IGameDepotSystem.Information game = ref games[i];
 			if (game.Mounted)
 				UnmountGame(ref game);
+			else if (game.Bundled)
+				UnmountFallback(ref game);
 		}
 	}
 

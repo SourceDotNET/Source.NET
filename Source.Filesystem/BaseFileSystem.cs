@@ -1062,13 +1062,52 @@ public partial class BaseFileSystem : IFileSystem
 		AddVPKFile(vpk, path, (SearchPathAdd)id, PathGroupName.Default);
 	}
 
+	private void GMOD_AddPath(string path, PathGroupName group, params ReadOnlySpan<string> pathIDs) {
+		foreach (string pathID in pathIDs)
+			AddSearchPath(path, pathID, SearchPathAdd.ToTail, group);
+	}
+
+	private void GMOD_AddVPK(string vpk, PathGroupName group, params ReadOnlySpan<string> pathIDs) {
+		if (!File.Exists($"{vpk}_dir.vpk"))
+			return;
+		GMOD_AddPath($"{vpk}.vpk", group, pathIDs);
+	}
+
 	public void GMOD_SetupDefaultPaths(ReadOnlySpan<char> path, ReadOnlySpan<char> game) {
-		string workshop = Path.Combine(new string(game), "workshop");
-		AddSearchPath(new AddonSearchPath(g_AddonFileSystem, workshop), "GAME", SearchPathAdd.ToHead, PathGroupName.GModCore);
-		AddSearchPath(new AddonSearchPath(g_AddonFileSystem, workshop), "workshop", SearchPathAdd.ToHead, PathGroupName.GModCore);
-		AddSearchPath(new AddonSearchPath(g_AddonFileSystem, workshop), "thirdparty", SearchPathAdd.ToHead, PathGroupName.GModCore);
+		string baseDir = new(path);
+		string gameDir = new(game);
+		bool vpkBuild = FileExists("vpk_build", "BASE_PATH");
+
+		GMOD_AddPath(Path.Combine(gameDir, "bin"), PathGroupName.EngineCore, "GAMEBIN");
+
+		string workshop = Path.Combine(gameDir, "workshop");
+		AddSearchPath(new AddonSearchPath(g_AddonFileSystem, workshop), "GAME", SearchPathAdd.ToTail, PathGroupName.GModCore);
+		AddSearchPath(new AddonSearchPath(g_AddonFileSystem, workshop), "workshop", SearchPathAdd.ToTail, PathGroupName.GModCore);
+		AddSearchPath(new AddonSearchPath(g_AddonFileSystem, workshop), "thirdparty", SearchPathAdd.ToTail, PathGroupName.GModCore);
+
+		GMOD_AddVPK(Path.Combine(gameDir, "garrysmod"), PathGroupName.GModCore, "MOD", "GAME", "garrysmod");
+		if (vpkBuild)
+			GMOD_AddPath(Path.Combine(gameDir, "overrides"), PathGroupName.GModCore, "GAME", "garrysmod");
+		GMOD_AddPath(gameDir, PathGroupName.GModCore, "MOD", "MOD_WRITE", "DEFAULT_WRITE_PATH", "GAME", "GAME_WRITE", "garrysmod");
+
 		MarkPathIDByRequestOnly("workshop", true);
 		MarkPathIDByRequestOnly("thirdparty", true);
+		MarkPathIDByRequestOnly("garrysmod", true);
+
+		string sourceEngine = Path.Combine(baseDir, "sourceengine");
+		foreach (string vpk in (ReadOnlySpan<string>)["hl2_misc", "hl2_sound_misc", "hl2_sound_vo_english", "hl2_textures"])
+			GMOD_AddVPK(Path.Combine(sourceEngine, vpk), PathGroupName.SourceSDK, "GAME");
+		GMOD_AddPath(sourceEngine, PathGroupName.SourceSDK, "GAME");
+
+		string platform = Path.Combine(baseDir, "platform");
+		GMOD_AddVPK(Path.Combine(platform, "platform_misc"), PathGroupName.SourceSDK, "GAME", "PLATFORM");
+		GMOD_AddPath(platform, PathGroupName.SourceSDK, "GAME", "PLATFORM");
+
+		GMOD_AddPath(Path.Combine(gameDir, "download"), PathGroupName.Downloads, "GAME", "DOWNLOAD");
+
+		GMOD_AddVPK(Path.Combine(gameDir, "fallbacks"), PathGroupName.Fallbacks, "GAME", "MOD");
+		if (vpkBuild)
+			GMOD_AddPath(Path.Combine(gameDir, "fallbacks"), PathGroupName.Fallbacks, "GAME", "MOD");
 	}
 
 	public void GMOD_FixPathCase(Span<char> a) {
