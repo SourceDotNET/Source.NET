@@ -6,6 +6,7 @@ using Source;
 using Source.Common;
 using Source.Common.Audio;
 using Source.Common.Engine;
+using Source.Common.Formats.BSP;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.Mathematics;
 using Source.Common.Physics;
@@ -1646,6 +1647,17 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__GetRotatedAABB(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Vector3 mins = LuaVector.Get_Vector(2);
+		Vector3 maxs = LuaVector.Get_Vector(3);
+		MathLib.RotateAABB(ent.EntityToWorldTransform(), mins, maxs, out Vector3 minsOut, out Vector3 maxsOut);
+		LuaVector.Push_Vector(minsOut);
+		LuaVector.Push_Vector(maxsOut);
+		return 2;
+	}
+
+	[LuaMethod]
 	static int Entity__GetSubMaterial(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		lua.PushString(ent.GetSubMaterialOverride((int)lua.CheckNumber(2)));
@@ -1660,6 +1672,16 @@ public static partial class LuaEntity
 	}
 
 #if GAME_DLL
+	[LuaMethod]
+	static int Entity__DropToFloor(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int mask = (int)lua.CheckNumberOpt(2, (double)Mask.Solid);
+		BaseEntity? ignore = Get_Entity(3, true);
+		float distance = (float)lua.CheckNumberOpt(4, 256.0);
+		Util.DropToFloor(ent, (Mask)mask, ignore, distance);
+		return 0;
+	}
+
 	[LuaMethod]
 	static int Entity__SetUseType(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;

@@ -21,6 +21,9 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using Source.Common.Hashing;
 
+using SHA1Hash = System.Security.Cryptography.SHA1;
+using SHA256Hash = System.Security.Cryptography.SHA256;
+
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
 #elif MENU_DLL
@@ -124,6 +127,20 @@ public static partial class LuaUtil
 	}
 
 #if !MENU_DLL
+	[LuaFunction]
+	static int IntersectRayWithPlane(ILuaInterface lua) {
+		Vector3 rayOrigin = LuaVector.Get_Vector(1);
+		Vector3 rayDirection = LuaVector.Get_Vector(2);
+		Vector3 planePosition = LuaVector.Get_Vector(3);
+		Vector3 planeNormal = LuaVector.Get_Vector(4);
+		float t = CollisionUtils.IntersectRayWithPlane(rayOrigin, rayDirection, planeNormal, Vector3.Dot(planePosition, planeNormal));
+		if (!(0.0f < t))
+			return 0;
+		LuaVector.Push_Vector(rayDirection * t + rayOrigin);
+		lua.PushNumber(t);
+		return 2;
+	}
+
 	[LuaFunction]
 	static int IntersectRayWithOBB(ILuaInterface lua) {
 		Vector3 rayStart = LuaVector.Get_Vector(1);
@@ -331,6 +348,24 @@ public static partial class LuaUtil
 		CRC32.ProcessBuffer(ref crc, data, data.Length);
 		CRC32.Final(ref crc);
 		g_Lua.PushString(((uint)crc).ToString());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int SHA256(ILuaInterface lua) {
+		if (!g_Lua!.IsType(1, LuaType.String))
+			g_Lua.CheckString(1);
+		ReadOnlySpan<byte> data = g_Lua.GetStringBytes(1);
+		g_Lua.PushString(Convert.ToHexStringLower(SHA256Hash.HashData(data)));
+		return 1;
+	}
+
+	[LuaFunction]
+	static int SHA1(ILuaInterface lua) {
+		if (!g_Lua!.IsType(1, LuaType.String))
+			g_Lua.CheckString(1);
+		ReadOnlySpan<byte> data = g_Lua.GetStringBytes(1);
+		g_Lua.PushString(Convert.ToHexStringLower(SHA1Hash.HashData(data)));
 		return 1;
 	}
 

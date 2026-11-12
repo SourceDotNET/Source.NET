@@ -2413,6 +2413,21 @@ public static class MathLib
 		maxsOut = worldCenter + worldExtents;
 	}
 
+	public static void RotateAABB(in Matrix3x4 transform, in Vector3 minsIn, in Vector3 maxsIn, out Vector3 minsOut, out Vector3 maxsOut) {
+		Vector3 localCenter = (minsIn + maxsIn) * 0.5f;
+		Vector3 localExtents = maxsIn - localCenter;
+
+		VectorRotate(localCenter, transform, out Vector3 newCenter);
+
+		Vector3 newExtents;
+		newExtents.X = DotProductAbs(localExtents, transform[0]);
+		newExtents.Y = DotProductAbs(localExtents, transform[1]);
+		newExtents.Z = DotProductAbs(localExtents, transform[2]);
+
+		minsOut = newCenter - newExtents;
+		maxsOut = newCenter + newExtents;
+	}
+
 	public static void IRotateAABB(in Matrix3x4 transform, in Vector3 minsIn, in Vector3 maxsIn, out Vector3 minsOut, out Vector3 maxsOut) {
 		Vector3 oldCenter = (minsIn + maxsIn) * 0.5f;
 		Vector3 oldExtents = maxsIn - oldCenter;
