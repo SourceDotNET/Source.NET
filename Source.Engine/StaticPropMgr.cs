@@ -676,8 +676,23 @@ public class StaticProp : IClientUnknown, IClientRenderable, ICollideable
 
 	public ref readonly Vector3 OBBMinsPreScaled() => ref OBBMins();
 	public ref readonly Vector3 OBBMaxsPreScaled() => ref OBBMaxs();
-	public ref readonly Vector3 OBBMins() => throw new NotImplementedException();
-	public ref readonly Vector3 OBBMaxs() => throw new NotImplementedException();
+
+	public ref readonly Vector3 OBBMins() {
+		if (GetSolid() == SolidType.VPhysics) {
+			return ref Model.Mins;
+		}
+		ref Vector3 tv = ref MathLib.AllocTempVector();
+		MathLib.VectorSubtract(WorldRenderBBoxMin, GetCollisionOrigin(), out tv);
+		return ref tv;
+	}
+	public ref readonly Vector3 OBBMaxs() {
+		if (GetSolid() == SolidType.VPhysics) {
+			return ref Model.Maxs;
+		}
+		ref Vector3 tv = ref MathLib.AllocTempVector();
+		MathLib.VectorSubtract(WorldRenderBBoxMax, GetCollisionOrigin(), out tv);
+		return ref tv;
+	}
 
 	public bool TestCollision(in Ray ray, Contents contentsMask, ref Trace tr) {
 		Assert(false);
