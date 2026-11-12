@@ -22,7 +22,20 @@ public unsafe class IndexBufferGl46 : IDisposable
 	int ibo = -1;
 	int lastBufferSize = -1;
 	int LockedPosition;
+	PersistentBufferRing? ring;
+	bool Written;
+
 	public unsafe void RecomputeIBO() {
+		if (Dynamic) {
+			if (ring == null || BufferSize > lastBufferSize) {
+				lastBufferSize = BufferSize;
+				ring?.Dispose();
+				ring = new PersistentBufferRing(BufferSize);
+				Written = false;
+			}
+			return;
+		}
+
 		// Create the IBO if it doesn't exist
 		if (ibo == -1)
 			ibo = (int)glCreateBuffer();
@@ -72,6 +85,20 @@ public unsafe class IndexBufferGl46 : IDisposable
 			position = firstIndex;
 
 		startIndex = position;
+		if (Dynamic) {
+			if (ring == null)
+				RecomputeIBO();
+			else if (discard && Written)
+				ring.Advance();
+
+			if (discard)
+				Written = false;
+
+			Locked = true;
+			LockedPosition = position;
+			return (short*)ring!.Memory + position;
+		}
+
 		if (SysmemBuffer == null) {
 			RecomputeIBO();
 		}
@@ -87,8 +114,12 @@ public unsafe class IndexBufferGl46 : IDisposable
 		if (!Locked)
 			return;
 
-		if (indexCount > 0)
-			glNamedBufferSubData((uint)ibo, LockedPosition * 2, indexCount * 2, (short*)SysmemBuffer + LockedPosition);
+		if (indexCount > 0) {
+			if (Dynamic)
+				Written = true;
+			else
+				glNamedBufferSubData((uint)ibo, LockedPosition * 2, indexCount * 2, (short*)SysmemBuffer + LockedPosition);
+		}
 		Position += indexCount;
 		Locked = false;
 	}
@@ -96,10 +127,18 @@ public unsafe class IndexBufferGl46 : IDisposable
 	public short* ModifyLock(int firstIndex, int indexCount, out int startIndex) {
 		Assert(!Locked);
 
+		startIndex = firstIndex;
+		if (Dynamic) {
+			if (ring == null)
+				RecomputeIBO();
+
+			Locked = true;
+			return (short*)ring!.Memory + firstIndex;
+		}
+
 		if (SysmemBuffer == null)
 			RecomputeIBO();
 
-		startIndex = firstIndex;
 		Locked = true;
 		return (short*)SysmemBuffer + firstIndex;
 	}
@@ -108,8 +147,12 @@ public unsafe class IndexBufferGl46 : IDisposable
 		if (!Locked)
 			return;
 
-		if (indexCount > 0)
-			glNamedBufferSubData((uint)ibo, firstIndex * 2, indexCount * 2, (short*)SysmemBuffer + firstIndex);
+		if (indexCount > 0) {
+			if (Dynamic)
+				Written = true;
+			else
+				glNamedBufferSubData((uint)ibo, firstIndex * 2, indexCount * 2, (short*)SysmemBuffer + firstIndex);
+		}
 		Locked = false;
 	}
 
@@ -118,6 +161,8 @@ public unsafe class IndexBufferGl46 : IDisposable
 	}
 
 	public void Dispose() {
+		ring?.Dispose();
+		ring = null;
 		if (ibo != -1) {
 			Assert(SysmemBuffer != null);
 			fixed (int* ugh = &ibo)
@@ -147,5 +192,5 @@ public unsafe class IndexBufferGl46 : IDisposable
 
 	}
 
-	internal uint IBO() => ibo > 0 ? (uint)ibo : throw new NullReferenceException("Index Buffer Object was null");
+	internal uint IBO() => ring != null ? ring.Buffer : ibo > 0 ? (uint)ibo : throw new NullReferenceException("Index Buffer Object was null");
 }
