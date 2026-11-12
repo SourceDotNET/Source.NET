@@ -306,6 +306,23 @@ public class EngineRecvTable(DtCommonEng DtCommonEng)
 
 		return true;
 	}
+
+	public void Term(bool clearAll = true) {
+		foreach (RecvTable table in DtCommonEng.RecvTables) {
+			if (!table.IsInMainList())
+				continue;
+
+			table.SetInMainList(false);
+			table.Decoder = null;
+		}
+
+		if (clearAll)
+			DtCommonEng.RecvTables.Clear();
+
+		DtCommonEng.RecvDecoders.Clear();
+		DtCommonEng.ClientSendTables.Clear();
+	}
+
 	public bool Init(Span<RecvTable> tables) {
 		foreach (var table in tables) {
 			NewTable(table);
