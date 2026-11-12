@@ -77,6 +77,7 @@ public class ParticleCollection
 	public readonly object?[] CollisionCacheData = new object?[NUM_COLLISION_CACHE_MODES];
 	public ParticleCollection? Parent;
 	public ParticleCollection? Children;
+	public Sheet? Sheet;
 
 	protected bool BoundsValid;
 	protected Vector3 MinBounds;
@@ -166,6 +167,7 @@ public class ParticleCollection
 		Mgr = def.Mgr;
 		LinkIntoDefList();
 		InitStorage(def);
+		Sheet = Mgr.FindOrLoadSheet(PrecachedMaterial());
 
 		IsScrubbable = randomSeed != 0;
 		if (randomSeed == 0)
@@ -255,6 +257,7 @@ public class ParticleCollection
 
 		Memory = [];
 		OperatorContextData = null;
+		Sheet = null;
 		Array.Clear(CollisionCacheData);
 		foreach (ModelHitBoxesInfo info in ControlPointHitBoxes) {
 			info.HitBoxes = null;
@@ -1440,4 +1443,143 @@ public class ParticleCollection
 	public int GetRendererCount() => PrecachedMaterial() != null ? Def!.Renderers.Count : 0;
 	public ParticleOperatorInstance? GetRenderer(int i) => PrecachedMaterial() != null ? Def!.Renderers[i] : null;
 	public Span<byte> GetRendererContext(int i) => PrecachedMaterial() != null ? ContextSpan(Def!.RenderersCtxOffsets[i]) : default;
+
+	public void Render(IMatRenderContext renderContext, bool translucentOnly = false, object? cameraObject = null) {
+		IMaterial? material = PrecachedMaterial();
+		if (material == null)
+			return;
+
+		NextSleepTime = Math.Max(NextSleepTime, Mgr!.GetLastSimulationTime() + Def!.NoDrawTimeToGoToSleep);
+
+		if (ActiveParticles != 0 && (!translucentOnly || material.IsTranslucent())) {
+			for (int i = 0; i < Def.Renderers.Count; i++) {
+				ParticleOperatorInstance op = Def.Renderers[i];
+				if (!CheckIfOperatorShouldRun(op, out _))
+					continue;
+
+				Span<byte> context = ContextSpan(Def.RenderersCtxOffsets[i]);
+				if (!Def.ScreenSpaceEffect) {
+					op.Render(renderContext, this, context);
+					continue;
+				}
+
+				renderContext.MatrixMode(MaterialMatrixMode.View);
+				renderContext.PushMatrix();
+				renderContext.LoadIdentity();
+				renderContext.MatrixMode(MaterialMatrixMode.Projection);
+				renderContext.PushMatrix();
+				renderContext.LoadIdentity();
+				renderContext.Ortho(-100.0, -100.0, 100.0, 100.0, -100.0, 100.0);
+				op.Render(renderContext, this, context);
+				renderContext.MatrixMode(MaterialMatrixMode.View);
+				renderContext.PopMatrix();
+				renderContext.MatrixMode(MaterialMatrixMode.Projection);
+				renderContext.PopMatrix();
+			}
+		}
+
+		for (ParticleCollection? child = Children; child != null; child = child.Next)
+			child.Render(renderContext, translucentOnly, cameraObject);
+	}
+
+	static readonly ParticleRenderData[] SortBuffer = new ParticleRenderData[MAX_PARTICLES_IN_A_SYSTEM + 4];
+
+	public ParticleRenderData[] GetRenderList(IMatRenderContext renderContext, bool sorted, out int particleCount, in ParticleVisibilityData visibilityData) {
+		bool sort = sorted && Def!.ShouldSort;
+		renderContext.GetWorldSpaceCameraPosition(out Vector3 camera);
+		if (camera.X < MinBounds.X || camera.X > MaxBounds.X || camera.Y < MinBounds.Y || camera.Y > MaxBounds.Y || camera.Z < MinBounds.Z || camera.Z > MaxBounds.Z)
+			particleCount = GenerateSortedIndexList(camera, default, false, visibilityData, sort);
+		else {
+			renderContext.GetWorldSpaceCameraVectors(out Vector3 forward, out _, out _);
+			particleCount = GenerateSortedIndexList(camera, forward, true, visibilityData, sort);
+		}
+		return SortBuffer;
+	}
+
+	int GenerateSortedIndexList(Vector3 camera, Vector3 forward, bool cull, in ParticleVisibilityData visibilityData, bool sorted) {
+		int particleCount = ActiveParticles;
+		int blockCount = Math.Max(1, (particleCount + 3) / 4);
+		ParticleRenderData[] output = SortBuffer;
+
+		for (int i = 0; i < blockCount * 4; i++) {
+			Vector3 position = GetVectorAttributeValue(PARTICLE_ATTRIBUTE_XYZ, i);
+			float alpha = GetFloatAttributeValue(PARTICLE_ATTRIBUTE_ALPHA, i) * GetFloatAttributeValue(PARTICLE_ATTRIBUTE_ALPHA2, i);
+			float radius = GetFloatAttributeValue(PARTICLE_ATTRIBUTE_RADIUS, i);
+			if (visibilityData.UseVisibility) {
+				alpha = Math.Clamp(alpha * visibilityData.AlphaVisibility, 0.0f, 1.0f);
+				radius *= visibilityData.RadiusVisibility;
+			}
+
+			Vector3 delta = position - camera;
+			byte alphaByte = (byte)((int)MathF.Round(alpha * 255.0f) & 0xFF);
+			if (cull && !(0.0f <= Vector3.Dot(forward, delta)))
+				alphaByte = 0;
+
+			ref ParticleRenderData entry = ref output[i];
+			entry.SortKey = sorted ? delta.LengthSquared() : 0.0f;
+			entry.Index = i;
+			entry.Radius = radius;
+			entry.Alpha = alphaByte;
+		}
+
+		if (sorted)
+			HeapSortByKey(output, particleCount);
+
+		return particleCount;
+	}
+
+	static int SortKeyBits(in ParticleRenderData data) => BitConverter.SingleToInt32Bits(data.SortKey);
+
+	static void HeapSortByKey(ParticleRenderData[] data, int count) {
+		if (count < 2)
+			return;
+
+		for (int i = 1; i < count; i++) {
+			int node = i;
+			while (node != 0) {
+				int parent = ((node + 1) >> 1) - 1;
+				if (SortKeyBits(data[parent]) >= SortKeyBits(data[node]))
+					break;
+				(data[parent], data[node]) = (data[node], data[parent]);
+				node = parent;
+			}
+		}
+
+		int end = count - 1;
+		(data[0], data[end]) = (data[end], data[0]);
+		while (end != 1) {
+			int parent = 0;
+			int child = 1;
+			while (true) {
+				int pick = child;
+				if (child + 1 < end && SortKeyBits(data[child]) < SortKeyBits(data[child + 1]))
+					pick = child + 1;
+				if (SortKeyBits(data[pick]) <= SortKeyBits(data[parent]))
+					break;
+				(data[parent], data[pick]) = (data[pick], data[parent]);
+				child = pick * 2 + 1;
+				if (child >= end)
+					break;
+				parent = pick;
+			}
+			end--;
+			(data[0], data[end]) = (data[end], data[0]);
+		}
+	}
+}
+
+public struct ParticleRenderData
+{
+	public float SortKey;
+	public int Index;
+	public float Radius;
+	public byte Alpha;
+}
+
+public struct ParticleVisibilityData
+{
+	public float AlphaVisibility;
+	public float RadiusVisibility;
+	public float CameraBias;
+	public bool UseVisibility;
 }

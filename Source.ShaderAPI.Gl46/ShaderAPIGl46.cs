@@ -268,6 +268,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	int UserClipPlaneChanged;
 	readonly Vector4[] UserClipPlaneWorld = new Vector4[Gl46.HardwareConfig.MAXUSERCLIPPLANES];
 	readonly Vector4[] UserClipPlaneProj = new Vector4[Gl46.HardwareConfig.MAXUSERCLIPPLANES];
+	bool UserClipTransformOverride;
+	Matrix4x4 UserClipTransform_;
 	float FogZ;
 
 	private void MarkAllUserClipPlanesDirty() {
@@ -278,7 +280,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		if ((UserClipPlaneChanged & UserClipPlaneEnabled & ((1 << Gl46.HardwareConfig.MAXUSERCLIPPLANES) - 1)) == 0)
 			return;
 
-		Matrix4x4 worldToProjectionInvTrans = Matrices[(int)MaterialMatrixMode.View] * Matrices[(int)MaterialMatrixMode.Projection];
+		Matrix4x4 worldToView = UserClipTransformOverride ? UserClipTransform_ : Matrices[(int)MaterialMatrixMode.View];
+		Matrix4x4 worldToProjectionInvTrans = worldToView * Matrices[(int)MaterialMatrixMode.Projection];
 		Matrix4x4.Invert(worldToProjectionInvTrans, out worldToProjectionInvTrans);
 		worldToProjectionInvTrans = Matrix4x4.Transpose(worldToProjectionInvTrans);
 
@@ -3471,7 +3474,12 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	public void EnableShaderShaderMutex(bool enable) { }
 
 	public void EnableUserClipTransformOverride(bool enable) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		if (UserClipTransformOverride == enable)
+			return;
+
+		FlushBufferedPrimitives();
+		UserClipTransformOverride = enable;
+		MarkAllUserClipPlanesDirty();
 	}
 
 	public void EndOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query) {
@@ -3847,7 +3855,12 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public void UserClipTransform(in Matrix4x4 worldToView) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		Matrix4x4 transform = Matrix4x4.Transpose(worldToView);
+		if (UserClipTransformOverride) {
+			FlushBufferedPrimitives();
+			MarkAllUserClipPlanesDirty();
+		}
+		UserClipTransform_ = transform;
 	}
 
 	public void BindStandardVertexTexture(VertexTextureSampler sampler, StandardTextureId id) {

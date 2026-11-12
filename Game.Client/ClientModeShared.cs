@@ -109,6 +109,7 @@ public class ClientModeShared : GameEventListener, IClientMode
 	public bool IsTyping() => ChatElement!.GetMessageMode() != MessageModeType.None;
 
 	public bool ShouldDrawDetailObjects() => true;
+	public bool ShouldDrawParticles() => true;
 
 	public void Enable() {
 		IPanel? root = enginevgui.GetPanel(VGuiPanelType.ClientDll);

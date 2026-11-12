@@ -29,4 +29,5 @@ public interface IClientMode
 	bool CreateMove(double frametime, ref UserCmd cmd);
 	void OverrideView(ref ViewSetup setup);
 	bool ShouldDrawDetailObjects();
+	bool ShouldDrawParticles();
 }

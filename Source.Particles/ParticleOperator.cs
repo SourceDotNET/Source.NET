@@ -1,5 +1,8 @@
 using Datamodel;
 
+using Source.Common.MaterialSystem;
+using Source.Common.Mathematics;
+
 namespace Source.Particles;
 
 public interface IParticleOperatorDefinition
@@ -103,6 +106,19 @@ public abstract class ParticleOperatorInstance
 		if ((particleCount & 3) != 0)
 			InitNewParticlesScalar(particles, firstParticle + (particleCount & ~3), particleCount & 3, attributeWriteMask, context);
 	}
+
+	public virtual void AddForces(Span<FourVectors> accumulatedForces, ParticleCollection particles, int blocks, float strength, Span<byte> context) { }
+
+	public virtual void SetupConstraintPerFrameData(ParticleCollection particles, Span<byte> context) { }
+	public virtual bool EnforceConstraint(int startBlock, int endBlock, ParticleCollection particles, Span<byte> context, int activeParticles) => false;
+
+	public virtual void Render(IMatRenderContext renderContext, ParticleCollection particles, Span<byte> context) { }
+	public virtual int GetParticlesToRender(ParticleCollection particles, Span<byte> context, int firstParticle, int remainingVertices, int remainingIndices, out int vertsUsed, out int indicesUsed) {
+		vertsUsed = 0;
+		indicesUsed = 0;
+		return 0;
+	}
+	public virtual void RenderUnsorted(ParticleCollection particles, Span<byte> context, IMatRenderContext renderContext, ref MeshBuilder meshBuilder, int vertexOffset, int firstParticle, int particleCount) { }
 
 	public virtual bool IsBatchable() => true;
 	public virtual bool IsFinalConstraint() => false;

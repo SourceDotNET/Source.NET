@@ -49,6 +49,8 @@ public sealed class ParticleMgr
 		MaterialSystem = materials;
 
 		g_pParticleSystemMgr.Init(ParticleSystemQuery.g_pParticleSystemQuery, filesystem);
+		g_pParticleSystemMgr.AddBuiltinSimulationOperators();
+		g_pParticleSystemMgr.AddBuiltinRenderingOperators();
 
 		ParseParticleEffects(true, false);
 

@@ -327,6 +327,7 @@ public class DummyMaterial : IMaterial
 	public bool NeedsPowerOfTwoFrameBufferTexture(bool checkSpecificToThisFrame) => false;
 	public bool NeedsFullFrameBufferTexture(bool checkSpecificToThisFrame) => false;
 	public bool NeedsLightmapBlendAlpha() => false;
+	public bool IsSpriteCard() => false;
 }
 
 public class DummyMorph : IMorph

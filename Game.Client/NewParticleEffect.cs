@@ -3,6 +3,7 @@ using Game.Shared;
 using Source;
 using Source.Common;
 using Source.Common.Engine;
+using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 using Source.Particles;
 
@@ -254,7 +255,80 @@ public class CNewParticleEffect : ParticleCollection, IClientUnknown, IClientRen
 		}
 	}
 
-	public int DrawModel(StudioFlags flags) => 0;
+	public int DrawModel(StudioFlags flags) {
+		if (!ParticleMgr.r_DrawParticles.GetBool())
+			return 0;
+
+		if (!clientMode.ShouldDrawParticles() || !ParticleMgr.Instance.ShouldRenderParticleSystems())
+			return 0;
+
+		if ((flags & (StudioFlags.ShadowDepthTexture | StudioFlags.SSAODepthTexture)) != 0)
+			return 0;
+
+		if (Def == null || Def.Material.Get() == null || !Def.IsPrecached || !ShouldDraw_)
+			return 0;
+
+		C_BaseEntity? owner = Owner.Get();
+		if (owner != null && owner.IsDormant())
+			return 0;
+
+		using MatRenderContextPtr renderContext = new(materials);
+
+		if (!Def.ViewModelEffect && !Def.ScreenSpaceEffect) {
+			renderContext.GetWorldSpaceCameraPosition(out Vector3 camera);
+			if (MathLib.CalcSqrDistanceToAABB(MinBounds, MaxBounds, camera) > Def.MaxDrawDistance * Def.MaxDrawDistance) {
+				NextSleepTime = Math.Max(NextSleepTime, g_pParticleSystemMgr.GetLastSimulationTime() + Def.NoDrawTimeToGoToSleep);
+				return 0;
+			}
+		}
+
+		if (Def.ViewModelEffect) {
+			C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
+			if (player == null || !player.IsAlive() || player.GetRenderedWeaponModel()?.IsViewModel() != true)
+				return 0;
+		}
+
+		if ((flags & StudioFlags.Transparency) != 0) {
+			C_BaseEntity? cameraObject = cl_entitylist.GetEnt(render.GetViewEntity());
+			if (cameraObject != null && ShouldSkipRenderForCamera(cameraObject))
+				return 0;
+
+			renderContext.MatrixMode(MaterialMatrixMode.Model);
+			renderContext.PushMatrix();
+			renderContext.LoadIdentity();
+			Render(renderContext.Context, IsTwoPass(), cameraObject);
+			renderContext.MatrixMode(MaterialMatrixMode.Model);
+			renderContext.PopMatrix();
+		}
+		else
+			g_pParticleSystemMgr.AddToRenderCache(this);
+
+		return 1;
+	}
+
+	bool ShouldSkipRenderForCamera(C_BaseEntity cameraObject) {
+		int skipControlPoint = Def!.SkipRenderControlPoint;
+		if (skipControlPoint == -1 || skipControlPoint > GetHighestControlPoint())
+			return false;
+
+		C_BaseEntity? entity = GetControlPointEntity(skipControlPoint).Get();
+		if (entity == null || input.CAM_IsThirdPerson())
+			return false;
+
+		if (entity == cameraObject)
+			return true;
+
+		C_BaseEntity? rootMoveParent = entity.GetRootMoveParent();
+		if (rootMoveParent == cameraObject)
+			return true;
+
+		C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
+		if (player != cameraObject)
+			return false;
+
+		BaseEntity? observerTarget = player!.GetObserverTarget();
+		return player.GetObserverMode() == Shared.ObserverMode.InEye && (observerTarget == entity || rootMoveParent == observerTarget);
+	}
 
 	public IClientUnknown GetIClientUnknown() => this;
 	public ICollideable? GetCollideable() => null;
