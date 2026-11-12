@@ -258,4 +258,223 @@ public sealed class ParticleSystemMgr
 	}
 
 	public void RecreateDictionary() => Dictionary = new ParticleSystemDictionary(this);
+
+	readonly Dictionary<string, Sheet?> SheetList = new(StringComparer.OrdinalIgnoreCase);
+
+	public Sheet? FindOrLoadSheet(string fileName, ITexture texture) {
+		if (!ShouldLoadSheets_)
+			return null;
+
+		if (SheetList.TryGetValue(fileName, out Sheet? sheet))
+			return sheet;
+
+		Span<byte> data = texture.GetResourceData(VTF_RSRC_SHEET);
+		sheet = data.IsEmpty ? null : new Sheet(data);
+		SheetList[fileName] = sheet;
+		return sheet;
+	}
+
+	public Sheet? FindOrLoadSheet(IMaterial? material) {
+		if (material == null)
+			return null;
+
+		IMaterialVar var = material.FindVar("$basetexture", out bool found, true);
+		if (!found || var == null || !var.IsTexture())
+			return null;
+
+		ITexture? texture = var.GetTextureValue();
+		if (texture == null || texture.IsError())
+			return null;
+
+		return FindOrLoadSheet(new string(texture.GetName()), texture);
+	}
+
+	public void FlushAllSheets() => SheetList.Clear();
+
+	const uint VTF_RSRC_SHEET = 0x10;
+
+	static bool DidAddSimulationOperators;
+	static bool DidAddRenderingOperators;
+
+	public void AddBuiltinSimulationOperators() {
+		if (DidAddSimulationOperators)
+			return;
+		DidAddSimulationOperators = true;
+		BuiltinParticleOperators.AddBuiltInParticleOperators(this);
+		BuiltinParticleInitializers.AddBuiltInParticleInitializers(this);
+		BuiltinParticleEmitters.AddBuiltInParticleEmitters(this);
+	}
+
+	public void AddBuiltinRenderingOperators() {
+		if (DidAddRenderingOperators)
+			return;
+		DidAddRenderingOperators = true;
+		BuiltinParticleRenderers.AddBuiltInParticleRenderers(this);
+	}
+
+	int ParticleVertexCount;
+	int ParticleIndexCount;
+	bool FrameWarningNeeded;
+
+	public void TallyParticlesRendered(int vertexCount, int indexCount = 0) {
+		int previous = ParticleVertexCount;
+		ParticleIndexCount += indexCount;
+		ParticleVertexCount += vertexCount;
+		if (previous + vertexCount > 50000)
+			FrameWarningNeeded = true;
+	}
+
+	sealed class RenderCacheEntry
+	{
+		public IMaterial? Material;
+		public readonly List<ParticleCollection> Collections = [];
+	}
+
+	struct BatchStep
+	{
+		public ParticleCollection Particles;
+		public int RendererIndex;
+		public int FirstParticle;
+		public int ParticleCount;
+		public int VertCount;
+	}
+
+	sealed class RenderCacheBatch
+	{
+		public readonly List<BatchStep> Steps = [];
+		public int VertCount;
+		public int IndexCount;
+	}
+
+	readonly List<RenderCacheEntry> RenderCache = [];
+	readonly List<RenderCacheBatch> Batches = [];
+
+	public void ResetRenderCache() {
+		foreach (RenderCacheEntry entry in RenderCache)
+			entry.Collections.Clear();
+	}
+
+	public void AddToRenderCache(ParticleCollection particles) {
+		if (!particles.IsValid())
+			return;
+
+		IMaterial material = particles.Def!.GetMaterial()!;
+		if (material.IsTranslucent())
+			return;
+
+		particles.NextSleepTime = Math.Max(particles.NextSleepTime, GetLastSimulationTime() + particles.Def.NoDrawTimeToGoToSleep);
+
+		RenderCacheEntry? cache = null;
+		foreach (RenderCacheEntry entry in RenderCache) {
+			if (entry.Material == material) {
+				cache = entry;
+				break;
+			}
+		}
+
+		if (cache == null) {
+			cache = new() { Material = material };
+			RenderCache.Add(cache);
+		}
+
+		cache.Collections.Add(particles);
+
+		for (ParticleCollection? child = particles.Children; child != null; child = child.Next)
+			AddToRenderCache(child);
+	}
+
+	void BuildBatchList(RenderCacheEntry cache, IMatRenderContext renderContext) {
+		Batches.Clear();
+
+		int maxVertices = renderContext.GetMaxVerticesToRender(cache.Material);
+		int maxIndices = renderContext.GetMaxIndicesToRender();
+
+		RenderCacheBatch batch = new();
+		Batches.Add(batch);
+
+		foreach (ParticleCollection particles in cache.Collections) {
+			int rendererCount = particles.GetRendererCount();
+			if (!particles.IsValid() || rendererCount <= 0)
+				continue;
+
+			for (int i = 0; i < rendererCount; i++) {
+				ParticleOperatorInstance renderer = particles.GetRenderer(i)!;
+				int firstParticle = 0;
+				while (firstParticle < particles.ActiveParticles) {
+					int count = renderer.GetParticlesToRender(particles, particles.GetRendererContext(i), firstParticle, maxVertices, maxIndices, out int vertCount, out int indexCount);
+					int stepFirst = firstParticle;
+					firstParticle += count;
+
+					if (count < 1) {
+						if (batch.VertCount == 0)
+							break;
+						batch = new();
+						Batches.Add(batch);
+						if (firstParticle >= particles.ActiveParticles)
+							break;
+						continue;
+					}
+
+					batch.Steps.Add(new() {
+						Particles = particles,
+						RendererIndex = i,
+						FirstParticle = stepFirst,
+						ParticleCount = count,
+						VertCount = vertCount
+					});
+					batch.VertCount += vertCount;
+					batch.IndexCount += indexCount;
+				}
+			}
+		}
+
+		RenderCacheBatch last = Batches[^1];
+		if (last.VertCount <= 0 || last.IndexCount <= 0)
+			Batches.RemoveAt(Batches.Count - 1);
+	}
+
+	public void DrawRenderCache(bool shadowDepth) {
+		if (RenderCache.Count == 0)
+			return;
+
+		using MatRenderContextPtr renderContext = new(Singleton<IMaterialSystem>());
+
+		renderContext.MatrixMode(MaterialMatrixMode.Model);
+		renderContext.PushMatrix();
+		renderContext.LoadIdentity();
+
+		foreach (RenderCacheEntry cache in RenderCache) {
+			if (cache.Collections.Count == 0)
+				continue;
+
+			IMaterial? material = shadowDepth ? ShadowDepthMaterial : cache.Material;
+			BuildBatchList(cache, renderContext.Context);
+			if (Batches.Count == 0)
+				continue;
+
+			renderContext.Bind(material);
+			IMesh mesh = renderContext.GetDynamicMesh(true)!;
+			foreach (RenderCacheBatch batch in Batches) {
+				TallyParticlesRendered(batch.VertCount * 3, batch.IndexCount * 3);
+
+				MeshBuilder meshBuilder = new();
+				meshBuilder.Begin(mesh, MaterialPrimitiveType.Triangles, batch.VertCount, batch.IndexCount);
+
+				int vertexOffset = 0;
+				foreach (BatchStep step in batch.Steps) {
+					ParticleOperatorInstance renderer = step.Particles.GetRenderer(step.RendererIndex)!;
+					renderer.RenderUnsorted(step.Particles, step.Particles.GetRendererContext(step.RendererIndex), renderContext.Context, ref meshBuilder, vertexOffset, step.FirstParticle, step.ParticleCount);
+					vertexOffset += step.VertCount;
+				}
+
+				meshBuilder.End();
+				mesh.Draw();
+			}
+		}
+
+		ResetRenderCache();
+
+		renderContext.MatrixMode(MaterialMatrixMode.Model);
+		renderContext.PopMatrix();
+	}
 }
