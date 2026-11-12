@@ -61,6 +61,7 @@ public class Spritecard : BaseVSShader
 	static readonly ConVarRef mat_reduceparticles = new("mat_reduceparticles");
 
 	static readonly int[] TexCoordSize = [4, 4, 4, 2, 4, 4, 4, 4];
+	static readonly int[] TexCoordSizeSpline = [4, 4, 4, 4, 4, 4, 4, 4];
 
 	public override string? GetFallbackShader(IMaterialVar[] vars) => null;
 	public override ShaderFlags GetFlags() => Flags;
@@ -173,13 +174,17 @@ public class Spritecard : BaseVSShader
 				EnableAlphaBlending(ShaderBlendFactor.SrcAlpha, ShaderBlendFactor.OneMinusSrcAlpha);
 
 			int numTexCoords = secondSequence ? 8 : 5;
-			shaderShadow.VertexShaderVertexFormat(VertexFormat.Position | VertexFormat.Color, numTexCoords, TexCoordSize, 0);
+			shaderShadow.VertexShaderVertexFormat(VertexFormat.Position | VertexFormat.Color, numTexCoords, splineType != 0 ? TexCoordSizeSpline : TexCoordSize, 0);
 
-			StaticShaderIndex vshIndex = new(shaderShadow, ShaderType.Vertex, "spritecard");
-			vshIndex.Set("DUALSEQUENCE", secondSequence);
-			vshIndex.Set("ZOOM_ANIMATE_SEQ2", zoomSeq2);
-			vshIndex.Set("EXTRACTGREENALPHA", extractGreenAlpha);
-			shaderShadow.SetVertexShader("spritecard", vshIndex.GetIndex());
+			if (splineType != 0)
+				shaderShadow.SetVertexShader("splinecard", 0);
+			else {
+				StaticShaderIndex vshIndex = new(shaderShadow, ShaderType.Vertex, "spritecard");
+				vshIndex.Set("DUALSEQUENCE", secondSequence);
+				vshIndex.Set("ZOOM_ANIMATE_SEQ2", zoomSeq2);
+				vshIndex.Set("EXTRACTGREENALPHA", extractGreenAlpha);
+				shaderShadow.SetVertexShader("spritecard", vshIndex.GetIndex());
+			}
 
 			StaticShaderIndex pshIndex = new(shaderShadow, ShaderType.Pixel, "spritecard");
 			pshIndex.Set("ADDBASETEXTURE2", additive2ndTexture);
@@ -231,9 +236,13 @@ public class Spritecard : BaseVSShader
 			];
 			shaderAPI.SetPixelShaderConstant(0, pc0);
 
-			DynamicShaderIndex vshIndex = new(shaderAPI, ShaderType.Vertex);
-			vshIndex.Set("ORIENTATION", orientation);
-			shaderAPI.SetVertexShaderIndex(vshIndex.GetIndex());
+			if (splineType != 0)
+				shaderAPI.SetVertexShaderIndex(0);
+			else {
+				DynamicShaderIndex vshIndex = new(shaderAPI, ShaderType.Vertex);
+				vshIndex.Set("ORIENTATION", orientation);
+				shaderAPI.SetVertexShaderIndex(vshIndex.GetIndex());
+			}
 
 			DynamicShaderIndex pshIndex = new(shaderAPI, ShaderType.Pixel);
 			shaderAPI.SetPixelShaderIndex(pshIndex.GetIndex());

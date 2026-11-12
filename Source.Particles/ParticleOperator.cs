@@ -3,6 +3,8 @@ using Datamodel;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 
+using System.Runtime.Intrinsics;
+
 namespace Source.Particles;
 
 public interface IParticleOperatorDefinition
@@ -51,6 +53,17 @@ public abstract class ParticleOperatorInstance
 	public float OpStartFadeOutTime;
 	public float OpEndFadeOutTime;
 	public float OpFadeOscillatePeriod;
+	public float OpTimeOffsetMin;
+	public float OpTimeOffsetMax;
+	public int OpTimeOffsetSeed;
+	public int OpStrengthScaleSeed;
+	public float OpStrengthMinScale;
+	public float OpStrengthMaxScale;
+	public int OpTimeScaleSeed;
+	public float OpTimeScaleMin;
+	public float OpTimeScaleMax;
+	public int OpEndCapState;
+	public bool StrengthFastPath;
 
 	IParticleOperatorDefinition? Def;
 	Guid Id;
@@ -66,6 +79,7 @@ public abstract class ParticleOperatorInstance
 	public virtual void InitParams(ParticleSystemDefinition def, Element element) { }
 	public virtual int GetRequiredContextBytes() => 0;
 	public virtual void InitializeContextData(ParticleCollection particles, Span<byte> context) { }
+	public virtual void Precache(ParticleSystemDefinition def) { }
 
 	public abstract uint GetWrittenAttributes();
 	public abstract uint GetReadAttributes();
@@ -120,6 +134,51 @@ public abstract class ParticleOperatorInstance
 	}
 	public virtual void RenderUnsorted(ParticleCollection particles, Span<byte> context, IMatRenderContext renderContext, ref MeshBuilder meshBuilder, int vertexOffset, int firstParticle, int particleCount) { }
 
+	internal void ComputeStrengthFastPath()
+		=> StrengthFastPath = OpStartFadeInTime == 0.0f && OpEndFadeOutTime == 0.0f && OpStartFadeOutTime == 0.0f
+			&& OpTimeOffsetMin == 0.0f && OpTimeOffsetMax == 0.0f && OpTimeScaleMin == 1.0f && OpTimeScaleMax == 1.0f
+			&& OpStrengthMaxScale == 1.0f && OpStrengthMinScale == 1.0f && OpEndCapState == -1;
+
+	public virtual bool ShouldRun(bool applyingParentKillList) => !applyingParentKillList;
+
+	protected void InitScalarAttributeRandomRangeScalar(int attribute, float min, float max, float exponent, ParticleCollection particles, int startParticle, int particleCount) {
+		if (!StrengthFastPath) {
+			particles.CheckIfOperatorShouldRun(this, out float strength);
+			min *= strength;
+			max *= strength;
+		}
+
+		for (int i = 0; i < particleCount; i++)
+			particles.GetFloatAttributeRefForWrite(attribute, startParticle + i) = exponent == 1.0f ? particles.RandomFloat(min, max) : particles.RandomFloatExp(min, max, exponent);
+	}
+
+	protected void InitScalarAttributeRandomRangeBlock(int attribute, float min, float max, float exponent, ParticleCollection particles, int startBlock, int blockCount, bool randomlyInvert) {
+		if (!StrengthFastPath) {
+			particles.CheckIfOperatorShouldRun(this, out float strength);
+			min *= strength;
+			max *= strength;
+		}
+
+		Vector128<float> vMin = Vector128.Create(min);
+		Vector128<float> vRange = Vector128.Create(max - min);
+		Vector128<float> half = Vector128.Create(0.5f);
+		int intExponent = (int)exponent;
+		int context = RandSIMD.GetContext();
+		for (int b = 0; b < blockCount; b++) {
+			ref Vector128<float> attr = ref particles.GetM128AttributeRefForWrite(attribute, startBlock + b);
+			Vector128<float> rand = RandSIMD.Next(context);
+			if (exponent != 1.0f)
+				rand = RandSIMD.PowFixedPointExponent(rand, intExponent);
+			Vector128<float> value = rand * vRange + vMin;
+			if (randomlyInvert) {
+				Vector128<float> mask = Vector128.GreaterThanOrEqual(RandSIMD.Next(context), half);
+				value *= Vector128.ConditionalSelect(mask, MathLib.Four_Ones, -MathLib.Four_Ones);
+			}
+			attr = value;
+		}
+		RandSIMD.ReleaseContext(context);
+	}
+
 	public virtual bool IsBatchable() => true;
 	public virtual bool IsFinalConstraint() => false;
 	public virtual bool InitMultipleOverride() => false;
@@ -141,7 +200,18 @@ public static class ParticleOperatorUnpack
 			.Float("operator end fadein", "0", (o, v) => o.OpEndFadeInTime = v)
 			.Float("operator start fadeout", "0", (o, v) => o.OpStartFadeOutTime = v)
 			.Float("operator end fadeout", "0", (o, v) => o.OpEndFadeOutTime = v)
-			.Float("operator fade oscillate", "0", (o, v) => o.OpFadeOscillatePeriod = v);
+			.Float("operator fade oscillate", "0", (o, v) => o.OpFadeOscillatePeriod = v)
+			.Int("operator time offset seed", "0", (o, v) => o.OpTimeOffsetSeed = v)
+			.Float("operator time offset min", "0", (o, v) => o.OpTimeOffsetMin = v)
+			.Float("operator time offset max", "0", (o, v) => o.OpTimeOffsetMax = v)
+			.Int("operator time scale seed", "0", (o, v) => o.OpTimeScaleSeed = v)
+			.Float("operator time scale min", "1", (o, v) => o.OpTimeScaleMin = v)
+			.Float("operator time scale max", "1", (o, v) => o.OpTimeScaleMax = v)
+			.Float("operator time strength random scale max", "1", (o, v) => o.OpStrengthMaxScale = v)
+			.Int("operator strength scale seed", "0", (o, v) => o.OpStrengthScaleSeed = v)
+			.Float("operator strength random scale min", "1", (o, v) => o.OpStrengthMinScale = v)
+			.Float("operator strength random scale max", "1", (o, v) => o.OpStrengthMaxScale = v)
+			.Int("operator end cap state", "-1", (o, v) => o.OpEndCapState = v);
 
 	public static DmxElementUnpackStructure<T> BeginRender<T>() where T : ParticleRenderOperatorInstance
 		=> Begin<T>()

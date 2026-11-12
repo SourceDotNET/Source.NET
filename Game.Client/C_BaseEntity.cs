@@ -1270,6 +1270,8 @@ public partial class C_BaseEntity : IClientEntity
 	}
 #endif
 
+	public bool IsBrushModel() => modelinfo.GetModelType(Model) == ModelType.Brush;
+
 	public void GetRenderBounds(out Vector3 mins, out Vector3 maxs) {
 #if GMOD_DLL
 		if (GetRenderBoundsOverride(out mins, out maxs))

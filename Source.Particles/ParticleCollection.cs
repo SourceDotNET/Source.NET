@@ -51,10 +51,12 @@ public class ParticleCollection
 
 	public int PaddedActiveParticles;
 	public float CurTime;
+	public float PrevSimTime = 1.0e23f;
 	public int ActiveParticles;
 	public float Dt;
 	public float PreviousDt = 0.05f;
 	public double NextSleepTime;
+	public bool InEndCap;
 
 	public ParticleSystemMgr? Mgr;
 	public ParticleSystemDefinition? Def;
@@ -74,7 +76,7 @@ public class ParticleCollection
 	public ParticleCollection? Next;
 	public ParticleCollection? Prev;
 
-	public readonly object?[] CollisionCacheData = new object?[NUM_COLLISION_CACHE_MODES];
+	public readonly StrongBox<WorldCollideContextData>?[] CollisionCacheData = new StrongBox<WorldCollideContextData>?[NUM_COLLISION_CACHE_MODES];
 	public ParticleCollection? Parent;
 	public ParticleCollection? Children;
 	public Sheet? Sheet;
@@ -111,11 +113,11 @@ public class ParticleCollection
 	int DrawnFrames;
 	int SimulatedFrames;
 
-	Vector3 Center;
+	internal Vector3 Center;
 
 	int UniqueParticleId;
 
-	int RandomQueryCount;
+	public int RandomQueryCount;
 	int RandomSeed;
 	int OperatorRandomSampleOffset_;
 
@@ -395,6 +397,7 @@ public class ParticleCollection
 
 	public ref float GetFloatAttributeRefForWrite(int attribute, int particleNumber) => ref Memory[GetAttributeIndex(attribute, particleNumber)];
 	public ref int GetIntAttributeRefForWrite(int attribute, int particleNumber) => ref Unsafe.As<float, int>(ref Memory[GetAttributeIndex(attribute, particleNumber)]);
+	public ref Vector128<float> GetM128AttributeRefForWrite(int attribute, int block) => ref Unsafe.As<float, Vector128<float>>(ref Memory[AttributeOffsets[attribute] + ParticleFloatStrides[attribute] * block]);
 
 	public void SetVectorAttribute(int attribute, int particleNumber, Vector3 v) {
 		int index = GetAttributeIndex(attribute, particleNumber);
@@ -666,6 +669,11 @@ public class ParticleCollection
 		);
 	}
 
+	public float OperatorRandomFloat(int particle, int randomOffset)
+		=> RandomFloats[(GetIntAttributeValue(PARTICLE_ATTRIBUTE_PARTICLE_ID, particle) + RandomSeed + randomOffset) & RANDOM_FLOAT_MASK];
+
+	public float OperatorRandomFloat(int particle) => OperatorRandomFloat(particle, OperatorRandomSampleOffset_);
+
 	public float RandomFloatExp(int randomSampleId, float min, float max, float exponent) {
 		float rand = RandomFloats[(RandomSeed + randomSampleId) & RANDOM_FLOAT_MASK];
 		rand = MathF.Pow(rand, exponent);
@@ -739,12 +747,39 @@ public class ParticleCollection
 		return strength;
 	}
 
-	public bool CheckIfOperatorShouldRun(ParticleOperatorInstance op, out float curStrength) {
+	public bool CheckIfOperatorShouldRun(ParticleOperatorInstance op, out float curStrength, bool applyingParentKillList = false) {
+		curStrength = 0.0f;
+		if (!op.ShouldRun(applyingParentKillList))
+			return false;
+
+		if (op.StrengthFastPath) {
+			curStrength = 1.0f;
+			return true;
+		}
+
+		if (op.OpEndCapState != -1 && InEndCap != (op.OpEndCapState == 1))
+			return false;
+
 		float time = CurTime;
+		if (op.OpTimeOffsetSeed != 0) {
+			time = CurTime + RandomFloat(op.OpTimeOffsetSeed, op.OpTimeOffsetMin, op.OpTimeOffsetMax);
+			if (time < 0.0f)
+				time = 0.0f;
+		}
+
+		if (op.OpTimeScaleSeed != 0 && op.OpStartFadeInTime < time) {
+			double timeScale = Math.Max(0.0001, RandomFloat(op.OpTimeScaleSeed, op.OpTimeScaleMin, op.OpTimeScaleMax));
+			time = (float)(1.0 / timeScale) * (time - op.OpStartFadeInTime) + op.OpStartFadeInTime;
+		}
+
 		if (op.OpFadeOscillatePeriod > 0.0f)
-			time = (CurTime / op.OpFadeOscillatePeriod) % 1.0f;
+			time = (float)((double)(CurTime / op.OpFadeOscillatePeriod) % 1.0);
 
 		curStrength = FadeInOut(op.OpStartFadeInTime, op.OpEndFadeInTime, op.OpStartFadeOutTime, op.OpEndFadeOutTime, time);
+
+		if (op.OpStrengthScaleSeed != 0)
+			curStrength *= Math.Max(0.0f, RandomFloat(op.OpStrengthScaleSeed, op.OpStrengthMinScale, op.OpStrengthMaxScale) * curStrength);
+
 		return curStrength > 0.0f;
 	}
 
@@ -966,6 +1001,7 @@ public class ParticleCollection
 			OperatorRandomSampleOffset_ = 0;
 			float step = remaining <= maxTimeStep ? remaining : maxTimeStep;
 			remaining -= step;
+			PrevSimTime = 1.0e23f;
 			Dt = step;
 			CurTime += step;
 
@@ -1299,7 +1335,7 @@ public class ParticleCollection
 		}
 	}
 
-	public void UpdateHitBoxInfo(int controlPointNumber) {
+	public void UpdateHitBoxInfo(int controlPointNumber, string? hitboxSetName = null) {
 		ModelHitBoxesInfo info = ControlPointHitBoxes[controlPointNumber];
 		if (CurTime == info.LastUpdateTime)
 			return;
@@ -1311,7 +1347,7 @@ public class ParticleCollection
 		info.PrevLastUpdateTime = info.LastUpdateTime;
 		info.NumPrevHitBoxes = info.NumHitBoxes;
 		(info.HitBoxes, info.PrevBoxes) = (info.PrevBoxes, info.HitBoxes);
-		info.NumHitBoxes = Mgr!.Query().GetControllingObjectHitBoxInfo(this, controlPointNumber, info.HitBoxes);
+		info.NumHitBoxes = Mgr!.Query().GetControllingObjectHitBoxInfo(this, controlPointNumber, info.HitBoxes, hitboxSetName);
 	}
 
 	IMaterial? PrecachedMaterial() => Def != null && Def.IsPrecached ? Def.Material.Get() : null;

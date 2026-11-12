@@ -729,6 +729,23 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 	memhandle_t HitboxBoneCacheHandle;
 
+	public bool HitboxToWorldTransforms(out Span<Matrix3x4> bones, Span<int> boneIndices) {
+		bones = default;
+		if (GetModel() == null)
+			return false;
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return false;
+		int hitboxSet = GetHitboxSet();
+		if (hitboxSet < 0 || hitboxSet >= studioHdr.NumHitboxSets())
+			return false;
+		if (studioHdr.HitboxSet(hitboxSet).NumHitboxes == 0)
+			return false;
+		BoneCache cache = GetBoneCache(studioHdr);
+		cache.ReadCachedBonePointers(out bones, boneIndices);
+		return true;
+	}
+
 	public BoneCache GetBoneCache(StudioHdr? studioHdr) {
 		int boneMask = Studio.BONE_USED_BY_HITBOX;
 		BoneCache cache = Studio.GetBoneCache(HitboxBoneCacheHandle);

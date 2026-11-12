@@ -34,9 +34,23 @@ public ref struct BeamSegDraw
 		SegsDrawn = 0;
 		TotalSegs = segs;
 		MeshVertCount = 0;
+		pMeshBuilder = ref Unsafe.NullRef<MeshBuilder>();
 
 		IMesh mesh = renderContext.GetDynamicMesh(true, null, null, material);
 		Mesh.Begin(mesh, MaterialPrimitiveType.TriangleStrip, (segs - 1) * 2);
+	}
+
+	public BeamSegDraw() { }
+
+	public BeamSegDraw(ref MeshBuilder meshBuilder, int meshVertCount) {
+		pMeshBuilder = ref meshBuilder;
+		MeshVertCount = meshVertCount;
+	}
+
+	public void StartWithMeshBuilder(IMatRenderContext renderContext, int segs) {
+		RenderContext = renderContext;
+		SegsDrawn = 0;
+		TotalSegs = segs;
 	}
 
 	public void NextSeg(ref BeamSeg seg) {
@@ -90,25 +104,46 @@ public ref struct BeamSegDraw
 		MathLib.VectorMA(Seg.Pos, -Seg.Width * 0.5f, vNormal, out vPoint2);
 
 
-		// Specify the points.
-		Mesh.Position3fv(vPoint1);
-		Mesh.Color4f(Seg.Color, Seg.Alpha);
-		Mesh.TexCoord2f(0, 0, Seg.TexCoord);
-		Mesh.TexCoord2f(1, 0, Seg.TexCoord);
-		Mesh.TangentS3fv(vNormal);
-		Mesh.TangentT3fv(vTangentY);
-		Mesh.AdvanceVertex();
+		if (Unsafe.IsNullRef(ref pMeshBuilder)) {
+			EmitSegVerts(ref Mesh, in Seg, in vPoint1, in vPoint2, in vNormal, in vTangentY);
+			return;
+		}
 
-		Mesh.Position3fv(vPoint2);
-		Mesh.Color4f(Seg.Color, Seg.Alpha);
-		Mesh.TexCoord2f(0, 1, Seg.TexCoord);
-		Mesh.TexCoord2f(1, 1, Seg.TexCoord);
-		Mesh.TangentS3fv(vNormal);
-		Mesh.TangentT3fv(vTangentY);
-		Mesh.AdvanceVertex();
+		EmitSegVerts(ref pMeshBuilder, in Seg, in vPoint1, in vPoint2, in vNormal, in vTangentY);
+		if (SegsDrawn > 1) {
+			int nBase = ((SegsDrawn - 2) * 2) + MeshVertCount;
+			pMeshBuilder.FastIndex((ushort)nBase);
+			pMeshBuilder.FastIndex((ushort)(nBase + 1));
+			pMeshBuilder.FastIndex((ushort)(nBase + 2));
+			pMeshBuilder.FastIndex((ushort)(nBase + 1));
+			pMeshBuilder.FastIndex((ushort)(nBase + 3));
+			pMeshBuilder.FastIndex((ushort)(nBase + 2));
+		}
+	}
+
+	static void EmitSegVerts(ref MeshBuilder mesh, in BeamSeg seg, in Vector3 vPoint1, in Vector3 vPoint2, in Vector3 vNormal, in Vector3 vTangentY) {
+		mesh.Position3fv(vPoint1);
+		mesh.Color4f(seg.Color, seg.Alpha);
+		mesh.TexCoord2f(0, 0, seg.TexCoord);
+		mesh.TexCoord2f(1, 0, seg.TexCoord);
+		mesh.TangentS3fv(vNormal);
+		mesh.TangentT3fv(vTangentY);
+		mesh.AdvanceVertex();
+
+		mesh.Position3fv(vPoint2);
+		mesh.Color4f(seg.Color, seg.Alpha);
+		mesh.TexCoord2f(0, 1, seg.TexCoord);
+		mesh.TexCoord2f(1, 1, seg.TexCoord);
+		mesh.TangentS3fv(vNormal);
+		mesh.TangentT3fv(vTangentY);
+		mesh.AdvanceVertex();
 	}
 
 	public void End() {
+		if (!Unsafe.IsNullRef(ref pMeshBuilder)) {
+			pMeshBuilder = ref Unsafe.NullRef<MeshBuilder>();
+			return;
+		}
 		Mesh.End(false, true);
 	}
 }

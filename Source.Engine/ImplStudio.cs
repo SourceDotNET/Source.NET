@@ -451,6 +451,32 @@ public class ModelRender : IModelRender
 		StudioRender.SetEyeViewTarget(studioHdr.GetRenderHdr(), bodyIndex, in target);
 	}
 
+	public void SetupLighting(in Vector3 center) {
+		LightingState state = default;
+		LightcacheGetDynamic_Stats stats = default;
+		ITexture? envCubemapTexture = Render.LightcacheGetDynamic(center, ref state, ref stats);
+
+		Span<LightDesc> lightDescs = stackalloc LightDesc[2];
+		int lightCount = 0;
+		for (int i = 0; i < state.NumLights; i++) {
+			if (!WorldLightToMaterialLight(ref state.LocalLight[i].Dereference(), out LightDesc lightDesc))
+				continue;
+			lightDesc.Color *= Render.LightStyleValue((byte)state.LocalLight[i].Dereference().Style);
+			lightDescs[lightCount] = lightDesc;
+			if (++lightCount >= lightDescs.Length)
+				break;
+		}
+		lightCount = Math.Min(lightCount, HardwareConfig.MaxNumLights());
+
+		StudioRender.SetAmbientLightColors(state.BoxColor);
+		StudioRender.SetLocalLights(lightCount, lightDescs[..lightCount]);
+
+		if (envCubemapTexture != null) {
+			using MatRenderContextPtr renderContext = new(materials);
+			renderContext.BindLocalCubemap(envCubemapTexture);
+		}
+	}
+
 	readonly IMDLCache MDLCache;
 	readonly IStudioRender StudioRender;
 	readonly IMaterialSystem materials;
