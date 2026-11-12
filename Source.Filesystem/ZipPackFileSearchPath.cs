@@ -94,7 +94,7 @@ public class ZipPackFileSearchPath : BaseSearchPath
 	public override long Size(ReadOnlySpan<char> path) {
 		if (Entries.TryGetValue(filesystem.FindOrAddFileName(path), out ZipArchiveEntry? entry))
 			return entry.Size;
-		return 0;
+		return -1;
 	}
 
 	public override DateTime Time(ReadOnlySpan<char> path) {
