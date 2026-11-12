@@ -52,6 +52,12 @@ public partial class
 	}
 
 #if GAME_DLL
+	int UseTypeCaps;
+
+	public override void SetUseType(int type) => UseTypeCaps = type;
+
+	public override EntityCapabilities ObjectCaps() => base.ObjectCaps() | (EntityCapabilities)UseTypeCaps;
+
 	IPhysicsMotionController? MotionController;
 
 	public override void StartMotionController() {

@@ -3,6 +3,7 @@ global using static Game.Client.PredictableList;
 
 using CommunityToolkit.HighPerformance;
 
+using Game.Client.GarrysMod;
 using Game.Shared;
 
 using Source;
@@ -11,6 +12,7 @@ using Source.Common.GarrysMod;
 using Source.Common.Bitbuffers;
 using Source.Common.Commands;
 using Source.Common.Engine;
+using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 using Source.Common.Networking;
 
@@ -870,6 +872,27 @@ public partial class C_BaseEntity : IClientEntity
 	public ushort RealClassName;
 	[NetworkVar("m_OverrideMaterial")]
 	public ushort OverrideMaterial;
+	IMaterial? MaterialOverridePointer;
+
+	public virtual void SetMaterialOverride(ReadOnlySpan<char> name) {
+		if (name.IsEmpty || name[0] == '\0') {
+			SetMaterialOverridePointer(null);
+			return;
+		}
+
+		IMaterial? material = materials.FindMaterial(name, MaterialDefines.TEXTURE_GROUP_OTHER, true, null);
+		if (material == null || material.IsErrorMaterial())
+			material = null;
+		SetMaterialOverridePointer(material);
+	}
+
+	public virtual void SetMaterialOverridePointer(IMaterial? material) {
+		MaterialOverridePointer?.DecrementReferenceCount();
+		MaterialOverridePointer = material;
+		material?.IncrementReferenceCount();
+	}
+
+	public virtual ReadOnlySpan<char> GetMaterialOverride() => NetworkString.Convert(OverrideMaterial) ?? "";
 	[NetworkVar("m_OverrideSubMaterials")]
 	public InlineArray32<ushort> OverrideSubMaterials;
 	[NetworkVar("m_iHealth")]

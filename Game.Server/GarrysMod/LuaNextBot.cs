@@ -23,6 +23,12 @@ public partial class LuaNextBot : NextBotCombatCharacter
 		ScriptedEntity.Init(this, 1);
 	}
 
+	int UseTypeCaps;
+
+	public override void SetUseType(int type) => UseTypeCaps = type;
+
+	public override EntityCapabilities ObjectCaps() => base.ObjectCaps() | (EntityCapabilities)UseTypeCaps;
+
 	public override ReadOnlySpan<char> GetLuaScriptName() => ScriptedEntity.GetScriptName();
 
 	public override void InitializeScriptedEntity(ReadOnlySpan<char> name) {

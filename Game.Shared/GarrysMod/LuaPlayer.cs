@@ -161,6 +161,13 @@ public static partial class LuaPlayer
 	}
 
 	[LuaMethod]
+	static int Player__KeyDownLast(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(((int)lua.CheckNumber(2) & (int)player.AfButtonLast) != 0);
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Player__Alive(ILuaInterface lua) {
 		BasePlayer player = Get_Player(1, false)!;
 		g_Lua!.PushBool(player.IsAlive());

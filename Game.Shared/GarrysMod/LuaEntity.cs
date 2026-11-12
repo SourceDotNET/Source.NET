@@ -1610,6 +1610,71 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__AddEFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent) || ent.IsMarkedForDeletion())
+			return 0;
+		int flags = (int)lua.CheckNumber(2);
+		if ((flags & 1) == 0)
+			ent.AddEFlags((EFL)flags);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__RemoveEFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent) || ent.IsMarkedForDeletion())
+			return 0;
+		int flags = (int)lua.CheckNumber(2);
+		if ((flags & 1) == 0)
+			ent.RemoveEFlags((EFL)flags);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetMaterial(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetMaterialOverride(lua.GetType(2) == LuaType.Nil ? null : lua.CheckString(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetMaterial(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushString(ent.GetMaterialOverride());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__NextThink(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetNextThink((float)lua.CheckNumber(2));
+		return 0;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__SetUseType(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int type = (int)lua.CheckNumber(2);
+		if (type == 1) {
+			ent.SetUseType((int)EntityCapabilities.OnOffUse);
+			return 0;
+		}
+		if (type == 2) {
+			ent.SetUseType((int)EntityCapabilities.DirectionalUse);
+			return 0;
+		}
+		if (type == 3) {
+			ent.SetUseType((int)EntityCapabilities.ImpulseUse);
+			return 0;
+		}
+		ent.SetUseType((int)EntityCapabilities.ContinuousUse);
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
 	static int Entity__LocalToWorld(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		Vector3 local = LuaVector.Get_Vector(2);

@@ -3457,6 +3457,29 @@ public partial class BaseEntity : IServerEntity
 
 	public virtual void Think() => FnThink?.Invoke(this);
 
+#if GMOD_DLL
+	public virtual void SetUseType(int type) { }
+
+	InlineArray256<char> OverrideMaterialName;
+
+	public virtual void SetMaterialOverride(ReadOnlySpan<char> name) {
+		if (!name.IsEmpty && name[0] != '\0') {
+			int index = NetworkString.Add(name);
+			if (index != OverrideMaterial)
+				OverrideMaterial = (ushort)index;
+			strcpy(OverrideMaterialName, name);
+			return;
+		}
+
+		strcpy(OverrideMaterialName, "");
+		if (OverrideMaterial == 0)
+			return;
+		OverrideMaterial = 0;
+	}
+
+	public virtual ReadOnlySpan<char> GetMaterialOverride() => NetworkString.Convert(OverrideMaterial) ?? "";
+#endif
+
 	public virtual EntityCapabilities ObjectCaps() {
 		Model? model = GetModel();
 		bool isBrush = (model != null && modelinfo.GetModelType(model) == ModelType.Brush);
