@@ -689,10 +689,12 @@ public class DebugOverlay : IVDebugOverlay
 				if (box2.EdgeColor.A > 0)
 					renderUtils.RenderWireframeBox(box2.Origin, box2.Angles, box2.Mins, box2.Maxs, box2.EdgeColor, false);
 				break;
+#if !SWDS
 			case OverlayType.Sphere:
 				OverlaySphere sphere = (OverlaySphere)overlay;
 				renderUtils.RenderSphere(sphere.Origin, sphere.Radius, sphere.Theta, sphere.Phi, new Color(sphere.R, sphere.G, sphere.B, sphere.A), MatSys.MaterialAmbientCube!);
 				break;
+#endif
 			case OverlayType.SweptBox:
 				OverlaySweptBox sweptBox = (OverlaySweptBox)overlay;
 				renderUtils.RenderWireframeSweptBox(sweptBox.Start, sweptBox.End, sweptBox.Angles, sweptBox.Mins, sweptBox.Maxs, new Color(sweptBox.R, sweptBox.G, sweptBox.B, sweptBox.A), true);
