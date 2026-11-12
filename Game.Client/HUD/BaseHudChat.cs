@@ -429,6 +429,7 @@ public class BaseHudChat : EditableHudElement
 	}
 
 	protected BaseHudChatInputLine ChatInput;
+	public BaseHudChatInputLine GetChatInput() => ChatInput;
 	protected BaseHudChatLine ChatLine;
 	protected int FontHeight;
 	protected HudChatHistory ChatHistory;

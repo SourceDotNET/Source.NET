@@ -1117,6 +1117,13 @@ public static partial class LuaPlayer
 	}
 
 	[LuaMethod]
+	static int Player__IsDrivingEntity(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		lua.PushBool(player.Driving.Get() != null);
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Player__GetDrivingMode(ILuaInterface lua) {
 		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
 		lua.PushNumber(player.DrivingMode);

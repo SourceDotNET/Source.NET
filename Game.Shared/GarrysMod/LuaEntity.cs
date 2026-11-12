@@ -1646,6 +1646,13 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__GetSubMaterial(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushString(ent.GetSubMaterialOverride((int)lua.CheckNumber(2)));
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Entity__NextThink(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		ent.SetNextThink((float)lua.CheckNumber(2));

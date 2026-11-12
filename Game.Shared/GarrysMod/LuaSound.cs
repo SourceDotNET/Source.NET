@@ -1,7 +1,13 @@
 #if CLIENT_DLL || GAME_DLL
 using Source.Common.Audio;
 using Source.Common.GarrysMod.Lua;
+using Source.Common.Mathematics;
 using Source.Common.SoundEmitterSystem;
+
+using System.Runtime.CompilerServices;
+
+using PitchInterval = Source.Common.SoundEmitterSystem.SoundInterval<byte>;
+using VolumeInterval = Source.Common.SoundEmitterSystem.SoundInterval<System.Half>;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
@@ -102,6 +108,64 @@ public static partial class LuaSound
 	static int AddSoundOverrides(ILuaInterface lua) {
 		soundemitterbase.AddSoundOverrides(lua.CheckString(1), false);
 		return 0;
+	}
+
+	[LuaFunction]
+	static int GetProperties(ILuaInterface lua) {
+		int index = soundemitterbase.GetSoundIndex(lua.CheckString(1));
+		if ((short)index == -1)
+			return 0;
+
+		ref SoundParametersInternal parms = ref soundemitterbase.InternalGetParametersForSound(index);
+		if (Unsafe.IsNullRef(ref parms))
+			return 0;
+
+		int count = parms.NumSoundNames();
+		if (count == 0)
+			return 0;
+
+		LuaTable table = new();
+		table.SetMember("channel", (float)(ushort)parms.GetChannel());
+		table.SetMember("level", (float)parms.GetSoundLevel().Start);
+
+		ref readonly VolumeInterval volume = ref parms.GetVolume();
+		if (Float16.Convert16bitFloatTo32bits(volume.Range) != 0.0f) {
+			LuaTable volumes = new();
+			float start = Float16.Convert16bitFloatTo32bits(volume.Start);
+			volumes.SetMemberDouble(1, start);
+			volumes.SetMemberDouble(2, Float16.Convert16bitFloatTo32bits(volume.Range) + start);
+			table.SetMember("volume", volumes);
+			volumes.UnReference();
+		}
+		else
+			table.SetMember("volume", Float16.Convert16bitFloatTo32bits(volume.Start));
+
+		ref readonly PitchInterval pitch = ref parms.GetPitch();
+		if (pitch.Range == 0)
+			table.SetMember("pitch", (float)pitch.Start);
+		else {
+			LuaTable pitches = new();
+			pitches.SetMemberDouble(1, pitch.Start);
+			pitches.SetMemberDouble(2, pitch.Start + pitch.Range);
+			table.SetMember("pitch", pitches);
+			pitches.UnReference();
+		}
+
+		Span<SoundFile> names = parms.GetSoundNames();
+		if (count == 1)
+			table.SetMember("sound", soundemitterbase.GetWaveName(names[0].Symbol));
+		else {
+			LuaTable sounds = new(null, (uint)count);
+			for (int i = 0; i < count; i++)
+				sounds.SetMember((float)(i + 1), soundemitterbase.GetWaveName(names[i].Symbol));
+			table.SetMember("sound", sounds);
+			sounds.UnReference();
+		}
+
+		table.SetMember("name", soundemitterbase.GetSoundName(index));
+		table.Push();
+		table.UnReference();
+		return 1;
 	}
 }
 #endif

@@ -1,4 +1,5 @@
 using Game.Client.HL2MP;
+using Game.Client.HUD;
 using Game.Shared;
 
 using Source;
@@ -6,7 +7,9 @@ using Source.Common;
 using Source.Common.Commands;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.Hashing;
+using Source.Common.Input;
 using Source.Common.Mathematics;
+using Source.GUI.Controls;
 
 using System.Numerics;
 
@@ -216,5 +219,217 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 		}
 
 		UpdateBaseClientSideAnimation();
+	}
+
+	class CreateMoveCmdRef
+	{
+		public UserCmd Cmd;
+		public AnonymousSafeFieldPointer<UserCmd> Ptr => new(this, static o => ref ((CreateMoveCmdRef)o).Cmd);
+	}
+
+	static readonly CreateMoveCmdRef CreateMoveCmd = new();
+
+	static void CreateMoveSWEPThink() {
+		if (gpGlobals.MaxClients >= 2)
+			return;
+		C_BasePlayer? player = GetLocalPlayer();
+		if (player == null)
+			return;
+		if (player.GetActiveWeapon() is not C_WeaponSWEP swep)
+			return;
+		if (player.NextAttack <= gpGlobals.CurTime)
+			swep.CreateMoveThink();
+	}
+
+	public override bool CreateMove(TimeUnit_t inputSampleTime, ref UserCmd cmd) {
+		CreateMoveCmd.Cmd = cmd;
+		bool ret = CreateMoveInternal(inputSampleTime, ref CreateMoveCmd.Cmd);
+		cmd = CreateMoveCmd.Cmd;
+		return ret;
+	}
+
+	bool CreateMoveInternal(TimeUnit_t inputSampleTime, ref UserCmd cmd) {
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.StartCommand)) {
+			LuaEntity.Push_Entity(GetLocalPlayer());
+			LuaUserCmd.Push_UserCmd(CreateMoveCmd.Ptr);
+			LuaDisposable disposable = new(g_Lua!.Top(), LuaType.None);
+			gGM.CallNoReturns(2);
+			disposable.Dispose();
+		}
+
+		CreateMoveSWEPThink();
+
+		cmd.IsTyping = false;
+		BaseHudChat? chat = (BaseHudChat?)gHUD.FindElement("CHudChat");
+		if (chat != null && chat.IsVisible() && chat.GetChatInput() != null && chat.GetChatInput().IsVisible())
+			cmd.IsTyping = chat.GetChatInput().GetInputPanel() == vguiInput.GetFocus();
+
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.CreateMove)) {
+			LuaUserCmd.Push_UserCmd(CreateMoveCmd.Ptr);
+			LuaDisposable disposable = new(g_Lua!.Top(), LuaType.None);
+			bool handled = gGM.CallFinish(1);
+			disposable.Dispose();
+			if (handled)
+				return true;
+		}
+
+		bool ret = base.CreateMove(inputSampleTime, ref cmd);
+
+		if (gpGlobals.MaxClients == 1 && IsLocalPlayer())
+			UpdateButtonState(cmd.Buttons);
+
+		if ((GModPlayerFlags & 8) != 0)
+			AvoidPlayers(ref cmd);
+
+		cmd.WorldClickDirection = default;
+		cmd.WorldClicking = false;
+
+		if (surface.IsCursorVisible()) {
+			Panel? panel = vguiInput.GetMouseFocus() as Panel;
+			if (panel == null)
+				panel = vguiInput.GetMouseOver() as Panel;
+
+			if (panel != null && panel.IsWorldClicker() && panel.IsVisible()) {
+				vguiInput.GetCursorPos(out int x, out int y);
+				cmd.WorldClickDirection = LuaGui.ScreenToVector(x, y);
+				cmd.WorldClicking = true;
+			}
+		}
+
+		if (cmd.WorldClicking && gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PreventScreenClicks) && !gGM.CallFinish(0)) {
+			cmd.Buttons &= ~(InButtons.Attack | InButtons.Attack2);
+			for (int i = 0; i < 5; i++) {
+				if (inputsystem.IsButtonDown(ButtonCode.MouseLeft))
+					cmd.Buttons |= InButtons.Attack;
+				if (inputsystem.IsButtonDown(ButtonCode.MouseRight))
+					cmd.Buttons |= InButtons.Attack2;
+			}
+		}
+
+		if (gpGlobals.MaxClients == 1) {
+			WorldClicking = cmd.WorldClicking;
+			WorldClickVector = cmd.WorldClickDirection;
+		}
+
+		return ret;
+	}
+
+	public override void UpdateButtonState(InButtons userCmdButtonMask) {
+		base.UpdateButtonState(userCmdButtonMask);
+		if (gGM == null)
+			return;
+
+		uint bit = 1;
+		for (int i = 0; i < 32; i++) {
+			if (((uint)AfButtonPressed & bit) != 0) {
+				if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.KeyPress)) {
+					LuaEntity.Push_Entity(this);
+					g_Lua!.PushNumber((int)bit);
+					gGM.CallNoReturns(2);
+				}
+			}
+			else if (((uint)AfButtonReleased & bit) != 0 && gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.KeyRelease)) {
+				LuaEntity.Push_Entity(this);
+				g_Lua!.PushNumber((int)bit);
+				gGM.CallNoReturns(2);
+			}
+			bit = BitOperations.RotateLeft(bit, 1);
+		}
+	}
+
+	void AvoidPlayers(ref UserCmd cmd) {
+		if (!IsAlive() || GetMoveType() == Source.MoveType.Noclip)
+			return;
+
+		Vector3 playerCenter = GetAbsOrigin();
+		Vector3 playerMin = GetPlayerMins();
+		Vector3 playerMax = GetPlayerMaxs();
+		float zHeight = playerMax.Z - playerMin.Z;
+		playerCenter.Z += 0.5f * zHeight;
+		playerMin += playerCenter;
+		playerMax += playerCenter;
+
+		for (int i = 0; i < gpGlobals.MaxClients; i++) {
+			C_BasePlayer? avoidPlayer = Util.PlayerByIndex(i);
+			if (avoidPlayer == null || !avoidPlayer.IsPlayer() || avoidPlayer == this)
+				continue;
+			if (!InSameTeam(avoidPlayer) || avoidPlayer.IsDormant())
+				continue;
+			if (avoidPlayer.IsSolidFlagSet(SolidFlags.NotSolid) || avoidPlayer.GetMoveType() == Source.MoveType.Noclip)
+				continue;
+
+			Vector3 avoidCenter = avoidPlayer.GetAbsOrigin();
+			Vector3 avoidMin = avoidPlayer.GetPlayerMins();
+			Vector3 avoidMax = avoidPlayer.GetPlayerMaxs();
+			zHeight = avoidMax.Z - avoidMin.Z;
+			avoidCenter.Z += 0.5f * zHeight;
+			avoidMin += avoidCenter;
+			avoidMax += avoidCenter;
+
+			if (!CollisionUtils.IsBoxIntersectingBox(playerMin, playerMax, avoidMin, avoidMax))
+				continue;
+
+			Vector3 delta = avoidPlayer.WorldSpaceCenter() - playerCenter;
+			Vector3 rad = avoidPlayer.WorldAlignMaxs() - avoidPlayer.WorldAlignMins();
+			rad.Z = 0;
+			float avoidRadius = rad.Length();
+
+			float pushStrength = (float)MathLib.RemapValClamped(delta.Length(), avoidRadius, 0, 0, 256);
+			if (pushStrength < 0.01f)
+				return;
+
+			Vector3 push;
+			if (GetAbsVelocity().Length2DSqr() > 0.1f) {
+				Vector3 velocity = GetAbsVelocity();
+				velocity.Z = 0.0f;
+				MathLib.CrossProduct(new Vector3(0.0f, 0.0f, 1.0f), velocity, out push);
+				MathLib.VectorNormalize(ref push);
+			}
+			else {
+				QAngle view = cmd.ViewAngles;
+				view.X = 0.0f;
+				MathLib.AngleVectors(view, out _, out push, out _);
+			}
+
+			Vector3 separationVelocity;
+			if (Vector3.Dot(delta, push) < 0)
+				separationVelocity = push * pushStrength;
+			else
+				separationVelocity = push * -pushStrength;
+
+			float maxPlayerSpeed = MaxSpeed();
+			if ((GetFlags() & EntityFlags.Ducking) != 0 && GetGroundEntity() != null)
+				maxPlayerSpeed *= 1.3333334f;
+
+			if (separationVelocity.LengthSquared() > maxPlayerSpeed * maxPlayerSpeed) {
+				separationVelocity.NormalizeInPlace();
+				separationVelocity *= maxPlayerSpeed;
+			}
+
+			QAngle angles = cmd.ViewAngles;
+			angles.X = 0;
+			MathLib.AngleVectors(angles, out Vector3 currentDir, out Vector3 rightDir, out _);
+
+			Vector3 direction = separationVelocity;
+			MathLib.VectorNormalize(ref direction);
+
+			cmd.ForwardMove += Vector3.Dot(currentDir, direction) * pushStrength;
+			cmd.SideMove += Vector3.Dot(rightDir, direction) * pushStrength;
+
+			float forwardScale = 1.0f;
+			if (cmd.ForwardMove > 400.0f)
+				forwardScale = 400.0f / cmd.ForwardMove;
+			else if (cmd.ForwardMove < -400.0f)
+				forwardScale = 400.0f / MathF.Abs(cmd.ForwardMove);
+
+			float sideScale = 1.0f;
+			if (MathF.Abs(cmd.SideMove) > 400.0f)
+				sideScale = 400.0f / MathF.Abs(cmd.SideMove);
+
+			float scale = MathF.Min(forwardScale, sideScale);
+			cmd.ForwardMove *= scale;
+			cmd.SideMove *= scale;
+			return;
+		}
 	}
 }

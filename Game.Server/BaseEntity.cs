@@ -1961,6 +1961,11 @@ public partial class BaseEntity : IServerEntity
 	public partial ushort OverrideMaterial { get; set; }
 	[NetworkVar("m_OverrideSubMaterials")]
 	public partial ref readonly InlineArray32<ushort> OverrideSubMaterials { get; }
+	public ReadOnlySpan<char> GetSubMaterialOverride(int index) {
+		if ((uint)index < 32 && NetworkString.Convert(OverrideSubMaterials[index]) is string name)
+			return name;
+		return "";
+	}
 	[NetworkVar("m_iHealth")]
 	public partial int Health { get; set; }
 	[NetworkVar("m_iMaxHealth")]

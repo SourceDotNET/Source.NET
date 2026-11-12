@@ -895,6 +895,11 @@ public partial class C_BaseEntity : IClientEntity
 	public virtual ReadOnlySpan<char> GetMaterialOverride() => NetworkString.Convert(OverrideMaterial) ?? "";
 	[NetworkVar("m_OverrideSubMaterials")]
 	public InlineArray32<ushort> OverrideSubMaterials;
+	public ReadOnlySpan<char> GetSubMaterialOverride(int index) {
+		if ((uint)index < 32 && NetworkString.Convert(OverrideSubMaterials[index]) is string name)
+			return name;
+		return "";
+	}
 	[NetworkVar("m_iHealth")]
 	public int Health;
 	[NetworkVar("m_iMaxHealth")]
@@ -977,6 +982,24 @@ public partial class C_BaseEntity : IClientEntity
 
 
 	public int GetTeamNumber() => TeamNum;
+
+	public ref readonly Vector3 WorldAlignMins() {
+		Assert(!CollisionProp().IsBoundsDefinedInEntitySpace());
+		Assert(CollisionProp().GetCollisionAngles() == vec3_angle);
+		return ref CollisionProp().OBBMins();
+	}
+
+	public ref readonly Vector3 WorldAlignMaxs() {
+		Assert(!CollisionProp().IsBoundsDefinedInEntitySpace());
+		Assert(CollisionProp().GetCollisionAngles() == vec3_angle);
+		return ref CollisionProp().OBBMaxs();
+	}
+
+	public virtual bool InSameTeam(C_BaseEntity? entity) {
+		if (entity == null)
+			return false;
+		return entity.GetTeamNumber() == GetTeamNumber();
+	}
 
 	IPhysicsObject? PhysicsObject = null!;
 	public void VPhysicsUpdate(IPhysicsObject physics) { }
