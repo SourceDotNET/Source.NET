@@ -207,7 +207,7 @@ public class KeyValues : IEnumerable<KeyValues>
 				value = (dat.Value is long l ? l : dat.Value is int i ? i : 0).ToString(CultureInfo.InvariantCulture);
 				break;
 			case Types.Uint64:
-				value = $"0x{(dat.Value is ulong u ? u : 0):x16}";
+				value = $"0x{(dat.Value is ulong u ? u : 0):X16}";
 				break;
 			case Types.Double:
 				value = ((float)(dat.Value is double d ? d : dat.Value is int i2 ? i2 : 0)).ToString("F6", CultureInfo.InvariantCulture);
