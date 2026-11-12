@@ -918,6 +918,14 @@ public class Net
 	public void Init(bool isDedicated) {
 		Time = 0;
 
+		ICommandLine commandLine = Singleton<ICommandLine>();
+		int port = commandLine.ParmValue("-port", -1);
+		if (port == -1)
+			port = commandLine.ParmValue("+port", -1);
+
+		if (port != -1)
+			hostport.SetValue(port);
+
 		NetSockets.EnsureCount(NetSocket.MAX);
 		NetPackets.EnsureCount(NetSocket.MAX);
 		SplitPackets.EnsureCount(NetSocket.MAX);
