@@ -162,7 +162,7 @@ public class SimpleRingBuffer<T> where T : new()
 	}
 
 	private int WrapRange(int i) {
-		return MathLib.Modulo(i, maxElement); // TODO: Why does -1 get passed here sometimes. We shouldn't have to change this to accomodate.
+		return (i >= maxElement) ? (i - maxElement) : i;
 	}
 }
 
