@@ -613,8 +613,8 @@ public abstract class BaseServer : IServer
 						SteamGameServer.HandleIncomingPacket(
 							packet.Message.GetData(),
 							packet.Message.BytesAvailable,
-							(uint)packet.From.Endpoint!.AddressFamily,
-							(ushort)packet.From.Endpoint!.Port
+							packet.From.GetIPHostByteOrder(),
+							(ushort)packet.From.GetPort()
 							);
 
 						ForwardPacketsFromMasterServerUpdater();
