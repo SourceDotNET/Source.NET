@@ -29,12 +29,11 @@ public struct Interval
 
 		int comma = str.IndexOf(',');
 		if (comma >= 0) {
-			float.TryParse(str[..comma], out tmp.Start);
-			float.TryParse(str[(comma + 1)..], out float range);
-			tmp.Range = range - tmp.Start;
+			tmp.Start = (float)atof(str[..comma]);
+			tmp.Range = (float)atof(str[(comma + 1)..]) - tmp.Start;
 		}
 		else if (!str.IsEmpty)
-			float.TryParse(str, out tmp.Start);
+			tmp.Start = (float)atof(str);
 
 		return tmp;
 	}
