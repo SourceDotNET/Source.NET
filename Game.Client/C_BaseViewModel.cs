@@ -7,6 +7,9 @@ namespace Game.Client;
 
 #if GMOD_DLL
 using Game.Client.GarrysMod;
+using Game.Shared;
+
+using System.Numerics;
 #endif
 
 public partial class C_BaseViewModel
@@ -206,5 +209,19 @@ public partial class C_BaseViewModel
 	public override bool IsViewModel() => true;
 	public override RenderGroup GetRenderGroup() {
 		return RenderGroup.ViewModelOpaque;
+	}
+
+	public override void FireEvent(in Vector3 origin, in QAngle angles, int ev, string options) {
+		if (ev == (int)AnimEventId.AE_CL_PLAYSOUND || ev == CL_EVENT_SOUND) {
+			C_BaseEntity? owner = GetOwner();
+			if (owner != null) {
+				LocalPlayerFilter filter = new();
+				EmitSound(filter, owner.GetSoundSourceIndex(), options, in GetAbsOrigin(), out _);
+				return;
+			}
+		}
+
+		if (GetOwningWeapon() != null)
+			base.FireEvent(in origin, in angles, ev, options);
 	}
 }

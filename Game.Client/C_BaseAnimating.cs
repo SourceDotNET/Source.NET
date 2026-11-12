@@ -305,8 +305,128 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		MostRecentModelBoneCounter = ModelBoneCounter - 1;
 		LastBoneSetupTime = -TimeUnit_t.MaxValue;
 	}
-	public virtual void DoAnimationEvents(StudioHdr hdr) {
+	public const int CL_EVENT_SOUND = 5004;
 
+	static bool IsClientAnimEvent(MStudioEvent ev) {
+		if ((ev.Type & (int)AnimEventType.NewEventSystem) != 0)
+			return (ev.Type & (int)AnimEventType.Client) != 0;
+
+		return ev.Event >= 5000;
+	}
+
+	static string EventOptions(MStudioEvent ev) => System.Text.Encoding.ASCII.GetString(((ReadOnlySpan<byte>)ev.Options()).SliceNullTerminatedString());
+
+	public virtual void DoAnimationEvents(StudioHdr hdr) {
+		if (hdr == null)
+			return;
+
+		if (GetSequence() == -1)
+			return;
+
+		float eventCycle = (float)GetCycle();
+
+		if (!IsVisible() && !IsViewModel())
+			return;
+
+		int numSeq = hdr.GetNumSeq();
+		if (numSeq < 1) {
+			Warning($"{GetDebugName()}[{EntIndex()}]: no sequences?\n");
+			return;
+		}
+
+		int seqNum = GetSequence();
+		if (seqNum >= numSeq) {
+			Warning($"{GetDebugName()}[{EntIndex()}]: Playing sequence {seqNum} but there's only {numSeq} in total?\n");
+			return;
+		}
+
+		MStudioSeqDesc seqdesc = hdr.Seqdesc(seqNum);
+		if (seqdesc.NumEvents == 0)
+			return;
+
+		Animation.GetEventIndexForSequence(seqdesc);
+
+		bool resetEvents = ResetEventsParity != PrevResetEventsParity;
+		PrevResetEventsParity = ResetEventsParity;
+
+		if (EventSequence != GetSequence() || resetEvents) {
+			EventSequence = GetSequence();
+			eventCycle = 0.0f;
+			PrevEventCycle = -0.01f;
+		}
+
+		if (eventCycle == PrevEventCycle)
+			return;
+
+		bool looped = false;
+		if (eventCycle <= PrevEventCycle) {
+			if (PrevEventCycle - eventCycle > 0.5)
+				looped = true;
+			else
+				return;
+		}
+
+		if (looped) {
+			for (int i = 0; i < (int)seqdesc.NumEvents; i++) {
+				MStudioEvent ev = seqdesc.Event(i);
+				if (!IsClientAnimEvent(ev))
+					continue;
+
+				if (ev.Cycle <= PrevEventCycle)
+					continue;
+
+				FireEvent(in GetAbsOrigin(), in GetAbsAngles(), ev.Event, EventOptions(ev));
+			}
+
+			PrevEventCycle = eventCycle - 0.001f;
+		}
+
+		for (int i = 0; i < (int)seqdesc.NumEvents; i++) {
+			MStudioEvent ev = seqdesc.Event(i);
+			if (!IsClientAnimEvent(ev))
+				continue;
+
+			if (ev.Cycle > PrevEventCycle && ev.Cycle <= eventCycle)
+				FireEvent(in GetAbsOrigin(), in GetAbsAngles(), ev.Event, EventOptions(ev));
+		}
+
+		PrevEventCycle = eventCycle;
+	}
+
+	public virtual void FireEvent(in Vector3 origin, in QAngle angles, int ev, string options) {
+		switch (ev) {
+			case (int)AnimEventId.AE_CL_PLAYSOUND: {
+					LocalPlayerFilter filter = new();
+					if (Attachments.Count > 0) {
+						GetAttachment(1, out Vector3 attachOrigin, out _);
+						EmitSound(filter, GetSoundSourceIndex(), options, in attachOrigin, out _);
+					}
+					else
+						EmitSound(filter, GetSoundSourceIndex(), options, in GetAbsOrigin(), out _);
+				}
+				break;
+			case (int)AnimEventId.AE_CL_STOPSOUND:
+				StopSound(GetSoundSourceIndex(), options);
+				break;
+			case CL_EVENT_SOUND:
+				FireObsoleteEvent(in origin, in angles, ev, options);
+				break;
+		}
+	}
+
+	public virtual void FireObsoleteEvent(in Vector3 origin, in QAngle angles, int ev, string options) {
+		switch (ev) {
+			case CL_EVENT_SOUND: {
+					LocalPlayerFilter filter = new();
+					if (Attachments.Count > 0) {
+						GetAttachment(1, out Vector3 attachOrigin, out _);
+						EmitSound(filter, GetSoundSourceIndex(), options, in attachOrigin, out _);
+					}
+					else
+						EmitSound(filter, GetSoundSourceIndex(), options);
+				}
+				break;
+		}
 	}
 	public bool IsBoneCacheValid() => MostRecentModelBoneCounter == ModelBoneCounter;
 	public static void InvalidateBoneCaches() => ModelBoneCounter++;
