@@ -326,6 +326,9 @@ public class ServerGameDLL(IFileSystem filesystem, ICommandLine CommandLine) : I
 
 		gameeventmanager.LoadEventsFromFile("resource/gameevents.res");
 
+		if (!g_pParticleSystemMgr.Init(null, filesystem))
+			return false;
+
 		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(SoundscapeSystemGlobals).TypeHandle);
 		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(CheckClient).TypeHandle);
 		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(AI_SystemHook).TypeHandle);
@@ -514,8 +517,10 @@ public class ServerGameDLL(IFileSystem filesystem, ICommandLine CommandLine) : I
 		// UpdateChapterRestrictions(pMapName);
 
 
+		ParseParticleEffects(false, false);
+
 		//Tony; parse custom manifest if exists!
-		// ParseParticleEffectsMap(pMapName, false);
+		ParseParticleEffectsMap(pMapName, false);
 
 		// IGameSystem::LevelInitPreEntityAllSystems() is called when the world is precached
 		// That happens either in LoadGameState() or in MapEntity_ParseAllEntities()
