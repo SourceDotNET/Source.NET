@@ -10,4 +10,5 @@ public interface ILuaConVars
 	void DestroyManaged();
 	void Cache(ReadOnlySpan<char> name, ReadOnlySpan<char> value);
 	void ClearCache();
+	void SaveManagedConVars();
 }

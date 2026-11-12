@@ -7,6 +7,7 @@ using Source.Common.Client;
 using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Filesystem;
+using Source.Common.Formats.Keyvalues;
 using Source.Common.Input;
 using Source.Common.Networking;
 using Source.Common.Server;
@@ -18,6 +19,7 @@ using Steamworks;
 
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 using static Source.Constants;
 
@@ -437,6 +439,8 @@ public partial class Host
 		this.clientDLL = clientDLL;
 	}
 
+	IInputSystem? inputSystem { get => field ??= services.GetService<IInputSystem>(); }
+
 	bool ConfigCfgExecuted = false;
 	public void ReadConfiguration() {
 		if (sv.IsDedicated())
@@ -467,6 +471,8 @@ public partial class Host
 		if (Key.NameForBinding("toggleconsole").IsEmpty)
 			Key.SetBinding(ButtonCode.KeyBackquote, "toggleconsole");
 
+		SetupDefaultAskConnectAcceptKey();
+
 		ConfigCfgExecuted = true;
 
 		if (saveconfig) {
@@ -477,33 +483,224 @@ public partial class Host
 		}
 	}
 
+#if !SWDS
+	static readonly ButtonCode[] InvalidKeyBindings = [
+		ButtonCode.KeyPad0, ButtonCode.KeyPad1, ButtonCode.KeyPad2, ButtonCode.KeyPad3, ButtonCode.KeyPad4,
+		ButtonCode.KeyPad5, ButtonCode.KeyPad6, ButtonCode.KeyPad7, ButtonCode.KeyPad8, ButtonCode.KeyPad9,
+		ButtonCode.KeyPadDivide, ButtonCode.KeyPadMultiply, ButtonCode.KeyPadMinus, ButtonCode.KeyPadPlus,
+		ButtonCode.KeyPadEnter, ButtonCode.KeyPadDecimal, ButtonCode.KeyEscape, ButtonCode.KeyScrollLock,
+		ButtonCode.KeyInsert, ButtonCode.KeyDelete, ButtonCode.KeyHome, ButtonCode.KeyEnd, ButtonCode.KeyPageUp,
+		ButtonCode.KeyPageDown, ButtonCode.KeyBreak, ButtonCode.KeyLShift, ButtonCode.KeyRShift, ButtonCode.KeyLAlt,
+		ButtonCode.KeyRAlt, ButtonCode.KeyLControl, ButtonCode.KeyRControl, ButtonCode.KeyLWin, ButtonCode.KeyRWin,
+		ButtonCode.KeyApp, ButtonCode.KeyUp, ButtonCode.KeyLeft, ButtonCode.KeyDown, ButtonCode.KeyRight,
+		ButtonCode.KeyCapsLockToggle, ButtonCode.KeyNumLockToggle, ButtonCode.KeyScrollLockToggle, ButtonCode.KeyBackquote,
+	];
+#endif
+
 	private void SetupNewBindings() {
-		// todo
+#if !SWDS
+		const string filename = "scripts\\newbindings.txt";
+		KeyValues newBindingsData = new(filename);
+		if (!newBindingsData.LoadFromFile(fileSystem, filename))
+			return;
+
+		for (KeyValues? subKey = newBindingsData.GetFirstTrueSubKey(); subKey != null; subKey = subKey.GetNextTrueSubKey()) {
+			string binding = subKey.Name;
+			if (binding == null)
+				continue;
+
+			if (subKey.FindKey("ideal_key") == null)
+				continue;
+			string idealKey = new(subKey.GetString("ideal_key"));
+
+			if (subKey.FindKey("override_if") != null) {
+				ReadOnlySpan<char> overrideIfCmd = subKey.GetString("override_if");
+				string? currentBindingForKey = Key.BindingForKey(inputSystem!.StringToButtonCode(idealKey));
+				if (currentBindingForKey == null || stricmp(overrideIfCmd, currentBindingForKey) == 0) {
+					BindNewBinding(idealKey, binding);
+					continue;
+				}
+			}
+
+			if (!Key.NameForBinding(binding).IsEmpty)
+				continue;
+
+			if (Key.BindingForKey(inputSystem!.StringToButtonCode(idealKey)) == null) {
+				BindNewBinding(idealKey, binding);
+				continue;
+			}
+
+			bool found = false;
+			int numAttempts = 1;
+			for (int curButton = (int)ButtonCode.Key0; curButton <= (int)ButtonCode.KeyLast; ++curButton, ++numAttempts) {
+				if (Array.IndexOf(InvalidKeyBindings, (ButtonCode)curButton) >= 0)
+					continue;
+
+				if (Key.BindingForKey((ButtonCode)curButton) == null) {
+#if GMOD_DLL
+					if (binding.AsSpan().IndexOfAny(";\"\n\r") >= 0)
+						continue;
+#endif
+					Cbuf.AddText($"bind \"{inputSystem.ButtonCodeToString((ButtonCode)curButton)}\" \"{binding}\"");
+					found = true;
+					break;
+				}
+			}
+
+			if (!found)
+				Warning($"Unable to bind a key for command \"{binding}\" after {numAttempts} attempt(s).\n");
+		}
+#endif
+	}
+
+	private void BindNewBinding(string idealKey, string binding) {
+#if GMOD_DLL
+		if (idealKey.AsSpan().IndexOfAny(";\"\n\r") >= 0 || binding.AsSpan().IndexOfAny(";\"\n\r") >= 0)
+			return;
+#endif
+		Cbuf.AddText($"bind \"{idealKey}\" \"{binding}\"");
 	}
 
 	private void UseDefaultBindings() {
-		// todo
+		const string fileName = "scripts/kb_def.lst";
+		using IFileHandle? f = fileSystem.Open(fileName, FileOpenOptions.Read);
+		if (f == null) {
+#if GMOD_DLL
+			ConMsg("Couldn't open kb_def.lst\n");
+#else
+			ConMsg($"Couldn't open {fileName}\n");
+#endif
+			return;
+		}
+
+		byte[] startbuf = new byte[f.Stream.Length];
+		f.Stream.ReadExactly(startbuf);
+
+		scoped ReadOnlySpan<byte> buf = startbuf;
+		Span<char> token = stackalloc char[1024];
+		Span<char> keyName = stackalloc char[1024];
+		while (true) {
+			buf = Common.ParseFile(buf, token);
+			if (strlen(token) == 0)
+				break;
+			strcpy(keyName, token);
+
+			buf = Common.ParseFile(buf, token);
+			if (strlen(token) == 0)
+				break;
+
+			Key.SetBinding(inputSystem!.StringToButtonCode(keyName[..(int)strlen(keyName)]), token[..(int)strlen(token)]);
+		}
+	}
+
+	private void SetupDefaultAskConnectAcceptKey() {
+		if (Key.NameForBinding("askconnect_accept").IsEmpty) {
+			if (Key.BindingForKey(ButtonCode.KeyF3) == null)
+				Key.SetBinding(ButtonCode.KeyF3, "askconnect_accept");
+		}
 	}
 
 	public void WriteConfiguration(ReadOnlySpan<char> filename = default, bool allVars = false) {
+#if !GMOD_DLL
 		bool isUserRequested = !filename.IsEmpty;
+#endif
 		if (filename.IsEmpty)
 			filename = "config.cfg";
+
+		if (!ConfigCfgExecuted)
+			return;
 
 		if (!Initialized)
 			return;
 
+#if !GMOD_DLL
 		if (!isUserRequested && commandLine.CheckParm("-default"))
 			return;
+#endif
 
 		if (sv.IsDedicated())
 			return;
 
-		using MemoryStream str = new();
-		using StreamWriter configBuff = new(str);
+		if (Key.CountBindings() <= 1) {
+			ConMsg($"skipping {filename} output, no keys bound\n");
+			return;
+		}
 
-		configBuff.Write($"cfg/{filename}");
+		MatSysInterface.UpdateMaterialSystemConfig();
+
+		string fileName = $"cfg/{filename}";
 		fileSystem.CreateDirHierarchy("cfg", "MOD");
+		if (fileSystem.FileExists(fileName, "MOD") && !fileSystem.IsFileWritable(fileName, "MOD")) {
+			ConMsg($"Config file {fileName} is read-only!!\n");
+			return;
+		}
+
+		StringBuilder configBuff = new();
+		configBuff.Append("unbindall\n");
+
+		Key.WriteBindings(configBuff);
+		services.GetRequiredService<CvarUtilities>().WriteVariables(configBuff, allVars);
+
+#if !SWDS
+		if (clientDLL != null && clientDLL.IN_IsKeyDown("in_jlook", out bool down) && down)
+			configBuff.Append("+jlook\n");
+#endif
+
+		if (configBuff.Length == 0)
+			return;
+
+		// TODO: see if we are doing the steam cloud logic
+		fileSystem.WriteFile(fileName, "MOD", Encoding.UTF8.GetBytes(configBuff.ToString()));
+
+		ConMsg($"Host_WriteConfiguration: Wrote {fileName}\n");
+	}
+
+#if GMOD_DLL
+	[ConCommand(helpText: "Write Lua-defined FCVAR_ARCHIVE convars to disk.")]
+	void host_writeconfig_lua() => get.LuaConVars()?.SaveManagedConVars();
+#endif
+
+	[ConCommand(helpText: "Store current settings to config.cfg (or specified .cfg file).")]
+	void host_writeconfig(in TokenizedCommand args) {
+#if GMOD_DLL
+		if (args.ArgC() >= 3) {
+			ConMsg("Usage:  writeconfig <filename.cfg>\n");
+			return;
+		}
+
+		if (args.ArgC() == 2) {
+			ReadOnlySpan<char> filename = args[1];
+			if (filename.IsEmpty)
+				return;
+
+			string outfile = new(StrTools.FileBase(filename, stackalloc char[MAX_OSPATH]));
+			WriteConfiguration($"{outfile}.cfg");
+		}
+		else
+			WriteConfiguration();
+#else
+		if (args.ArgC() > 3) {
+			ConMsg("Usage:  writeconfig <filename.cfg> [full]\n");
+			ConMsg("<filename.cfg> is required, optionally specify \"full\" to write out all archived convars.\n");
+			ConMsg("By default, only non-default values are written out.\n");
+			return;
+		}
+
+		if (args.ArgC() >= 2) {
+			bool writeAll = args.ArgC() == 3 && stricmp(args[2], "full") == 0;
+
+			ReadOnlySpan<char> filename = args[1];
+			if (filename.IsEmpty)
+				return;
+
+			string outfile = new(StrTools.FileBase(filename, stackalloc char[MAX_OSPATH]));
+			WriteConfiguration($"{outfile}.cfg", writeAll);
+			if (!writeAll)
+				ConMsg($"Wrote partial config file \"{outfile}\" out, to write full file use host_writeconfig \"{outfile}\" full\n");
+		}
+		else
+			WriteConfiguration(null, true);
+#endif
 	}
 
 	public bool IsSecureServerAllowed() => true;
@@ -594,6 +791,10 @@ public partial class Host
 	public void Shutdown() {
 		OverlayText.IsDeadFn -= OverlayText_IsDeadFn;
 		OverlayText.SetEndTimeFn -= OverlayText_SetEndTimeFn;
+
+#if !SWDS
+		WriteConfiguration();
+#endif
 
 		Disconnect(true);
 

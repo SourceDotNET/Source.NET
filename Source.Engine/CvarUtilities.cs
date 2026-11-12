@@ -4,6 +4,8 @@ using Source.Common.Networking;
 using Source.Engine.Client;
 using Source.Engine.Server;
 
+using System.Text;
+
 namespace Source.Engine;
 
 public class CvarUtilities(ICvar cvar, Host Host, Cmd cmd)
@@ -38,6 +40,30 @@ public class CvarUtilities(ICvar cvar, Host Host, Cmd cmd)
 
 		// if (var.IsFlagSet(FCvar.Replicated) && sv.IsActive()) // TODO
 		// 	SV_ReplicateConVarChange((ConVar)conVar, var.GetString());
+	}
+
+	public void WriteVariables(StringBuilder buff, bool allVars) {
+		foreach (ConCommandBase var in cvar.GetCommands()) {
+			if (var.IsCommand())
+				continue;
+
+			if (!var.IsFlagSet(FCvar.Archive))
+				continue;
+
+#if GMOD_DLL
+			if (var.GetName().AsSpan().IndexOfAny(";\"\n\r") >= 0)
+				continue;
+#endif
+
+			ConVar convar = (ConVar)var;
+			if (allVars || !streq(convar.GetString(), convar.GetDefault())) {
+#if GMOD_DLL
+				if (convar.GetString().AsSpan().IndexOfAny("\"\n\r") >= 0)
+					continue;
+#endif
+				buff.Append($"{var.GetName()} \"{convar.GetString()}\"\n");
+			}
+		}
 	}
 
 	public unsafe bool IsCommand(in TokenizedCommand args) {
