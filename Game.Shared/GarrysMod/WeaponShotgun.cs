@@ -237,6 +237,66 @@ public partial class WeaponShotgun : BaseHL2MPCombatWeapon
 		return true;
 	}
 
+	public override bool Reload() {
+		if (!InReload)
+			Warning("ERROR: Shotgun Reload called incorrectly!\n");
+
+		BaseCombatCharacter? owner = GetOwner();
+
+		if (owner == null)
+			return false;
+
+		if (owner.GetAmmoCount(PrimaryAmmoType) <= 0)
+			return false;
+
+		if (iClip1 >= GetMaxClip1())
+			return false;
+
+		int j = Math.Min(1, owner.GetAmmoCount(PrimaryAmmoType));
+
+		if (j <= 0)
+			return false;
+
+		FillClip();
+		WeaponSound(Shared.WeaponSound.Reload);
+		SendWeaponAnim(Activity.ACT_VM_RELOAD);
+
+		owner.NextAttack = gpGlobals.CurTime;
+		NextPrimaryAttack = gpGlobals.CurTime + SequenceDuration();
+
+		return true;
+	}
+
+	public override void FinishReload() {
+		SetBodygroup(1, 1);
+
+		BaseCombatCharacter? owner = GetOwner();
+
+		if (owner == null)
+			return;
+
+		InReload = false;
+
+		SendWeaponAnim(Activity.ACT_SHOTGUN_RELOAD_FINISH);
+
+		owner.NextAttack = gpGlobals.CurTime;
+		NextPrimaryAttack = gpGlobals.CurTime + SequenceDuration();
+	}
+
+	private void FillClip() {
+		BaseCombatCharacter? owner = GetOwner();
+
+		if (owner == null)
+			return;
+
+		if (owner.GetAmmoCount(PrimaryAmmoType) > 0) {
+			if (Clip1() < GetMaxClip1()) {
+				iClip1++;
+				owner.RemoveAmmo(1, PrimaryAmmoType);
+			}
+		}
+	}
+
 	public override void PrimaryAttack() {
 		// Only the player fires this way so we can cast
 		BasePlayer? player = ToBasePlayer(GetOwner());

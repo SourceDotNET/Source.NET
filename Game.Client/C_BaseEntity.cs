@@ -2604,6 +2604,8 @@ public partial class C_BaseEntity : IClientEntity
 	public virtual ref readonly BaseHandle GetRefEHandle() {
 		return ref RefEHandle;
 	}
+
+	public int GetSoundSourceIndex() => GetRefEHandle().GetEntryIndex();
 	public virtual void SetRefEHandle(in BaseHandle handle) {
 		RefEHandle.Index = handle.Index;
 	}

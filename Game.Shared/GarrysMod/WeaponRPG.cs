@@ -41,6 +41,21 @@ public partial class WeaponRPG : BaseHL2MPCombatWeapon
 	[NetworkVar("m_vecLaserDot")]
 	public partial Vector3 LaserDot { get; set; }
 	public override float GetFireRate() => 1f;
+
+	public override bool Reload() {
+		BaseCombatCharacter? owner = GetOwner();
+		if (owner == null)
+			return false;
+
+		if (owner.GetAmmoCount(PrimaryAmmoType) <= 0)
+			return false;
+
+		WeaponSound(Shared.WeaponSound.Reload);
+
+		SendWeaponAnim(Activity.ACT_VM_RELOAD);
+
+		return true;
+	}
 }
 
 [LinkEntityToClass("env_laserdot")]

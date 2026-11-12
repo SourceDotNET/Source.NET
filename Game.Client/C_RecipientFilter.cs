@@ -220,7 +220,8 @@ public class PVSFilter : C_RecipientFilter
 public class LocalPlayerFilter : C_RecipientFilter
 {
 	public LocalPlayerFilter() : base() {
-
+		if (C_BasePlayer.GetLocalPlayer() != null)
+			AddRecipient(C_BasePlayer.GetLocalPlayer());
 	}
 }
 

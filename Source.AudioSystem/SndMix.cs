@@ -2220,6 +2220,15 @@ public static class SndMix
 
 		}
 
+#if GMOD_DLL
+		if (channel.Mixer != null && !(channel.Flags.Dry && channel.DistMult <= 0)
+			&& channel.Mixer.GetSource().GetAudioSourceType() != AudioSourceType.AUDIO_SOURCE_VOICE) {
+			float sfxVolume = SndGain.volume_sfx.GetFloat();
+			for (i = 0; i < CCHANVOLUMES; i++)
+				volume[i] = Math.Clamp((int)(volume[i] * sfxVolume), 0, 255);
+		}
+#endif
+
 		bool fzerovolume = true;
 
 		for (i = 0; i < CCHANVOLUMES; i++) {

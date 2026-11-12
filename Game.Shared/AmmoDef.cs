@@ -46,7 +46,7 @@ public class AmmoDef
 
 	public static Ammo NULL = default;
 
-	public int AmmoIndex;
+	public int AmmoIndex = 1;
 	public Ammo[] AmmoType = new Ammo[MAX_AMMO_TYPES];
 
 	public ref Ammo GetAmmoOfIndex(int ammoIndex) {
