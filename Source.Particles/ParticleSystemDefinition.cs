@@ -108,7 +108,7 @@ public sealed class ParticleSystemDefinition(ParticleSystemMgr mgr)
 
 	public static IDmxElementUnpackStructure GetUnpackStructure() => UnpackStructure;
 
-	readonly ParticleSystemMgr Mgr = mgr;
+	internal readonly ParticleSystemMgr Mgr = mgr;
 
 	public int InitialParticles;
 	public int PerParticleUpdatedAttributeMask;
