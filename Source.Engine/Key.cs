@@ -6,6 +6,8 @@ using Source.Common.Client;
 using Source.Common.Commands;
 using Source.Common.Input;
 
+using System.Text;
+
 namespace Source.Engine;
 
 public struct KeyInfo
@@ -51,6 +53,21 @@ public class Key(IServiceProvider services, Cbuf Cbuf)
 		return c;
 	}
 
+	public void WriteBindings(StringBuilder buf) {
+		for (int i = 0; i < (int)ButtonCode.Last; i++) {
+			string? keyBinding = KeyInfo[i].KeyBinding;
+			if (string.IsNullOrEmpty(keyBinding))
+				continue;
+
+#if GMOD_DLL
+			if (keyBinding.AsSpan().IndexOfAny("\"\n\r") >= 0)
+				continue;
+#endif
+
+			buf.Append($"bind \"{inputSystem!.ButtonCodeToString((ButtonCode)i)}\" \"{keyBinding}\"\n");
+		}
+	}
+
 	public ReadOnlySpan<char> NameForBinding(ReadOnlySpan<char> binding) {
 		int i;
 
@@ -62,11 +79,11 @@ public class Key(IServiceProvider services, Cbuf Cbuf)
 			string? keyBinding = KeyInfo[i].KeyBinding;
 			if (!string.IsNullOrEmpty(keyBinding)) {
 				if (keyBinding[0] == '+') {
-					if (bind.Equals(keyBinding.AsSpan()[1..], StringComparison.Ordinal))
+					if (bind.Equals(keyBinding.AsSpan()[1..], StringComparison.OrdinalIgnoreCase))
 						return inputSystem!.ButtonCodeToString((ButtonCode)i);
 				}
 				else {
-					if (bind.Equals(keyBinding, StringComparison.Ordinal))
+					if (bind.Equals(keyBinding, StringComparison.OrdinalIgnoreCase))
 						return inputSystem!.ButtonCodeToString((ButtonCode)i);
 				}
 
@@ -80,7 +97,11 @@ public class Key(IServiceProvider services, Cbuf Cbuf)
 		if (keynum == ButtonCode.Invalid)
 			return;
 
-		KeyInfo[(int)keynum].KeyBinding = cmd.IsEmpty ? null : new(cmd);
+		string? current = KeyInfo[(int)keynum].KeyBinding;
+		if (current != null && streq(current, cmd))
+			return;
+
+		KeyInfo[(int)keynum].KeyBinding = new(cmd);
 	}
 
 	public void Event(in InputEvent ev) {
@@ -227,6 +248,50 @@ public class Key(IServiceProvider services, Cbuf Cbuf)
 
 		BindKey(args[1], c == 2, cmd[..strcpy(cmd, args[2])]);
 	}
+	[ConCommand(flags: FCvar.DontRecord, helpText: "Unbind a key.")]
+	void unbind(in TokenizedCommand args) {
+		if (args.ArgC() != 2) {
+			ConMsg("unbind <key> : remove commands from a key\n");
+			return;
+		}
+
+		if (inputSystem == null)
+			return;
+
+		ButtonCode b = inputSystem.StringToButtonCode(args[1]);
+		if (b == ButtonCode.Invalid) {
+			ConMsg($"\"{args[1]}\" isn't a valid key\n");
+			return;
+		}
+		if (b == ButtonCode.KeyEscape) {
+			ConMsg("Can't unbind ESCAPE key\n");
+			return;
+		}
+
+		SetBinding(b, "");
+	}
+
+	[ConCommand(flags: FCvar.DontRecord, helpText: "Bind this key but only on Mac, not win32")]
+	void bind_mac(in TokenizedCommand args) {
+#if OSX
+		Span<char> cmd = stackalloc char[1024];
+		int c = args.ArgC();
+		if (c != 2 && c != 3) {
+			ConMsg("bind <key> [command] : attach a command to a key\n");
+			return;
+		}
+
+		BindKey(args[1], c == 2, cmd[..strcpy(cmd, args[2])]);
+#endif
+	}
+
+	[ConCommand(flags: FCvar.DontRecord, helpText: "Unbind a key on the Mac only.")]
+	void unbind_mac(in TokenizedCommand args) {
+#if OSX
+		unbind(in args);
+#endif
+	}
+
 	[ConCommand(flags: FCvar.DontRecord, helpText: "Unbind all keys.")]
 	void unbindall(in TokenizedCommand args) {
 		for (int i = 0; i < (int)ButtonCode.Last; i++) {
@@ -281,11 +346,8 @@ public class Key(IServiceProvider services, Cbuf Cbuf)
 
 	}
 
-	public ReadOnlySpan<char> BindingForKey(ButtonCode code) {
-		if (code < 0 || code > ButtonCode.Last)
-			return null;
-
-		if (string.IsNullOrEmpty(KeyInfo[(int)code].KeyBinding))
+	public string? BindingForKey(ButtonCode code) {
+		if (code < 0 || code >= ButtonCode.Last)
 			return null;
 
 		return KeyInfo[(int)code].KeyBinding;
@@ -295,10 +357,9 @@ public class Key(IServiceProvider services, Cbuf Cbuf)
 		ButtonCode i;
 
 		for (i = 0; i < ButtonCode.Last; i++)
-			if (KeyInfo[(int)i].KeyBinding != null)
-				if (KeyInfo[(int)i].KeyBinding![0] != '\0')
-					if (0 == strcmp(KeyInfo[(int)i].KeyBinding, binding))
-						return inputSystem == null ? null : inputSystem.ButtonCodeToString(i);
+			if (!string.IsNullOrEmpty(KeyInfo[(int)i].KeyBinding))
+				if (0 == stricmp(KeyInfo[(int)i].KeyBinding, binding))
+					return inputSystem == null ? null : inputSystem.ButtonCodeToString(i);
 
 		return null;
 	}

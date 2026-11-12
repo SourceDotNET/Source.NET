@@ -62,7 +62,7 @@ public class LuaConVarsImpl : ILuaConVars
 	}
 
 	public void DestroyManaged() {
-		SaveManaged();
+		SaveManagedConVars();
 
 		foreach (ManagedCommand managed in Managed)
 			cvar.UnregisterConCommand(managed.Command);
@@ -70,7 +70,7 @@ public class LuaConVarsImpl : ILuaConVars
 		Managed.Clear();
 	}
 
-	void SaveManaged() {
+	public void SaveManagedConVars() {
 		foreach (ManagedCommand managed in Managed) {
 			if (!managed.IsConVar || !managed.Archive)
 				continue;
