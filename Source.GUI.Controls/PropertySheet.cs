@@ -2,6 +2,8 @@
 using Source.Common.GUI;
 using Source.Common.Input;
 
+using System.Globalization;
+
 namespace Source.GUI.Controls;
 
 class ContextLabel : Label
@@ -530,7 +532,7 @@ public class PropertySheet : EditablePanel
 			Border = scheme.GetBorder("RaisedBorder")!;
 
 		SetBorder(Border);
-		PageTransitionEffectTime = float.Parse(scheme.GetResourceString("PropertySheet.TransitionEffectTime"));
+		PageTransitionEffectTime = float.Parse(scheme.GetResourceString("PropertySheet.TransitionEffectTime"), CultureInfo.InvariantCulture);
 		TabFont = scheme.GetFont(SmallTabs ? "DefaultVerySmall" : "DefaultSmall")!;
 
 		if (TabKV != null)
