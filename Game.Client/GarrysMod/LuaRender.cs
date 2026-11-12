@@ -647,6 +647,53 @@ public static partial class LuaRender
 		BeamDraw.DrawSprite(pos, width, height, color);
 		return 0;
 	}
+
+	static Color GetColor(ILuaObject? obj) {
+		if (obj == null || !obj.isTable())
+			return new(255, 255, 255, 255);
+		return new((byte)(int)obj.GetMemberFloat("r", 255), (byte)(int)obj.GetMemberFloat("g", 255), (byte)(int)obj.GetMemberFloat("b", 255), (byte)(int)obj.GetMemberFloat("a", 255));
+	}
+
+	static void DrawQuad(in Vector3 p1, in Vector3 p2, in Vector3 p3, in Vector3 p4, in Color color, bool wireframe) {
+		using MatRenderContextPtr renderContext = new(materials);
+		IMesh mesh = renderContext.GetDynamicMesh(true);
+		MeshBuilder meshBuilder = new();
+		meshBuilder.Begin(mesh, wireframe ? MaterialPrimitiveType.LineLoop : MaterialPrimitiveType.Quads, wireframe ? 4 : 1);
+
+		meshBuilder.Position3fv(p1);
+		meshBuilder.TexCoord2f(0, 0, 0);
+		meshBuilder.Color4ub(color.R, color.G, color.B, color.A);
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3fv(p2);
+		meshBuilder.TexCoord2f(0, 1, 0);
+		meshBuilder.Color4ub(color.R, color.G, color.B, color.A);
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3fv(p3);
+		meshBuilder.TexCoord2f(0, 1, 1);
+		meshBuilder.Color4ub(color.R, color.G, color.B, color.A);
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Position3fv(p4);
+		meshBuilder.TexCoord2f(0, 0, 1);
+		meshBuilder.Color4ub(color.R, color.G, color.B, color.A);
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.End();
+		mesh.Draw();
+	}
+
+	[LuaFunction]
+	static int DrawQuad(ILuaInterface lua) {
+		Vector3 p1 = LuaVector.Get_Vector(1);
+		Vector3 p2 = LuaVector.Get_Vector(2);
+		Vector3 p3 = LuaVector.Get_Vector(3);
+		Vector3 p4 = LuaVector.Get_Vector(4);
+		Color color = GetColor(lua.GetObject(5));
+		DrawQuad(p1, p2, p3, p4, color, false);
+		return 0;
+	}
 #endif
 
 	[LuaFunction]

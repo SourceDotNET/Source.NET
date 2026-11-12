@@ -37,6 +37,16 @@ public static partial class LuaUtil
 	[LuaLibrary]
 	static readonly LuaLibrary LL_Factory_util = new("util");
 
+#if CLIENT_DLL
+	public class PixelVisHandle
+	{
+		public int Handle;
+	}
+
+	[LuaClass(typeof(PixelVisHandle), NullError = "Tried to use a NULL pixelvis_handle_t!")]
+	public static readonly LuaClass LC_pixelvis_handle_t = new("pixelvis_handle_t", LuaType.PixelVisHandle, null, null);
+#endif
+
 #if !MENU_DLL
 	public static bool UTIL_IsValidModel(ReadOnlySpan<char> name) {
 		if (name.IsEmpty || name[0] <= ' ' || name.Length <= 3)
@@ -105,6 +115,35 @@ public static partial class LuaUtil
 		return collide != null && collide.SolidCount > 1;
 	}
 
+#endif
+
+#if CLIENT_DLL
+	[LuaFunction]
+	static int GetPixelVisibleHandle(ILuaInterface lua) {
+		LC_pixelvis_handle_t.Push(new PixelVisHandle { Handle = 0 });
+		return 1;
+	}
+
+	[LuaFunction]
+	static int PixelVisible(ILuaInterface lua) {
+		PixelVisHandle? handle = (PixelVisHandle?)LC_pixelvis_handle_t.Get(3);
+		if (handle == null) {
+			lua.Error("Tried to use a NULL pixelvis_handle_t!");
+			return 0;
+		}
+		float radius = (float)lua.GetNumber(2);
+		Vector3 pos = LuaVector.Get_Vector(1);
+		PixelVisQueryParams parms = new() {
+			Position = pos,
+			ProxySize = radius,
+			ProxyAspect = 1.0f,
+			FadeTime = 0.0625f,
+			Setup = true,
+			SizeInScreenspace = false
+		};
+		lua.PushNumber(PixelVisibility.FractionVisible(parms, ref handle.Handle));
+		return 1;
+	}
 #endif
 
 	[LuaFunction]
