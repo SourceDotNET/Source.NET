@@ -10,8 +10,14 @@ namespace Source.Common.Steam;
 // I am very annoyed
 public class SteamworksDotNetBoasts100PercentCoverageOfTheNativeSteamworksAPIAcrossAllInterfaces
 {
-	[DllImport("steam_api64", CallingConvention = CallingConvention.Cdecl)] public static extern void SteamGameServer_RunCallbacks();
-	[DllImport("steam_api64", CallingConvention = CallingConvention.Cdecl)] public static extern void SteamAPI_SetBreakpadAppID(uint unAppID);
+#if WIN32
+	const string SteamApiLibrary = "steam_api64";
+#else
+	const string SteamApiLibrary = "steam_api";
+#endif
+
+	[DllImport(SteamApiLibrary, CallingConvention = CallingConvention.Cdecl)] public static extern void SteamGameServer_RunCallbacks();
+	[DllImport(SteamApiLibrary, CallingConvention = CallingConvention.Cdecl)] public static extern void SteamAPI_SetBreakpadAppID(uint unAppID);
 }
 
 // These are some hacks to access the internal pointers for steamclient
