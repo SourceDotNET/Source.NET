@@ -373,8 +373,37 @@ public static partial class SndDsp
 	//		OP_RIGHT			- process right channel in place
 	//		OP_LEFT_DUPLICATe	- process left channel, duplicate into right
 
+#if GMOD_DLL
+	static int g_DspCurrentPreset;
+	static bool DSP_UsesSfxVolume() => g_DspCurrentPreset >= 35 && g_DspCurrentPreset <= 38;
+
 	[MethodImpl(MethodImplOptions.AggressiveOptimization)]
 	static void PSET_GetNextN(Pset ppset, Span<PortableSamplePair> pbuffer, int SampleCount, int op) {
+		PSET_GetNextNUnscaled(ppset, pbuffer, SampleCount, op);
+
+		if (!DSP_UsesSfxVolume())
+			return;
+
+		float sfxVolume = Source.Common.Audio.SndGain.volume_sfx.GetFloat();
+		for (int i = 0; i < SampleCount; i++) {
+			pbuffer[i].Left = (int)(pbuffer[i].Left * sfxVolume);
+			pbuffer[i].Right = (int)(pbuffer[i].Right * sfxVolume);
+		}
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveOptimization)]
+	static int PSET_GetNext(Pset ppset, int x) {
+		int y = PSET_GetNextUnscaled(ppset, x);
+		return DSP_UsesSfxVolume() ? (int)(y * Source.Common.Audio.SndGain.volume_sfx.GetFloat()) : y;
+	}
+#endif
+
+	[MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#if GMOD_DLL
+	static void PSET_GetNextNUnscaled(Pset ppset, Span<PortableSamplePair> pbuffer, int SampleCount, int op) {
+#else
+	static void PSET_GetNextN(Pset ppset, Span<PortableSamplePair> pbuffer, int SampleCount, int op) {
+#endif
 		Span<PortableSamplePair> pbf = pbuffer;
 		Span<Prc> pprc;
 		int count = ppset.cprcs;
@@ -415,7 +444,11 @@ public static partial class SndDsp
 	// x is input sample
 
 	[MethodImpl(MethodImplOptions.AggressiveOptimization)]
+#if GMOD_DLL
+	static int PSET_GetNextUnscaled(Pset ppset, int x) {
+#else
 	static int PSET_GetNext(Pset ppset, int x) {
+#endif
 
 		// pset_simple and pset_linear have no internal state:
 		// this is REQUIRED for all presets that have a batch getnextN equivalent!
@@ -3197,6 +3230,10 @@ public static partial class SndDsp
 		int cprocs;                                 // output cannels (1, 2 or 4)
 		Dsp pdsp;
 
+#if GMOD_DLL
+		g_DspCurrentPreset = 0;
+#endif
+
 		if (idsp < 0 || idsp >= CDSPS)
 			return;
 
@@ -3234,6 +3271,10 @@ public static partial class SndDsp
 
 		if (pdsp.ipset == 0 && pdsp.ipsetprev == 0)
 			return;
+
+#if GMOD_DLL
+		g_DspCurrentPreset = pdsp.ipset != 0 ? pdsp.ipset : pdsp.ipsetprev;
+#endif
 
 		cchan_in = (pbrear != null ? 4 : 2) + (pbcenter != null ? 1 : 0);
 		cprocs = pdsp.cchan;
