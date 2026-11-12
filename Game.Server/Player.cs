@@ -268,6 +268,37 @@ public partial class BasePlayer : BaseCombatCharacter
 		}
 	}
 
+	public static readonly new DataMap DataDesc = new(typeof(BasePlayer), BaseCombatCharacter.DataDesc, [
+		DEFINE<BasePlayer>.INPUTFUNC(FieldType.Integer, "SetHealth", nameof(InputSetHealth), (INPUTFUNCPTR)((self, data) => ((BasePlayer)self).InputSetHealth(data))),
+	]);
+	public override DataMap? GetDataDescMap() => DataDesc;
+
+	public override int TakeHealth(float health, DamageType damageType) {
+#if !GMOD_DLL
+		if (!IsAlive())
+			return 0;
+#endif
+		if (m_takedamage != 0) {
+			DamageType bitsDmgTimeBased = g_pGameRules.Damage_GetTimeBased();
+			bitsDamageType &= ~(damageType & ~bitsDmgTimeBased);
+		}
+
+		return base.TakeHealth(health, damageType);
+	}
+
+	public void InputSetHealth(InputData inputdata) {
+		int newHealth = inputdata.Value.Int();
+		int delta = Math.Abs(GetHealth() - newHealth);
+		if (newHealth > GetHealth())
+			TakeHealth(delta, DamageType.Generic);
+		else if (newHealth < GetHealth()) {
+			int armor = ArmorValue;
+			ArmorValue = 0;
+			TakeDamage(new TakeDamageInfo(this, this, delta, DamageType.Generic));
+			ArmorValue = armor;
+		}
+	}
+
 	static InlineArray1024<char> InfoBuffer;
 
 	public ReadOnlySpan<char> GetInfo(ReadOnlySpan<char> name) {
@@ -694,6 +725,14 @@ public partial class BasePlayer : BaseCombatCharacter
 	//-----------------------------------------------------------------------------
 	public void UnforceButtons(InButtons buttons) {
 		AfButtonForced &= ~buttons;
+	}
+
+	public void DisableButtons(InButtons buttons) {
+		AfButtonDisabled |= buttons;
+	}
+
+	public void EnableButtons(InButtons buttons) {
+		AfButtonDisabled &= ~buttons;
 	}
 
 	public bool GamePaused;

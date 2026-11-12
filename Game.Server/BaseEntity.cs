@@ -2060,7 +2060,7 @@ public partial class BaseEntity : IServerEntity
 		return fraction;
 	}
 
-	public int TakeHealth(float health, DamageType damageType) {
+	public virtual int TakeHealth(float health, DamageType damageType) {
 		if (Edict() == null || (Damage)m_takedamage < Damage.Yes)
 			return 0;
 
