@@ -2359,6 +2359,12 @@ public static class MathLib
 		outVec.Y = inMatrix[1][column];
 		outVec.Z = inMatrix[2][column];
 	}
+	public static void MatrixVectors(in Matrix3x4 matrix, out Vector3 forward, out Vector3 right, out Vector3 up) {
+		MatrixGetColumn(matrix, 0, out forward);
+		MatrixGetColumn(matrix, 1, out right);
+		MatrixGetColumn(matrix, 2, out up);
+		right *= -1.0f;
+	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static void PositionMatrix(in Vector3 position, ref Matrix3x4 mat) {
 		MatrixSetColumn(in position, 3, ref mat);
@@ -3535,6 +3541,21 @@ public static class MathLib
 		t = Math.Clamp(t, 0, 1);
 		outT = t;
 		VectorMA(vLineA, t, vDir, out vClosest);
+	}
+
+	public static float CalcDistanceSqrToLineSegment(in Vector3 P, in Vector3 vLineA, in Vector3 vLineB) => CalcDistanceSqrToLineSegment(P, vLineA, vLineB, out _);
+
+	public static float CalcDistanceSqrToLineSegment(in Vector3 P, in Vector3 vLineA, in Vector3 vLineB, out float outT) {
+		float t = CalcClosestPointToLineT(P, vLineA, vLineB, out Vector3 vDir);
+		if (t <= 0)
+			t = 0;
+		if (1 <= t)
+			t = 1;
+		outT = t;
+		float dx = P.X - (vDir.X * t + vLineA.X);
+		float dy = P.Y - (vDir.Y * t + vLineA.Y);
+		float dz = P.Z - (vDir.Z * t + vLineA.Z);
+		return dy * dy + dx * dx + dz * dz;
 	}
 
 	const int NUMVERTEXNORMALS = 162;

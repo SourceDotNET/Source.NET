@@ -451,6 +451,32 @@ public class ModelRender : IModelRender
 		StudioRender.SetEyeViewTarget(studioHdr.GetRenderHdr(), bodyIndex, in target);
 	}
 
+	public void SetupLighting(in Vector3 center) {
+		LightingState state = default;
+		LightcacheGetDynamic_Stats stats = default;
+		ITexture? envCubemapTexture = Render.LightcacheGetDynamic(center, ref state, ref stats);
+
+		Span<LightDesc> lightDescs = stackalloc LightDesc[2];
+		int lightCount = 0;
+		for (int i = 0; i < state.NumLights; i++) {
+			if (!WorldLightToMaterialLight(ref state.LocalLight[i].Dereference(), out LightDesc lightDesc))
+				continue;
+			lightDesc.Color *= Render.LightStyleValue((byte)state.LocalLight[i].Dereference().Style);
+			lightDescs[lightCount] = lightDesc;
+			if (++lightCount >= lightDescs.Length)
+				break;
+		}
+		lightCount = Math.Min(lightCount, HardwareConfig.MaxNumLights());
+
+		StudioRender.SetAmbientLightColors(state.BoxColor);
+		StudioRender.SetLocalLights(lightCount, lightDescs[..lightCount]);
+
+		if (envCubemapTexture != null) {
+			using MatRenderContextPtr renderContext = new(materials);
+			renderContext.BindLocalCubemap(envCubemapTexture);
+		}
+	}
+
 	readonly IMDLCache MDLCache;
 	readonly IStudioRender StudioRender;
 	readonly IMaterialSystem materials;
@@ -1784,7 +1810,7 @@ public class ModelRender : IModelRender
 
 	const float MIN_LIGHT_VALUE = 0.03f;
 
-	private static bool WorldLightToMaterialLight(ref BSPDWorldLight worldLight, out LightDesc light) {
+	internal static bool WorldLightToMaterialLight(ref BSPDWorldLight worldLight, out LightDesc light) {
 		light = default;
 		light.Attenuation0 = 0.0f;
 		light.Attenuation1 = 0.0f;

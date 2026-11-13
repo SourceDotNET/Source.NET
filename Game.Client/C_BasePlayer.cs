@@ -748,6 +748,12 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 		return vm;
 	}
 
+	public virtual C_BaseAnimating? GetRenderedWeaponModel() {
+		if (!ShouldDrawLocalPlayer() && IsLocalPlayer())
+			return GetViewModel(0, true);
+		return GetActiveWeapon();
+	}
+
 	public IClientVehicle? GetVehicle() {
 		C_BaseEntity? vehicleEnt = Vehicle.Get();
 		return vehicleEnt?.GetClientVehicle();

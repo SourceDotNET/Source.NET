@@ -93,8 +93,21 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 		return FrameCount;
 	}
 
-	public Span<byte> GetResourceData(uint type) {
-		throw new NotImplementedException();
+	readonly Dictionary<ResourceEntryType, byte[]> ResourceData = [];
+
+	public Span<byte> GetResourceData(uint type)
+		=> ResourceData.TryGetValue(ResourceEntryInfo.ParseTag((byte)type, (byte)(type >> 8), (byte)(type >> 16)), out byte[]? data) ? data : default;
+
+	void StoreResourceData(IVTFTexture? vtfTexture) {
+		ResourceData.Clear();
+		if (vtfTexture == null)
+			return;
+
+		foreach (ResourceEntryType type in vtfTexture.GetResourceTypes()) {
+			Span<byte> data = vtfTexture.GetResourceData(type);
+			if (!data.IsEmpty)
+				ResourceData[type] = data.ToArray();
+		}
 	}
 
 	public void IncrementReferenceCount() => ++RefCount;
@@ -448,6 +461,7 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 				// Get the data from disk...
 				// NOTE: Reloading the texture bits can cause the texture size, frames, format, pretty much *anything* can change.
 				vtfTexture = LoadTextureBitsFromFile(cacheFileName, out resolvedFilename);
+				StoreResourceData(vtfTexture);
 			}
 		}
 

@@ -1433,6 +1433,26 @@ public ref partial struct BoneSetup
 		}
 	}
 
+	public static int Studio_MaxFrame(StudioHdr studioHdr, int sequence, ReadOnlySpan<float> poseParameter) {
+		MStudioAnimDesc[] panim = ArrayPool<MStudioAnimDesc>.Shared.Rent(4);
+		Span<float> weight = stackalloc float[4];
+
+		MStudioSeqDesc seqdesc = studioHdr.Seqdesc(sequence);
+		Studio_SeqAnims(studioHdr, seqdesc, sequence, poseParameter, panim, weight);
+
+		float maxFrame = 0;
+		for (int i = 0; i < 4; i++) {
+			if (weight[i] > 0)
+				maxFrame += panim[i].NumFrames * weight[i];
+		}
+		ArrayPool<MStudioAnimDesc>.Shared.Return(panim);
+
+		if (maxFrame > 1)
+			maxFrame -= 1;
+
+		return (int)(maxFrame + 0.01f);
+	}
+
 	public static double Studio_Duration(StudioHdr studioHdr, int sequence, ReadOnlySpan<float> poseParameter) {
 		MStudioSeqDesc seqdesc = studioHdr.Seqdesc(sequence);
 		float cps = Studio_CPS(studioHdr, seqdesc, sequence, poseParameter);

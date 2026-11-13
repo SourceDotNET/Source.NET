@@ -119,6 +119,9 @@
     <Project Path="Source.StudioRender/Source.StudioRender.csproj">
       <Platform Project="x64" />
     </Project>
+    <Project Path="Source.Particles/Source.Particles.csproj">
+      <Platform Project="x64" />
+    </Project>
     <Project Path="HTML.CEF/HTML.CEF.csproj">
       <Platform Project="x64" />
     </Project>

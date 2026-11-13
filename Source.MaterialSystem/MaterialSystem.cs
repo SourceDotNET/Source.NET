@@ -1053,6 +1053,9 @@ public class MaterialSystem : IMaterialSystemInternal, IShaderUtil
 			char c = materialName[i];
 			tempNameBuffer[i] = c == '\\' ? '/' : c;
 		}
+		int extension = tempNameBuffer.LastIndexOfAny('.', '/');
+		if (extension > 0 && tempNameBuffer[extension] == '.')
+			tempNameBuffer = tempNameBuffer[..extension];
 		IMaterialInternal? existingMaterial = MaterialDict.FindMaterial(tempNameBuffer, false);
 
 		if (existingMaterial != null)

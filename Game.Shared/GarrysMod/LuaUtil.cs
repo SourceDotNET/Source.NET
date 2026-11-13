@@ -204,6 +204,28 @@ public static partial class LuaUtil
 	[LuaFunction]
 	static int NetworkStringToID(string name) => NetworkString.Get(name);
 
+	[LuaFunction]
+	static int ParticleTracer(ILuaInterface lua) {
+		bool whiz = lua.GetBool(4);
+		Vector3 end = LuaVector.Get_Vector(3);
+		Vector3 start = LuaVector.Get_Vector(2);
+		string? name = lua.CheckString(1);
+		Game.Util.ParticleTracer(name, start, end, 0, 0, whiz);
+		return 0;
+	}
+
+	[LuaFunction]
+	static int ParticleTracerEx(ILuaInterface lua) {
+		bool whiz = lua.GetBool(4);
+		int attachment = (int)lua.CheckNumber(6);
+		int entIndex = (int)lua.CheckNumber(5);
+		Vector3 end = LuaVector.Get_Vector(3);
+		Vector3 start = LuaVector.Get_Vector(2);
+		string? name = lua.CheckString(1);
+		Game.Util.ParticleTracer(name, start, end, entIndex, attachment, whiz);
+		return 0;
+	}
+
 #endif
 
 	[LuaFunction]

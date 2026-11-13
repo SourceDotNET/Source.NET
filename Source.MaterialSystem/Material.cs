@@ -1425,6 +1425,11 @@ public class Material : IMaterialInternal
 		return GetMaterialVarFlag(MaterialVarFlags.NoCull);
 	}
 
+	public bool IsSpriteCard() {
+		Precache();
+		return (GetMaterialVarFlags2() & MaterialVarFlags2.IsSpritecard) != 0;
+	}
+
 	public bool IsAlphaTested() {
 		Precache();
 		if (Shader != null && IsValidRenderState())

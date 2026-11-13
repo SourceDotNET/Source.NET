@@ -484,6 +484,7 @@ public interface IMaterial
 	bool NeedsPowerOfTwoFrameBufferTexture(bool checkSpecificToThisFrame);
 	bool NeedsFullFrameBufferTexture(bool checkSpecificToThisFrame);
 	bool NeedsLightmapBlendAlpha();
+	bool IsSpriteCard();
 }
 
 // Intended to only be used by the material system and not other components

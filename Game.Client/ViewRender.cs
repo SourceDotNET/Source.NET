@@ -862,6 +862,8 @@ public class Rendering3dView : Base3dView
 
 		render.SetBlend(1);
 
+		g_pParticleSystemMgr.ResetRenderCache();
+
 		DrawFlags drawFlags = GetDrawFlags();
 #if GMOD_DLL
 		if (depthMode == RenderDepthMode.Normal && gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PreDrawOpaqueRenderables)) {
@@ -883,6 +885,8 @@ public class Rendering3dView : Base3dView
 			DrawOpaqueRenderables_Range(RenderGroup.OpaqueEntityHuge + 2 * bucket, depthMode);
 			DrawOpaqueRenderables_DrawStaticProps(RenderGroup.OpaqueStaticHuge + 2 * bucket, depthMode);
 		}
+
+		g_pParticleSystemMgr.DrawRenderCache(depthMode != RenderDepthMode.Normal);
 
 #if GMOD_DLL
 		if (depthMode == RenderDepthMode.Normal && gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PostDrawOpaqueRenderables)) {
