@@ -269,7 +269,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	readonly Vector4[] UserClipPlaneWorld = new Vector4[Gl46.HardwareConfig.MAXUSERCLIPPLANES];
 	readonly Vector4[] UserClipPlaneProj = new Vector4[Gl46.HardwareConfig.MAXUSERCLIPPLANES];
 	bool UserClipTransformOverride;
-	Matrix4x4 UserClipTransform_;
+	Matrix4x4 UserClipTransform_ = Matrix4x4.Identity;
 	float FogZ;
 
 	private void MarkAllUserClipPlanesDirty() {
@@ -3870,11 +3870,13 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 	public void UserClipTransform(in Matrix4x4 worldToView) {
 		Matrix4x4 transform = Matrix4x4.Transpose(worldToView);
+		if (UserClipTransform_ == transform)
+			return;
+		UserClipTransform_ = transform;
 		if (UserClipTransformOverride) {
 			FlushBufferedPrimitives();
 			MarkAllUserClipPlanesDirty();
 		}
-		UserClipTransform_ = transform;
 	}
 
 	public void BindStandardVertexTexture(VertexTextureSampler sampler, StandardTextureId id) {

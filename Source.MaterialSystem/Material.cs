@@ -1427,7 +1427,9 @@ public class Material : IMaterialInternal
 
 	public bool IsSpriteCard() {
 		Precache();
-		return (GetMaterialVarFlags2() & MaterialVarFlags2.IsSpritecard) != 0;
+		if (IsValidRenderState())
+			return (GetMaterialVarFlags2() & MaterialVarFlags2.IsSpritecard) != 0;
+		return false;
 	}
 
 	public bool IsAlphaTested() {
