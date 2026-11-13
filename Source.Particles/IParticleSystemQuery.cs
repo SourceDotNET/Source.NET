@@ -50,7 +50,7 @@ public interface IParticleSystemQuery
 	}
 
 	void GetRandomPointsOnControllingObjectHitBox(ParticleCollection particles, int controlPointNumber, int numPtsOut, float bboxScale, int numTrysToGetAPointInsideTheModel,
-		Span<Vector3> pntsOut, Vector3 directionBias, Span<Vector3> hitBoxRelativeCoordOut = default, Span<int> hitBoxIndexOut = default, string? hitboxSetName = null) {
+		Span<Vector3> pntsOut, Vector3 directionBias, Span<Vector3> hitBoxRelativeCoordOut = default, Span<int> hitBoxIndexOut = default, int desiredHitbox = -1, string? hitboxSetName = null) {
 		Vector3 position = particles.ControlPoints[controlPointNumber].Position;
 		for (int i = 0; i < numPtsOut; i++) {
 			pntsOut[i] = position;
@@ -58,6 +58,16 @@ public interface IParticleSystemQuery
 				hitBoxRelativeCoordOut[i] = Vector3.Zero;
 			if (!hitBoxIndexOut.IsEmpty)
 				hitBoxIndexOut[i] = -1;
+		}
+	}
+
+	void GetClosestControllingObjectHitBox(ParticleCollection particles, int controlPointNumber, int numPtsIn, float bboxScale, ReadOnlySpan<Vector3> pntsIn,
+		Span<Vector3> hitBoxRelativeCoordOut = default, Span<int> hitBoxIndexOut = default, int desiredHitbox = -1, string? hitboxSetName = null) {
+		for (int i = 0; i < numPtsIn; i++) {
+			if (!hitBoxRelativeCoordOut.IsEmpty)
+				hitBoxRelativeCoordOut[i] = Vector3.Zero;
+			if (!hitBoxIndexOut.IsEmpty)
+				hitBoxIndexOut[i] = 0;
 		}
 	}
 
@@ -86,7 +96,7 @@ public sealed class DefaultParticleSystemQuery : IParticleSystemQuery
 	public void TraceLine(in Vector3 absStart, in Vector3 absEnd, Mask mask, IHandleEntity? ignore, int collisionGroup, ref GameTrace trace) => trace.Fraction = 1.0f;
 
 	public void GetRandomPointsOnControllingObjectHitBox(ParticleCollection particles, int controlPointNumber, int numPtsOut, float bboxScale, int numTrysToGetAPointInsideTheModel,
-		Span<Vector3> pntsOut, Vector3 directionBias, Span<Vector3> hitBoxRelativeCoordOut = default, Span<int> hitBoxIndexOut = default, string? hitboxSetName = null) {
+		Span<Vector3> pntsOut, Vector3 directionBias, Span<Vector3> hitBoxRelativeCoordOut = default, Span<int> hitBoxIndexOut = default, int desiredHitbox = -1, string? hitboxSetName = null) {
 		pntsOut[..numPtsOut].Clear();
 	}
 

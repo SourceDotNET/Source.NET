@@ -78,6 +78,7 @@ public class ParticleCollection
 
 	public readonly StrongBox<WorldCollideContextData>?[] CollisionCacheData = new StrongBox<WorldCollideContextData>?[NUM_COLLISION_CACHE_MODES];
 	public ParticleCollection? Parent;
+	internal StrongBox<WorldCollideContextData>? CollisionCache;
 	public ParticleCollection? Children;
 	public Sheet? Sheet;
 
@@ -704,7 +705,7 @@ public class ParticleCollection
 
 		(float sinPhi, float cosPhi) = MathF.SinCos(MathF.Acos(1.0f - (r0 + r0)));
 		(float sinTheta, float cosTheta) = MathF.SinCos(r1 * 6.2831855f);
-		float radius = MathF.Cbrt(r2);
+		float radius = MathF.Pow(r2, 0.33333334f);
 
 		vector.Z = cosPhi * radius;
 		vector.X = sinPhi * radius * cosTheta;
@@ -715,9 +716,20 @@ public class ParticleCollection
 	public int RandomInt(int min, int max) => RandomInt(RandomQueryCount++, min, max);
 	public float RandomFloat(float min, float max) => RandomFloat(RandomQueryCount++, min, max);
 	public float RandomFloatExp(float min, float max, float exponent) => RandomFloatExp(RandomQueryCount++, min, max, exponent);
-	public void RandomVector(float min, float max, out Vector3 vector) => RandomVector(RandomQueryCount++, min, max, out vector);
-	public void RandomVector(in Vector3 vecMin, in Vector3 vecMax, out Vector3 vector) => RandomVector(RandomQueryCount++, vecMin, vecMax, out vector);
-	public float RandomVectorInUnitSphere(out Vector3 vector) => RandomVectorInUnitSphere(RandomQueryCount++, out vector);
+	public void RandomVector(float min, float max, out Vector3 vector) {
+		RandomVector(RandomQueryCount, min, max, out vector);
+		RandomQueryCount += 3;
+	}
+
+	public void RandomVector(in Vector3 vecMin, in Vector3 vecMax, out Vector3 vector) {
+		RandomVector(RandomQueryCount, vecMin, vecMax, out vector);
+		RandomQueryCount += 3;
+	}
+	public float RandomVectorInUnitSphere(out Vector3 vector) {
+		float radius = RandomVectorInUnitSphere(RandomQueryCount, out vector);
+		RandomQueryCount += 3;
+		return radius;
+	}
 
 	static float FadeInOut(float fadeInStart, float fadeInEnd, float fadeOutStart, float fadeOutEnd, float curTime) {
 		if (fadeInStart > curTime || (fadeOutEnd > 0.0f && curTime > fadeOutEnd))

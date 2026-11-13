@@ -1810,7 +1810,7 @@ public class ModelRender : IModelRender
 
 	const float MIN_LIGHT_VALUE = 0.03f;
 
-	private static bool WorldLightToMaterialLight(ref BSPDWorldLight worldLight, out LightDesc light) {
+	internal static bool WorldLightToMaterialLight(ref BSPDWorldLight worldLight, out LightDesc light) {
 		light = default;
 		light.Attenuation0 = 0.0f;
 		light.Attenuation1 = 0.0f;
