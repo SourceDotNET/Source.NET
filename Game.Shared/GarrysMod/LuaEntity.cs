@@ -3084,6 +3084,7 @@ public static partial class LuaEntity
 		LuaVector.Push_Vector(manipulator.GetBoneScale((byte)(int)lua.CheckNumber(2)));
 		return 1;
 	}
+#endif
 
 	[LuaMethod]
 	static int Entity__ManipulateBonePosition(ILuaInterface lua) {
@@ -3096,6 +3097,8 @@ public static partial class LuaEntity
 		manipulator.SetBonePosition((byte)(int)lua.CheckNumber(2), pos, networkUpdate);
 		return 0;
 	}
+
+#if GAME_DLL
 
 	[LuaMethod]
 	static int Entity__ManipulateBoneAngles(ILuaInterface lua) {
