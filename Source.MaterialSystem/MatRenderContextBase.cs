@@ -404,11 +404,15 @@ public abstract class MatRenderContextBase
 	}
 
 	public virtual void GetWorldSpaceCameraPosition(out Vector3 vecCameraPos) {
+		RecomputeViewState();
 		vecCameraPos = VecViewOrigin;
 	}
 
 	public virtual void GetWorldSpaceCameraVectors(out Vector3 forward, out Vector3 right, out Vector3 up) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
+		RecomputeViewState();
+		forward = VecViewForward;
+		right = VecViewRight;
+		up = VecViewUp;
 	}
 
 	public virtual Vector3 GetToneMappingScaleLinear() {

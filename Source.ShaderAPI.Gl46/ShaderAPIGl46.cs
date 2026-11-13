@@ -268,6 +268,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	int UserClipPlaneChanged;
 	readonly Vector4[] UserClipPlaneWorld = new Vector4[Gl46.HardwareConfig.MAXUSERCLIPPLANES];
 	readonly Vector4[] UserClipPlaneProj = new Vector4[Gl46.HardwareConfig.MAXUSERCLIPPLANES];
+	bool UserClipTransformOverride;
+	Matrix4x4 UserClipTransform_;
 	float FogZ;
 
 	private void MarkAllUserClipPlanesDirty() {
@@ -278,7 +280,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		if ((UserClipPlaneChanged & UserClipPlaneEnabled & ((1 << Gl46.HardwareConfig.MAXUSERCLIPPLANES) - 1)) == 0)
 			return;
 
-		Matrix4x4 worldToProjectionInvTrans = Matrices[(int)MaterialMatrixMode.View] * Matrices[(int)MaterialMatrixMode.Projection];
+		Matrix4x4 worldToView = UserClipTransformOverride ? UserClipTransform_ : Matrices[(int)MaterialMatrixMode.View];
+		Matrix4x4 worldToProjectionInvTrans = worldToView * Matrices[(int)MaterialMatrixMode.Projection];
 		Matrix4x4.Invert(worldToProjectionInvTrans, out worldToProjectionInvTrans);
 		worldToProjectionInvTrans = Matrix4x4.Transpose(worldToProjectionInvTrans);
 
@@ -1214,15 +1217,19 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		else
 			glDisableVertexArrayAttrib(vao, (uint)OpenGL_ShaderInputAttribute.Specular);
 
+		Assert(format.GetTexCoordDimensionSize(6) == 0 || (format & VertexFormat.Wrinkle) == 0);
+		Assert(format.GetTexCoordDimensionSize(7) == 0 || ((format & VertexFormat.Specular) == 0 && !staticLit));
+
 		Span<VertexElement> texCoordElements = [VertexElement.TexCoord1D_0, VertexElement.TexCoord2D_0, VertexElement.TexCoord3D_0, VertexElement.TexCoord4D_0];
 		for (int i = 0; i < IMesh.VERTEX_MAX_TEXTURE_COORDINATES; i++) {
+			OpenGL_ShaderInputAttribute location = TexCoordLocation(i);
 			int texCoordSize = format.GetTexCoordDimensionSize(i);
 			if (texCoordSize > 0) {
 				VertexElement element = (VertexElement)((int)texCoordElements[texCoordSize - 1] + i);
-				ConfigureAttribute(bindings, (OpenGL_ShaderInputAttribute)((int)OpenGL_ShaderInputAttribute.TexCoord0 + i), element, texCoordSize);
+				ConfigureAttribute(bindings, location, element, texCoordSize);
 			}
-			else
-				glDisableVertexArrayAttrib(vao, (uint)((int)OpenGL_ShaderInputAttribute.TexCoord0 + i));
+			else if (location >= OpenGL_ShaderInputAttribute.TexCoord0)
+				glDisableVertexArrayAttrib(vao, (uint)location);
 		}
 
 		if ((format & VertexFormat.TangentS) != 0)
@@ -1249,14 +1256,24 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 		int normalOffset = (int)(VertexElement.Position.GetSize() + VertexElement.Wrinkle.GetSize());
 
-		glEnableVertexArrayAttrib(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition);
-		glVertexArrayAttribFormat(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition, 4, GL_FLOAT, false, 0);
-		glVertexArrayAttribBinding(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition, 2);
+		if (format.GetTexCoordDimensionSize(OpenGL_ShaderInputAttribute.FlexPosition - OpenGL_ShaderInputAttribute.TexCoord0) == 0) {
+			glEnableVertexArrayAttrib(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition);
+			glVertexArrayAttribFormat(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition, 4, GL_FLOAT, false, 0);
+			glVertexArrayAttribBinding(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition, 2);
+		}
 
-		glEnableVertexArrayAttrib(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal);
-		glVertexArrayAttribFormat(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal, 3, GL_FLOAT, false, (uint)normalOffset);
-		glVertexArrayAttribBinding(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal, 2);
+		if (format.GetTexCoordDimensionSize(OpenGL_ShaderInputAttribute.FlexNormal - OpenGL_ShaderInputAttribute.TexCoord0) == 0) {
+			glEnableVertexArrayAttrib(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal);
+			glVertexArrayAttribFormat(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal, 3, GL_FLOAT, false, (uint)normalOffset);
+			glVertexArrayAttribBinding(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal, 2);
+		}
 	}
+
+	static OpenGL_ShaderInputAttribute TexCoordLocation(int index) => index switch {
+		6 => OpenGL_ShaderInputAttribute.Wrinkle,
+		7 => OpenGL_ShaderInputAttribute.Specular,
+		_ => OpenGL_ShaderInputAttribute.TexCoord0 + index
+	};
 
 	public IMesh GetDynamicMesh(IMaterial material, int hwSkinBoneCount, bool buffered, IMesh? vertexOverride, IMesh? indexOverride) {
 		Assert(material == null || material.IsRealTimeVersion());
@@ -3471,7 +3488,12 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	public void EnableShaderShaderMutex(bool enable) { }
 
 	public void EnableUserClipTransformOverride(bool enable) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		if (UserClipTransformOverride == enable)
+			return;
+
+		FlushBufferedPrimitives();
+		UserClipTransformOverride = enable;
+		MarkAllUserClipPlanesDirty();
 	}
 
 	public void EndOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query) {
@@ -3847,7 +3869,12 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public void UserClipTransform(in Matrix4x4 worldToView) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		Matrix4x4 transform = Matrix4x4.Transpose(worldToView);
+		if (UserClipTransformOverride) {
+			FlushBufferedPrimitives();
+			MarkAllUserClipPlanesDirty();
+		}
+		UserClipTransform_ = transform;
 	}
 
 	public void BindStandardVertexTexture(VertexTextureSampler sampler, StandardTextureId id) {

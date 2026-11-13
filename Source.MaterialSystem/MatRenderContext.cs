@@ -673,9 +673,7 @@ public class MatRenderContext : MatRenderContextBase, IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void EnableUserClipTransformOverride(bool enable) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void EnableUserClipTransformOverride(bool enable) => shaderAPI.EnableUserClipTransformOverride(enable);
 
 	public void EndMorphAccumulation() {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
@@ -902,9 +900,7 @@ public class MatRenderContext : MatRenderContextBase, IMatRenderContextInternal
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");
 	}
 
-	public void UserClipTransform(in Matrix4x4 worldToView) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void UserClipTransform(in Matrix4x4 worldToView) => shaderAPI.UserClipTransform(worldToView);
 
 	public void DrawClearBufferQuad(byte r, byte g, byte b, byte a, bool clearColor, bool clearAlpha, bool clearDepth) {
 		throw new NotImplementedException("Incomplete port of IMatRenderContextInternal");
