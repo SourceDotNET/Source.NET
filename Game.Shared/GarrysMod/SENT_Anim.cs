@@ -263,11 +263,9 @@ public partial class
 			IPhysicsObject? physics = VPhysicsGetObject();
 			if (physics == null)
 				return;
-			if (physics.GetShadowController() != null) {
+			if (physics.GetShadowController() != null)
 				physics.UpdateShadow(origin, GetNetworkAngles(), false, 0);
-				return;
-			}
-			if (physics.GetShadowController() == null)
+			else
 				physics.SetPosition(origin, GetNetworkAngles(), true);
 		}
 	}
