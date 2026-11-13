@@ -41,7 +41,7 @@ public partial class TriggerPlayerMovement : BaseTrigger
 #if GMOD_DLL
 		if (HasSpawnFlags(SF.AutoDuck) || HasSpawnFlags(SF.AutoWalk) || HasSpawnFlags(SF.DisableJump)) {
 			ClientSidePredicted = true;
-			SetTransmitState(EdictFlags.Always);
+			SetTransmitState(EdictFlags.PVSCheck);
 		}
 #endif
 	}
