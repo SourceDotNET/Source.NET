@@ -3,6 +3,8 @@ using ManagedBass;
 using Source.Common.GarrysMod;
 
 using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Game.BASS;
 
@@ -136,7 +138,23 @@ public class GModAudioChannel(int handle, bool isFile, int type, string? fileNam
 		if (FileName != null)
 			return FileName;
 		Bass.ChannelGetInfo(Handle, out ChannelInfo info);
-		return info.FileName ?? "";
+		ChannelInfoRaw raw = Unsafe.As<ChannelInfo, ChannelInfoRaw>(ref info);
+		if (raw.FileName == 0)
+			return "";
+		return ((raw.Flags & BassFlags.Unicode) != 0 ? Marshal.PtrToStringUni(raw.FileName) : Marshal.PtrToStringAnsi(raw.FileName)) ?? "";
+	}
+
+	[StructLayout(LayoutKind.Sequential)]
+	struct ChannelInfoRaw
+	{
+		public int Frequency;
+		public int Channels;
+		public BassFlags Flags;
+		public ChannelType ChannelType;
+		public int OriginalResolution;
+		public int Plugin;
+		public int Sample;
+		public nint FileName;
 	}
 
 	public int GetSamplingRate() {
