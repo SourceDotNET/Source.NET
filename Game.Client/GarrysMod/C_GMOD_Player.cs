@@ -206,6 +206,53 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 		return true;
 	}
 
+	public override void UpdateLookAt() {
+		if (HeadYawPoseParam < 0 || HeadPitchPoseParam < 0)
+			return;
+
+		ViewTarget = LookAtTarget;
+
+		if (BlinkTimer.IsElapsed()) {
+			BlinkToggle = BlinkToggle == 0 ? 1 : 0;
+			BlinkTimer.Start(RandomFloat(1.5f, 4.0f));
+		}
+
+		QAngle eyeAngles = EyeAngles();
+
+		float bodyYaw;
+		IClientVehicle? vehicle = GetVehicle();
+		if (vehicle == null)
+			bodyYaw = GetRenderAngles()[YAW];
+		else {
+			float vehicleYaw = vehicle.GetVehicleEnt()!.GetAbsAngles()[YAW];
+			C_BaseEntity vehicleEnt = GetVehicle()!.GetVehicleEnt()!;
+			bodyYaw = vehicleYaw + 90.0f;
+			if (stricmp(modelinfo.GetModelName(vehicleEnt.GetModel()), "models/vehicles/prisoner_pod_inner.mdl") == 0)
+				bodyYaw = vehicleYaw;
+		}
+
+		float lastBodyYaw = LastBodyYaw;
+		LastBodyYaw = bodyYaw;
+
+		float desired = MathLib.AngleNormalize(eyeAngles[YAW] - bodyYaw);
+		if (GetVehicle() != null) {
+			float absDesired = MathF.Abs(desired);
+			if (absDesired > 90.0f)
+				desired = MathLib.AngleNormalize((90.0f - (absDesired - 90.0f)) * (int)(desired / absDesired));
+		}
+
+		desired = Math.Clamp(desired, HeadYawMin, HeadYawMax);
+		CurrentHeadYaw = MathLib.AngleNormalize(desired - (bodyYaw - lastBodyYaw));
+		SetPoseParameter(HeadYawPoseParam, desired);
+
+		float pitch = MathLib.AngleNormalize(eyeAngles[PITCH]);
+		pitch = Math.Clamp(pitch, HeadPitchMin, HeadPitchMax);
+		CurrentHeadPitch = MathLib.AngleNormalize(pitch);
+		SetPoseParameter(HeadPitchPoseParam, CurrentHeadPitch);
+
+		SetPoseParameter(GetModelPtr(), "breathing", 1.0f);
+	}
+
 	public override void UpdateClientSideAnimation() {
 		if (Driving.Get() != null) {
 			if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerDriveAnimate)) {

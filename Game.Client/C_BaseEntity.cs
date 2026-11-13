@@ -1133,6 +1133,19 @@ public partial class C_BaseEntity : IClientEntity
 	}
 	public virtual void ClientThink() { }
 
+	public virtual bool ShouldDrawInView() {
+		C_BasePlayer? localPlayer = C_BasePlayer.GetLocalPlayer();
+		if (localPlayer == null)
+			return true;
+
+		if (render.GetViewEntity() == Index && localPlayer != this && (LuaRender.DrawViewerStack.Count == 0 || !LuaRender.DrawViewerStack[^1])) {
+			Shared.ObserverMode mode = localPlayer.GetObserverMode();
+			return mode != Shared.ObserverMode.None && mode != Shared.ObserverMode.InEye;
+		}
+
+		return true;
+	}
+
 	public bool ReadyToDraw;
 	public virtual int DrawModel(StudioFlags flags) {
 		if (!ReadyToDraw)
@@ -1293,7 +1306,7 @@ public partial class C_BaseEntity : IClientEntity
 	protected virtual StudioHdr? OnNewModel() {
 		return null; // what the hell????????????????? 
 	}
-	void SetModelIndex(int index) {
+	public void SetModelIndex(int index) {
 		ModelIndex = index;
 #if GMOD_DLL
 		if (index != -1)

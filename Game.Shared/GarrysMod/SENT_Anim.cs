@@ -224,7 +224,7 @@ public partial class
 	StudioFlags DrawFlags;
 
 	public override int DrawModel(StudioFlags flags) {
-		if (!ShouldDraw())
+		if (!ShouldDrawInView())
 			return 0;
 		if (InDraw)
 			return base.DrawModel(flags | DrawFlags);

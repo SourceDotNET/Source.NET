@@ -1955,7 +1955,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	}
 
 	public override int DrawModel(StudioFlags flags) {
-		if (!ReadyToDraw)
+		if (!ReadyToDraw || !ShouldDrawInView())
 			return 0;
 
 		int drawn = 0;
