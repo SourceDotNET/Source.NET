@@ -27,7 +27,7 @@ namespace Source.Engine;
 #if !SWDS
 public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host Host,
 							MaterialSystem_Config MaterialSystemConfig,
-							MatSysInterface MatSys, ModelLoader modelloader, CL CL, Cmd Cmd) : IEngineClient
+							MatSysInterface MatSys, ModelLoader modelloader, CL CL, Cmd Cmd, Render Render) : IEngineClient
 {
 	public ReadOnlySpan<char> Key_LookupBinding(ReadOnlySpan<char> binding) => Key.NameForBinding(binding);
 	public void GetMainMenuBackgroundName(Span<char> dest) {
@@ -200,7 +200,8 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 	}
 
 	public Vector3 GetLightForPoint(in Vector3 pos, bool clamp) {
-		throw new NotImplementedException();
+		ComputeLighting(pos, null, clamp, out Vector3 color);
+		return color;
 	}
 
 	public IMaterial? TraceLineMaterialAndLighting(in Vector3 start, in Vector3 end, out Vector3 diffuseLightColor, out Vector3 baseColor) {
@@ -292,11 +293,7 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 	}
 
 	public float LightStyleValue(int style) => Render.LightStyleValue((byte)style);
-	public void ComputeDynamicLighting(in Vector3 pt, in Vector3 normal, out Vector3 color) {
-		// throw new NotImplementedException();
-		// TODO
-		color = default;
-	}
+	public void ComputeDynamicLighting(in Vector3 pt, in Vector3 normal, out Vector3 color) => Render.ComputeDynamicLighting(pt, normal, out color);
 
 	public void GetAmbientLightColor(out Vector3 color) {
 		BSPDWorldLight? worldLight = ((Render)g_EngineRenderer).FindAmbientLight();
@@ -383,9 +380,7 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 		return g_AudioSystem.SentenceLength(sentenceIndex);
 	}
 
-	public void ComputeLighting(in Vector3 pt, in Vector3 normal, bool clamp, out Vector3 color, Span<Vector3> boxColors = default) {
-		throw new NotImplementedException();
-	}
+	public void ComputeLighting(in Vector3 pt, Vector3? normal, bool clamp, out Vector3 color, Span<Vector3> boxColors = default) => Render.ComputeLighting(pt, normal, clamp, out color, boxColors);
 
 	public void ActivateOccluder(int nOccluderIndex, bool bActive) {
 		throw new NotImplementedException();
@@ -546,9 +541,7 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 		throw new NotImplementedException();
 	}
 
-	public Vector3 GetLightForPointFast(in Vector3 pos, bool bClamp) {
-		throw new NotImplementedException();
-	}
+	public Vector3 GetLightForPointFast(in Vector3 pos, bool bClamp) => Render.GetLightForPointFast(pos, bClamp);
 
 	public void SetRestrictServerCommands(bool restrict) => cl.RestrictServerCommands = restrict;
 	public void SetRestrictClientCommands(bool restrict) => cl.RestrictClientCommands = restrict;

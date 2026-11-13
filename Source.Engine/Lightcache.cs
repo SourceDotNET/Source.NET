@@ -1428,12 +1428,123 @@ public partial class Render
 		// todo
 	}
 
+	static readonly Vector3[] ZeroAmbientCube = new Vector3[6];
+
 	public void ComputeDynamicLighting(in Vector3 pt, in Vector3 normal, out Vector3 color) {
-		throw new NotImplementedException();
+		if (!CL.ActiveDlights && !CL.ActiveElights) {
+			color = Vector3.Zero;
+			return;
+		}
+
+		Span<LightDesc> lightDescs = stackalloc LightDesc[Constants.MAX_DLIGHTS + Constants.MAX_ELIGHTS];
+		int lightCount = 0;
+
+		if (CL.ActiveDlights) {
+			for (int i = 0; i < Constants.MAX_DLIGHTS; i++) {
+				DLight dl = CL.DLights[i];
+				if ((Render.DLightActive & (1 << i)) == 0 || (dl.Flags & (DLightFlags.NoModelIllumination | DLightFlags.DisplacementMask)) != 0)
+					continue;
+
+				BSPDWorldLight worldLight = default;
+				WorldLightFromDynamicLight(dl, ref worldLight);
+				ModelRender.WorldLightToMaterialLight(ref worldLight, out lightDescs[lightCount++]);
+			}
+		}
+
+		if (CL.ActiveElights) {
+			for (int i = 0; i < Constants.MAX_ELIGHTS; i++) {
+				DLight dl = CL.ELights[i];
+				if (!dl.IsRadiusGreaterThanZero() || (dl.Flags & (DLightFlags.NoModelIllumination | DLightFlags.DisplacementMask)) != 0)
+					continue;
+
+				BSPDWorldLight worldLight = default;
+				WorldLightFromDynamicLight(dl, ref worldLight);
+				ModelRender.WorldLightToMaterialLight(ref worldLight, out lightDescs[lightCount++]);
+			}
+		}
+
+		if (lightCount == 0) {
+			color = Vector3.Zero;
+			return;
+		}
+
+#if !SWDS
+		studiorender.ComputeLighting(ZeroAmbientCube, lightCount, lightDescs, pt, normal, out color);
+#else
+		color = Vector3.Zero;
+#endif
 	}
 
-	public void ComputeLighting(in Vector3 pt, in Vector3 normal, bool clamp, out Vector3 color, Span<Vector3> boxColors) {
-		throw new NotImplementedException();
+	public void ComputeLighting(in Vector3 pt, Vector3? normal, bool clamp, out Vector3 color, Span<Vector3> boxColors) {
+		LightingState lightingState = default;
+		LightcacheGetDynamic_Stats stats = default;
+		LightcacheGetDynamic(pt, ref lightingState, ref stats, LightCacheFlags.Static | LightCacheFlags.Dynamic | LightCacheFlags.LightStyle | LightCacheFlags.AllowFast);
+
+		if (normal is Vector3 surfaceNormal) {
+			Span<LightDesc> lightDescs = stackalloc LightDesc[MAXLOCALLIGHTS];
+			for (int i = 0; i < lightingState.NumLights; i++)
+				ModelRender.WorldLightToMaterialLight(ref lightingState.LocalLight[i].Dereference(), out lightDescs[i]);
+
+#if !SWDS
+			studiorender.ComputeLighting(lightingState.BoxColor, lightingState.NumLights, lightDescs, pt, surfaceNormal, out color);
+#else
+			color = Vector3.Zero;
+#endif
+		}
+		else {
+			for (int i = 0; i < lightingState.NumLights; i++) {
+				BSPDWorldLightPtr light = lightingState.LocalLight[i];
+				if (light.Lights == s_pDynamicLight)
+					continue;
+
+				ref BSPDWorldLight worldLight = ref light.Dereference();
+				float ratio = LightIntensityAndDirectionAtPoint(ref worldLight, null, pt, LightIntensityFlags.NoOcclusionCheck, null, out Vector3 direction);
+				float angle = Engine_WorldLightAngle(worldLight, worldLight.Normal, direction, direction);
+				AddWorldLightToLightCube(worldLight, lightingState.BoxColor, direction, angle * ratio);
+			}
+
+			ref AmbientCube box = ref lightingState.BoxColor;
+			color = new(
+				(box[0].X + box[1].X + box[2].X + box[3].X + box[4].X + box[5].X) * 0.16666667f,
+				(box[0].Y + box[1].Y + box[2].Y + box[3].Y + box[4].Y + box[5].Y) * 0.16666667f,
+				(box[0].Z + box[1].Z + box[2].Z + box[3].Z + box[4].Z + box[5].Z) * 0.16666667f);
+		}
+
+		if (!boxColors.IsEmpty) {
+			for (int i = 0; i < 6; i++)
+				boxColors[i] = lightingState.BoxColor[i];
+		}
+
+		if (clamp) {
+			if (color.X > 1.0f)
+				color.X = 1.0f;
+			if (color.Y > 1.0f)
+				color.Y = 1.0f;
+			if (color.Z > 1.0f)
+				color.Z = 1.0f;
+		}
+	}
+
+	public Vector3 GetLightForPointFast(in Vector3 pos, bool clamp) {
+		Vector3 ret = Vector3.Zero;
+		int leafIndex = CM.PointLeafnum(pos);
+		Span<Vector3> cube = stackalloc Vector3[6];
+		ModelLoader.Mod_LeafAmbientColorAtPos(cube, pos, leafIndex);
+		for (int i = 0; i < 6; i++) {
+			ret.X = MathF.Max(ret.X, cube[i].X);
+			ret.Y = MathF.Max(ret.Y, cube[i].Y);
+			ret.Z = MathF.Max(ret.Z, cube[i].Z);
+		}
+
+		if (clamp) {
+			if (ret.X > 1.0f)
+				ret.X = 1.0f;
+			if (ret.Y > 1.0f)
+				ret.Y = 1.0f;
+			if (ret.Z > 1.0f)
+				ret.Z = 1.0f;
+		}
+		return ret;
 	}
 
 	// Finds ambient lights

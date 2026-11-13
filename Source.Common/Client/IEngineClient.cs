@@ -321,7 +321,7 @@ public interface IEngineClient
 	// Computes light due to dynamic lighting at a point
 	// If the normal isn't specified, then it'll return the maximum lighting
 	// If pBoxColors is specified (it's an array of 6), then it'll copy the light contribution at each box side.
-	void ComputeLighting(in Vector3 pt, in Vector3 normal, bool clamp, out Vector3 color, Span<Vector3> boxColors = default);
+	void ComputeLighting(in Vector3 pt, Vector3? normal, bool clamp, out Vector3 color, Span<Vector3> boxColors = default);
 
 	// Activates/deactivates an occluder...
 	void ActivateOccluder(int nOccluderIndex, bool bActive);
