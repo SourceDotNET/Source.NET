@@ -148,7 +148,7 @@ public static class ParticleParse
 	public const int PARTICLE_DISPATCH_FROM_ENTITY = 1 << 0;
 	public const int PARTICLE_DISPATCH_RESET_PARTICLES = 1 << 1;
 
-	static int ParticleSystemIndex(ReadOnlySpan<char> particleName) {
+	public static int ParticleSystemIndex(ReadOnlySpan<char> particleName) {
 #if CLIENT_DLL
 		return Game.Client.HLClient.GetParticleSystemIndex(particleName);
 #else

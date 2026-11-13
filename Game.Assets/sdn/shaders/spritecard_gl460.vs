@@ -13,8 +13,8 @@ layout(location = 13) in vec2 v_CornerID;
 layout(location = 14) in vec4 v_TexCoord2;
 #if DUALSEQUENCE
 layout(location = 15) in vec4 v_Seq2TexCoord0;
-layout(location = 16) in vec4 v_Seq2TexCoord1;
-layout(location = 17) in vec4 v_Parms1;
+layout(location = 6) in vec4 v_Seq2TexCoord1;
+layout(location = 3) in vec4 v_Parms1;
 #endif
 
 layout(std140, binding = 0) uniform source_matrices {

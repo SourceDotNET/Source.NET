@@ -174,6 +174,16 @@ public static partial class Util_Globals
 			vec[j] = atoi(pString[start..pos]);
 		}
 	}
+
+	public const int TRACER_FLAG_WHIZ = 0x0001;
+	public const int TRACER_FLAG_USEATTACHMENT = 0x0002;
+	public const int TRACER_DONT_USE_ATTACHMENT = -1;
+
+	public const int TRACER_TYPE_DEFAULT = 0x00000001;
+	public const int TRACER_TYPE_GUNSHIP = 0x00000002;
+	public const int TRACER_TYPE_STRIDER = 0x00000004;
+	public const int TRACER_TYPE_GAUSS = 0x00000008;
+	public const int TRACER_TYPE_WATERBULLET = 0x00000010;
 }
 
 public static partial class Util
@@ -183,6 +193,30 @@ public static partial class Util
 	public static BasePlayer PlayerByIndex(int entindex) => ToBasePlayer(cl_entitylist.GetEnt(entindex));
 #endif
 	static readonly ConVar developer = new("developer", "0", 0, "Set developer message level"); // developer mode
+
+	public static void ParticleTracer(ReadOnlySpan<char> tracerEffectName, in Vector3 vecStart, in Vector3 vecEnd, int entIndex, int attachment, bool whiz) {
+		Game.Shared.EffectData data = new() {
+			Start = vecStart,
+			Origin = vecEnd,
+			Scale = 0,
+			HitBox = Game.Shared.ParticleParse.ParticleSystemIndex(tracerEffectName)
+		};
+#if CLIENT_DLL
+		data.Entity = cl_entitylist.EntIndexToHandle(entIndex);
+#else
+		data.EntIndex = entIndex;
+#endif
+
+		if (whiz)
+			data.Flags |= TRACER_FLAG_WHIZ;
+
+		if (attachment != TRACER_DONT_USE_ATTACHMENT) {
+			data.Flags |= TRACER_FLAG_USEATTACHMENT;
+			data.AttachmentIndex = attachment;
+		}
+
+		DispatchEffect("ParticleTracer", data);
+	}
 
 	public static Contents PointContents(in Vector3 vec) => enginetrace.GetPointContents(vec, out _);
 
