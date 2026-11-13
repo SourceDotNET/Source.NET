@@ -44,6 +44,34 @@ public static class BuiltinParticleInitializers
 		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RandomYawFlip.Definition);
 		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RandomSecondSequence.Definition);
 		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RtEnvCull.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_VelocityRandom.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RandomScalar.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RandomVector.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RandomVectorComponent.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_SequenceFromCP.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_VelocityFromCP.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RemapParticleCountToScalar.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RemapScalarToVector.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RingWave.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_CreateInEpitrochoid.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_MoveBetweenPoints.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_NormalAlignToCP.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_OffsetVectorToVector.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_DistanceToCPInit.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_NormalOffset.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RemapInitialDirectionToCPToVector.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RemapInitialCPDirectionToRotation.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_LifespanFromVelocity.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_CreateFromPlaneCache.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_CreateFromParentParticles.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_InheritFromParentParticles.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_ChaoticAttractor.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_PositionPlaceOnGround.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_SetHitboxToClosest.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_SetHitboxToModel.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_ModelCull.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RemapCPtoVector.Definition);
+		mgr.AddParticleOperator(ParticleFunctionType.Initializer, C_INIT_RemapSpeedToScalar.Definition);
 	}
 }
 
@@ -55,6 +83,24 @@ internal static class ParticleInitUtil
 	public const float DEG2RAD = 0.017453292f;
 	public const float INV_255 = 0.003921569f;
 	public static readonly Vector3 Vec3Invalid = new(float.MaxValue, float.MaxValue, float.MaxValue);
+
+	public const int GMOD_ATTRIBUTE_COUNT = 22;
+
+	public static int ClampFieldUpper(int field) => field > GMOD_ATTRIBUTE_COUNT - 1 ? GMOD_ATTRIBUTE_COUNT - 1 : field;
+
+	public static bool CheckField(int field) {
+		if ((uint)field < GMOD_ATTRIBUTE_COUNT)
+			return true;
+		Warning($"GetFloatAttributePtrForWrite invalid attribute {field}\n");
+		return false;
+	}
+
+	public static int CheckControlPoint(int controlPoint) {
+		if ((uint)controlPoint < MAX_PARTICLE_CONTROL_POINTS)
+			return controlPoint;
+		Warning($"GetControlPointAtCurrentTime invalid control point {controlPoint}\n");
+		return 0;
+	}
 
 	public static float ReadScalar(ParticleCollection particles, int attribute, int particle)
 		=> (INT_ATTRIBUTES_MASK & (1 << attribute)) != 0 ? particles.GetIntAttributeValue(attribute, particle) : particles.GetFloatAttributeValue(attribute, particle);
@@ -766,7 +812,7 @@ public sealed class C_INIT_CreateOnModel : ParticleOperatorInstance
 			points[..count].Clear();
 			relativeCoords[..count].Clear();
 			hitboxIndices[..count].Clear();
-			particles.Mgr!.Query().GetRandomPointsOnControllingObjectHitBox(particles, controlPoint, count, HitBoxScale, ForceInModel, points, DirectionBias, relativeCoords, hitboxIndices, HitboxSetName);
+			particles.Mgr!.Query().GetRandomPointsOnControllingObjectHitBox(particles, controlPoint, count, HitBoxScale, ForceInModel, points, DirectionBias, relativeCoords, hitboxIndices, DesiredHitbox, HitboxSetName);
 
 			for (int i = 0; i < count; i++, particle++) {
 				particles.SetVectorAttribute(PARTICLE_ATTRIBUTE_XYZ, particle, points[i]);
