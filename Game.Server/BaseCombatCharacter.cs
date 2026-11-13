@@ -76,6 +76,13 @@ public partial class BaseCombatCharacter : BaseFlex
 
 	public bool ForceServerRagdoll;
 
+	public override int TakeHealth(float health, DamageType damageType) {
+		if (m_takedamage == 0)
+			return 0;
+
+		return base.TakeHealth(health, damageType);
+	}
+
 	public virtual Source.Common.Mathematics.QAngle BodyAngles() => GetAbsAngles();
 
 	public virtual Vector3 BodyDirection2D() {

@@ -801,6 +801,13 @@ public partial class
 
 	public static void PrefetchScriptSound(ReadOnlySpan<char> soundname) => g_SoundEmitterSystem.PrefetchScriptSound(soundname);
 
+	public static float GetSoundDuration(ReadOnlySpan<char> soundname, ReadOnlySpan<char> actormodel) {
+		ReadOnlySpan<char> wavname = !stristr(soundname, ".wav").IsEmpty || !stristr(soundname, ".mp3").IsEmpty
+			? soundname
+			: soundemitterbase.GetWavFileForSound(soundname, actormodel);
+		return (float)enginesound.GetSoundDuration(SoundCharsUtils.SkipSoundChars(wavname));
+	}
+
 	public static bool PrecacheSound(ReadOnlySpan<char> name) {
 #if GAME_DLL
 		if (!IsPrecacheAllowed())
