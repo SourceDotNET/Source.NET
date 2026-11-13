@@ -79,6 +79,23 @@ public partial class C_BaseCombatWeapon : C_BaseAnimating
 		JustRestored = false;
 	}
 
+	public virtual int GetWorldModelIndex() {
+		if (g_pGameRules != null) {
+			ReadOnlySpan<char> baseName = modelinfo.GetModelName(modelinfo.GetModel(WorldModelIndex));
+			ReadOnlySpan<char> translatedName = g_pGameRules.TranslateEffectForVisionFilter("weapons", baseName);
+			if (translatedName != baseName)
+				return modelinfo.GetModelIndex(translatedName);
+		}
+		return WorldModelIndex;
+	}
+
+	public override int CalcOverrideModelIndex() {
+		C_BasePlayer? localPlayer = C_BasePlayer.GetLocalPlayer();
+		if (localPlayer != null && localPlayer == GetOwner() && ShouldDrawLocalPlayerViewModel())
+			return base.CalcOverrideModelIndex();
+		return GetWorldModelIndex();
+	}
+
 	public bool ShouldDrawPickup() {
 		if ((GetWeaponFlags() & WeaponFlags.NoItemPickup) != 0)
 			return false;
