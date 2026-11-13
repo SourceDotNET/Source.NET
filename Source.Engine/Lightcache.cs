@@ -1467,7 +1467,11 @@ public partial class Render
 			return;
 		}
 
+#if !SWDS
 		studiorender.ComputeLighting(ZeroAmbientCube, lightCount, lightDescs, pt, normal, out color);
+#else
+		color = Vector3.Zero;
+#endif
 	}
 
 	public void ComputeLighting(in Vector3 pt, Vector3? normal, bool clamp, out Vector3 color, Span<Vector3> boxColors) {
@@ -1480,7 +1484,11 @@ public partial class Render
 			for (int i = 0; i < lightingState.NumLights; i++)
 				ModelRender.WorldLightToMaterialLight(ref lightingState.LocalLight[i].Dereference(), out lightDescs[i]);
 
+#if !SWDS
 			studiorender.ComputeLighting(lightingState.BoxColor, lightingState.NumLights, lightDescs, pt, surfaceNormal, out color);
+#else
+			color = Vector3.Zero;
+#endif
 		}
 		else {
 			for (int i = 0; i < lightingState.NumLights; i++) {
