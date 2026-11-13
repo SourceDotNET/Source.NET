@@ -3543,6 +3543,21 @@ public static class MathLib
 		VectorMA(vLineA, t, vDir, out vClosest);
 	}
 
+	public static float CalcDistanceSqrToLineSegment(in Vector3 P, in Vector3 vLineA, in Vector3 vLineB) => CalcDistanceSqrToLineSegment(P, vLineA, vLineB, out _);
+
+	public static float CalcDistanceSqrToLineSegment(in Vector3 P, in Vector3 vLineA, in Vector3 vLineB, out float outT) {
+		float t = CalcClosestPointToLineT(P, vLineA, vLineB, out Vector3 vDir);
+		if (t <= 0)
+			t = 0;
+		if (1 <= t)
+			t = 1;
+		outT = t;
+		float dx = P.X - (vDir.X * t + vLineA.X);
+		float dy = P.Y - (vDir.Y * t + vLineA.Y);
+		float dz = P.Z - (vDir.Z * t + vLineA.Z);
+		return dy * dy + dx * dx + dz * dz;
+	}
+
 	const int NUMVERTEXNORMALS = 162;
 	public static readonly Vector3[] Anorms = [
 		new(-0.525731f, 0.000000f, 0.850651f),

@@ -376,6 +376,18 @@ public partial class
 	public override ReadOnlySpan<char> GetName() => ScriptedEntity.GetScriptName();
 
 	public void RenderScreen() => ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.RenderScreen, false);
+
+	public override bool GetTracerOrigin(ref Vector3 origin) {
+		if (!ScriptedEntity.StartFunction((int)LUA_POOLEDSTRING.GetTracerOrigin) || !ScriptedEntity.Call(0, 1))
+			return false;
+
+		Source.Common.GarrysMod.Lua.ILuaObject ret = g_Lua!.GetReturn(0);
+		if (!ret.isVector())
+			return false;
+
+		origin = ret.GetVector();
+		return true;
+	}
 #endif
 
 	public override int GetSlot() {

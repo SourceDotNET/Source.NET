@@ -184,7 +184,7 @@ public class ParticleCollection
 		SetAttributeToConstant(PARTICLE_ATTRIBUTE_RADIUS, def.ConstantRadius);
 		SetAttributeToConstant(PARTICLE_ATTRIBUTE_ROTATION, def.ConstantRotation);
 		SetAttributeToConstant(PARTICLE_ATTRIBUTE_ROTATION_SPEED, def.ConstantRotationSpeed);
-		SetAttributeToConstant(PARTICLE_ATTRIBUTE_TINT_RGB, def.ConstantColor.R * 0.003921569f, def.ConstantColor.G * 0.003921569f, def.ConstantColor.G * 0.003921569f);
+		SetAttributeToConstant(PARTICLE_ATTRIBUTE_TINT_RGB, def.ConstantColor.R * 0.003921569f, def.ConstantColor.G * 0.003921569f, def.ConstantColor.B * 0.003921569f);
 		SetAttributeToConstant(PARTICLE_ATTRIBUTE_ALPHA, def.ConstantColor.A * 0.003921569f);
 		SetAttributeToConstant(PARTICLE_ATTRIBUTE_CREATION_TIME, 0.0f);
 		SetAttributeToConstant(PARTICLE_ATTRIBUTE_SEQUENCE_NUMBER, def.ConstantSequenceNumber);
@@ -193,6 +193,7 @@ public class ParticleCollection
 		SetAttributeToConstant(PARTICLE_ATTRIBUTE_PARTICLE_ID, 0);
 		SetAttributeToConstant(PARTICLE_ATTRIBUTE_YAW, 0);
 		SetAttributeToConstant(PARTICLE_ATTRIBUTE_ALPHA2, 1.0f);
+		SetAttributeToConstant(PARTICLE_ATTRIBUTE_NORMAL, def.ConstantNormal.X, def.ConstantNormal.Y, def.ConstantNormal.Z);
 
 		CurTime = -delay;
 
@@ -1233,7 +1234,7 @@ public class ParticleCollection
 
 	public void RecomputeBounds() {
 		int count = ActiveParticles;
-		if (count == 0) {
+		if (count == 0 || Def!.ScreenSpaceEffect) {
 			BoundsValid = false;
 			MinBounds = new(float.MaxValue);
 			MaxBounds = new(-float.MaxValue);
@@ -1254,9 +1255,9 @@ public class ParticleCollection
 		for (int b = 0; b < blocks; b++) {
 			for (int lane = 0; lane < 4; lane++) {
 				float x = Memory[offset + lane], y = Memory[offset + 4 + lane], z = Memory[offset + 8 + lane];
-				minX[lane] = MathF.Min(minX[lane], x); maxX[lane] = MathF.Max(maxX[lane], x); sumX[lane] += x;
-				minY[lane] = MathF.Min(minY[lane], y); maxY[lane] = MathF.Max(maxY[lane], y); sumY[lane] += y;
-				minZ[lane] = MathF.Min(minZ[lane], z); maxZ[lane] = MathF.Max(maxZ[lane], z); sumZ[lane] += z;
+				minX[lane] = MinSS(minX[lane], x); maxX[lane] = MaxSS(maxX[lane], x); sumX[lane] += x;
+				minY[lane] = MinSS(minY[lane], y); maxY[lane] = MaxSS(maxY[lane], y); sumY[lane] += y;
+				minZ[lane] = MinSS(minZ[lane], z); maxZ[lane] = MaxSS(maxZ[lane], z); sumZ[lane] += z;
 			}
 			offset += stride;
 		}
@@ -1264,40 +1265,34 @@ public class ParticleCollection
 		BoundsValid = true;
 		Vector3 min = new(HorizontalMin(minX), HorizontalMin(minY), HorizontalMin(minZ));
 		Vector3 max = new(HorizontalMax(maxX), HorizontalMax(maxY), HorizontalMax(maxZ));
-		float totalX = sumX[3] + sumX[2] + sumX[1] + sumX[0];
-		float totalY = sumY[1] + sumY[0] + sumY[2] + sumY[3];
-		float totalZ = sumZ[3] + sumZ[2] + sumZ[0] + sumZ[1];
+		float totalX = sumX[0] + sumX[1] + sumX[2] + sumX[3];
+		float totalY = sumY[0] + sumY[1] + sumY[2] + sumY[3];
+		float totalZ = sumZ[0] + sumZ[1] + sumZ[2] + sumZ[3];
 
 		for (int lane = 0; lane < (count & 3); lane++) {
 			float x = Memory[offset + lane], y = Memory[offset + 4 + lane], z = Memory[offset + 8 + lane];
-			if (x <= min.X) min.X = x;
-			if (max.X <= x) max.X = x;
-			if (y <= min.Y) min.Y = y;
-			if (max.Y <= y) max.Y = y;
-			if (z <= min.Z) min.Z = z;
-			if (max.Z <= z) max.Z = z;
+			min.X = MinSS(x, min.X);
+			max.X = MaxSS(x, max.X);
+			min.Y = MinSS(y, min.Y);
+			max.Y = MaxSS(max.Y, y);
+			min.Z = MinSS(z, min.Z);
+			max.Z = MaxSS(z, max.Z);
 			totalX += x;
 			totalY += y;
 			totalZ += z;
 		}
 
-		MinBounds = min + Def!.BoundingBoxMin;
+		MinBounds = min + Def.BoundingBoxMin;
 		MaxBounds = max + Def.BoundingBoxMax;
-		float oneOverCount = 1.0f / count;
+		float oneOverCount = (float)(1.0 / count);
 		Center = new(totalX * oneOverCount, totalY * oneOverCount, totalZ * oneOverCount);
 	}
 
-	static float HorizontalMin(ReadOnlySpan<float> v) {
-		float a = v[0] <= v[1] ? v[0] : v[1];
-		float b = v[3] <= v[2] ? v[3] : v[2];
-		return a <= b ? a : b;
-	}
+	static float MinSS(float a, float b) => a < b ? a : b;
+	static float MaxSS(float a, float b) => a > b ? a : b;
 
-	static float HorizontalMax(ReadOnlySpan<float> v) {
-		float a = v[1] <= v[0] ? v[0] : v[1];
-		float b = v[2] <= v[3] ? v[3] : v[2];
-		return b <= a ? a : b;
-	}
+	static float HorizontalMin(ReadOnlySpan<float> v) => MinSS(MinSS(v[3], v[2]), MinSS(v[1], v[0]));
+	static float HorizontalMax(ReadOnlySpan<float> v) => MaxSS(MaxSS(v[3], v[2]), MaxSS(v[1], v[0]));
 
 	protected void BloatBoundsUsingControlPoint() {
 		RecomputeBounds();

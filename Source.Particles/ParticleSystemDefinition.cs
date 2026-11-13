@@ -92,6 +92,7 @@ public sealed class ParticleSystemDefinition(ParticleSystemMgr mgr)
 		.Color("color", "255 255 255 255", (d, v) => d.ConstantColor = v)
 		.Float("rotation", "0", (d, v) => d.ConstantRotation = v)
 		.Float("rotation_speed", "0", (d, v) => d.ConstantRotationSpeed = v)
+		.Vector3("normal", "0 0 1", (d, v) => d.ConstantNormal = v)
 		.Int("sequence_number", "0", (d, v) => d.ConstantSequenceNumber = v)
 		.Int("sequence_number 1", "0", (d, v) => d.ConstantSequenceNumber1 = v)
 		.Int("group id", "0", (d, v) => d.GroupID = v)
@@ -132,6 +133,7 @@ public sealed class ParticleSystemDefinition(ParticleSystemMgr mgr)
 	public float ConstantRadius;
 	public float ConstantRotation;
 	public float ConstantRotationSpeed;
+	public Vector3 ConstantNormal;
 	public int ConstantSequenceNumber;
 	public int ConstantSequenceNumber1;
 	public int GroupID;

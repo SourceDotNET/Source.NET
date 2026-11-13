@@ -1217,15 +1217,19 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		else
 			glDisableVertexArrayAttrib(vao, (uint)OpenGL_ShaderInputAttribute.Specular);
 
+		Assert(format.GetTexCoordDimensionSize(6) == 0 || (format & VertexFormat.Wrinkle) == 0);
+		Assert(format.GetTexCoordDimensionSize(7) == 0 || ((format & VertexFormat.Specular) == 0 && !staticLit));
+
 		Span<VertexElement> texCoordElements = [VertexElement.TexCoord1D_0, VertexElement.TexCoord2D_0, VertexElement.TexCoord3D_0, VertexElement.TexCoord4D_0];
 		for (int i = 0; i < IMesh.VERTEX_MAX_TEXTURE_COORDINATES; i++) {
+			OpenGL_ShaderInputAttribute location = TexCoordLocation(i);
 			int texCoordSize = format.GetTexCoordDimensionSize(i);
 			if (texCoordSize > 0) {
 				VertexElement element = (VertexElement)((int)texCoordElements[texCoordSize - 1] + i);
-				ConfigureAttribute(bindings, (OpenGL_ShaderInputAttribute)((int)OpenGL_ShaderInputAttribute.TexCoord0 + i), element, texCoordSize);
+				ConfigureAttribute(bindings, location, element, texCoordSize);
 			}
-			else
-				glDisableVertexArrayAttrib(vao, (uint)((int)OpenGL_ShaderInputAttribute.TexCoord0 + i));
+			else if (location >= OpenGL_ShaderInputAttribute.TexCoord0)
+				glDisableVertexArrayAttrib(vao, (uint)location);
 		}
 
 		if ((format & VertexFormat.TangentS) != 0)
@@ -1252,14 +1256,24 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 		int normalOffset = (int)(VertexElement.Position.GetSize() + VertexElement.Wrinkle.GetSize());
 
-		glEnableVertexArrayAttrib(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition);
-		glVertexArrayAttribFormat(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition, 4, GL_FLOAT, false, 0);
-		glVertexArrayAttribBinding(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition, 2);
+		if (format.GetTexCoordDimensionSize(OpenGL_ShaderInputAttribute.FlexPosition - OpenGL_ShaderInputAttribute.TexCoord0) == 0) {
+			glEnableVertexArrayAttrib(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition);
+			glVertexArrayAttribFormat(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition, 4, GL_FLOAT, false, 0);
+			glVertexArrayAttribBinding(vao, (uint)OpenGL_ShaderInputAttribute.FlexPosition, 2);
+		}
 
-		glEnableVertexArrayAttrib(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal);
-		glVertexArrayAttribFormat(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal, 3, GL_FLOAT, false, (uint)normalOffset);
-		glVertexArrayAttribBinding(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal, 2);
+		if (format.GetTexCoordDimensionSize(OpenGL_ShaderInputAttribute.FlexNormal - OpenGL_ShaderInputAttribute.TexCoord0) == 0) {
+			glEnableVertexArrayAttrib(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal);
+			glVertexArrayAttribFormat(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal, 3, GL_FLOAT, false, (uint)normalOffset);
+			glVertexArrayAttribBinding(vao, (uint)OpenGL_ShaderInputAttribute.FlexNormal, 2);
+		}
 	}
+
+	static OpenGL_ShaderInputAttribute TexCoordLocation(int index) => index switch {
+		6 => OpenGL_ShaderInputAttribute.Wrinkle,
+		7 => OpenGL_ShaderInputAttribute.Specular,
+		_ => OpenGL_ShaderInputAttribute.TexCoord0 + index
+	};
 
 	public IMesh GetDynamicMesh(IMaterial material, int hwSkinBoneCount, bool buffered, IMesh? vertexOverride, IMesh? indexOverride) {
 		Assert(material == null || material.IsRealTimeVersion());

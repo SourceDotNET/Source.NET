@@ -28,6 +28,37 @@ public static class CollisionUtils
 		trace.Contents = 0;
 	}
 
+	public static bool IntersectRayWithRay(in Ray ray0, in Ray ray1, out float t0, out float t1) {
+		Vector3 v0 = ray0.Delta;
+		Vector3 v1 = ray1.Delta;
+		MathLib.VectorNormalize(ref v0);
+		MathLib.VectorNormalize(ref v1);
+
+		float cx = v1.Z * v0.Y - v1.Y * v0.Z;
+		float cy = v1.X * v0.Z - v0.X * v1.Z;
+		float cz = v0.X * v1.Y - v1.X * v0.Y;
+		float lenSq = cy * cy + cx * cx + cz * cz;
+		if (lenSq == 0.0f) {
+			t0 = 0.0f;
+			t1 = 0.0f;
+			return false;
+		}
+
+		float inv = 1.0f / lenSq;
+		float dx = ray1.Start.X - ray0.Start.X;
+		float dy = ray1.Start.Y - ray0.Start.Y;
+		float dz = ray1.Start.Z - ray0.Start.Z;
+		float ax = dz * cy - dy * cz;
+		float ay = dx * cz - dz * cx;
+		float az = dy * cx - dx * cy;
+		t1 = (ay * v0.Y + ax * v0.X + az * v0.Z) * inv;
+		t0 = (ay * v1.Y + ax * v1.X + az * v1.Z) * inv;
+
+		return v0.X * t0 + ray0.Start.X == v1.X * t1 + ray1.Start.X
+			&& v0.Y * t0 + ray0.Start.Y == v1.Y * t1 + ray1.Start.Y
+			&& v0.Z * t0 + ray0.Start.Z == v1.Z * t1 + ray1.Start.Z;
+	}
+
 	public static bool IntersectRayWithBox(in Vector3 rayStart, in Vector3 rayDelta, in Vector3 boxMins, in Vector3 boxMaxs, float tolerance, out BoxTraceInfo trace) {
 		int i;
 		float d1, d2;

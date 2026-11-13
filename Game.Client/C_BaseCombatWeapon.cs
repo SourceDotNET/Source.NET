@@ -54,6 +54,8 @@ public partial class C_BaseCombatWeapon : C_BaseAnimating
 
 	public bool ShouldDrawUsingViewModel() => IsCarriedByLocalPlayer() && !C_BasePlayer.ShouldDrawLocalPlayer();
 
+	public virtual bool GetTracerOrigin(ref System.Numerics.Vector3 origin) => false;
+
 	public void Redraw() {
 		// if (clientMode.ShouldDrawCrosshair()) todo
 		DrawCrosshair();

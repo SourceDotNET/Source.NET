@@ -57,6 +57,8 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		services.AddSingleton<ViewportClientSystem>();
 		services.AddSingleton<IViewRender>(x => x.GetRequiredService<ViewRender>());
 
+		RuntimeHelpers.RunClassConstructor(typeof(FX_Tracer).TypeHandle);
+
 #if GMOD_DLL
 		// Dumb hack, but whatever
 		RuntimeHelpers.RunClassConstructor(typeof(GModWeaponParse).TypeHandle);

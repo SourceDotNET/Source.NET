@@ -1,6 +1,7 @@
 using Game.Shared;
 
 using Source.Common.GarrysMod.Lua;
+using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 using Source.Particles;
 
@@ -261,6 +262,16 @@ public static partial class LuaParticleEffect
 			return 0;
 		lua.PushBool(effect.GetAutoUpdateBBox());
 		return 1;
+	}
+
+	[LuaMethod]
+	static int CNewParticleEffect__Render(ILuaInterface lua) {
+		CNewParticleEffect? effect = Get_ValidEffect(lua);
+		if (effect == null)
+			return 0;
+		using MatRenderContextPtr renderContext = new(materials);
+		effect.Render(renderContext.Context, effect.IsTwoPass(), null);
+		return 0;
 	}
 
 	[LuaMethod]
