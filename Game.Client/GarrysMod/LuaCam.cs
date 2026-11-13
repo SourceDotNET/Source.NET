@@ -81,6 +81,7 @@ public static partial class LuaCam
 	public static bool InSurface3D;
 	public static void SetInSurface3D(bool value) => InSurface3D = value;
 
+	public static bool ShouldDrawLocalPlayerCache;
 	public static bool FrameStateChecked;
 	public static void ResetFrameStateChecked() => FrameStateChecked = false;
 

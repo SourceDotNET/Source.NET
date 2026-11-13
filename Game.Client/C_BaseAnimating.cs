@@ -291,7 +291,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	long MostRecentBoneSetupRequest;
 	int PrevBoneMask;
 	protected int AccumulatedBoneMask;
-	readonly BoneAccessor BoneAccessor = new();
+	internal readonly BoneAccessor BoneAccessor = new();
 	// Note that Handle is not a pointer in this case so we need to initialize
 	// each member in the bone attachments (when we get to this part).
 	readonly List<Handle<C_BaseAnimating>> BoneAttachments = [];
@@ -680,6 +680,8 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 			if (hdr == null || !hdr.SequencesAvailable())
 				return false;
 
+			C_BoneManipulate? boneManipulator = GetBoneManipulator(false) as C_BoneManipulate;
+
 			Matrix3x4 parentTransform = default;
 			MathLib.AngleMatrix(GetRenderAngles(), GetRenderOrigin(), out parentTransform);
 			// MathLib.AngleMatrix(new(19.56f, -145.89f, 0), new(-767, 143.9f, -12650), ref parentTransform);
@@ -715,7 +717,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 				StandardBlendingRules(hdr, pos, q, currentTime, bonesMaskNeedRecalc);
 
-				if (GetBoneManipulator(false) is C_BoneManipulate boneManipulator) {
+				if (boneManipulator != null) {
 					for (int i = 0; i < hdr.NumBones(); i++)
 						boneManipulator.ManipulateBone(i, ref pos[i], ref q[i]);
 				}
@@ -735,6 +737,8 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 					return false;
 				}
 			}
+
+			boneManipulator?.PostBuildTransformations(this, hdr);
 		}
 
 		if (!boneToWorldOut.IsEmpty) {

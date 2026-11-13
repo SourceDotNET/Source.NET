@@ -895,6 +895,32 @@ public partial class C_BaseEntity : IClientEntity
 	public virtual ReadOnlySpan<char> GetMaterialOverride() => NetworkString.Convert(OverrideMaterial) ?? "";
 	[NetworkVar("m_OverrideSubMaterials")]
 	public InlineArray32<ushort> OverrideSubMaterials;
+	InlineArray32<IMaterial?> SubMaterialOverridePointers;
+
+	public void ClearSubMaterialOverrides() {
+		for (int i = 0; i < 32; i++) {
+			SubMaterialOverridePointers[i]?.DecrementReferenceCount();
+			SubMaterialOverridePointers[i] = null;
+		}
+	}
+
+	public void SetSubMaterialOverride(int index, ReadOnlySpan<char> name) {
+		if ((uint)index >= 32)
+			return;
+
+		if (name.IsEmpty || name[0] == '\0') {
+			SubMaterialOverridePointers[index]?.DecrementReferenceCount();
+			SubMaterialOverridePointers[index] = null;
+			return;
+		}
+
+		IMaterial? material = materials.FindMaterial(name, MaterialDefines.TEXTURE_GROUP_OTHER, true, null);
+		if (material == null || material.IsErrorMaterial())
+			material = null;
+		SubMaterialOverridePointers[index]?.DecrementReferenceCount();
+		SubMaterialOverridePointers[index] = material;
+		material?.IncrementReferenceCount();
+	}
 	public ReadOnlySpan<char> GetSubMaterialOverride(int index) {
 		if ((uint)index < 32 && NetworkString.Convert(OverrideSubMaterials[index]) is string name)
 			return name;

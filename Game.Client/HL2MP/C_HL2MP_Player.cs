@@ -76,6 +76,9 @@ public partial class C_HL2MP_Player : C_BaseHLPlayer
 			SpawnInterpCounterCache = SpawnInterpCounter;
 		}
 		base.PostDataUpdate(updateType);
+		if (updateType == DataUpdateType.Created)
+			SetNextClientThink(CLIENT_THINK_ALWAYS);
+		UpdateVisibility();
 	}
 
 	public override ref readonly QAngle EyeAngles() {

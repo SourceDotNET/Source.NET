@@ -713,6 +713,29 @@ public static partial class LuaPlayer
 		return 1;
 	}
 
+#if CLIENT_DLL
+	[LuaMethod]
+	static int Player__ShouldDrawLocalPlayer(ILuaInterface lua) {
+		BasePlayer? player = Get_Player(1, false);
+		if (player == null || !player.IsPlayer()) {
+			lua.ThrowError("Player entity is NULL or not a player (!?)");
+			lua.PushBool(false);
+			return 1;
+		}
+		lua.PushBool(BasePlayer.ShouldDrawLocalPlayer());
+		return 1;
+	}
+#endif
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Player__SetViewEntity(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.SetViewEntity(LuaEntity.Get_Entity(2, true));
+		return 0;
+	}
+#endif
+
 	[LuaMethod]
 	static int Player____tostring(ILuaInterface lua) {
 		BasePlayer? player = Get_Player(1, true);
@@ -1141,6 +1164,13 @@ public static partial class LuaPlayer
 	static int Player__GetStepSize(ILuaInterface lua) {
 		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
 		lua.PushNumber(player.StepSize);
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Player__GetViewOffset(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		LuaVector.Push_Vector(player.ViewOffset);
 		return 1;
 	}
 

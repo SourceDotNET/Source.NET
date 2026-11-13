@@ -3483,6 +3483,37 @@ public partial class BaseEntity : IServerEntity
 	}
 
 	public virtual ReadOnlySpan<char> GetMaterialOverride() => NetworkString.Convert(OverrideMaterial) ?? "";
+
+	InlineArray32<string?> SubMaterialOverrideNames;
+
+	public void SetSubMaterialOverride(int index, ReadOnlySpan<char> name) {
+		if ((uint)index > 31)
+			return;
+
+		if (!name.IsEmpty && name[0] != '\0') {
+			int stringIndex = NetworkString.Add(name);
+			if (stringIndex != OverrideSubMaterials[index])
+				OverrideSubMaterialsForModify()[index] = (ushort)stringIndex;
+			string? converted = NetworkString.Convert(stringIndex);
+			if (converted != null && converted.Length == 0)
+				converted = null;
+			SubMaterialOverrideNames[index] = converted;
+			return;
+		}
+
+		SubMaterialOverrideNames[index] = null;
+		if (OverrideSubMaterials[index] == 0)
+			return;
+		OverrideSubMaterialsForModify()[index] = 0;
+	}
+
+	public void ClearSubMaterialOverrides() {
+		for (int i = 0; i < 32; i++) {
+			SubMaterialOverrideNames[i] = null;
+			if (OverrideSubMaterials[i] != 0)
+				OverrideSubMaterialsForModify()[i] = 0;
+		}
+	}
 #endif
 
 	public virtual EntityCapabilities ObjectCaps() {

@@ -2353,6 +2353,7 @@ public static class MathLib
 			VectorNormalize(ref up);
 		}
 	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)] public static void SetScaleMatrix(float x, float y, float z, out Matrix3x4 dst) => dst = new(x, 0.0f, 0.0f, 0.0f, 0.0f, y, 0.0f, 0.0f, 0.0f, 0.0f, z, 0.0f);
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static void MatrixGetColumn(in Matrix3x4 inMatrix, int column, out Vector3 outVec) {
 		outVec.X = inMatrix[0][column];

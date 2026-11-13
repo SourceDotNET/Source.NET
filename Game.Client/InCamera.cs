@@ -78,6 +78,13 @@ public partial class Input
 
 	public bool CAM_IsThirdPerson() => CameraInThirdPerson;
 
+	public bool CAM_IsOrthographic() => CameraIsOrthographic;
+
+	public void CAM_OrthographicSize(out float w, out float h) {
+		w = c_orthowidth.GetFloat();
+		h = c_orthoheight.GetFloat();
+	}
+
 	static KeyButtonState cam_pitchup, cam_pitchdown, cam_yawleft, cam_yawright;
 	static KeyButtonState cam_in, cam_out;
 

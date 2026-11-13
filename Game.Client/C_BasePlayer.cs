@@ -1,4 +1,5 @@
-﻿using Game.Shared;
+﻿using Game.Client.GarrysMod;
+using Game.Shared;
 
 using Source;
 using Source.Common;
@@ -129,8 +130,38 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	}
 	public bool IsHLTV() => IsLocalPlayer() && engine.IsHLTV();
 	public bool IsBot() => (GetFlags() & EntityFlags.FakeClient) != 0;
+	public virtual void OverrideView(ref ViewSetup setup) { }
+
 	public static bool ShouldDrawLocalPlayer() {
-		return input.CAM_IsThirdPerson(); // todo
+		if (LuaRender.DrawViewerStack.Count != 0)
+			return LuaRender.DrawViewerStack[^1];
+
+		C_BasePlayer? localPlayer = GetLocalPlayer();
+		if (localPlayer == null)
+			return true;
+
+		if ((render.GetViewEntity() != localPlayer.Index || !ClientModeShared.DrawViewer) && !input.CAM_IsThirdPerson()) {
+			if (ToolsEnabled() && ToolFramework_IsThirdPersonCamera())
+				return true;
+
+			if (render.GetViewEntity() == localPlayer.Index) {
+				if (LuaCam.FrameStateChecked)
+					return LuaCam.ShouldDrawLocalPlayerCache;
+
+				LuaCam.FrameStateChecked = true;
+				LuaCam.ShouldDrawLocalPlayerCache = false;
+				if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.ShouldDrawLocalPlayer)) {
+					LuaEntity.Push_Entity(localPlayer);
+					if (gGM.CallFinish(1)) {
+						LuaCam.ShouldDrawLocalPlayerCache = true;
+						return true;
+					}
+				}
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	public override bool ShouldDraw() {

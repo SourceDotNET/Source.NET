@@ -1665,6 +1665,28 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__SetSubMaterial(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (lua.GetType(2) == LuaType.Nil) {
+			ent.ClearSubMaterialOverrides();
+			return 0;
+		}
+		int index = (int)lua.GetNumber(2);
+		ReadOnlySpan<char> name = lua.GetType(3) == LuaType.Nil ? null : lua.GetString(3);
+		ent.SetSubMaterialOverride(index, name);
+		return 0;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__TakePhysicsDamage(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.VPhysicsTakeDamage(LuaTakeDamageInfo.Get_TakeDamageInfo(2));
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
 	static int Entity__NextThink(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		ent.SetNextThink((float)lua.CheckNumber(2));
@@ -3098,8 +3120,6 @@ public static partial class LuaEntity
 		return 0;
 	}
 
-#if GAME_DLL
-
 	[LuaMethod]
 	static int Entity__ManipulateBoneAngles(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
@@ -3119,9 +3139,11 @@ public static partial class LuaEntity
 		if (animating == null || ent.IsEFlagSet(EFL.KillMe) || animating.GetBoneManipulator(true) is not BoneManipulate manipulator)
 			return 0;
 		Vector3 scale = LuaVector.Get_Vector(3);
-		manipulator.SetBoneScale((byte)(int)lua.CheckNumber(2), scale);
+		manipulator.SetBoneScale((byte)(int)lua.CheckNumber(2), scale, true);
 		return 0;
 	}
+
+#if GAME_DLL
 
 	[LuaMethod]
 	static int Entity__GetName(ILuaInterface lua) {
