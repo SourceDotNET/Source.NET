@@ -274,10 +274,6 @@ public partial class BasePlayer : BaseCombatCharacter
 	public override DataMap? GetDataDescMap() => DataDesc;
 
 	public override int TakeHealth(float health, DamageType damageType) {
-#if !GMOD_DLL
-		if (!IsAlive())
-			return 0;
-#endif
 		if (m_takedamage != 0) {
 			DamageType bitsDmgTimeBased = g_pGameRules.Damage_GetTimeBased();
 			bitsDamageType &= ~(damageType & ~bitsDmgTimeBased);
