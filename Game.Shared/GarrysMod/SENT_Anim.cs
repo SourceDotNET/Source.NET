@@ -255,8 +255,26 @@ public partial class
 	}
 
 	public override void ClientThink() {
+		ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.Think, false);
+
+		float max = WorldSize.MAX_COORD_INTEGER * 8.0f;
+		ref Vector3 origin = ref GetNetworkOrigin();
+		if (origin.X > -max && origin.X < max && origin.Y > -max && origin.Y < max && origin.Z > -max && origin.Z < max) {
+			IPhysicsObject? physics = VPhysicsGetObject();
+			if (physics == null)
+				return;
+			if (physics.GetShadowController() != null) {
+				physics.UpdateShadow(origin, GetNetworkAngles(), false, 0);
+				return;
+			}
+			if (physics.GetShadowController() == null)
+				physics.SetPosition(origin, GetNetworkAngles(), true);
+		}
+	}
+
+	public override void Think() {
 		if (!IsMarkedForDeletion() && !ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.Think, true))
-			SetNextClientThink(gpGlobals.CurTime + 0.2);
+			SetNextThink(gpGlobals.CurTime + 0.2);
 	}
 #endif
 
