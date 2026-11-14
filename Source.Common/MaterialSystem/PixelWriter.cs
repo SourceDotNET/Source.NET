@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.HighPerformance;
 
 using Source.Common.Bitmap;
+using Source.Common.Mathematics;
 
 using System.Runtime.CompilerServices;
 
@@ -15,10 +16,6 @@ public enum PixelWriterUsing : byte
 }
 public static partial class FloatHelpers
 {
-
-	[UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_value")]
-	static extern ref ushort getBits(ref Half half);
-	public static ushort GetBits(this ref Half half) => getBits(ref half);
 
 	public static uint FloatBits(this ref readonly float r) => new ReadOnlySpan<float>(in r).Cast<float, uint>()[0];
 }
@@ -266,17 +263,17 @@ public static class PixelWriterImpl
 	public static void WritePixelNoAdvanceF(ref PixelWriterState State, Span<byte> Base, float r, float g, float b, float a) {
 		Assert(IsUsingFloatFormat(ref State));
 		if ((State.Flags & PixelWriterUsing.Float16) != 0) {
-			Span<Half> fp16 = stackalloc Half[4];
-			fp16[0] = (Half)r;
-			fp16[1] = (Half)g;
-			fp16[2] = (Half)b;
-			fp16[3] = (Half)a;
+			Span<Float16> fp16 = stackalloc Float16[4];
+			fp16[0].SetFloat(r);
+			fp16[1].SetFloat(g);
+			fp16[2].SetFloat(b);
+			fp16[3].SetFloat(a);
 			Span<ushort> buf = stackalloc ushort[4];
 			buf[State.RShift >> 4] |= (ushort)((fp16[0].GetBits() & State.RMask) << (State.RShift & 0xF));
 			buf[State.GShift >> 4] |= (ushort)((fp16[1].GetBits() & State.GMask) << (State.GShift & 0xF));
 			buf[State.BShift >> 4] |= (ushort)((fp16[2].GetBits() & State.BMask) << (State.BShift & 0xF));
 			buf[State.AShift >> 4] |= (ushort)((fp16[3].GetBits() & State.AMask) << (State.AShift & 0xF));
-			memcpy(Base[..State.Size], buf[..State.Size].Cast<ushort, byte>());
+			memcpy(Base.Slice(State.Bits, State.Size), buf.Cast<ushort, byte>()[..State.Size]);
 		}
 		else {
 			Span<uint> buf = stackalloc uint[4];
@@ -284,7 +281,7 @@ public static class PixelWriterImpl
 			buf[State.GShift >> 5] |= (g.FloatBits() & State.GMask) << (State.GShift & 0x1F);
 			buf[State.BShift >> 5] |= (b.FloatBits() & State.BMask) << (State.BShift & 0x1F);
 			buf[State.AShift >> 5] |= (a.FloatBits() & State.AMask) << (State.AShift & 0x1F);
-			memcpy(Base[..State.Size], buf[..State.Size].Cast<uint, byte>());
+			memcpy(Base.Slice(State.Bits, State.Size), buf.Cast<uint, byte>()[..State.Size]);
 		}
 	}
 

@@ -2,28 +2,43 @@
 using OpenGL;
 
 using Source.Common.Bitmap;
+using Source.Common.Mathematics;
 
 using System.Runtime.InteropServices;
 
 namespace Source.Bitmap;
 
-public struct RGBA8888
+public struct RGBA8888 : IChannelDestPixel<RGBA8888>
 {
 	public byte R;
 	public byte G;
 	public byte B;
 	public byte A;
+
+	public static RGBA8888 From(BGRA8888 src) => new() { R = src.R, G = src.G, B = src.B, A = src.A };
+
+	public static void SetR(ref RGBA8888 pixel, byte value) => pixel.R = value;
+	public static void SetG(ref RGBA8888 pixel, byte value) => pixel.G = value;
+	public static void SetB(ref RGBA8888 pixel, byte value) => pixel.B = value;
+	public static void SetA(ref RGBA8888 pixel, byte value) => pixel.A = value;
 }
 
-public struct BGRA8888
+public struct BGRA8888 : IChannelDestPixel<BGRA8888>
 {
 	public byte B;
 	public byte G;
 	public byte R;
 	public byte A;
+
+	public static BGRA8888 From(BGRA8888 src) => src;
+
+	public static void SetR(ref BGRA8888 pixel, byte value) => pixel.R = value;
+	public static void SetG(ref BGRA8888 pixel, byte value) => pixel.G = value;
+	public static void SetB(ref BGRA8888 pixel, byte value) => pixel.B = value;
+	public static void SetA(ref BGRA8888 pixel, byte value) => pixel.A = value;
 }
 
-public static class ImageLoader
+public static partial class ImageLoader
 {
 	static readonly ImageFormatInfo[] g_ImageFormatInfo = [
 		new( "UNKNOWN",                    0, 0, 0, 0, 0, false ),			// IMAGE_FORMAT_UNKNOWN,
@@ -366,76 +381,168 @@ public static class ImageLoader
 		_ => throw new NotSupportedException($"GetGLImageFormat: unexpected format '{format}'"),
 	};
 
-	public static bool ConvertImageFormat(Span<byte> srcData, ImageFormat srcFormat, Span<byte> dstData, ImageFormat dstFormat, int width, int height) {
-		if (srcFormat == dstFormat) {
-			memcpy(dstData, srcData);
-			return true;
+	public static bool ConvertImageFormat(Span<byte> srcData, ImageFormat srcFormat, Span<byte> dstData, ImageFormat dstFormat, int width, int height, int srcStride = 0, int dstStride = 0) {
+#if GMOD_DLL
+		if (srcData.IsEmpty || dstData.IsEmpty) {
+			Warning("ConvertImageFormat: Invalid source or target image!\n");
+			return false;
 		}
 
-		switch (srcFormat) {
-			case ImageFormat.DXT5:
-				switch (dstFormat) {
-					case ImageFormat.RGBA8888:
-						ConvertFromDXT5(srcData, MemoryMarshal.Cast<byte, RGBA8888>(dstData), width, height);
-						return true;
-				}
-				break;
-			case ImageFormat.RGBA16161616:
-				switch (dstFormat) {
-					case ImageFormat.RGBA16161616F:
-						ConvertImageFormat_RGBA16161616_To_RGBA16161616F(MemoryMarshal.Cast<byte, ushort>(srcData), MemoryMarshal.Cast<byte, Half>(dstData), width, height);
-						return true;
-				}
-				break;
-			case ImageFormat.RGBA16161616F:
-				switch (dstFormat) {
-					case ImageFormat.RGBA16161616:
-						ConvertImageFormat_RGBA16161616F_To_RGBA16161616(MemoryMarshal.Cast<byte, Half>(srcData), MemoryMarshal.Cast<byte, ushort>(dstData), width, height);
-						return true;
-				}
-				break;
+		if (width <= 0 || height <= 0) {
+			Warning($"ConvertImageFormat: Invalid image size {width}x{height}!\n");
+			return false;
 		}
+#endif
 
-		AssertMsg(false, $"No good way to convert {srcFormat} to {dstFormat}, expect issues\n");
-		return false;
-	}
-
-	static void ConvertImageFormat_RGBA16161616_To_RGBA16161616F(ReadOnlySpan<ushort> srcImage, Span<Half> dstImage, int width, int height) {
-		int srcSize = width * height * 4;
-		for (int i = 0; i < srcSize; i += 4) {
-			dstImage[i + 0] = (Half)(srcImage[i + 0] * (1.0f / (float)(1 << 16)));
-			dstImage[i + 1] = (Half)(srcImage[i + 1] * (1.0f / (float)(1 << 16)));
-			dstImage[i + 2] = (Half)(srcImage[i + 2] * (1.0f / (float)(1 << 16)));
-			dstImage[i + 3] = (Half)(srcImage[i + 3] * (1.0f / (float)(1 << 16)));
-		}
-	}
-
-	static void ConvertImageFormat_RGBA16161616F_To_RGBA16161616(ReadOnlySpan<Half> srcImage, Span<ushort> dstImage, int width, int height) {
-		int srcSize = width * height * 4;
-		for (int i = 0; i < srcSize; i += 4) {
-			for (int j = 0; j < 4; j++) {
-				float val = (float)srcImage[i + j];
-				val *= (float)(1 << 12);
-				val = Math.Max(val, 0);
-				val = Math.Min(val, 65535.0f);
-				dstImage[i + j] = (ushort)val;
+		if (srcFormat == ImageFormat.RGBA16161616) {
+			if (dstFormat == ImageFormat.RGB323232F) {
+				Assert(srcStride == 0 && dstStride == 0);
+				ConvertImageFormat_RGBA16161616_To_RGB323232F(MemoryMarshal.Cast<byte, ushort>(srcData), MemoryMarshal.Cast<byte, float>(dstData), width, height);
+				return true;
+			}
+			if (dstFormat == ImageFormat.RGBA16161616F) {
+				Assert(srcStride == 0 && dstStride == 0);
+				ConvertImageFormat_RGBA16161616_To_RGBA16161616F(MemoryMarshal.Cast<byte, ushort>(srcData), MemoryMarshal.Cast<byte, Float16>(dstData), width, height);
+				return true;
 			}
 		}
-	}
+		else if (srcFormat == ImageFormat.RGBA16161616F) {
+			if (dstFormat == ImageFormat.RGB323232F) {
+				Assert(srcStride == 0 && dstStride == 0);
+				ConvertImageFormat_RGBA16161616F_To_RGB323232F(MemoryMarshal.Cast<byte, Float16>(srcData), MemoryMarshal.Cast<byte, float>(dstData), width, height);
+				return true;
+			}
+			if (dstFormat == ImageFormat.RGBA32323232F) {
+				Assert(dstStride == 0);
+				ConvertImageFormat_RGBA16161616F_To_RGBA323232F(MemoryMarshal.Cast<byte, Float16>(srcData), MemoryMarshal.Cast<byte, float>(dstData), width, height, srcStride);
+				return true;
+			}
+			if (dstFormat == ImageFormat.RGBA16161616) {
+				Assert(srcStride == 0 && dstStride == 0);
+				ConvertImageFormat_RGBA16161616F_To_RGBA16161616(MemoryMarshal.Cast<byte, Float16>(srcData), MemoryMarshal.Cast<byte, ushort>(dstData), width, height);
+				return true;
+			}
+		}
+		else if (srcFormat == ImageFormat.RGB323232F) {
+			if (dstFormat == ImageFormat.RGBA16161616) {
+				Assert(srcStride == 0 && dstStride == 0);
+				ConvertImageFormat_RGB323232F_To_RGBA16161616(MemoryMarshal.Cast<byte, float>(srcData), MemoryMarshal.Cast<byte, ushort>(dstData), width, height);
+				return true;
+			}
+			if (dstFormat == ImageFormat.RGBA16161616F) {
+				Assert(srcStride == 0 && dstStride == 0);
+				ConvertImageFormat_RGB323232F_To_RGBA16161616F(MemoryMarshal.Cast<byte, float>(srcData), MemoryMarshal.Cast<byte, Float16>(dstData), width, height);
+				return true;
+			}
+			if (dstFormat == ImageFormat.RGBA8888) {
+				Assert(srcStride == 0);
+				ConvertImageFormat_RGB323232F_To_RGBA8888(MemoryMarshal.Cast<byte, float>(srcData), dstData, width, height);
+				return true;
+			}
+			if (dstFormat == ImageFormat.BGRA8888) {
+				Assert(srcStride == 0);
+				ConvertImageFormat_RGB323232F_To_BGRA8888(MemoryMarshal.Cast<byte, float>(srcData), dstData, width, height);
+				return true;
+			}
+		}
 
-	private static void ConvertFromDXT5<T>(Span<byte> srcData, Span<T> span, int width, int height) {
-		int realWidth = 0;
-		int realHeight = 0;
+		if ((dstFormat == ImageFormat.DXT1 || dstFormat == ImageFormat.DXT3 || dstFormat == ImageFormat.DXT5 || dstFormat == ImageFormat.ATI1N || dstFormat == ImageFormat.ATI2N) && srcFormat == dstFormat) {
+			int memRequired = GetMemRequired(width, height, 1, srcFormat, false);
+			srcData[..memRequired].CopyTo(dstData);
+			return true;
+		}
+		else if ((srcFormat == ImageFormat.RGBA8888 || srcFormat == ImageFormat.RGB888 || srcFormat == ImageFormat.BGRA8888 || srcFormat == ImageFormat.BGRX8888) &&
+				 (dstFormat == ImageFormat.DXT1 || dstFormat == ImageFormat.DXT3 || dstFormat == ImageFormat.DXT5)) {
+			return false;
+		}
+		else if (srcFormat == ImageFormat.ARGB8888 && (dstFormat == ImageFormat.ATI1N || dstFormat == ImageFormat.ATI2N)) {
+			return false;
+		}
+		else if ((dstFormat == ImageFormat.RGBA8888 || dstFormat == ImageFormat.BGRX8888 || dstFormat == ImageFormat.BGRA8888 || dstFormat == ImageFormat.BGRA4444 ||
+				  dstFormat == ImageFormat.BGRA5551 || dstFormat == ImageFormat.BGRX5551 || dstFormat == ImageFormat.BGR565 || dstFormat == ImageFormat.BGR888 || dstFormat == ImageFormat.RGB888) &&
+				 (srcFormat == ImageFormat.DXT1 || srcFormat == ImageFormat.DXT3 || srcFormat == ImageFormat.DXT5 || srcFormat == ImageFormat.ATI1N || srcFormat == ImageFormat.ATI2N)) {
+			if (srcStride != 0 || dstStride != 0)
+				return false;
 
-		if (width < 4 || height < 4)
-			Assert(false);
-
-		Assert((width % 4) == 0);
-		Assert((height % 4) == 0);
-
-		int xblocks = width >> 2, yblocks = height >> 2;
-		BGRA8888 col0, col1, col2, col3;
-
-		throw new Exception("I don't care enough to implement ConvertFromDXT5 right now will do it later");
+			if (srcFormat == ImageFormat.DXT1) {
+				if (dstFormat == ImageFormat.RGBA8888) {
+					ConvertFromDXT1(srcData, MemoryMarshal.Cast<byte, RGBA8888>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.BGRA8888 || dstFormat == ImageFormat.BGRX8888) {
+					ConvertFromDXT1(srcData, MemoryMarshal.Cast<byte, BGRA8888>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.RGB888) {
+					ConvertFromDXT1(srcData, MemoryMarshal.Cast<byte, RGB888>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.BGR888) {
+					ConvertFromDXT1(srcData, MemoryMarshal.Cast<byte, BGR888>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.BGR565) {
+					ConvertFromDXT1(srcData, MemoryMarshal.Cast<byte, BGR565>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.BGRA5551 || dstFormat == ImageFormat.BGRX5551) {
+					ConvertFromDXT1(srcData, MemoryMarshal.Cast<byte, BGRA5551>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.BGRA4444) {
+					ConvertFromDXT1(srcData, MemoryMarshal.Cast<byte, BGRA4444>(dstData), width, height);
+					return true;
+				}
+			}
+			else if (srcFormat == ImageFormat.ATI2N) {
+				if (dstFormat == ImageFormat.BGRA8888) {
+					ConvertFromATIxN(srcData, MemoryMarshal.Cast<byte, BGRA8888>(dstData), width, height, true);
+					return true;
+				}
+			}
+			else if (srcFormat == ImageFormat.ATI1N) {
+				if (dstFormat == ImageFormat.BGRA8888) {
+					ConvertFromATIxN(srcData, MemoryMarshal.Cast<byte, BGRA8888>(dstData), width, height, false);
+					return true;
+				}
+			}
+			else if (srcFormat == ImageFormat.DXT5) {
+				if (dstFormat == ImageFormat.RGBA8888) {
+					ConvertFromDXT5(srcData, MemoryMarshal.Cast<byte, RGBA8888>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.BGRA8888 || dstFormat == ImageFormat.BGRX8888) {
+					ConvertFromDXT5(srcData, MemoryMarshal.Cast<byte, BGRA8888>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.RGB888) {
+					ConvertFromDXT5IgnoreAlpha(srcData, MemoryMarshal.Cast<byte, RGB888>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.BGR888) {
+					ConvertFromDXT5IgnoreAlpha(srcData, MemoryMarshal.Cast<byte, BGR888>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.BGR565) {
+					ConvertFromDXT5IgnoreAlpha(srcData, MemoryMarshal.Cast<byte, BGR565>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.BGRA5551 || dstFormat == ImageFormat.BGRX5551) {
+					ConvertFromDXT5(srcData, MemoryMarshal.Cast<byte, BGRA5551>(dstData), width, height);
+					return true;
+				}
+				if (dstFormat == ImageFormat.BGRA4444) {
+					ConvertFromDXT5(srcData, MemoryMarshal.Cast<byte, BGRA4444>(dstData), width, height);
+					return true;
+				}
+			}
+			return false;
+		}
+		else if (dstFormat == ImageFormat.DXT1 || dstFormat == ImageFormat.DXT3 || dstFormat == ImageFormat.DXT5 || dstFormat == ImageFormat.ATI1N || dstFormat == ImageFormat.ATI2N ||
+				 srcFormat == ImageFormat.DXT1 || srcFormat == ImageFormat.DXT3 || srcFormat == ImageFormat.DXT5 || srcFormat == ImageFormat.ATI1N || srcFormat == ImageFormat.ATI2N) {
+			return false;
+		}
+		else
+			return ConvertUncompressedImageFormat(srcData, srcFormat, dstData, dstFormat, width, height, srcStride, dstStride);
 	}
 }

@@ -157,6 +157,7 @@ public interface IVTFTexture : IDisposable
 	void ConstructLowResImage();
 
 	public const int VTF_MAJOR_VERSION = 7;
+	public const ImageFormat IMAGE_FORMAT_DEFAULT = (ImageFormat)(-2);
 	public const int VTF_MINOR_VERSION = 4;
 
 	// Implementation of VTF can add these factory methods.

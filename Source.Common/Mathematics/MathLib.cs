@@ -101,23 +101,23 @@ public struct Quaternion48
 public struct Vector48
 {
 	public Vector48(vec_t x, vec_t y, vec_t z) {
-		X = (Half)x;
-		Y = (Half)y;
-		Z = (Half)z;
+		X.SetFloat(x);
+		Y.SetFloat(y);
+		Z.SetFloat(z);
 	}
 
-	public static implicit operator Vector3(Vector48 self) => new((vec_t)self.X, (vec_t)self.Y, (vec_t)self.Z);
+	public static implicit operator Vector3(Vector48 self) => new(self.X.GetFloat(), self.Y.GetFloat(), self.Z.GetFloat());
 
-	public readonly float this[int i] => (float)(i switch {
-		0 => X,
-		1 => Y,
-		2 => Z,
+	public readonly float this[int i] => i switch {
+		0 => X.GetFloat(),
+		1 => Y.GetFloat(),
+		2 => Z.GetFloat(),
 		_ => throw new IndexOutOfRangeException()
-	});
+	};
 
-	public Half X;
-	public Half Y;
-	public Half Z;
+	public Float16 X;
+	public Float16 Y;
+	public Float16 Z;
 }
 
 
