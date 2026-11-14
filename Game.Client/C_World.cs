@@ -21,6 +21,8 @@ public partial class C_World : C_BaseEntity
 
 	}
 
+	public override CollideType GetCollideType() => CollideType.ShouldNotCollide;
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 		nameof(WorldMins),
