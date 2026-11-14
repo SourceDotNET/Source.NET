@@ -1,4 +1,5 @@
 using Source.Common;
+using Source.Common.Mathematics;
 using Source;
 using Game.Shared;
 using System.Numerics;
@@ -17,4 +18,8 @@ public partial class TEAntlionDust(ReadOnlySpan<char> name) : TEParticleSystem(n
 	public Vector3 Angles;
 	[NetworkVar("m_bBlockedSpawner")]
 	public bool BlockedSpawner;
+
+	// todo: UTIL_CreateAntlionDust sender (hl2/antlion_dust.cpp)
+
+	public override void Test(in Vector3 current_origin, in QAngle current_angles) { }
 }

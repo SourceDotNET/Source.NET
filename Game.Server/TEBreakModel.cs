@@ -40,4 +40,49 @@ public partial class TEBreakModel(ReadOnlySpan<char> name) : BaseTempEntity(name
 	public float Time;
 	[NetworkVar("m_nFlags")]
 	public int Flags;
+
+	public override void Precache() => BaseEntity.PrecacheModel("models/gibs/hgibs.mdl");
+
+	public override void Test(in Vector3 current_origin, in QAngle current_angles) {
+		ModelIndex = BaseEntity.PrecacheModel("models/gibs/hgibs.mdl");
+		Origin = current_origin;
+		Rotation = current_angles;
+		Size = new Vector3(16, 16, 16);
+		Velocity = new Vector3(random.RandomFloat(-10, 10), random.RandomFloat(-10, 10), random.RandomFloat(0, 20));
+		Randomization = 100;
+		Count = 10;
+		Time = 5.0f;
+		Flags = 0;
+
+		Origin += new Vector3(0, 0, 24);
+
+		MathLib.AngleVectors(current_angles, out Vector3 forward, out Vector3 right, out _);
+		forward.Z = 0.0f;
+		MathLib.VectorNormalize(ref forward);
+
+		Origin += forward * 50.0f;
+		Origin += right * 25.0f;
+
+		BroadcastRecipientFilter filter = new();
+		Create(ref filter, 0.0f);
+	}
+}
+
+public static partial class TempEnts
+{
+	static readonly TEBreakModel g_TEBreakModel = new("breakmodel");
+
+	public static void TE_BreakModel<IRF>(scoped ref IRF filter, float delay, in Vector3 pos, in QAngle angles, in Vector3 size, in Vector3 vel, int modelindex, int randomization, int count, float time, int flags) where IRF : IRecipientFilter {
+		g_TEBreakModel.Origin = pos;
+		g_TEBreakModel.Rotation = angles;
+		g_TEBreakModel.Size = size;
+		g_TEBreakModel.Velocity = vel;
+		g_TEBreakModel.ModelIndex = modelindex;
+		g_TEBreakModel.Randomization = randomization;
+		g_TEBreakModel.Count = count;
+		g_TEBreakModel.Time = time;
+		g_TEBreakModel.Flags = flags;
+
+		g_TEBreakModel.Create(ref filter, delay);
+	}
 }

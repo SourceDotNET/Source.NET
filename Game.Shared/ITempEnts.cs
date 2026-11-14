@@ -1,4 +1,5 @@
 ﻿#if CLIENT_DLL || GAME_DLL
+using Source;
 using Source.Common;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.Mathematics;
@@ -102,7 +103,7 @@ public abstract class ITempEntsSystem : IPredictionSystem
 	public abstract void DispatchEffect<IRF>(scoped ref IRF filter, float delay,
 				in Vector3 pos, ReadOnlySpan<char> name, EffectData data) where IRF : IRecipientFilter;
 	public abstract void PhysicsProp<IRF>(scoped ref IRF filter, float delay, int modelindex, int skin,
-		in Vector3 pos, in QAngle angles, in Vector3 vel, int flags, int effects) where IRF : IRecipientFilter;
+		in Vector3 pos, in QAngle angles, in Vector3 vel, int flags, int effects, Color clrRender, float modelScale) where IRF : IRecipientFilter;
 
 	// For playback from external tools
 	public abstract void TriggerTempEntity(KeyValues pKeyValues);
