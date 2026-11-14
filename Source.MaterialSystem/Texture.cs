@@ -763,12 +763,7 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 	private ImageFormat ComputeActualFormat(ImageFormat srcFormat) {
 		ImageFormat dstFormat;
 		bool bIsCompressed = srcFormat.IsCompressed();
-		if (materials.HardwareConfig.SupportsCompressedTextures() && bIsCompressed) {
-			// for the runtime compressed formats the srcFormat won't equal the dstFormat, and we need to return srcFormat here
-			if (srcFormat.IsRuntimeCompressed()) {
-				return srcFormat;
-			}
-
+		if (materials.Config.CompressedTextures && materials.HardwareConfig.SupportsCompressedTextures() && bIsCompressed) {
 			// don't do anything since we are already in a compressed format.
 			dstFormat = materials.ShaderAPI.GetNearestSupportedFormat(srcFormat);
 			Assert(dstFormat == srcFormat);

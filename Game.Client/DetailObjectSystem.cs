@@ -74,7 +74,7 @@ public struct DetailObjectSystemPerLeafData()
 public struct SprintInfo
 {
 	public ushort SpriteIndex;
-	public Half Scale;
+	public Float16 Scale;
 }
 
 public class DetailModel : IClientUnknown, IClientRenderable
@@ -139,7 +139,7 @@ public class DetailModel : IClientUnknown, IClientRenderable
 		Orientation = (byte)orientation;
 		SpriteInfo.SpriteIndex = spriteIndex;
 		Type = type;
-		SpriteInfo.Scale = (Half)scale;
+		SpriteInfo.Scale.SetFloat(scale);
 
 		AdvInfo = null;
 		Assert(type <= 3);
@@ -336,7 +336,7 @@ public class DetailModel : IClientUnknown, IClientRenderable
 
 		MathLib.AngleVectors(Angles, out _, out Vector3 dx, out Vector3 dy);
 
-		float scale = (float)SpriteInfo.Scale;
+		float scale = SpriteInfo.Scale.GetFloat();
 		MathLib.Vector2DMultiply(dict.UL, scale, out Vector2 ul);
 		MathLib.Vector2DMultiply(dict.LR, scale, out Vector2 lr);
 
@@ -345,7 +345,7 @@ public class DetailModel : IClientUnknown, IClientRenderable
 		Vector3 vecSway = Vector3.Zero;
 
 		if (AdvInfo != null) {
-			vecSway = AdvInfo.CurrentAvoid * (float)SpriteInfo.Scale;
+			vecSway = AdvInfo.CurrentAvoid * SpriteInfo.Scale.GetFloat();
 			float flSwayAmplitude = AdvInfo.SwayAmount * cl_detail_max_sway.GetFloat();
 			if (flSwayAmplitude > 0) {
 				vecSway += dx * MathF.Sin((float)(gpGlobals.CurTime + Origin.X)) * flSwayAmplitude;
@@ -421,7 +421,7 @@ public class DetailModel : IClientUnknown, IClientRenderable
 		texll.X = texul.X;
 		texll.Y = texlr.Y;
 
-		float scale = (float)SpriteInfo.Scale;
+		float scale = SpriteInfo.Scale.GetFloat();
 		Vector2 ul = dict.UL * scale;
 		Vector2 lr = dict.LR * scale;
 
@@ -494,7 +494,7 @@ public class DetailModel : IClientUnknown, IClientRenderable
 			texlr.X = dict.TexUL.X;
 		}
 
-		float scale = (float)SpriteInfo.Scale;
+		float scale = SpriteInfo.Scale.GetFloat();
 		Vector2 ul = dict.UL * scale;
 		Vector2 lr = dict.LR * scale;
 

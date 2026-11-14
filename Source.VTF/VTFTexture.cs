@@ -140,6 +140,17 @@ public sealed class VTFTexture : IVTFTexture
 		if (ImageData == null)
 			return;
 
+		if (fmt == IVTFTexture.IMAGE_FORMAT_DEFAULT)
+			fmt = ImageFormat.RGBA8888;
+
+		if (normalToDUDV && !(fmt == ImageFormat.UV88 || fmt == ImageFormat.UVWQ8888 || fmt == ImageFormat.UVLX8888)) {
+			Assert(false);
+			return;
+		}
+
+		if (Format == fmt)
+			return;
+
 		nint convertedSize = ComputeTotalSize(fmt);
 		byte[] convertedImage = ArrayPool<byte>.Shared.Rent((int)convertedSize);
 
@@ -153,8 +164,17 @@ public sealed class VTFTexture : IVTFTexture
 					Span<byte> dstData = convertedImage.AsSpan()[(int)GetImageOffset(frame, face, mip, fmt)..];
 					for (int z = 0; z < depth; ++z, srcData = srcData[(int)srcFaceStride..], dstData = dstData[(int)dstFaceStride..]) {
 						if (normalToDUDV) {
-							Error("No\n");
-							return;
+							if (fmt == ImageFormat.UV88)
+								ImageLoader.ConvertNormalMapRGBA8888ToDUDVMapUV88(srcData, width, height, dstData);
+							else if (fmt == ImageFormat.UVWQ8888)
+								ImageLoader.ConvertNormalMapRGBA8888ToDUDVMapUVWQ8888(srcData, width, height, dstData);
+							else if (fmt == ImageFormat.UVLX8888)
+								ImageLoader.ConvertNormalMapRGBA8888ToDUDVMapUVLX8888(srcData, width, height, dstData);
+							else {
+								Assert(false);
+								ArrayPool<byte>.Shared.Return(convertedImage, true);
+								return;
+							}
 						}
 						else {
 							ImageLoader.ConvertImageFormat(srcData, Format, dstData, fmt, width, height);
@@ -162,6 +182,11 @@ public sealed class VTFTexture : IVTFTexture
 					}
 				}
 			}
+		}
+
+		if (!AllocateImageData(convertedSize)) {
+			ArrayPool<byte>.Shared.Return(convertedImage, true);
+			return;
 		}
 
 		memcpy<byte>(ImageData, convertedImage[..(int)convertedSize]);
@@ -182,7 +207,7 @@ public sealed class VTFTexture : IVTFTexture
 			}
 		}
 		else {
-			if ((fmt == ImageFormat.DXT5) || (fmt == ImageFormat.ATI2N) || (fmt == ImageFormat.ATI1N)) {
+			if ((fmt == ImageFormat.DXT1) || (fmt == ImageFormat.ATI2N) || (fmt == ImageFormat.ATI1N)) {
 				Flags &= ~(int)(TextureFlags.OneBitAlpha | TextureFlags.EightBitAlpha);
 			}
 		}
@@ -669,7 +694,7 @@ public sealed class VTFTexture : IVTFTexture
 	}
 
 	private static bool GenericAllocateReusableData(ref byte[]? imageData, nint numRequested) {
-		if (imageData == null || imageData.Length < numRequested)
+		if (imageData == null || imageData.Length < numRequested || (numRequested > 0 && imageData.Length > 16 * numRequested))
 			imageData = new byte[numRequested];
 		return true;
 	}
