@@ -3252,6 +3252,43 @@ public static partial class LuaEntity
 		ent.GetBaseAnimating()?.InvalidateBoneCache();
 		return 0;
 	}
+
+	[LuaMethod]
+	static int Entity__GetBoneMatrix(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+
+		int bone = (int)lua.CheckNumber(2);
+		if (bone < 0)
+			return 0;
+
+		mdlcache.BeginLock();
+		if (!animating.IsDynamicModelLoading()) {
+			StudioHdr? hdr = animating.GetModelPtr();
+			if (hdr != null && bone < hdr.NumBones() && (animating.AccumulatedBoneMask & hdr.BoneFlags(bone)) != 0) {
+				Matrix4x4 matrix = default;
+				matrix.Init(animating.GetBone(bone));
+				LuaVMatrix.Push_VMatrix(matrix);
+				mdlcache.EndLock();
+				return 1;
+			}
+		}
+		mdlcache.EndLock();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetupBones(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating != null) {
+			animating.InvalidateBoneCache();
+			animating.SetupBones(null, -1, Studio.BONE_USED_BY_ANYTHING, gpGlobals.CurTime);
+		}
+		return 0;
+	}
 #endif
 
 	[LuaMethod]

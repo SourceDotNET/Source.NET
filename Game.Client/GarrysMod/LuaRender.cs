@@ -648,7 +648,7 @@ public static partial class LuaRender
 		return 0;
 	}
 
-	static Color GetColor(ILuaObject? obj) {
+	internal static Color GetColor(ILuaObject? obj) {
 		if (obj == null || !obj.isTable())
 			return new(255, 255, 255, 255);
 		return new((byte)(int)obj.GetMemberFloat("r", 255), (byte)(int)obj.GetMemberFloat("g", 255), (byte)(int)obj.GetMemberFloat("b", 255), (byte)(int)obj.GetMemberFloat("a", 255));

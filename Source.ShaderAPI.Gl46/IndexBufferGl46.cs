@@ -1,4 +1,5 @@
 using Source.Common.MaterialSystem;
+using Source.Common.ShaderAPI;
 
 using System.Runtime.InteropServices;
 namespace Source.ShaderAPI.Gl46;
@@ -18,6 +19,8 @@ public unsafe class IndexBufferGl46 : IDisposable
 	internal bool ExternalMemory;
 	internal bool SoftwareVertexProcessing;
 	internal bool LateCreateShouldDiscard;
+	internal bool LateCreate;
+	internal IShaderUtil? ShaderUtil;
 
 	int ibo = -1;
 	int lastBufferSize = -1;
@@ -36,8 +39,10 @@ public unsafe class IndexBufferGl46 : IDisposable
 			return;
 		}
 
+		bool renderThreadSafe = ShaderUtil == null || ShaderUtil.IsRenderThreadSafe();
+
 		// Create the IBO if it doesn't exist
-		if (ibo == -1)
+		if (ibo == -1 && renderThreadSafe)
 			ibo = (int)glCreateBuffer();
 
 		// Deallocate if Sysmembuffer != null and we cant fit in what we already allocated.
@@ -48,8 +53,10 @@ public unsafe class IndexBufferGl46 : IDisposable
 			}
 			lastBufferSize = BufferSize;
 			SysmemBuffer = NativeMemory.AllocZeroed((nuint)BufferSize);
-			glNamedBufferData((uint)ibo, BufferSize, null, Dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
-
+			if (renderThreadSafe)
+				glNamedBufferData((uint)ibo, BufferSize, null, Dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+			else
+				LateCreate = true;
 		}
 
 		if (SysmemBuffer == null) {
@@ -117,8 +124,10 @@ public unsafe class IndexBufferGl46 : IDisposable
 		if (indexCount > 0) {
 			if (Dynamic)
 				Written = true;
-			else
+			else if (!LateCreate && (ShaderUtil == null || ShaderUtil.IsRenderThreadSafe()))
 				glNamedBufferSubData((uint)ibo, LockedPosition * 2, indexCount * 2, (short*)SysmemBuffer + LockedPosition);
+			else
+				LateCreate = true;
 		}
 		Position += indexCount;
 		Locked = false;
@@ -150,8 +159,10 @@ public unsafe class IndexBufferGl46 : IDisposable
 		if (indexCount > 0) {
 			if (Dynamic)
 				Written = true;
-			else
+			else if (!LateCreate && (ShaderUtil == null || ShaderUtil.IsRenderThreadSafe()))
 				glNamedBufferSubData((uint)ibo, firstIndex * 2, indexCount * 2, (short*)SysmemBuffer + firstIndex);
+			else
+				LateCreate = true;
 		}
 		Locked = false;
 	}
@@ -172,7 +183,8 @@ public unsafe class IndexBufferGl46 : IDisposable
 		}
 	}
 
-	public IndexBufferGl46(int count, bool dynamic = false) {
+	public IndexBufferGl46(int count, bool dynamic = false, IShaderUtil? shaderUtil = null) {
+		ShaderUtil = shaderUtil;
 		Position = 0;
 		Locked = false;
 		Flush = true;
@@ -189,7 +201,13 @@ public unsafe class IndexBufferGl46 : IDisposable
 	}
 
 	internal void HandleLateCreation() {
+		if (!LateCreate)
+			return;
 
+		if (ibo == -1)
+			ibo = (int)glCreateBuffer();
+		glNamedBufferData((uint)ibo, BufferSize, SysmemBuffer, GL_STATIC_DRAW);
+		LateCreate = false;
 	}
 
 	internal uint IBO() => ring != null ? ring.Buffer : ibo > 0 ? (uint)ibo : throw new NullReferenceException("Index Buffer Object was null");

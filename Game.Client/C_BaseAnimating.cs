@@ -290,7 +290,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	long MostRecentModelBoneCounter;
 	long MostRecentBoneSetupRequest;
 	int PrevBoneMask;
-	protected int AccumulatedBoneMask;
+	protected internal int AccumulatedBoneMask;
 	internal readonly BoneAccessor BoneAccessor = new();
 	// Note that Handle is not a pointer in this case so we need to initialize
 	// each member in the bone attachments (when we get to this part).

@@ -118,6 +118,151 @@ public static partial class LuaUtil
 #endif
 
 #if CLIENT_DLL
+	static int DecodeBodygroups(StudioHeader studioHdr, ReadOnlySpan<char> bodygroups) {
+		int body = 0;
+		for (int i = 0; i < bodygroups.Length; i++) {
+			char c = bodygroups[i];
+			int value = -1;
+			if (c >= '0' && c <= '9')
+				value = c - '0';
+			if (c >= 'a' && c <= 'z')
+				value = c - 'a' + 10;
+			if (c >= 'A' && c <= 'Z')
+				value = c - 'A' + 10;
+
+			if (value < 0 || i >= studioHdr.NumBodyParts)
+				continue;
+
+			MStudioBodyParts bodyPart = studioHdr.BodyPart(i);
+			if (value < bodyPart.NumModels)
+				body += (value - (body / bodyPart.Base % bodyPart.NumModels)) * bodyPart.Base;
+		}
+		return body;
+	}
+
+	static void PushMeshVertex(ILuaInterface lua, in GetTrianglesVertex vert) {
+		lua.CreateTable();
+		lua.PushNumber(vert.TexCoord.X);
+		lua.SetField(-2, "u");
+		lua.PushNumber(vert.TexCoord.Y);
+		lua.SetField(-2, "v");
+		LuaVector.Push_Vector(vert.Position);
+		lua.SetField(-2, "pos");
+		LuaVector.Push_Vector(vert.Normal);
+		lua.SetField(-2, "normal");
+		LuaVector.Push_Vector(new Vector3(vert.TangentS.X, vert.TangentS.Y, vert.TangentS.Z));
+		lua.SetField(-2, "tangent");
+
+		lua.CreateTable();
+		for (int i = 0; i < 4; i++) {
+			lua.PushNumber(i + 1);
+			lua.PushNumber(vert.TangentS[i]);
+			lua.SetTable(-3);
+		}
+		lua.SetField(-2, "userdata");
+
+		lua.CreateTable();
+		for (int i = 0; i < vert.NumBones; i++) {
+			lua.PushNumber(i + 1);
+			lua.CreateTable();
+			lua.PushNumber(vert.BoneIndex[i]);
+			lua.SetField(-2, "bone");
+			lua.PushNumber(vert.BoneWeight[i]);
+			lua.SetField(-2, "weight");
+			lua.SetTable(-3);
+		}
+		lua.SetField(-2, "weights");
+	}
+
+	[LuaFunction]
+	static int GetModelMeshes(ILuaInterface lua) {
+		string modelName = lua.CheckString(1);
+		int lod = (int)lua.CheckNumberOpt(2, 0);
+		string? bodygroups = null;
+		int body = 0;
+		if (lua.GetType(3) == LuaType.String)
+			bodygroups = lua.CheckString(3);
+		else if (lua.GetType(3) != LuaType.Nil)
+			body = (int)lua.CheckNumber(3);
+		int skin = (int)lua.CheckNumberOpt(4, 0);
+
+		MDLHandle_t handle = mdlcache.FindMDL(modelName);
+		if (mdlcache.IsErrorModel(handle)) {
+			mdlcache.Release(handle);
+			return 0;
+		}
+
+		mdlcache.PreloadModel(handle);
+		StudioHeader? studioHdr = mdlcache.GetStudioHdr(handle);
+		if (studioHdr == null || mdlcache.IsErrorModel(handle)) {
+			mdlcache.Release(handle);
+			return 0;
+		}
+
+		if (bodygroups != null)
+			body = DecodeBodygroups(studioHdr, bodygroups);
+
+		DrawModelInfo info = default;
+		info.StudioHdr = studioHdr;
+		info.HardwareData = mdlcache.GetHardwareData(handle)!;
+		info.Skin = skin;
+		info.Body = body;
+		info.Lod = lod;
+
+		Span<Matrix3x4> boneToWorld = stackalloc Matrix3x4[Studio.MAXSTUDIOBONES];
+		GetTrianglesOutput output = new();
+		studiorender.GetTriangles(ref info, boneToWorld, output);
+
+		lua.CreateTable();
+		for (int i = 0; i < studioHdr.NumBones; i++) {
+			MStudioBone bone = studioHdr.Bone(i);
+			Matrix4x4 matrix = default;
+			matrix.Init(bone.PoseToBone);
+			lua.PushNumber(i + 1);
+			lua.CreateTable();
+			lua.PushNumber(bone.Parent);
+			lua.SetField(-2, "parent");
+			LuaVMatrix.Push_VMatrix(matrix);
+			lua.SetField(-2, "matrix");
+			lua.SetTable(-3);
+		}
+
+		lua.CreateTable();
+		for (int b = 0; b < output.MaterialBatches.Count; b++) {
+			GetTrianglesMaterialBatch batch = output.MaterialBatches[b];
+			lua.PushNumber(b + 1);
+			lua.CreateTable();
+
+			lua.PushString(batch.Material != null ? batch.Material.GetName() : "");
+			lua.SetField(-2, "material");
+
+			lua.CreateTable();
+			for (int v = 0; v < batch.Verts.Count; v++) {
+				lua.PushNumber(v + 1);
+				PushMeshVertex(lua, batch.Verts[v]);
+				lua.SetTable(-3);
+			}
+
+			lua.CreateTable();
+			for (int t = 0; t < batch.TriListIndices.Count; t++) {
+				lua.PushNumber(t + 1);
+				lua.PushNumber(batch.TriListIndices[t] + 1);
+				lua.GetTable(-4);
+				lua.SetTable(-3);
+			}
+			lua.SetField(-3, "triangles");
+			lua.SetField(-2, "verticies");
+
+			lua.SetTable(-3);
+		}
+
+		mdlcache.Release(handle);
+
+		lua.Push(-2);
+		lua.Remove(-3);
+		return 2;
+	}
+
 	[LuaFunction]
 	static int GetPixelVisibleHandle(ILuaInterface lua) {
 		LC_pixelvis_handle_t.Push(new PixelVisHandle { Handle = 0 });
