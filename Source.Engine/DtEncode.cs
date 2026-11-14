@@ -638,7 +638,11 @@ public struct PropTypeFns
 		}
 	}
 
-	public static void Array_DecodeZero(ref DecodeInfo info) => throw new NotImplementedException();
+	public static void Array_DecodeZero(ref DecodeInfo info) {
+		ArrayLengthRecvProxyFn? lengthProxy = info.RecvProxyData.RecvProp.GetArrayLengthProxy();
+		if (lengthProxy != null)
+			lengthProxy(info.Object, info.RecvProxyData.ObjectID, 0);
+	}
 	public static void Array_Encode(object instance, ref DVariant var, SendProp prop, bf_write writeOut, int objectID) {
 		SendProp? arrayProp = prop.GetArrayProp();
 		AssertMsg(arrayProp != null, $"Array_Decode: missing m_pArrayProp for SendProp '{prop.GetName()}'.");
