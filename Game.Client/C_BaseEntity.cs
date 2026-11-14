@@ -3,6 +3,7 @@ global using static Game.Client.PredictableList;
 
 using CommunityToolkit.HighPerformance;
 
+using Game.Client.GarrysMod;
 using Game.Shared;
 
 using Source;
@@ -11,6 +12,7 @@ using Source.Common.GarrysMod;
 using Source.Common.Bitbuffers;
 using Source.Common.Commands;
 using Source.Common.Engine;
+using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 using Source.Common.Networking;
 
@@ -870,8 +872,60 @@ public partial class C_BaseEntity : IClientEntity
 	public ushort RealClassName;
 	[NetworkVar("m_OverrideMaterial")]
 	public ushort OverrideMaterial;
+	IMaterial? MaterialOverridePointer;
+
+	public virtual void SetMaterialOverride(ReadOnlySpan<char> name) {
+		if (name.IsEmpty || name[0] == '\0') {
+			SetMaterialOverridePointer(null);
+			return;
+		}
+
+		IMaterial? material = materials.FindMaterial(name, MaterialDefines.TEXTURE_GROUP_OTHER, true, null);
+		if (material == null || material.IsErrorMaterial())
+			material = null;
+		SetMaterialOverridePointer(material);
+	}
+
+	public virtual void SetMaterialOverridePointer(IMaterial? material) {
+		MaterialOverridePointer?.DecrementReferenceCount();
+		MaterialOverridePointer = material;
+		material?.IncrementReferenceCount();
+	}
+
+	public virtual ReadOnlySpan<char> GetMaterialOverride() => NetworkString.Convert(OverrideMaterial) ?? "";
 	[NetworkVar("m_OverrideSubMaterials")]
 	public InlineArray32<ushort> OverrideSubMaterials;
+	InlineArray32<IMaterial?> SubMaterialOverridePointers;
+
+	public void ClearSubMaterialOverrides() {
+		for (int i = 0; i < 32; i++) {
+			SubMaterialOverridePointers[i]?.DecrementReferenceCount();
+			SubMaterialOverridePointers[i] = null;
+		}
+	}
+
+	public void SetSubMaterialOverride(int index, ReadOnlySpan<char> name) {
+		if ((uint)index >= 32)
+			return;
+
+		if (name.IsEmpty || name[0] == '\0') {
+			SubMaterialOverridePointers[index]?.DecrementReferenceCount();
+			SubMaterialOverridePointers[index] = null;
+			return;
+		}
+
+		IMaterial? material = materials.FindMaterial(name, MaterialDefines.TEXTURE_GROUP_OTHER, true, null);
+		if (material == null || material.IsErrorMaterial())
+			material = null;
+		SubMaterialOverridePointers[index]?.DecrementReferenceCount();
+		SubMaterialOverridePointers[index] = material;
+		material?.IncrementReferenceCount();
+	}
+	public ReadOnlySpan<char> GetSubMaterialOverride(int index) {
+		if ((uint)index < 32 && NetworkString.Convert(OverrideSubMaterials[index]) is string name)
+			return name;
+		return "";
+	}
 	[NetworkVar("m_iHealth")]
 	public int Health;
 	[NetworkVar("m_iMaxHealth")]
@@ -954,6 +1008,24 @@ public partial class C_BaseEntity : IClientEntity
 
 
 	public int GetTeamNumber() => TeamNum;
+
+	public ref readonly Vector3 WorldAlignMins() {
+		Assert(!CollisionProp().IsBoundsDefinedInEntitySpace());
+		Assert(CollisionProp().GetCollisionAngles() == vec3_angle);
+		return ref CollisionProp().OBBMins();
+	}
+
+	public ref readonly Vector3 WorldAlignMaxs() {
+		Assert(!CollisionProp().IsBoundsDefinedInEntitySpace());
+		Assert(CollisionProp().GetCollisionAngles() == vec3_angle);
+		return ref CollisionProp().OBBMaxs();
+	}
+
+	public virtual bool InSameTeam(C_BaseEntity? entity) {
+		if (entity == null)
+			return false;
+		return entity.GetTeamNumber() == GetTeamNumber();
+	}
 
 	IPhysicsObject? PhysicsObject = null!;
 	public void VPhysicsUpdate(IPhysicsObject physics) { }
@@ -1049,6 +1121,7 @@ public partial class C_BaseEntity : IClientEntity
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public void AddSolidFlags(SolidFlags flags) => CollisionProp().AddSolidFlags(flags);
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public void RemoveSolidFlags(SolidFlags flags) => CollisionProp().RemoveSolidFlags(flags);
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public bool IsSolid() => CollisionProp().IsSolid();
+	[MethodImpl(MethodImplOptions.AggressiveInlining)] public bool IsPointSized() => CollisionProp().BoundingRadius() == 0.0f;
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public void SetSolid(SolidType val) => CollisionProp().SetSolid(val);
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public SolidType GetSolid() => CollisionProp().GetSolid();
 
@@ -1059,6 +1132,19 @@ public partial class C_BaseEntity : IClientEntity
 		color[2] = ColorRender.B / 255f;
 	}
 	public virtual void ClientThink() { }
+
+	public virtual bool ShouldDrawInView() {
+		C_BasePlayer? localPlayer = C_BasePlayer.GetLocalPlayer();
+		if (localPlayer == null)
+			return true;
+
+		if (render.GetViewEntity() == Index && localPlayer != this && (LuaRender.DrawViewerStack.Count == 0 || !LuaRender.DrawViewerStack[^1])) {
+			Shared.ObserverMode mode = localPlayer.GetObserverMode();
+			return mode != Shared.ObserverMode.None && mode != Shared.ObserverMode.InEye;
+		}
+
+		return true;
+	}
 
 	public bool ReadyToDraw;
 	public virtual int DrawModel(StudioFlags flags) {
@@ -1220,7 +1306,7 @@ public partial class C_BaseEntity : IClientEntity
 	protected virtual StudioHdr? OnNewModel() {
 		return null; // what the hell????????????????? 
 	}
-	void SetModelIndex(int index) {
+	public void SetModelIndex(int index) {
 		ModelIndex = index;
 #if GMOD_DLL
 		if (index != -1)
@@ -1666,7 +1752,7 @@ public partial class C_BaseEntity : IClientEntity
 			// Make sure player is driving simulation (field is only ever sent to local player)
 			SetPlayerSimulated(local);
 
-		// TODO: Partition/leaf stuff
+		UpdatePartitionListEntry();
 
 		if (!IsClientCreated())
 			if (Teleported() || IsNoInterpolationFrame())
@@ -2089,6 +2175,8 @@ public partial class C_BaseEntity : IClientEntity
 			case ShouldTransmiteState.Start: {
 					SetDormant(false);
 
+					UpdatePartitionListEntry();
+
 					if (PredictableID.IsActive()) {
 						PredictableID.SetAcknowledged(true);
 
@@ -2219,7 +2307,22 @@ public partial class C_BaseEntity : IClientEntity
 			AddEFlags(EFL.DontBlockLOS);
 	}
 
-	public virtual CollideType GetCollideType() => CollideType.ShouldNotCollide;
+	public virtual CollideType GetCollideType() {
+		if (ModelIndex == 0 || Model == null)
+			return CollideType.ShouldNotCollide;
+
+		if (!IsSolid())
+			return CollideType.ShouldNotCollide;
+
+		ModelType type = modelinfo.GetModelType(Model);
+		if (type != ModelType.Brush && type != ModelType.Studio)
+			return CollideType.ShouldNotCollide;
+
+		if (ModelIndex != 1 && IsPointSized())
+			return CollideType.ShouldNotCollide;
+
+		return CollideType.ShouldCollide;
+	}
 
 	public void UpdatePartitionListEntry() {
 		PartitionListMask list = PartitionListMask.ClientNonStaticEdicts;

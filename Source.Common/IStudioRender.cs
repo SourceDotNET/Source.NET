@@ -47,6 +47,27 @@ public struct DrawModelInfo {
 	public InlineArray4<LightDesc> LocalLightDescs;
 }
 
+public struct GetTrianglesVertex {
+	public Vector3 Position;
+	public Vector3 Normal;
+	public Vector4 TangentS;
+	public Vector2 TexCoord;
+	public Vector4 BoneWeight;
+	public InlineArray4<int> BoneIndex;
+	public int NumBones;
+}
+
+public class GetTrianglesMaterialBatch {
+	public IMaterial? Material;
+	public List<GetTrianglesVertex> Verts = [];
+	public List<int> TriListIndices = [];
+}
+
+public class GetTrianglesOutput {
+	public List<GetTrianglesMaterialBatch> MaterialBatches = [];
+	public InlineArrayMaxStudioBones<Matrix3x4> PoseToWorld;
+}
+
 public struct StudioRenderConfig {
 	public float EyeShiftX;
 	public float EyeShiftY;
@@ -101,6 +122,7 @@ public interface IStudioRender {
 	bool LoadModel(StudioHeader studioHDR, Memory<byte> vtxData, StudioHWData hardwareData);
 	void UnloadModel(StudioHWData hardwareData);
 
+	void GetTriangles(ref DrawModelInfo info, Span<Matrix3x4> boneToWorld, GetTrianglesOutput output);
 	void GetMaterialList(StudioHeader studioHDR, ref SpanList<IMaterial> materials);
 	void GetMaterialListFromBodyAndSkin(MDLHandle_t studio, int skin, int body, ref SpanList<IMaterial> outputMaterials);
 	Span<Matrix3x4> LockBoneMatrices(int boneCount);

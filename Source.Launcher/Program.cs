@@ -1,3 +1,4 @@
+using Game.BASS;
 using Game.Client;
 using Game.Lua;
 using Game.MenuSystem;
@@ -87,6 +88,7 @@ public class Bootloader : IDisposable
 				#if GMOD_DLL
 				.WithComponent<ILuaShared, LuaSharedImpl>()
 				.WithComponent<IMenuSystem, MenuSystem>()
+				.WithComponent<IGMod_Audio>(GMod_Audio.g_GModAudio)
 				.WithKeyedComponent<IHtmlSystem>("html_chromium", HTML.CEF.CefSystem.g_pHtmlSystem)
 				.WithKeyedComponent<IHtmlSystem>("html_stub", HTML.Stub.StubSystem.g_pHtmlSystem)
 				#endif

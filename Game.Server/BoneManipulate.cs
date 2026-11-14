@@ -48,7 +48,7 @@ public partial class BoneManipulate : BaseEntity
 		LocalBoneAng[index] = ang;
 	}
 
-	public void SetBoneScale(byte index, Vector3 scale) {
+	public void SetBoneScale(byte index, Vector3 scale, bool networkUpdate) {
 		if (scale.Length() > 512.0f)
 			scale = Vector3.Normalize(scale) * 512.0f;
 

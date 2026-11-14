@@ -52,6 +52,12 @@ public partial class
 	}
 
 #if GAME_DLL
+	int UseTypeCaps = (int)EntityCapabilities.ContinuousUse;
+
+	public override void SetUseType(int type) => UseTypeCaps = type;
+
+	public override EntityCapabilities ObjectCaps() => base.ObjectCaps() | (EntityCapabilities)UseTypeCaps;
+
 	IPhysicsMotionController? MotionController;
 
 	public override void StartMotionController() {
@@ -218,7 +224,7 @@ public partial class
 	StudioFlags DrawFlags;
 
 	public override int DrawModel(StudioFlags flags) {
-		if (!ShouldDraw())
+		if (!ShouldDrawInView())
 			return 0;
 		if (InDraw)
 			return base.DrawModel(flags | DrawFlags);
@@ -249,8 +255,24 @@ public partial class
 	}
 
 	public override void ClientThink() {
+		ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.Think, false);
+
+		float max = WorldSize.MAX_COORD_INTEGER * 8.0f;
+		ref Vector3 origin = ref GetNetworkOrigin();
+		if (origin.X > -max && origin.X < max && origin.Y > -max && origin.Y < max && origin.Z > -max && origin.Z < max) {
+			IPhysicsObject? physics = VPhysicsGetObject();
+			if (physics == null)
+				return;
+			if (physics.GetShadowController() != null)
+				physics.UpdateShadow(origin, GetNetworkAngles(), false, 0);
+			else
+				physics.SetPosition(origin, GetNetworkAngles(), true);
+		}
+	}
+
+	public override void Think() {
 		if (!IsMarkedForDeletion() && !ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.Think, true))
-			SetNextClientThink(gpGlobals.CurTime + 0.2);
+			SetNextThink(gpGlobals.CurTime + 0.2);
 	}
 #endif
 

@@ -573,7 +573,12 @@ public class TextEntry : Panel
 
 	public override void OnMousePressed(ButtonCode code) {
 #if GMOD_DLL
-		// todo: OnMousePressed hook
+		if (PushLuaHook(LUA_POOLEDSTRING.OnMousePressed)) {
+			PushLua(Lua!, LuaType.Panel);
+			Lua!.PushNumber((int)code);
+			if (Lua.CallInternalGetBool(2))
+				return;
+		}
 #endif
 		if (code == ButtonCode.MouseLeft) {
 			bool keepChecking = SelectCheck(true);

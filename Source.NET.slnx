@@ -136,6 +136,9 @@
     <Project Path="Game.Lua/Game.Lua.csproj">
       <Platform Project="x64" />
     </Project>
+    <Project Path="Game.BASS/Game.BASS.csproj">
+      <Platform Project="x64" />
+    </Project>
     <Project Path="Game.MenuSystem/Game.MenuSystem.csproj">
       <Platform Project="x64" />
     </Project>
@@ -161,8 +164,7 @@
       <Platform Project="x64" />
     </Project>
   </Folder>
-  <Folder Name="/7. Tools/" />
-  <Folder Name="/9. Tests/">
+  <Folder Name="/7. Tests/">
     <Project Path="Source.Common.Tests/Source.Common.Tests.csproj">
       <Platform Project="x64" />
     </Project>

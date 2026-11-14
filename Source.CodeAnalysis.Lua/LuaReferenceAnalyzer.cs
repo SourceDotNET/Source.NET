@@ -314,7 +314,7 @@ namespace Source.CodeAnalysis.Lua
 							state.Clear();
 							break;
 						}
-						if (invocation.TargetMethod.Name == "UnReference" && AsTracked(invocation.Instance) is ISymbol instance)
+						if ((invocation.TargetMethod.Name == "UnReference" || (invocation.TargetMethod.Name == "Dispose" && invocation.TargetMethod.ContainingType.Name == "LuaDisposable")) && AsTracked(invocation.Instance) is ISymbol instance)
 							state.Remove(instance);
 						ReleaseArguments(invocation.Arguments, state);
 						break;

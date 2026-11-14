@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Include="..\Usings\GlobalUsings.cs" Link="Usings/GlobalUsings.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ManagedBass" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Source.Common\Source.Common.csproj" />
+	</ItemGroup>
+
+</Project>

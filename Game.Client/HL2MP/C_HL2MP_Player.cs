@@ -5,6 +5,7 @@ using Game.Shared.GarrysMod;
 using Source;
 using Source.Common;
 using Source.Common.Commands;
+using Source.Common.Formats.BSP;
 using Source.Common.Mathematics;
 using Source.Common.Physics;
 
@@ -78,6 +79,38 @@ public partial class C_HL2MP_Player : C_BaseHLPlayer
 		base.PostDataUpdate(updateType);
 	}
 
+	public void Initialize() {
+		HeadYawPoseParam = LookupPoseParameter("head_yaw");
+		GetPoseParameterRange(HeadYawPoseParam, out HeadYawMin, out HeadYawMax);
+
+		HeadPitchPoseParam = LookupPoseParameter("head_pitch");
+		GetPoseParameterRange(HeadPitchPoseParam, out HeadPitchMin, out HeadPitchMax);
+
+		StudioHdr? hdr = GetModelPtr();
+		if (hdr == null)
+			return;
+		for (int i = 0; i < hdr.GetNumPoseParameters(); i++)
+			SetPoseParameter(hdr, i, 0.0f);
+	}
+
+	protected override StudioHdr? OnNewModel() {
+		StudioHdr? hdr = base.OnNewModel();
+
+		Initialize();
+		Initialize(); //? sure garry, sure
+
+		PlayerAnimState?.ClearAnimationState();
+
+		return hdr;
+	}
+
+	public override void OnDataChanged(DataUpdateType updateType) {
+		base.OnDataChanged(updateType);
+		if (updateType == DataUpdateType.Created)
+			SetNextClientThink(CLIENT_THINK_ALWAYS);
+		UpdateVisibility();
+	}
+
 	public override ref readonly QAngle EyeAngles() {
 		if (IsLocalPlayer())
 			return ref base.EyeAngles();
@@ -106,6 +139,62 @@ public partial class C_HL2MP_Player : C_BaseHLPlayer
 	public void DoAnimationEvent(PlayerAnimEvent evt, int data, bool predicted) => PlayerAnimState.DoAnimationEvent(evt, data);
 
 #if GMOD_DLL
+	int IDEntIndex;
+
+	public override void ClientThink() {
+		bool foundViewTarget = false;
+
+		MathLib.AngleVectors(EyeAngles(), out Vector3 forward);
+
+		for (int client = 1; client <= gpGlobals.MaxClients; ++client) {
+			C_BaseEntity? ent = Util.PlayerByIndex(client);
+			if (ent == null || !ent.IsPlayer())
+				continue;
+
+			if (ent.EntIndex() == EntIndex())
+				continue;
+
+			Vector3 dir = ent.GetAbsOrigin() - GetAbsOrigin();
+
+			if (dir.Length() > 128)
+				continue;
+
+			MathLib.VectorNormalize(ref dir);
+
+			if (Vector3.Dot(forward, dir) < 0.0f)
+				continue;
+
+			LookAtTarget = ent.EyePosition();
+			foundViewTarget = true;
+			break;
+		}
+
+		if (!foundViewTarget)
+			LookAtTarget = GetAbsOrigin() + forward * 512;
+
+		UpdateIDTarget();
+	}
+
+	public virtual void UpdateIDTarget() {
+		if (!IsLocalPlayer())
+			return;
+
+		IDEntIndex = 0;
+
+		if (GetObserverMode() == Shared.ObserverMode.Chase || GetObserverMode() == Shared.ObserverMode.DeathCam)
+			return;
+
+		Vector3 end = MainViewOrigin() + MainViewForward() * 1500;
+		Vector3 start = MainViewOrigin() + MainViewForward() * 10;
+		Util.TraceLine(start, end, Mask.Solid, this, Source.CollisionGroup.None, out Trace tr);
+
+		if (!tr.StartSolid && tr.DidHitNonWorldEntity()) {
+			C_BaseEntity? entity = tr.Ent;
+			if (entity != null && entity != this)
+				IDEntIndex = entity.EntIndex();
+		}
+	}
+
 	public override void UpdateClientSideAnimation() {
 		QAngle eyeAngles = EyeAngles();
 		PlayerAnimState.Update(eyeAngles[YAW], eyeAngles[PITCH]);

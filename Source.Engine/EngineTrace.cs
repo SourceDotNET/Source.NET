@@ -526,7 +526,7 @@ public abstract class EngineTrace : IEngineTrace
 		trace.FractionLeftSolid *= flWorldFractionLeftSolidScale;
 	}
 
-	public void HandleEntityToCollideable(IHandleEntity? handleEntity, out ICollideable? collide, out ReadOnlySpan<char> debugName) {
+	public virtual void HandleEntityToCollideable(IHandleEntity? handleEntity, out ICollideable? collide, out ReadOnlySpan<char> debugName) {
 		collide = StaticPropMgr().GetStaticProp(handleEntity);
 		if (collide != null) {
 			debugName = "static prop";
@@ -633,6 +633,27 @@ public class EngineTraceClient : EngineTrace
 
 		IClientUnknown? unk = entitylist.GetClientUnknownFromHandle(entity!.GetRefEHandle());
 		return unk!.GetCollideable();
+	}
+
+	public override void HandleEntityToCollideable(IHandleEntity? handleEntity, out ICollideable? collide, out ReadOnlySpan<char> debugName) {
+		collide = StaticPropMgr().GetStaticProp(handleEntity);
+		if (collide != null) {
+			debugName = "static prop";
+			return;
+		}
+
+		IClientUnknown? unk = (IClientUnknown?)handleEntity;
+		if (unk == null) {
+			collide = null;
+			debugName = "<null>";
+			return;
+		}
+
+		collide = unk.GetCollideable();
+		debugName = "client entity";
+		IClientNetworkable? network = unk.GetClientNetworkable();
+		if (network != null && network.GetClientClass() != null)
+			debugName = network.GetClientClass()!.NetworkName;
 	}
 
 	public override void SetTraceEntity(ICollideable? collideable, ref Trace trace) {

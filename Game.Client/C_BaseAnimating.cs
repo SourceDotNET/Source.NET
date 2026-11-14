@@ -290,8 +290,8 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	long MostRecentModelBoneCounter;
 	long MostRecentBoneSetupRequest;
 	int PrevBoneMask;
-	protected int AccumulatedBoneMask;
-	readonly BoneAccessor BoneAccessor = new();
+	protected internal int AccumulatedBoneMask;
+	internal readonly BoneAccessor BoneAccessor = new();
 	// Note that Handle is not a pointer in this case so we need to initialize
 	// each member in the bone attachments (when we get to this part).
 	readonly List<Handle<C_BaseAnimating>> BoneAttachments = [];
@@ -680,6 +680,8 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 			if (hdr == null || !hdr.SequencesAvailable())
 				return false;
 
+			C_BoneManipulate? boneManipulator = GetBoneManipulator(false) as C_BoneManipulate;
+
 			Matrix3x4 parentTransform = default;
 			MathLib.AngleMatrix(GetRenderAngles(), GetRenderOrigin(), out parentTransform);
 			// MathLib.AngleMatrix(new(19.56f, -145.89f, 0), new(-767, 143.9f, -12650), ref parentTransform);
@@ -715,6 +717,11 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 
 				StandardBlendingRules(hdr, pos, q, currentTime, bonesMaskNeedRecalc);
 
+				if (boneManipulator != null) {
+					for (int i = 0; i < hdr.NumBones(); i++)
+						boneManipulator.ManipulateBone(i, ref pos[i], ref q[i]);
+				}
+
 				BoneBitList boneComputed = new();
 				if (Ik != null && !IsRagdoll())
 					SolveIK(pos, q, BoneAccessor.GetBoneArrayForWrite(), ref boneComputed, currentTime);
@@ -730,6 +737,8 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 					return false;
 				}
 			}
+
+			boneManipulator?.PostBuildTransformations(this, hdr);
 		}
 
 		if (!boneToWorldOut.IsEmpty) {
@@ -1946,7 +1955,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	}
 
 	public override int DrawModel(StudioFlags flags) {
-		if (!ReadyToDraw)
+		if (!ReadyToDraw || !ShouldDrawInView())
 			return 0;
 
 		int drawn = 0;
@@ -2077,6 +2086,32 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	public EHANDLE LightingOriginRelative = new();
 	[NetworkVar("m_pBoneManipulator")]
 	public EHANDLE BoneManipulator = new();
+	public EHANDLE ClientBoneManipulator = new();
+
+	public virtual C_BaseEntity? GetBoneManipulator(bool create) {
+		if (BoneManipulator.IsValid())
+			return BoneManipulator.Get();
+
+		if (ClientBoneManipulator.Get() != null)
+			return ClientBoneManipulator.Get();
+
+		if (create) {
+			C_BoneManipulate manipulator = new();
+			if (!manipulator.InitializeAsClientEntity(null, RenderGroup.OpaqueEntity))
+				return null;
+
+			manipulator.SetParent(this, 0);
+			manipulator.SetOwnerEntity(this);
+			manipulator.SetLocalOrigin(default);
+			manipulator.Spawn();
+			RemoveFromPreviousBoneSetups();
+			ClientBoneManipulator.Set(manipulator);
+			return ClientBoneManipulator.Get();
+		}
+
+		return null;
+	}
+
 	[NetworkVar("m_pFlexManipulator")]
 	public EHANDLE FlexManipulator = new();
 	public EHANDLE ClientFlexManipulator = new();

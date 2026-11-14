@@ -777,7 +777,7 @@ public partial class
 	}
 
 
-	Vector3 GetPlayerMins() {
+	public virtual Vector3 GetPlayerMins() {
 		if (IsObserver())
 			return VEC_OBS_HULL_MIN_SCALED(this);
 		else {
@@ -788,7 +788,7 @@ public partial class
 		}
 	}
 
-	Vector3 GetPlayerMaxs() {
+	public virtual Vector3 GetPlayerMaxs() {
 		if (IsObserver())
 			return VEC_OBS_HULL_MAX_SCALED(this);
 		else {

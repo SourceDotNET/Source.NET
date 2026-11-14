@@ -121,6 +121,7 @@ public interface IVGuiInput
 	bool ShouldModalSubTreeReceiveMessages();
 
 	IPanel? GetMouseCapture();
+	IPanel? GetMouseFocus();
 
 	// InputInternal
 

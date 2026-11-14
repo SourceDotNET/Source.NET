@@ -52,6 +52,60 @@ public partial class C_BaseCombatWeapon : C_BaseAnimating
 		return owner == C_BasePlayer.GetLocalPlayer();
 	}
 
+	int OldState;
+	bool JustRestored;
+
+	public override void OnDataChanged(DataUpdateType updateType) {
+		base.OnDataChanged(updateType);
+
+		C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
+		C_BaseCombatCharacter? owner = GetOwner();
+
+		if (player != null && player == owner && ShouldDrawLocalPlayerViewModel()) {
+			if (State != (int)WeaponState.NotCarried && OldState == (int)WeaponState.NotCarried) {
+				if (ShouldDrawPickup())
+					BaseHudWeaponSelection.GetHudWeaponSelection()?.OnWeaponPickup(this);
+			}
+		}
+		else {
+			int overrideModelIndex = CalcOverrideModelIndex();
+			if (overrideModelIndex != -1 && overrideModelIndex != GetModelIndex())
+				SetModelIndex(overrideModelIndex);
+		}
+
+		UpdateVisibility();
+
+		OldState = State;
+		JustRestored = false;
+	}
+
+	public virtual int GetWorldModelIndex() {
+		if (g_pGameRules != null) {
+			ReadOnlySpan<char> baseName = modelinfo.GetModelName(modelinfo.GetModel(WorldModelIndex));
+			ReadOnlySpan<char> translatedName = g_pGameRules.TranslateEffectForVisionFilter("weapons", baseName);
+			if (translatedName != baseName)
+				return modelinfo.GetModelIndex(translatedName);
+		}
+		return WorldModelIndex;
+	}
+
+	public override int CalcOverrideModelIndex() {
+		C_BasePlayer? localPlayer = C_BasePlayer.GetLocalPlayer();
+		if (localPlayer != null && localPlayer == GetOwner() && ShouldDrawLocalPlayerViewModel())
+			return base.CalcOverrideModelIndex();
+		return GetWorldModelIndex();
+	}
+
+	public bool ShouldDrawPickup() {
+		if ((GetWeaponFlags() & WeaponFlags.NoItemPickup) != 0)
+			return false;
+
+		if (JustRestored)
+			return false;
+
+		return true;
+	}
+
 	public bool ShouldDrawUsingViewModel() => IsCarriedByLocalPlayer() && !C_BasePlayer.ShouldDrawLocalPlayer();
 
 	public void Redraw() {
@@ -60,7 +114,7 @@ public partial class C_BaseCombatWeapon : C_BaseAnimating
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static bool ShouldDrawLocalPlayerViewModel() => C_BasePlayer.ShouldDrawLocalPlayer();
+	public static bool ShouldDrawLocalPlayerViewModel() => !C_BasePlayer.ShouldDrawLocalPlayer();
 
 	public override bool ShouldDraw() {
 		if (WorldModelIndex == 0)

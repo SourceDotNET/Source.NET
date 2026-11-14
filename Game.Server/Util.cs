@@ -267,16 +267,29 @@ public static partial class Util
 
 	public static int DropToFloor(BaseEntity entity, Mask mask) => DropToFloor(entity, mask, null);
 
-	public static int DropToFloor(BaseEntity entity, Mask mask, BaseEntity? ignore) {
+	public static int DropToFloor(BaseEntity entity, Mask mask, BaseEntity? ignore, float distance = 256.0f) {
 		entity.SetGroundEntity(null);
 
-		TraceEntity(entity, entity.GetAbsOrigin(), entity.GetAbsOrigin() - new Vector3(0, 0, 256), mask, ignore, entity.GetCollisionGroup(), out Trace trace);
+		Trace trace;
+#if GMOD_DLL
+		TraceEntity(entity, entity.GetAbsOrigin(), entity.GetAbsOrigin(), mask, ignore, entity.GetCollisionGroup(), out trace);
+		if (trace.Fraction == 0)
+			return -1;
+#endif
+
+		TraceEntity(entity, entity.GetAbsOrigin(), entity.GetAbsOrigin() - new Vector3(0, 0, distance), mask, ignore, entity.GetCollisionGroup(), out trace);
 
 		if (trace.AllSolid)
 			return -1;
 
 		if (trace.Fraction == 1)
 			return 0;
+
+#if GMOD_DLL
+		float max = BaseEntity.k_flMaxEntityPosCoord * 8.0f;
+		if (!(-max < trace.EndPos.X && trace.EndPos.X < max && -max < trace.EndPos.Y && trace.EndPos.Y < max && -max < trace.EndPos.Z && trace.EndPos.Z < max))
+			return 0;
+#endif
 
 		entity.SetAbsOrigin(trace.EndPos);
 		entity.SetGroundEntity(trace.Ent);

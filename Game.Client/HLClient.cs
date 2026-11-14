@@ -128,6 +128,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		randomgaussian.AttachToStream(random);
 
 #if GMOD_DLL
+		get.Audio()!.Init(services);
 		get.HTML()?.Init(get.GameDirParent(), HtmlResourceHandler.g_HtmlResourceHandler);
 		get.IntroScreen()!.Start();
 		get.IntroScreen()!.Update("Start", true);
@@ -207,6 +208,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 #if GMOD_DLL
 		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
 		get.MenuSystem()?.Shutdown();
+		get.Audio()!.Shutdown();
 		get.HTML()?.Shutdown();
 		Game.Client.GarrysMod.MaterialProxyFactory.Shutdown();
 #endif

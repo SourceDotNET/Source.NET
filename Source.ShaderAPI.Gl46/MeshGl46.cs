@@ -180,7 +180,7 @@ public unsafe class MeshGl46 : IMesh
 	}
 
 	public virtual int IndexCount() {
-		throw new NotImplementedException();
+		return IndexBuffer != null ? IndexBuffer.IndexCount : 0;
 	}
 
 	public virtual MaterialIndexFormat IndexFormat() {
@@ -199,7 +199,7 @@ public unsafe class MeshGl46 : IMesh
 	public virtual bool Lock(int vertexCount, bool append, ref VertexDesc desc) {
 		if (VertexBuffer == null) {
 			int size = MeshMgr.VertexFormatSize(VertexFormat);
-			VertexBuffer = new VertexBufferGl46(VertexFormat, size, vertexCount, false);
+			VertexBuffer = new VertexBufferGl46(VertexFormat, size, vertexCount, false, ShaderUtil);
 		}
 
 		byte* vertexMemory = VertexBuffer.Lock(vertexCount, out desc.FirstVertex);
@@ -215,7 +215,7 @@ public unsafe class MeshGl46 : IMesh
 			return 0;
 		}
 
-		IndexBuffer ??= new IndexBufferGl46(indexCount, false);
+		IndexBuffer ??= new IndexBufferGl46(indexCount, false, ShaderUtil);
 
 		desc.Indices = (ushort*)IndexBuffer.Lock(readOnly, indexCount, out int startIndex, firstIndex);
 		if (desc.Indices == null) {
@@ -258,7 +258,7 @@ public unsafe class MeshGl46 : IMesh
 		VertexBufferGl46.ComputeVertexDescription(vertexMemory, VertexFormat, ref desc.Vertex);
 
 		if (indexCount > 0) {
-			IndexBuffer ??= new IndexBufferGl46(indexCount, false);
+			IndexBuffer ??= new IndexBufferGl46(indexCount, false, ShaderUtil);
 			desc.Index.Indices = (ushort*)IndexBuffer.ModifyLock(firstIndex, indexCount, out int startIndex);
 			desc.Index.IndexSize = 1;
 			IsIBLocked = true;
@@ -362,27 +362,28 @@ public unsafe class MeshGl46 : IMesh
 			if (pPrim->NumIndices == 0)
 				continue;
 
-			if (Type == MaterialPrimitiveType.Points || Type == MaterialPrimitiveType.InstancedQuads) {
-				throw new NotImplementedException();
+			if (!bound) {
+				uint vao = ((ShaderAPIGl46)ShaderAPI).CurrentVertexDecl;
+				glVertexArrayVertexBuffer(vao, 0, VertexBuffer!.VBO(), 0, VertexBuffer.VertexSize);
+				if (colorMesh != null)
+					glVertexArrayVertexBuffer(vao, 1, colorMesh.VertexBuffer!.VBO(), ColorMeshVertOffsetInBytes, colorMesh.VertexBuffer.VertexSize);
+
+				if (FlexVertexBuffer != null)
+					glVertexArrayVertexBuffer(vao, 2, FlexVertexBuffer.VBO(), FlexVertOffsetInBytes, FlexVertexBuffer.VertexSize);
+				else
+					glVertexArrayVertexBuffer(vao, 2, MeshMgr.GetZeroVertexBuffer(), 0, 4);
+
+				if (IndexBuffer != null)
+					glVertexArrayElementBuffer(vao, IndexBuffer.IBO());
+				bound = true;
 			}
+
+			if (Type == MaterialPrimitiveType.Points || Type == MaterialPrimitiveType.InstancedQuads)
+				glDrawArrays(Mode, (int)s_FirstVertex, pPrim->NumIndices);
 			else {
 				int numPrimitives = NumPrimitives(s_NumVertices, pPrim->NumIndices);
 
 				CheckIndices(pPrim, numPrimitives);
-				if (!bound) {
-					uint vao = ((ShaderAPIGl46)ShaderAPI).CurrentVertexDecl;
-					glVertexArrayVertexBuffer(vao, 0, VertexBuffer!.VBO(), 0, VertexBuffer.VertexSize);
-					if (colorMesh != null)
-						glVertexArrayVertexBuffer(vao, 1, colorMesh.VertexBuffer!.VBO(), ColorMeshVertOffsetInBytes, colorMesh.VertexBuffer.VertexSize);
-
-					if (FlexVertexBuffer != null)
-						glVertexArrayVertexBuffer(vao, 2, FlexVertexBuffer.VBO(), FlexVertOffsetInBytes, FlexVertexBuffer.VertexSize);
-					else
-						glVertexArrayVertexBuffer(vao, 2, MeshMgr.GetZeroVertexBuffer(), 0, 4);
-
-					glVertexArrayElementBuffer(vao, IndexBuffer!.IBO());
-					bound = true;
-				}
 				glDrawElementsBaseVertex(Mode, pPrim->NumIndices, GL_UNSIGNED_SHORT, (void*)(pPrim->FirstIndex * 2), BaseVertexIndex);
 			}
 		}

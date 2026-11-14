@@ -1,7 +1,14 @@
 #if CLIENT_DLL || GAME_DLL
 using Source.Common.Audio;
+using Source.Common.GarrysMod;
 using Source.Common.GarrysMod.Lua;
+using Source.Common.Mathematics;
 using Source.Common.SoundEmitterSystem;
+
+using System.Runtime.CompilerServices;
+
+using PitchInterval = Source.Common.SoundEmitterSystem.SoundInterval<byte>;
+using VolumeInterval = Source.Common.SoundEmitterSystem.SoundInterval<System.Half>;
 
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
@@ -9,10 +16,123 @@ namespace Game.Client.GarrysMod;
 namespace Game.Server.GarrysMod;
 #endif
 
+#if CLIENT_DLL
+public class PlaySoundThread : ILuaThreadedCall
+{
+	public IGModAudioChannel? Channel;
+	public string Path = "";
+	public string Flags = "";
+	public LuaObject Callback = new();
+	public int Type;
+	public int ErrorCode;
+	Thread? WorkerThread;
+	volatile bool Running;
+
+	public void Start() {
+		Running = true;
+		WorkerThread = new Thread(Run) { Name = "PlaySoundThread", IsBackground = true };
+		WorkerThread.Start();
+	}
+
+	public void Run() {
+		Span<int> error = stackalloc int[1];
+		if (Type == 0)
+			Channel = get.Audio()!.PlayURL(Path, Flags, error);
+		else if (Type == 1)
+			Channel = get.Audio()!.PlayFile(Path, Flags, error);
+		ErrorCode = error[0];
+		Running = false;
+	}
+
+	public void OnThreadFinished() { }
+
+	public bool IsFinished() => !Running;
+
+	public void DoFinish(ILuaBase lua) {
+		if (Running)
+			Error("DoFinish called while still running!");
+
+		ILuaInterface luaInterface = (ILuaInterface)lua;
+		if (Callback.isFunction()) {
+			if (Channel == null) {
+				Callback.Push();
+				lua.PushNil();
+				lua.PushNumber(ErrorCode);
+				lua.PushString(get.Audio()!.GetErrorString(ErrorCode));
+				luaInterface.CallFunctionProtected(3, 0, true);
+				return;
+			}
+
+			Callback.Push();
+			LuaAudioChannel.Push_IGModAudioChannel(Channel);
+			luaInterface.CallFunctionProtected(1, 0, true);
+			Channel = null;
+			return;
+		}
+
+		Channel?.Destroy();
+		Channel = null;
+		DestroyForced();
+	}
+
+	public void DestroyForced() {
+		WorkerThread?.Join();
+		if (Channel != null) {
+			Channel.Stop();
+			Channel.Destroy();
+			Channel = null;
+		}
+		Callback.UnReference();
+	}
+}
+#endif
+
 public static partial class LuaSound
 {
 	[LuaLibrary]
 	static readonly LuaLibrary LL_Factory_sound = new("sound");
+
+#if CLIENT_DLL
+	[LuaFunction]
+	static int PlayURL(ILuaInterface lua) {
+		if (commandLine.CheckParm("-disablehttp")) {
+			lua.ErrorFromLua($"sound.PlayURL blocked by -disablehttp launch parameter. URL: {lua.CheckString(1)}\n");
+			return 0;
+		}
+
+		garrysmod.UpdateAudioVolume();
+
+		lua.CheckType(3, LuaType.Function);
+		PlaySoundThread thread = new();
+		thread.Callback.SetFromStack(3);
+		thread.Flags = lua.CheckString(2).ToString();
+		thread.Path = lua.CheckString(1).ToString();
+		thread.Type = 0;
+		lua.AddThreadedCall(thread);
+		thread.Start();
+		return 0;
+	}
+
+	[LuaFunction]
+	static int PlayFile(ILuaInterface lua) {
+		garrysmod.UpdateAudioVolume();
+
+		string path = lua.CheckString(1).ToString().Replace("\\", "/");
+		while (path.Contains("//"))
+			path = path.Replace("//", "/");
+		path = path.Trim(' ');
+
+		lua.CheckType(3, LuaType.Function);
+		PlaySoundThread thread = new();
+		thread.Callback.SetFromStack(3);
+		thread.Flags = lua.CheckString(2).ToString();
+		thread.Path = path;
+		thread.Type = 1;
+		lua.AddThreadedCall(thread);
+		thread.Start();
+		return 0;
+	}
+#endif
 
 	[LuaFunction]
 	static int Add(ILuaInterface lua) {
@@ -102,6 +222,64 @@ public static partial class LuaSound
 	static int AddSoundOverrides(ILuaInterface lua) {
 		soundemitterbase.AddSoundOverrides(lua.CheckString(1), false);
 		return 0;
+	}
+
+	[LuaFunction]
+	static int GetProperties(ILuaInterface lua) {
+		int index = soundemitterbase.GetSoundIndex(lua.CheckString(1));
+		if ((short)index == -1)
+			return 0;
+
+		ref SoundParametersInternal parms = ref soundemitterbase.InternalGetParametersForSound(index);
+		if (Unsafe.IsNullRef(ref parms))
+			return 0;
+
+		int count = parms.NumSoundNames();
+		if (count == 0)
+			return 0;
+
+		LuaTable table = new();
+		table.SetMember("channel", (float)(ushort)parms.GetChannel());
+		table.SetMember("level", (float)parms.GetSoundLevel().Start);
+
+		ref readonly VolumeInterval volume = ref parms.GetVolume();
+		if (Float16.Convert16bitFloatTo32bits(volume.Range) != 0.0f) {
+			LuaTable volumes = new();
+			float start = Float16.Convert16bitFloatTo32bits(volume.Start);
+			volumes.SetMemberDouble(1, start);
+			volumes.SetMemberDouble(2, Float16.Convert16bitFloatTo32bits(volume.Range) + start);
+			table.SetMember("volume", volumes);
+			volumes.UnReference();
+		}
+		else
+			table.SetMember("volume", Float16.Convert16bitFloatTo32bits(volume.Start));
+
+		ref readonly PitchInterval pitch = ref parms.GetPitch();
+		if (pitch.Range == 0)
+			table.SetMember("pitch", (float)pitch.Start);
+		else {
+			LuaTable pitches = new();
+			pitches.SetMemberDouble(1, pitch.Start);
+			pitches.SetMemberDouble(2, pitch.Start + pitch.Range);
+			table.SetMember("pitch", pitches);
+			pitches.UnReference();
+		}
+
+		Span<SoundFile> names = parms.GetSoundNames();
+		if (count == 1)
+			table.SetMember("sound", soundemitterbase.GetWaveName(names[0].Symbol));
+		else {
+			LuaTable sounds = new(null, (uint)count);
+			for (int i = 0; i < count; i++)
+				sounds.SetMember((float)(i + 1), soundemitterbase.GetWaveName(names[i].Symbol));
+			table.SetMember("sound", sounds);
+			sounds.UnReference();
+		}
+
+		table.SetMember("name", soundemitterbase.GetSoundName(index));
+		table.Push();
+		table.UnReference();
+		return 1;
 	}
 }
 #endif

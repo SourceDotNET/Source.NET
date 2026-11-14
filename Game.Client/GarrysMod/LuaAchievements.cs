@@ -19,7 +19,7 @@ public static partial class LuaAchievements
 	static readonly LuaLibrary LL_Factory_achievements = new("achievements");
 
 #if !MENU_DLL
-	static bool UnsetIncrementFlag;
+	internal static bool UnsetIncrementFlag;
 #endif
 
 	static IAchievement? GetAchievement(int index) {

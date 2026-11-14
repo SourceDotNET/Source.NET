@@ -44,6 +44,14 @@ public partial class
 		ScriptedEntity.StartLua();
 	}
 
+#if GAME_DLL
+	int UseTypeCaps = (int)EntityCapabilities.ContinuousUse;
+
+	public override void SetUseType(int type) => UseTypeCaps = type;
+
+	public override EntityCapabilities ObjectCaps() => base.ObjectCaps() | (EntityCapabilities)UseTypeCaps;
+#endif
+
 #if CLIENT_DLL
 	public override void OnDataChanged(DataUpdateType updateType) {
 		base.OnDataChanged(updateType);

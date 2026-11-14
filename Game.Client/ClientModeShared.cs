@@ -1,3 +1,4 @@
+using Game.Client.GarrysMod;
 using Game.Client.HUD;
 using Game.Shared;
 
@@ -6,6 +7,7 @@ using Source.Common;
 using Source.Common.Bitbuffers;
 using Source.Common.Commands;
 using Source.Common.Formats.Keyvalues;
+using Source.Common.GarrysMod.Lua;
 using Source.Common.GUI;
 using Source.Common.Input;
 using Source.Common.MaterialSystem;
@@ -213,12 +215,27 @@ public class ClientModeShared : GameEventListener, IClientMode
 		return v_viewmodel_fov.GetFloat();
 	}
 
+	public static bool DrawViewer;
+
 	public virtual void OverrideView(ref ViewSetup setup) {
+		DrawViewer = false;
 		C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
 		if (player == null)
 			return;
 
-		if (input.CAM_IsThirdPerson()) {
+		player.OverrideView(ref setup);
+
+		if (!input.CAM_IsThirdPerson()) {
+			if (input.CAM_IsOrthographic()) {
+				setup.Ortho = true;
+				input.CAM_OrthographicSize(out float w, out float h);
+				setup.OrthoRight = w * 0.5f;
+				setup.OrthoLeft = -(w * 0.5f);
+				setup.OrthoTop = -(h * 0.5f);
+				setup.OrthoBottom = h * 0.5f;
+			}
+		}
+		else {
 			Vector3 camOfs = g_ThirdPersonManager.GetCameraOffsetAngles();
 			Vector3 camOfsDist = g_ThirdPersonManager.GetFinalCameraOffset();
 
@@ -238,7 +255,39 @@ public class ClientModeShared : GameEventListener, IClientMode
 			setup.Angles = camAngles;
 		}
 
-		// todo ortho
+		Vector3 eyeOrigin = setup.Origin;
+		QAngle eyeAngles = setup.Angles;
+
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.CalcView)) {
+			LuaEntity.Push_Entity(player);
+			LuaVector.Push_Vector(setup.Origin);
+			LuaAngle.Push_Angle(setup.Angles);
+			g_Lua!.PushNumber(setup.FOV);
+			g_Lua!.PushNumber(setup.ZNear);
+			g_Lua!.PushNumber(setup.ZFar);
+			if (gGM.CallReturns(6, 1)) {
+				ILuaObject ret = g_Lua!.GetReturn(0);
+				setup.Origin = ret.GetMemberVector("origin", setup.Origin);
+				setup.Angles = ret.GetMemberAngle("angles", setup.Angles);
+				setup.FOV = ret.GetMemberFloat("fov", setup.FOV);
+				setup.ZNear = ret.GetMemberFloat("znear", setup.ZNear);
+				setup.ZFar = ret.GetMemberFloat("zfar", setup.ZFar);
+
+				LuaObject ortho = new();
+				ret.GetMember("ortho", ortho);
+				if (ortho.isTable()) {
+					setup.Ortho = true;
+					setup.OrthoLeft = ortho.GetMemberFloat("left", setup.OrthoLeft);
+					setup.OrthoRight = ortho.GetMemberFloat("right", setup.OrthoRight);
+					setup.OrthoTop = ortho.GetMemberFloat("top", setup.OrthoTop);
+					setup.OrthoBottom = ortho.GetMemberFloat("bottom", setup.OrthoBottom);
+				}
+				DrawViewer = ret.GetMemberBool("drawviewer", false);
+				ortho.UnReference();
+			}
+		}
+
+		player.CalcViewModelView(in eyeOrigin, in eyeAngles);
 	}
 
 	public void Layout() {

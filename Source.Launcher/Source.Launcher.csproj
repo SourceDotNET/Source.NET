@@ -21,6 +21,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Game.Client\Game.Client.csproj" />
 		<ProjectReference Include="..\Game.Lua\Game.Lua.csproj" />
+		<ProjectReference Include="..\Game.BASS\Game.BASS.csproj" />
 		<ProjectReference Include="..\Game.MenuSystem\Game.MenuSystem.csproj" />
 		<ProjectReference Include="..\Game.Server\Game.Server.csproj" />
 		<ProjectReference Include="..\Game.UI\Game.UI.csproj" />
