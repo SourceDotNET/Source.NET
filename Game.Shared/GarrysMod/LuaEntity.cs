@@ -399,6 +399,20 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__PlayScene(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (ent.GetBaseAnimating() is not BaseFlex flex)
+			return 0;
+
+		float delay = lua.GetType(3) == LuaType.Number ? (float)lua.CheckNumber(3) : 0.0f;
+		EHANDLE sceneEnt = new();
+		float duration = InstancedScriptedScene(flex, lua.CheckString(2), ref sceneEnt, delay);
+		lua.PushNumber(duration);
+		Push_Entity(sceneEnt.Get());
+		return 2;
+	}
+
+	[LuaMethod]
 	static int Entity__StartMotionController(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		if (PhysIsInCallback()) {

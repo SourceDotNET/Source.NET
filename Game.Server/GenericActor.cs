@@ -27,6 +27,8 @@ public class GenericActor : AI_BaseActor
 
 	public override int GetSoundInterests() => 0;
 
+	public override void HandleAnimEvent(ref AnimEvent animEvent) => base.HandleAnimEvent(ref animEvent);
+
 	public override void Spawn() {
 		Precache();
 

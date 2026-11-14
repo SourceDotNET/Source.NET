@@ -944,6 +944,19 @@ public class TriggerLook : TriggerOnce
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
+	public override int DrawDebugTextOverlays() {
+		int text_offset = base.DrawDebugTextOverlays();
+
+		if ((DebugOverlays & DebugOverlayBits.Text) != 0) {
+			Span<char> tempstr = stackalloc char[255];
+			sprintf(tempstr, "Time:   %3.2f").F(LookTime - Math.Max(0, LookTimeTotal));
+			EntityText(text_offset, tempstr, 0);
+			text_offset++;
+		}
+
+		return text_offset;
+	}
+
 	//------------------------------------------------------------------------------
 	// Purpose:
 	//------------------------------------------------------------------------------
