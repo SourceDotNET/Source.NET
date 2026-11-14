@@ -93,8 +93,26 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 		return FrameCount;
 	}
 
-	public Span<byte> GetResourceData(uint type) {
-		throw new NotImplementedException();
+	readonly Dictionary<ResourceEntryType, byte[]> ResourceData = [];
+
+	public Span<byte> GetResourceData(uint type)
+		=> ResourceData.TryGetValue(ResourceEntryInfo.ParseTag((byte)type, (byte)(type >> 8), (byte)(type >> 16)), out byte[]? data) ? data : default;
+
+	void StoreResourceData(IVTFTexture vtfTexture) {
+		uint count = vtfTexture.GetResourceTypes([]);
+		if (count == 0)
+			return;
+
+		Span<ResourceEntryType> types = stackalloc ResourceEntryType[(int)count];
+		vtfTexture.GetResourceTypes(types);
+		foreach (ResourceEntryType type in types) {
+			if (type == ResourceEntryType.LowResThumbnail || type == ResourceEntryType.HighResImageData)
+				continue;
+
+			Span<byte> data = vtfTexture.GetResourceData(type);
+			if (!data.IsEmpty)
+				ResourceData.TryAdd(type, data.ToArray());
+		}
 	}
 
 	public void IncrementReferenceCount() => ++RefCount;
@@ -699,6 +717,8 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 
 		Reflectivity = vtfTexture.Reflectivity();
 
+		StoreResourceData(vtfTexture);
+
 		// TODO: How does Source stream textures?
 		if (ConvertToActualFormat(vtfTexture)) {
 
@@ -713,9 +733,9 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 											out TexDimensions dimsMapping, out TexDimensions dimsActual, out TexDimensions dimsAllocated,
 											out uint stripFlags) {
 		// TODO; finish the complexities of texture loading
-		if (!vtfTexture!.Unserialize(fileHandle.Stream, false)) {
+		bool loaded = vtfTexture!.Unserialize(fileHandle.Stream, false);
+		if (!loaded)
 			Warning($"VTF texture '{fileHandle.GetPath()}' failed to load!\n");
-		}
 
 		dimsMapping = new() {
 			Width = (ushort)vtfTexture.Width(),
@@ -729,7 +749,7 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 		int nMipSkipCount = ComputeMipSkipCount(name, dimsMapping, false, vtfTexture, fullFlags, DesiredDimensionLimit, ref StreamingMips, out settings, out dimsActual, out dimsAllocated, out stripFlags);
 
 
-		return true;
+		return loaded;
 	}
 
 	unsafe byte* ImageData;
@@ -1198,6 +1218,8 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 	}
 
 	private void Shutdown() {
+		ResourceData.Clear();
+
 		// Frees the texture regen class
 		TextureRegenerator = null;
 
