@@ -1,4 +1,5 @@
 using Source.Common;
+using Source.Common.Mathematics;
 using Source;
 using Game.Shared;
 using System.Numerics;
@@ -22,4 +23,20 @@ public partial class TEMuzzleFlash(ReadOnlySpan<char> name) : BaseTempEntity(nam
 	public float Scale;
 	[NetworkVar("m_nType")]
 	public int Type;
+
+	public override void Test(in Vector3 current_origin, in QAngle current_angles) { }
+}
+
+public static partial class TempEnts
+{
+	static readonly TEMuzzleFlash g_TEMuzzleFlash = new("MuzzleFlash");
+
+	public static void TE_MuzzleFlash<IRF>(scoped ref IRF filter, float delay, in Vector3 start, in QAngle angles, float scale, int type) where IRF : IRecipientFilter {
+		g_TEMuzzleFlash.Origin = start;
+		g_TEMuzzleFlash.Angles = angles;
+		g_TEMuzzleFlash.Scale = scale;
+		g_TEMuzzleFlash.Type = type;
+
+		g_TEMuzzleFlash.Create(ref filter, delay);
+	}
 }

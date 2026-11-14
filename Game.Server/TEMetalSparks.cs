@@ -1,4 +1,5 @@
 using Source.Common;
+using Source.Common.Mathematics;
 using Source;
 using Game.Shared;
 using System.Numerics;
@@ -16,6 +17,23 @@ public partial class TEMetalSparks(ReadOnlySpan<char> name) : BaseTempEntity(nam
 	public Vector3 Pos;
 	[NetworkVar("m_vecDir")]
 	public Vector3 Dir;
+
+	public override void Test(in Vector3 current_origin, in QAngle current_angles) {
+		Pos = current_origin;
+
+		MathLib.AngleVectors(current_angles, out Dir);
+
+		Pos += new Vector3(0, 0, 24);
+
+		MathLib.AngleVectors(current_angles, out Vector3 forward);
+		forward.Z = 0.0f;
+		MathLib.VectorNormalize(ref forward);
+
+		Pos += forward * 100.0f;
+
+		BroadcastRecipientFilter filter = new();
+		Create(ref filter, 0.0f);
+	}
 }
 
 public static partial class TempEnts

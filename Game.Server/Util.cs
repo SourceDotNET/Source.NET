@@ -734,6 +734,16 @@ public static partial class Util
 	}
 #endif
 
+	public static Vector3 RandomBloodVector() {
+		Vector3 direction;
+
+		direction.X = random.RandomFloat(-1, 1);
+		direction.Y = random.RandomFloat(-1, 1);
+		direction.Z = random.RandomFloat(0, 1);
+
+		return direction;
+	}
+
 	public static void Remove(BaseEntity? entity) {
 		if (entity == null)
 			return;
