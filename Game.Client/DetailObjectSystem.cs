@@ -1284,7 +1284,7 @@ public class DetailObjectSystem : IDetailObjectSystem, ISpatialLeafEnumerator
 		FastSpriteX4[] sprites = data.Sprites!;
 		SortInfo[] outSort = FastSortInfos!;
 		FastSpriteQuadBuildoutBufferX4[] quadBufferOut = BuildoutBuffer!;
-		int spriteIdx = 0;
+		int spriteIdx = data.StartSIMDSprite;
 		int outIdx = 0;
 		int quadIdx = 0;
 		int curidx = 0;

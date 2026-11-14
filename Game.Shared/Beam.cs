@@ -29,6 +29,8 @@ public partial class
 #endif
 	: BaseEntity
 {
+	// todo: WorldSpaceCenter override ((GetAbsStartPos() + GetAbsEndPos()) * 0.5f), it needs GetAbsStartPos and GetAbsEndPos ported first
+
 	public const int ATTACHMENT_INDEX_BITS = 5;
 	public const float MAX_BEAM_WIDTH = 102.3f;
 	public const float MAX_BEAM_SCROLLSPEED = 100f;

@@ -635,9 +635,7 @@ public partial class
 	}
 
 	public BasePlayer? GetSimulatingPlayer() => PlayerSimulationOwner.Get();
-	public virtual ref readonly Vector3 WorldSpaceCenter() {
-		return ref GetAbsOrigin(); // todo
-	}
+	public virtual Vector3 WorldSpaceCenter() => CollisionProp().WorldSpaceCenter();
 
 	public void SetPlayerSimulated(BasePlayer owner) {
 		b_IsPlayerSimulated = true;
