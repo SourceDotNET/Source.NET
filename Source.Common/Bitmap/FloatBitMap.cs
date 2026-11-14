@@ -18,12 +18,17 @@ public struct PixRGBAF
 
 	public PixRGBA8 To8(in PixRGBAF f) {
 		PixRGBA8 x = new() {
-			Red = (byte)(Math.Max(0f, Math.Min(255f, 255f * f.Red))),
-			Green = (byte)(Math.Max(0f, Math.Min(255f, 255f * f.Green))),
-			Blue = (byte)(Math.Max(0f, Math.Min(255f, 255f * f.Blue))),
-			Alpha = (byte)(Math.Max(0f, Math.Min(255f, 255f * f.Alpha)))
+			Red = To8(f.Red),
+			Green = To8(f.Green),
+			Blue = To8(f.Blue),
+			Alpha = To8(f.Alpha)
 		};
 		return x;
+	}
+
+	static byte To8(float f) {
+		double v = 255.0 * (double)f;
+		return v < 0 ? (byte)0 : (v > 255.0 ? (byte)255 : (byte)(int)v);
 	}
 }
 
@@ -172,6 +177,51 @@ public class FloatBitMap
 			for (int x = 0; x < Width; x++)
 				for (int c = 0; c < 3; c++)
 					Pixel(x, y, c) *= scaleFactor;
+	}
+
+	static float ScaleValue(float f, float overbright) {
+		int ival = (int)f;
+		return (float)(ival * ((double)overbright / 255.0));
+	}
+
+	static float IScaleValue(float f, float overbright) {
+		f = (float)((double)f * (1.0 / (double)overbright));
+		double ival = Math.Ceiling((double)f * 255.0);
+		return ival > 255.0 ? 255.0f : (float)(int)ival;
+	}
+
+	public void CompressTo8Bits(float overbright) {
+		FloatBitMap tmp = new(Width, Height);
+
+		for (int y = 0; y < Height; y++)
+			for (int x = 0; x < Width; x++)
+				for (int c = 0; c < 3; c++) {
+					float value = Pixel(x, y, c);
+					Pixel(x, y, c) = value < overbright ? value : overbright;
+				}
+
+		for (int y = 0; y < Height; y++)
+			for (int x = 0; x < Width; x++) {
+				float maxc = Math.Max(Pixel(x, y, 0), Math.Max(Pixel(x, y, 1), Pixel(x, y, 2)));
+				if (maxc == 0) {
+					for (int c = 0; c < 4; c++)
+						tmp.Pixel(x, y, c) = 0;
+				}
+				else {
+					float desiredFloatScale = maxc;
+					float closestIScale = IScaleValue(desiredFloatScale, overbright);
+					float scaleValueWeGot = ScaleValue(closestIScale, overbright);
+					tmp.Pixel(x, y, 3) = closestIScale;
+					for (int c = 0; c < 3; c++)
+						tmp.Pixel(x, y, c) = Pixel(x, y, c) / scaleValueWeGot;
+				}
+			}
+
+		tmp.RGBAData.AsSpan(0, Width * Height * 4).CopyTo(RGBAData);
+
+		for (int y = 0; y < Height; y++)
+			for (int x = 0; x < Width; x++)
+				Pixel(x, y, 3) = (float)((double)Pixel(x, y, 3) * (1.0 / 255.0));
 	}
 
 	public float[] AllocateRGB(int width, int height) {
