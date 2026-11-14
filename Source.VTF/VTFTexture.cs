@@ -230,8 +230,6 @@ public sealed class VTFTexture : IVTFTexture
 
 	public bool HasResourceEntry(ResourceEntryType type) => !Unsafe.IsNullRef(ref FindResourceEntryInfo(type));
 
-	public ResourceEntryType[] GetResourceTypes() => ResourcesInfo.Select(r => r.Tag).ToArray();
-
 	int IVTFTexture.Height() => Height;
 
 	Span<byte> IVTFTexture.ImageData() {
@@ -601,6 +599,9 @@ public sealed class VTFTexture : IVTFTexture
 				continue;
 			}
 
+			if (resource.Offset > stream.Length - sizeof(int))
+				return false;
+
 			stream.Seek(resource.Offset, SeekOrigin.Begin);
 			int numBytes = reader.ReadInt32();
 			if (numBytes < 0 || numBytes > stream.Length - stream.Position)
@@ -639,16 +640,6 @@ public sealed class VTFTexture : IVTFTexture
 		bool mipDataPresent = true;
 		int firstAvailableMip = 0;
 		int lastAvailableMip = MipCount - 1;
-
-		Span<byte> data = GetResourceData(ResourceEntryType.TextureStreamSettings);
-		if (!data.IsEmpty) {
-			ref TextureStreamSettings_t streamSettings = ref MemoryMarshal.Cast<byte, TextureStreamSettings_t>(data)[0];
-			firstAvailableMip = Math.Max(0, streamSettings.FirstAvailableMip - skipMipLevels);
-			lastAvailableMip = Math.Max(0, streamSettings.LastAvailableMip - skipMipLevels);
-			mipDataPresent = false;
-		}
-
-		// Not doing streamable textures right now
 
 		Assert(firstAvailableMip >= 0 && firstAvailableMip <= lastAvailableMip && lastAvailableMip < MipCount);
 

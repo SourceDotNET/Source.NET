@@ -97,7 +97,6 @@ public interface IVTFTexture : IDisposable
 	void SetResourceData(ResourceEntryType type, Span<byte> data);
 	Span<byte> GetResourceData(ResourceEntryType type);
 	bool HasResourceEntry(ResourceEntryType type);
-	ResourceEntryType[] GetResourceTypes();
 
 	bool Unserialize(Stream stream, bool headerOnly = false, int skipMipLevels = 0);
 	bool Serialize(Stream stream);
