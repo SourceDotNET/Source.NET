@@ -26,6 +26,8 @@ class LogicAuto : BaseEntity
 
 	string? globalstate;
 
+	public override EntityCapabilities ObjectCaps() => base.ObjectCaps() & ~EntityCapabilities.AcrossTransition;
+
 	public static readonly new DataMap DataDesc = new(typeof(LogicAuto), BaseEntity.DataDesc, [
 		DEFINE.KEYFIELD(nameof(globalstate), FieldType.String, "globalstate"),
 		DEFINE.OUTPUT(nameof(OnMapSpawn), "OnMapSpawn", eventFuncs),

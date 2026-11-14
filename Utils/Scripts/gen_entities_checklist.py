@@ -159,7 +159,7 @@ for l in open(os.path.join(REPO, 'DATATABLES_COMPLETED.md'), encoding='utf-8'):
 # C#: classes, links, methods, string literals
 # ---------------------------------------------------------------------------------------------
 cs = {}; netname = {}
-DECL = re.compile(r'^\s*(?:\[[^\]]*\]\s*)*(?:(?:public|private|protected|internal|static|override|virtual|abstract|new|sealed|unsafe|extern|partial|async|readonly)\s+)*[\w<>\[\],.?]+(?:<[^()]*>)?[?]?\s+(\w+)\s*(?:<[^()]*>)?\s*\(')
+DECL = re.compile(r'^\s*(?:\[[^\]]*\]\s*)*(?:(?:public|private|protected|internal|static|override|virtual|abstract|new|sealed|unsafe|extern|partial|async|readonly|ref)\s+)*[\w<>\[\],.?]+(?:<[^()]*>)?[?]?\s+(\w+)\s*(?:<[^()]*>)?\s*\(')
 CLS = re.compile(r'\b(?:class|struct)\s+(\w+)')
 NOTMETHOD = {'if', 'while', 'for', 'foreach', 'switch', 'return', 'using', 'lock', 'catch', 'new', 'class', 'struct'}
 def preprocess(raw):

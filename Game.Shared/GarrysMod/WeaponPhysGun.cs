@@ -71,6 +71,13 @@ public partial class
 		base.Activate();
 	}
 
+#if GAME_DLL
+	public override void OnRestore() {
+		base.OnRestore();
+		DropEntity();
+		CreatePhysBeam();
+	}
+#endif
 
 	public
 #if CLIENT_DLL
@@ -89,6 +96,7 @@ public partial class
 		if ((GetEFlags() & EFL.DirtyAbsTransform) != 0)
 			CalcAbsolutePosition();
 
+		// todo: PhysBeam = CPhysBeam::Create(GetOwnerEntity(), GetAbsOrigin()), it needs CPhysBeam ported first
 		return default;
 	}
 	public override bool Deploy() {
@@ -102,7 +110,7 @@ public partial class
 		base.Drop(velocity);
 	}
 	public void DropEntity(){
-
+		// todo: PhysgunDrop hook, EnablePhysBeam, detach the grabbed entity from the controller, SetPhysicsAttacker and reset the handles, it needs CPhysGunControllerPoint ported first
 	}
 	public override float GetFireRate() => 0.01f;
 	public override ReadOnlySpan<char> GetHoldType() => "physgun";
@@ -113,28 +121,31 @@ public partial class
 		return base.Holster(switchingTo);
 	}
 	public override void ItemPostFrame() {
+		// todo
 		base.ItemPostFrame();
 	}
 	public override void Precache() {
 		base.Precache();
 	}
 	public override void PrimaryAttack() {
+		// todo
 		base.PrimaryAttack();
 	}
 	public override bool Reload() {
 		return base.Reload();
 	}
 	public void RemovePhysBeam(){
-
+		// todo: remove the beam entity, it needs CPhysBeam ported first
 	}
 	public override void SecondaryAttack() {
+		// todo
 		base.SecondaryAttack();
 	}
 	public override void UpdateOnRemove() {
 		base.UpdateOnRemove();
 	}
-	public void UpdatePosition(){ }
-	public void UpdateRotation(){ }
-	public bool ValidatePhysObj() => false;
+	public void UpdatePosition(){ } // todo
+	public void UpdateRotation(){ } // todo
+	public bool ValidatePhysObj() => false; // todo
 }
 #endif

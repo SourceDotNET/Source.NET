@@ -12,12 +12,12 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
 
 ## Progress
 
-`█░░░░░░░░░░░░░░░░░░░` **51 / 788 classnames complete (6.5%)**
+`██░░░░░░░░░░░░░░░░░░` **60 / 788 classnames complete (7.6%)**
 
-`████░░░░░░░░░░░░░░░░` **2,823 / 15,450 boxes checked (18.3%)**
+`████░░░░░░░░░░░░░░░░` **2,847 / 15,450 boxes checked (18.4%)**
 
 - 260 / 691 GMod C++ classes have a C# class (37.6%)
-- 1 / 49 base classes complete
+- 3 / 49 base classes complete
 - 468 classnames have no boxes checked
 
 | Kind                      | Checked |  Total |   Done |
@@ -25,25 +25,25 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
 | Linked                    |     319 |    788 |  40.5% |
 | Networked                 |     244 |    244 | 100.0% |
 | KeyValues                 |     227 |  1,590 |  14.3% |
-| Inputs                    |     177 |  1,382 |  12.8% |
+| Inputs                    |     181 |  1,382 |  13.1% |
 | Outputs                   |     107 |    543 |  19.7% |
 | Think/Touch/Use functions |      32 |    409 |   7.8% |
-| Methods                   |   1,717 | 10,494 |  16.4% |
+| Methods                   |   1,737 | 10,494 |  16.6% |
 
 ### Closest to done
 
-| Entry          | Checked |  Done | Left |
-| -------------- | ------: | ----: | ---: |
-| CBaseTrigger   |   34/35 | 97.1% |    1 |
-| trigger_hurt   |   16/17 | 94.1% |    1 |
-| scripted_scene | 124/133 | 93.2% |    9 |
-| logic_auto     |   11/12 | 91.7% |    1 |
-| trigger_look   |   11/12 | 91.7% |    1 |
-| CBaseFlex      |   44/49 | 89.8% |    5 |
-| soundent       |   17/19 | 89.5% |    2 |
-| npc_gman       |     8/9 | 88.9% |    1 |
-| weapon_physgun |   22/25 | 88.0% |    3 |
-| generic_actor  |     7/8 | 87.5% |    1 |
+| Entry                    | Checked |  Done | Left |
+| ------------------------ | ------: | ----: | ---: |
+| scripted_scene           | 132/133 | 99.2% |    1 |
+| func_tracktrain          |   70/80 | 87.5% |   10 |
+| func_rotating            |   31/36 | 86.1% |    5 |
+| env_fade                 |     6/7 | 85.7% |    1 |
+| player_manager           |     6/7 | 85.7% |    1 |
+| env_zoom                 |     5/6 | 83.3% |    1 |
+| func_physbox_multiplayer |     5/6 | 83.3% |    1 |
+| trigger_playermovement   |     5/6 | 83.3% |    1 |
+| trigger_impact           |    9/11 | 81.8% |    2 |
+| weapon_crowbar           |   12/15 | 80.0% |    3 |
 
 ### Most work left
 
@@ -64,12 +64,12 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
 
 | Family    | Complete | Boxes checked |  Done |
 | --------- | -------: | ------------: | ----: |
+| logic_*   |    11/23 |       178/320 | 55.6% |
 | filter_*  |     6/11 |         30/54 | 55.6% |
-| logic_*   |    10/23 |       177/320 | 55.3% |
-| trigger_* |    11/34 |       104/286 | 36.4% |
+| trigger_* |    14/34 |       106/286 | 37.1% |
 | cycler_*  |      1/6 |          7/25 | 28.0% |
 | func_*    |     4/69 |       232/942 | 24.6% |
-| weapon_*  |     0/37 |       162/737 | 22.0% |
+| weapon_*  |     1/37 |       165/737 | 22.4% |
 | player_*  |      0/6 |         19/91 | 20.9% |
 | light_*   |      0/6 |          7/36 | 19.4% |
 | env_*     |     6/82 |       179/956 | 18.7% |
@@ -82,7 +82,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
 | phys_*    |     0/17 |         4/186 |  2.2% |
 | game_*    |     0/11 |         2/103 |  1.9% |
 | grenade_* |     0/10 |         2/106 |  1.9% |
-| npc_*     |     1/97 |      54/3,210 |  1.7% |
+| npc_*     |     2/97 |      55/3,210 |  1.7% |
 | item_*    |     0/37 |         2/197 |  1.0% |
 | ammo_*    |     0/13 |          0/43 |  0.0% |
 | monster_* |     0/41 |         0/739 |  0.0% |
@@ -2710,10 +2710,10 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
 
 ## funCBaseFlex
 
-- [ ] **funCBaseFlex** · `CBaseFlex` · `game/server/baseflex.cpp` · C# `BaseFlex` ([Game.Server/BaseFlex.cs](Game.Server/BaseFlex.cs))
+- [x] **funCBaseFlex** · `CBaseFlex` · `game/server/baseflex.cpp` · C# `BaseFlex` ([Game.Server/BaseFlex.cs](Game.Server/BaseFlex.cs))
   - [x] Linked (`funCBaseFlex`)
   - [x] Networked (SendTable for `CBaseFlex`)
-  - [ ] `CBaseFlex` functionality (tracked under Base classes)
+  - [x] `CBaseFlex` functionality (tracked under Base classes)
 
 ## func_*
 
@@ -4058,14 +4058,14 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
 
 ## generic_*
 
-- [ ] **generic_actor** · `CGenericActor` · `game/server/genericactor.cpp` · C# `GenericActor` ([Game.Server/GenericActor.cs](Game.Server/GenericActor.cs))
+- [x] **generic_actor** · `CGenericActor` · `game/server/genericactor.cpp` · C# `GenericActor` ([Game.Server/GenericActor.cs](Game.Server/GenericActor.cs))
   - [x] Linked (`generic_actor`)
   - KeyValues
     - [x] `hull_name`
   - Methods
     - [x] `Classify`
     - [x] `GetSoundInterests`
-    - [ ] `HandleAnimEvent`
+    - [x] `HandleAnimEvent`
     - [x] `MaxYawSpeed`
     - [x] `Precache`
     - [x] `Spawn`
@@ -5240,7 +5240,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `Disable`
   - Think/Touch/Use functions
     - [x] `SaveThink`
-- [ ] **logic_auto** · `CLogicAuto` · `game/server/logicauto.cpp` · C# `LogicAuto` ([Game.Server/LogicAuto.cs](Game.Server/LogicAuto.cs))
+- [x] **logic_auto** · `CLogicAuto` · `game/server/logicauto.cpp` · C# `LogicAuto` ([Game.Server/LogicAuto.cs](Game.Server/LogicAuto.cs))
   - [x] Linked (`logic_auto`)
   - KeyValues
     - [x] `globalstate`
@@ -5254,7 +5254,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `OnMultiNewRound`
   - Methods
     - [x] `Activate`
-    - [ ] `ObjectCaps`
+    - [x] `ObjectCaps`
     - [x] `Think`
 - [x] **logic_autosave** · `CLogicAutosave` · `game/server/logicentities.cpp` · C# `LogicAutosave` ([Game.Server/LogicEntities.cs](Game.Server/LogicEntities.cs))
   - [x] Linked (`logic_autosave`)
@@ -8383,13 +8383,13 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [ ] `UpdateEfficiency`
     - [ ] `UpdateOnRemove`
   - Also linked as: `monster_furniture`
-- [ ] **npc_gman** · `CNPC_GMan` · `game/server/hl2/npc_gman.cpp` · C# `NPC_GMan` ([Game.Server/NPC_GMan.cs](Game.Server/NPC_GMan.cs))
+- [x] **npc_gman** · `CNPC_GMan` · `game/server/hl2/npc_gman.cpp` · C# `NPC_GMan` ([Game.Server/NPC_GMan.cs](Game.Server/NPC_GMan.cs))
   - [x] Linked (`npc_gman`)
   - Methods
     - [x] `Classify`
     - [x] `CreateBehaviors`
     - [x] `GetSoundInterests`
-    - [ ] `HandleAnimEvent`
+    - [x] `HandleAnimEvent`
     - [x] `IRelationType`
     - [x] `Precache`
     - [x] `SelectSchedule`
@@ -12633,10 +12633,10 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `StopWaitingForActor`
     - [x] `Trigger`
     - [x] `ScriptPlayerDeath`
-    - [ ] `SetTarget1`
-    - [ ] `SetTarget2`
-    - [ ] `SetTarget3`
-    - [ ] `SetTarget4`
+    - [x] `SetTarget1`
+    - [x] `SetTarget2`
+    - [x] `SetTarget3`
+    - [x] `SetTarget4`
   - Outputs
     - [x] `OnStart`
     - [x] `OnCompletion`
@@ -12703,7 +12703,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `FindNamedEntity`
     - [x] `FindNamedEntityClosest`
     - [x] `FindNamedTarget`
-    - [ ] `GenerateSceneForSound`
+    - [x] `GenerateSceneForSound`
     - [x] `GenerateSoundScene`
     - [x] `GetPostSpeakDelay`
     - [x] `GetSoundNameForPlayer`
@@ -12717,17 +12717,17 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `LoadScene`
     - [x] `NotifyOfCompletion`
     - [x] `OnLoaded`
-    - [ ] `OnRestore`
+    - [x] `OnRestore`
     - [x] `OnSceneFinished`
     - [x] `PausePlayback`
     - [x] `PauseThink`
     - [x] `PitchShiftPlayback`
     - [x] `Precache`
-    - [ ] `PrecacheScene`
+    - [x] `PrecacheScene`
     - [x] `PrefetchAnimBlocks`
     - [x] `PrefetchSpeakEventSounds`
     - [x] `ProcessEvent`
-    - [ ] `QueueResumePlayback`
+    - [x] `QueueResumePlayback`
     - [x] `RequestCompletionNotification`
     - [x] `ResumePlayback`
     - [x] `SetBackground`
@@ -13174,7 +13174,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
 
 ## soundent
 
-- [ ] **soundent** · `CSoundEnt` · `game/server/soundent.cpp` · C# `SoundEnt` ([Game.Server/SoundEnt.cs](Game.Server/SoundEnt.cs))
+- [x] **soundent** · `CSoundEnt` · `game/server/soundent.cpp` · C# `SoundEnt` ([Game.Server/SoundEnt.cs](Game.Server/SoundEnt.cs))
   - [x] Linked (`soundent`)
   - Methods
     - [x] `ActiveList`
@@ -13182,7 +13182,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `FindOrAllocateSound`
     - [x] `FreeList`
     - [x] `FreeSound`
-    - [ ] `GetLoudestSoundOfType`
+    - [x] `GetLoudestSoundOfType`
     - [x] `IAllocSound`
     - [x] `ISoundsInList`
     - [x] `InitSoundEnt`
@@ -13192,7 +13192,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `OnRestore`
     - [x] `Precache`
     - [x] `ShutdownSoundEnt`
-    - [ ] `SoundPointerForIndex`
+    - [x] `SoundPointerForIndex`
     - [x] `Spawn`
     - [x] `Think`
 
@@ -13345,10 +13345,10 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
 
 ## trigger_*
 
-- [ ] **trigger** · `CBaseTrigger` · `game/server/triggers.cpp` · C# `BaseTrigger` ([Game.Server/Triggers.cs](Game.Server/Triggers.cs))
+- [x] **trigger** · `CBaseTrigger` · `game/server/triggers.cpp` · C# `BaseTrigger` ([Game.Server/Triggers.cs](Game.Server/Triggers.cs))
   - [x] Linked (`trigger`)
   - [x] Networked (SendTable for `CBaseTrigger`)
-  - [ ] `CBaseTrigger` functionality (tracked under Base classes)
+  - [x] `CBaseTrigger` functionality (tracked under Base classes)
 - [ ] **trigger_auto** · `CAutoTrigger` · `game/server/hl1/hl1_ents.cpp` · C#: *none*
   - [ ] Linked (`trigger_auto`)
   - KeyValues
@@ -13460,7 +13460,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `GravityTouch`
   - Methods
     - [x] `Spawn`
-- [ ] **trigger_hurt** · `CTriggerHurt` · `game/server/triggers.cpp` · C# `TriggerHurt` ([Game.Server/Triggers.cs](Game.Server/Triggers.cs))
+- [x] **trigger_hurt** · `CTriggerHurt` · `game/server/triggers.cpp` · C# `TriggerHurt` ([Game.Server/Triggers.cs](Game.Server/Triggers.cs))
   - [x] Linked (`trigger_hurt`)
   - KeyValues
     - [x] `damage`
@@ -13479,7 +13479,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `EndTouch`
     - [x] `HurtAllTouchers`
     - [x] `HurtEntity`
-    - [ ] `KeyValue`
+    - [x] `KeyValue`
     - [x] `RadiationThink`
     - [x] `Spawn`
     - [x] `Touch`
@@ -13500,7 +13500,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [ ] `DrawDebugTextOverlays`
     - [x] `Spawn`
     - [x] `StartTouch`
-- [ ] **trigger_look** · `CTriggerLook` · `game/server/triggers.cpp` · C# `TriggerLook` ([Game.Server/Triggers.cs](Game.Server/Triggers.cs))
+- [x] **trigger_look** · `CTriggerLook` · `game/server/triggers.cpp` · C# `TriggerLook` ([Game.Server/Triggers.cs](Game.Server/Triggers.cs))
   - [x] Linked (`trigger_look`)
   - KeyValues
     - [x] `timeout`
@@ -13512,7 +13512,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
   - Think/Touch/Use functions
     - [x] `TimeoutThink`
   - Methods
-    - [ ] `DrawDebugTextOverlays`
+    - [x] `DrawDebugTextOverlays`
     - [x] `EndTouch`
     - [x] `Spawn`
     - [x] `StartTouch`
@@ -14388,13 +14388,13 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [ ] `UpdateOnRemove`
     - [ ] `WaitForUpgradeThink`
     - [ ] `WeaponIdle`
-- [ ] **weapon_physgun** · `CWeaponPhysGun` · *GMod-only* · C# `WeaponPhysGun` ([Game.Shared/GarrysMod/WeaponPhysGun.cs](Game.Shared/GarrysMod/WeaponPhysGun.cs))
+- [x] **weapon_physgun** · `CWeaponPhysGun` · *GMod-only* · C# `WeaponPhysGun` ([Game.Shared/GarrysMod/WeaponPhysGun.cs](Game.Shared/GarrysMod/WeaponPhysGun.cs))
   - [x] Linked (`weapon_physgun`)
   - [x] Networked (SendTable for `CWeaponPhysGun`)
   - Methods
     - [x] `Activate`
-    - [ ] `ActivityList`
-    - [ ] `ActivityListCount`
+    - [x] `ActivityList`
+    - [x] `ActivityListCount` <!-- manual -->
     - [x] `CanBePickedUpByNPCs`
     - [x] `CreatePhysBeam`
     - [x] `Deploy`
@@ -14405,7 +14405,7 @@ This is a list of every entity classname that Garry's Mod's server (`server_srv.
     - [x] `HasAnyAmmo`
     - [x] `Holster`
     - [x] `ItemPostFrame`
-    - [ ] `OnRestore`
+    - [x] `OnRestore`
     - [x] `Precache`
     - [x] `PrimaryAttack`
     - [x] `Reload`
@@ -16802,7 +16802,7 @@ Datadesc and methods that the entities above inherit.
   - Methods
     - [ ] `Enable`
     - [ ] `Scale`
-- [ ] **CBaseFlex** : `CBaseAnimatingOverlay` · `game/server/baseflex.cpp` · C# `BaseFlex` ([Game.Server/BaseFlex.cs](Game.Server/BaseFlex.cs))
+- [x] **CBaseFlex** : `CBaseAnimatingOverlay` · `game/server/baseflex.cpp` · C# `BaseFlex` ([Game.Server/BaseFlex.cs](Game.Server/BaseFlex.cs))
   - [x] Networked (SendTable for `CBaseFlex`)
   - Methods
     - [x] `AddFlexAnimation`
@@ -16815,12 +16815,12 @@ Datadesc and methods that the entities above inherit.
     - [x] `DoBodyLean`
     - [x] `EnsureTranslations`
     - [x] `EnterSceneSequence`
-    - [ ] `ExitSceneSequence`
+    - [x] `ExitSceneSequence`
     - [x] `FindFlexController`
     - [x] `FindNamedSetting`
     - [x] `FindSceneFile`
     - [x] `FlexControllerLocalToGlobal`
-    - [ ] `FlexSettingLessFunc`
+    - [x] `FlexSettingLessFunc` <!-- manual -->
     - [x] `GetFlexWeight`
     - [x] `GetScenePriority`
     - [x] `GetSpecialDSP`
@@ -16829,14 +16829,14 @@ Datadesc and methods that the entities above inherit.
     - [x] `IsRunningSceneMoveToEvent`
     - [x] `IsSuppressedFlexAnimation`
     - [x] `PermitResponse`
-    - [ ] `PlayAutoGeneratedSoundScene`
-    - [ ] `PlayScene`
+    - [x] `PlayAutoGeneratedSoundScene`
+    - [x] `PlayScene`
     - [x] `ProcessFacingSceneEvent`
     - [x] `ProcessFlexAnimationSceneEvent`
     - [x] `ProcessFlexSettingSceneEvent`
     - [x] `ProcessGestureSceneEvent`
     - [x] `ProcessLookAtSceneEvent`
-    - [ ] `ProcessMoveToSceneEvent`
+    - [x] `ProcessMoveToSceneEvent`
     - [x] `ProcessSceneEvent`
     - [x] `ProcessSceneEvents`
     - [x] `ProcessSequenceSceneEvent`
@@ -17539,7 +17539,7 @@ Datadesc and methods that the entities above inherit.
     - [ ] `LinearMove`
     - [ ] `LinearMoveDone`
     - [ ] `MoveDone`
-- [ ] **CBaseTrigger** : `CBaseToggle` · `game/server/triggers.cpp` · C# `BaseTrigger` ([Game.Server/Triggers.cs](Game.Server/Triggers.cs))
+- [x] **CBaseTrigger** : `CBaseToggle` · `game/server/triggers.cpp` · C# `BaseTrigger` ([Game.Server/Triggers.cs](Game.Server/Triggers.cs))
   - [x] Networked (SendTable for `CBaseTrigger`)
   - KeyValues
     - [x] `filtername`
@@ -17566,7 +17566,7 @@ Datadesc and methods that the entities above inherit.
     - [x] `Enable`
     - [x] `EndTouch`
     - [x] `EndTouchAll`
-    - [ ] `EndTouchOnAllTouchers`
+    - [x] `EndTouchOnAllTouchers`
     - [x] `GetTouchedEntityOfType`
     - [x] `InitTrigger`
     - [x] `IsTouching`
@@ -18673,27 +18673,36 @@ Datadesc and methods that the entities above inherit.
 
 ```
 [x] [L - K I O T M] AI_ScriptConditions (aka ai_script_conditions)
+[x] [L N - - - - M] BaseFlex (aka funCBaseFlex)
 [x] [L - K I O - M] PathTrack (aka path_track)
 [x] [L - K I O - M] LogicCase (aka logic_case)
+[x] [L N K I O - M] BaseTrigger (aka trigger)
 [x] [L - K I O - M] LogicBranchList (aka logic_branch_listener)
 [x] [L - K I O - M] EnvMicrophone (aka env_microphone)
 [x] [L - K I O - M] TimerEntity (aka logic_timer)
+[x] [L N - - - - M] WeaponPhysGun (aka weapon_physgun)
 [x] [L - K I O - M] MathCounter (aka math_counter)
 [x] [L - K I - T M] AmbientGeneric (aka ambient_generic)
 [x] [L N K I - T M] ScriptIntro (aka script_intro)
 [x] [L - - - - - M] SceneManager (aka scene_manager)
+[x] [L - - - - - M] SoundEnt (aka soundent)
+[x] [L - K I O T M] TriggerHurt (aka trigger_hurt)
 [x] [L - K I - - M] AreaPortal (aka func_areaportal)
 [x] [L - K I O - M] EnvGlobal (aka env_global)
 [x] [L N K I - - M] FuncAreaPortalWindow (aka func_areaportalwindow)
 [x] [L - K I O - M] LogicBranch (aka logic_branch)
 [x] [L - K I O - M] LogicCompare (aka logic_compare)
+[x] [L - K - O - M] LogicAuto (aka logic_auto)
 [x] [L - K I O - M] LogicRelay (aka logic_relay)
+[x] [L - K I O T M] TriggerLook (aka trigger_look)
 [x] [L N - I - - M] EnvTonemapController (aka env_tonemap_controller)
 [x] [L - K I O - M] MathRemap (aka math_remap)
 [x] [L - K I O - M] BaseFilter (aka filter_base)
 [x] [L - - I O - M] Credits (aka env_credits)
 [x] [L - K - O T M] MultiSource (aka multisource)
+[x] [L - - - - - M] NPC_GMan (aka npc_gman)
 [x] [L - K - O T M] TriggerProximity (aka trigger_proximity)
+[x] [L - K - - - M] GenericActor (aka generic_actor)
 [x] [L - K I O - M] MathColorBlend (aka math_colorblend)
 [x] [L - K I - T -] LogicActiveAutosave (aka logic_active_autosave)
 [x] [L - K I - - -] LogicAutosave (aka logic_autosave)
@@ -18724,18 +18733,9 @@ Datadesc and methods that the entities above inherit.
 [x] [L N - - - - -] GMODGameRulesProxy (aka gmod_gamerules)
 [x] [L N - - - - -] HL2MPGameRulesProxy (aka hl2mp_gamerules)
 [x] [L - - - - - M] TriggerOnce (aka trigger_once)
-[ ] [L N K I O - _] BaseTrigger (aka trigger)
-[ ] [L - K I O T _] TriggerHurt (aka trigger_hurt)
-[ ] [L N K _ O - _] SceneEntity (aka logic_choreographed_scene, scripted_scene)
-[ ] [L - K - O - _] LogicAuto (aka logic_auto)
-[ ] [L - K I O T _] TriggerLook (aka trigger_look)
-[ ] [L N - - - - _] BaseFlex (aka funCBaseFlex)
+[ ] [L N K _ O - M] SceneEntity (aka logic_choreographed_scene, scripted_scene)
 [ ] [L - - - - - _] PointEntity (aka info_landmark, info_player_combine, info_player_rebel, info_player_start, info_target_helicopter_crash, info_teleport_destination, logic_proximity)
-[ ] [L - - - - - _] SoundEnt (aka soundent)
-[ ] [L - - - - - _] NPC_GMan (aka npc_gman)
-[ ] [L N - - - - _] WeaponPhysGun (aka weapon_physgun)
 [ ] [L N K _ _ T _] FuncTrackTrain (aka func_tracktrain)
-[ ] [L - K - - - _] GenericActor (aka generic_actor)
 [ ] [L N K _ _ T _] FuncRotating (aka func_rotating)
 [ ] [L - K I O - _] EnvFade (aka env_fade)
 [ ] [L N - - - T _] PlayerResource (aka player_manager)

@@ -15,6 +15,10 @@ public class NPC_GMan : AI_PlayerAlly
 		return 0;
 	}
 
+	public override void HandleAnimEvent(ref AnimEvent animEvent) {
+		base.HandleAnimEvent(ref animEvent);
+	}
+
 	public override void Spawn() {
 		Precache();
 
