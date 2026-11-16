@@ -285,6 +285,10 @@ public partial class C_BaseEntity : IClientEntity
 
 	public virtual C_BaseAnimating? GetBaseAnimating() => null;
 
+	readonly ParticleProperty Particles = new();
+	public ParticleProperty ParticleProp() => Particles;
+	public virtual void OnNewParticleEffect(string particleName, CNewParticleEffect newParticleEffect) { }
+
 	public virtual bool IsWorld() => EntIndex() == 0;
 	public virtual bool IsPlayer() => false;
 	public virtual bool IsBaseCombatCharacter() => false;
@@ -783,6 +787,7 @@ public partial class C_BaseEntity : IClientEntity
 	public float Gravity;
 
 	public C_BaseEntity() {
+		ParticleProp().Init(this);
 		GMOD_EHANDLEForModify() = new();
 		AddVar(this, DA_Origin, IV_Origin, LatchFlags.LatchSimulationVar);
 		AddVar(this, DA_Rotation, IV_Rotation, LatchFlags.LatchSimulationVar);
@@ -1265,6 +1270,8 @@ public partial class C_BaseEntity : IClientEntity
 	}
 #endif
 
+	public bool IsBrushModel() => modelinfo.GetModelType(Model) == ModelType.Brush;
+
 	public void GetRenderBounds(out Vector3 mins, out Vector3 maxs) {
 #if GMOD_DLL
 		if (GetRenderBoundsOverride(out mins, out maxs))
@@ -1473,6 +1480,8 @@ public partial class C_BaseEntity : IClientEntity
 		DestroyModelInstance();
 		RemoveFromLeafSystem();
 		RemoveFromAimEntsList();
+
+		Particles.StopEmission(null, false, true);
 	}
 
 	public bool OnPredictedEntityRemove(bool isbeingremoved, C_BaseEntity predicted) {
@@ -1867,6 +1876,8 @@ public partial class C_BaseEntity : IClientEntity
 	public void SetDormant(bool dormant) {
 		Dormant = dormant;
 		UpdateVisibility();
+
+		ParticleProp().OwnerSetDormantTo(dormant);
 	}
 
 	public ref readonly BaseHandle GetClientHandle() => ref RefEHandle;
@@ -2596,7 +2607,7 @@ public partial class C_BaseEntity : IClientEntity
 
 	public bool DestroyedOnRecreateEntities;
 	public void SetDestroyedOnRecreateEntities() {
-		// ParticleProp().StopEmission(null, false);
+		ParticleProp().StopEmissionAndDestroyImmediately();
 		DestroyedOnRecreateEntities = true;
 	}
 

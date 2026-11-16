@@ -14,6 +14,7 @@
 		<PackageVersion Include="FreeImage-dotnet-core" Version="4.3.6" />
 		<PackageVersion Include="FreeTypeSharp" Version="3.1.0" />
 		<PackageVersion Include="K4os.Hash.xxHash" Version="1.0.8" />
+		<PackageVersion Include="KeyValues2" Version="2.0.0-rc3" />
 		<PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
 		<PackageVersion Include="NLayer" Version="1.16.0" />
 		<PackageVersion Include="Pastel" Version="6.0.1" />
