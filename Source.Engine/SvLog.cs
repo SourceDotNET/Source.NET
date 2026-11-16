@@ -408,8 +408,25 @@ public class Log(Host Host, Net Net, ICommandLine CommandLine) : IGameEventListe
 		}
 	}
 
-	static string? CreateTempFilename(ReadOnlySpan<char> filenameBase, ReadOnlySpan<char> ext) {
+	static FileStream? OpenDirect(string filename, FileMode mode, FileAccess access) {
+		try {
+			string? directory = Path.GetDirectoryName(Path.GetFullPath(filename));
+			if (directory != null && !Directory.Exists(directory))
+				return null;
+
+			return new FileStream(filename, mode, access, FileShare.ReadWrite);
+		}
+		catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) {
+			return null;
+		}
+	}
+
+	static bool CreateTempFilename(ReadOnlySpan<char> filenameBase, ReadOnlySpan<char> ext, bool isGzip, out string? filename, out IFileHandle? file, out FileStream? gzfile) {
 		bool haveLogfilenameFormat = sv_logfilename_format.GetString().Length != 0;
+
+		filename = null;
+		file = null;
+		gzfile = null;
 
 		string fname = new(filenameBase);
 		int dot = fname.LastIndexOf('.');
@@ -417,47 +434,56 @@ public class Log(Host Host, Net Net, ICommandLine CommandLine) : IGameEventListe
 			fname = fname[..dot];
 
 		for (int i = 0; i < 1000; i++) {
-			string filename;
+			string name;
 			if (haveLogfilenameFormat)
-				filename = i == 0 ? $"{fname}.{ext}" : $"{fname}_{i - 1:D3}.{ext}";
+				name = i == 0 ? $"{fname}.{ext}" : $"{fname}_{i - 1:D3}.{ext}";
 			else
-				filename = $"{fname}{i:D3}.{ext}";
+				name = $"{fname}{i:D3}.{ext}";
 
 #if WIN32
-			filename = filename.Replace('/', '\\');
+			name = name.Replace('/', '\\');
 #else
-			filename = filename.Replace('\\', '/');
+			name = name.Replace('\\', '/');
 #endif
-			Common.CreatePath(filename);
+			Common.CreatePath(name);
 
-			if (!g_pFileSystem.FileExists(filename, "LOGDIR"))
-				return filename;
+			if (!g_pFileSystem.FileExists(name, "LOGDIR")) {
+				if (!isGzip) {
+					file = g_pFileSystem.Open(name, FileOpenOptions.Write | FileOpenOptions.Text, "LOGDIR");
+					if (file != null) {
+						filename = name;
+						return true;
+					}
+				}
+				else {
+					gzfile = OpenDirect(name, FileMode.Create, FileAccess.Write);
+					if (gzfile != null) {
+						filename = name;
+						return true;
+					}
+				}
+			}
 		}
 
-		return null;
+		return false;
 	}
 
 	static bool GzipFileCompress(string filename) {
-		string? compressed = CreateTempFilename(filename, "log.gz");
-		if (compressed == null)
-			return false;
-
-		using IFileHandle? output = g_pFileSystem.Open(compressed, FileOpenOptions.Write | FileOpenOptions.Binary, "LOGDIR");
-		if (output == null)
+		if (!CreateTempFilename(filename, "log.gz", true, out string? compressed, out _, out FileStream? gzfile))
 			return false;
 
 		Msg($"Compressing {filename} to {compressed}...\n");
 
 		bool ret = true;
-		GZipStream gzip = new(output.Stream, CompressionLevel.Optimal, true);
 
-		using IFileHandle? input = g_pFileSystem.Open(filename, FileOpenOptions.Read | FileOpenOptions.Binary, "LOGDIR");
+		FileStream? input = OpenDirect(filename, FileMode.Open, FileAccess.Read);
 		if (input != null) {
+			GZipStream gzip = new(gzfile!, CompressionLevel.Optimal);
 			byte[] buf = new byte[16384];
 			for (; ; ) {
 				int len;
 				try {
-					len = input.Stream.Read(buf, 0, buf.Length);
+					len = input.Read(buf, 0, buf.Length);
 				}
 				catch (IOException) {
 					Msg("gzip_file_compress: fread failed.\n");
@@ -475,15 +501,19 @@ public class Log(Host Host, Net Net, ICommandLine CommandLine) : IGameEventListe
 					break;
 				}
 			}
-		}
 
-		try {
-			gzip.Dispose();
+			try {
+				gzip.Dispose();
+			}
+			catch (IOException) {
+				Msg("gzip_file_compress: gzclose failed.\n");
+				ret = false;
+			}
+
+			input.Dispose();
 		}
-		catch (IOException) {
-			Msg("gzip_file_compress: gzclose failed.\n");
-			ret = false;
-		}
+		else
+			gzfile!.Dispose(); // note: GMod leaves it open
 
 		return ret;
 	}
@@ -592,9 +622,7 @@ public class Log(Host Host, Net Net, ICommandLine CommandLine) : IGameEventListe
 
 		string fileBase = $"{logsDir}/{name}";
 
-		string? filename = CreateTempFilename(fileBase, "log");
-		IFileHandle? file = filename == null ? null : g_pFileSystem.Open(filename, FileOpenOptions.Write | FileOpenOptions.Text, "LOGDIR");
-		if (file == null) {
+		if (!CreateTempFilename(fileBase, "log", false, out string? filename, out IFileHandle? file, out _)) {
 			ConMsg($"Unable to open logfiles under {fileBase}\nLogging disabled\n");
 			return;
 		}
