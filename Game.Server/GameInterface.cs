@@ -649,8 +649,10 @@ public class ServerGameDLL(IFileSystem filesystem, ICommandLine CommandLine) : I
 		// todo nextbots
 	}
 
+	bool IsHibernating;
+
 	public void SetServerHibernation(bool bHibernating) {
-		throw new NotImplementedException();
+		IsHibernating = bHibernating;
 	}
 
 	public bool ShouldHideServer() => false;

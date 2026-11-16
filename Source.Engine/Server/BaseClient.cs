@@ -831,6 +831,7 @@ public abstract class BaseClient : IGameEventListener2, IClient, IClientMessageH
 	public bool IsSpawned() => SignOnState >= SignOnState.New;
 	public bool IsFakeClient() => FakePlayer;
 	public bool IsHLTV() => HLTV;
+	public virtual bool IsSplitScreenUser() => false;
 
 	public bool SendNetMsg(INetMessage msg, bool forceReliable = false) {
 		if (NetChannel == null)
