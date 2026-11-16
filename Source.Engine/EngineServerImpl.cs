@@ -1087,7 +1087,9 @@ internal class EngineServer(Cbuf Cbuf, Host Host) : IEngineServer
 	}
 
 	public void GMOD_RawServerCommand(ReadOnlySpan<char> command) {
-		throw new NotImplementedException();
+#if GMOD_DLL
+		Cbuf.AddRawText(command);
+#endif
 	}
 
 	public IGMODDataTable GMOD_CreateDataTable() => new GMODDataTable(null);

@@ -654,7 +654,9 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 	}
 
 	public void GMOD_RawClientCmd_Unrestricted(ReadOnlySpan<char> command) {
-		throw new NotImplementedException();
+#if GMOD_DLL
+		Cbuf.AddRawText(command);
+#endif
 	}
 
 	public IGMODDataTable GMOD_CreateDataTable(GMODDataTableCallbackFn fnCallback) => new GMODDataTable(fnCallback);

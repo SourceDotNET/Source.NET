@@ -105,6 +105,12 @@ public class CommandBuffer
 		return true;
 	}
 
+#if GMOD_DLL
+	public bool AddRawText(ReadOnlySpan<char> text, int tickDelay = 0) {
+		return InsertCommand(text.SliceNullTerminatedString(), currentTick + tickDelay);
+	}
+#endif
+
 	void Compact() {
 		argBufferSize = 0;
 		Span<char> tempBuffer = stackalloc char[ARGS_BUFFER_LENGTH];
@@ -311,6 +317,15 @@ public class Cbuf(IServiceProvider provider)
 				Dbg.ConMsg("Cbuf_AddText: buffer overflow\n");
 		}
 	}
+
+#if GMOD_DLL
+	public void AddRawText(ReadOnlySpan<char> text) {
+		lock (Buffer) {
+			if (!Buffer.AddRawText(text))
+				Dbg.ConWarning("Cbuf_AddRawText: buffer overflow\n");
+		}
+	}
+#endif
 
 	public void InsertText(ReadOnlySpan<char> text) {
 		lock (Buffer) {

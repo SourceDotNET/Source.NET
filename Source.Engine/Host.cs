@@ -18,6 +18,7 @@ using Source.Engine.Server;
 using Steamworks;
 
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -1608,6 +1609,78 @@ public partial class Host
 
 		GC.WaitForPendingFinalizers();
 		GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive);
+	}
+
+	[ConCommand(helpText: "Increment specified convar value.", flags: FCvar.DontRecord)]
+	void incrementvar(in TokenizedCommand args) {
+		if (args.ArgC() != 5) {
+			Warning("Usage: incrementvar varName minValue maxValue delta\n");
+			return;
+		}
+
+		ReadOnlySpan<char> varName = args[1];
+
+		ConVar? var = cvar.FindVar(varName);
+		if (var == null) {
+			ConDMsg("cvar \"%s\" not found\n", varName.ToString());
+			return;
+		}
+
+		float currentValue = var.GetFloat();
+		float startValue = (float)atof(args[2]);
+		float endValue = (float)atof(args[3]);
+		float delta = (float)atof(args[4]);
+		float newValue = currentValue + delta;
+		if (newValue > endValue)
+			newValue = startValue;
+		else if (newValue < startValue)
+			newValue = endValue;
+
+		string value = ((double)newValue).ToString("F6", CultureInfo.InvariantCulture);
+		string command = $"{varName} {value}";
+#if GMOD_DLL
+		Cbuf.AddRawText(command);
+#else
+		Cbuf.AddText(command);
+#endif
+
+		ConDMsg("%s = %s\n", var.GetName(), value);
+	}
+
+	[ConCommand(helpText: "Multiply specified convar value.", flags: FCvar.DontRecord)]
+	void multvar(in TokenizedCommand args) {
+		if (args.ArgC() != 5) {
+			Warning("Usage: multvar varName minValue maxValue factor\n");
+			return;
+		}
+
+		ReadOnlySpan<char> varName = args[1];
+
+		ConVar? var = cvar.FindVar(varName);
+		if (var == null) {
+			ConDMsg("cvar \"%s\" not found\n", varName.ToString());
+			return;
+		}
+
+		float currentValue = var.GetFloat();
+		float startValue = (float)atof(args[2]);
+		float endValue = (float)atof(args[3]);
+		float factor = (float)atof(args[4]);
+		float newValue = currentValue * factor;
+		if (newValue > endValue)
+			newValue = endValue;
+		else if (newValue < startValue)
+			newValue = startValue;
+
+		string value = ((double)newValue).ToString("F6", CultureInfo.InvariantCulture);
+		string command = $"{varName} {value}";
+#if GMOD_DLL
+		Cbuf.AddRawText(command);
+#else
+		Cbuf.AddText(command);
+#endif
+
+		ConDMsg("%s = %s\n", var.GetName(), value);
 	}
 
 	[ConCommand]
