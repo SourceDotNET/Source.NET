@@ -37,7 +37,9 @@ public static class VoiceStatusGlobals
 	public const double VOICE_MODEL_INTERVAL = 0.3;
 	public const float SQUELCHOSCILLATE_PER_SECOND = 2.0f;
 
+#if !GMOD_DLL
 	public static readonly ConVar voice_modenable = new("voice_modenable", "1", FCvar.Archive | FCvar.ClientCmdCanExecute, "Enable/disable voice in this mod.");
+#endif
 	public static readonly ConVar voice_clientdebug = new("voice_clientdebug", "0");
 
 	// ---------------------------------------------------------------------- //
@@ -287,10 +289,12 @@ public class VoiceStatus
 		// Is it the local player talking?
 		if (entindex == -1) {
 			Talking = talking;
+#if !GMOD_DLL
 			if (talking) {
 				// Enable voice for them automatically if they try to talk.
 				engine.ClientCmd("voice_modenable 1");
 			}
+#endif
 		}
 		else if (entindex == -2)
 			ServerAcked = talking;
@@ -317,7 +321,12 @@ public class VoiceStatus
 			return;
 		}
 
+#if GMOD_DLL
+		ConVarRef voice_enable = new("voice_enable");
+		int cvarModEnable = voice_enable.GetInt() != 0 ? 1 : 0;
+#else
 		int cvarModEnable = voice_modenable.GetInt() != 0 ? 1 : 0;
+#endif
 		if (force || ServerModEnable != cvarModEnable) {
 			ServerModEnable = cvarModEnable;
 
