@@ -123,17 +123,4 @@ public class RapidJsonTests
 		Span<byte> buffer = stackalloc byte[64];
 		Assert.Equal(expected, Encoding.ASCII.GetString(buffer[..Bootil.String.Format.NiceFloat(value, buffer)]));
 	}
-
-	[Theory]
-	[InlineData(1.23456789, 1.2346)]
-	[InlineData(2.00025, 2.0002)]
-	[InlineData(0.03125, 0.0312)]
-	[InlineData(0.09375, 0.0938)]
-	[InlineData(123.45675, 123.4567)]
-	[InlineData(-0.00001, -0.0)]
-	[InlineData(1e300, 1e300)]
-	[InlineData(549755813888.5, 549755813888.5)]
-	public void NiceDoubleMatchesBootil(double value, double expected) {
-		Assert.Equal(BitConverter.DoubleToInt64Bits(expected), BitConverter.DoubleToInt64Bits(Bootil.String.Format.NiceDouble(value)));
-	}
 }

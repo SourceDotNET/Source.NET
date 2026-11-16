@@ -398,15 +398,14 @@ internal static unsafe class LuaJson
 					break;
 				case TNUMBER:
 					double number = lua_tonumber(L, value);
+					if (double.IsSubnormal(number))
+						number = 0;
 					if (number >= int.MinValue && number <= int.MaxValue && number == (int)number)
 						writer.Int((int)number);
-					else {
-						number = Bootil.String.Format.NiceDouble(number);
-						if (double.IsInfinity(number))
-							writer.Null();
-						else
-							writer.Double(number);
-					}
+					else if (!double.IsFinite(number))
+						writer.Null();
+					else
+						writer.Double(number);
 
 					break;
 				case TSTRING:

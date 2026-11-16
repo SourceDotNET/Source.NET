@@ -90,15 +90,6 @@ public static class String
 
 			return length;
 		}
-
-		// note: returns what To::Double reads back from the NiceDouble text
-		public static double NiceDouble(double value) {
-			if (!double.IsFinite(value) || Math.Abs(value) >= ExactLimit)
-				return value;
-
-			double rounded = RoundTenThousandths(Math.Abs(value)) / 10000.0;
-			return double.IsNegative(value) ? -rounded : rounded;
-		}
 	}
 
 	public static class To
