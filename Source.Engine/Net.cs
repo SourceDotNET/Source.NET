@@ -1038,12 +1038,10 @@ public class Net
 			// simple case, small packet, just send it
 			ret = SendTo(true, netSocket, data, length, addr, gameDataLength);
 		}
-		else if (chan != null) {
+		else {
 			// split packet into smaller pieces
-			ret = SendLong(chan, sock, netSocket, data, length, addr, maxRoutable);
+			ret = SendLong(chan!, sock, netSocket, data, length, addr, maxRoutable);
 		}
-		else
-			ret = -1;
 
 	end:
 		if (ret == -1) {
@@ -1065,6 +1063,14 @@ public class Net
 
 	private readonly int net_splitrate = 1;
 
+	static readonly int[] SplitPacketSequenceNumber = CreateSplitPacketSequenceNumbers();
+
+	static int[] CreateSplitPacketSequenceNumbers() {
+		int[] numbers = new int[(int)NetSocketType.Max];
+		numbers[0] = 1;
+		return numbers;
+	}
+
 	public unsafe int SendLong(NetChannel netchan, NetSocketType sock, Socket s, byte[] buf, int len, NetAddress to, int maxRoutable) {
 		short splitSizeMinusHeader = (short)(maxRoutable - sizeof(SPLITPACKET));
 
@@ -1073,7 +1079,7 @@ public class Net
 			sequenceNumber = netchan.IncrementSplitPacketSequence();
 		}
 		else {
-			Debug.Assert(false, "FINISH THIS");
+			sequenceNumber = Interlocked.Increment(ref SplitPacketSequenceNumber[(int)sock]);
 		}
 
 		int packetNumber = 0;
