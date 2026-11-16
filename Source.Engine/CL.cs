@@ -307,7 +307,7 @@ public partial class CL(IServiceProvider services, Net Net,
 		}
 	}
 
-	[ConCommand(helpText: "Retry connection to last server.")]
+	[ConCommand(helpText: "Retry connection to last server.", flags: FCvar.DontRecord | FCvar.ServerCanExecute | FCvar.ClientCmdCanExecute)]
 	void retry() {
 		Retry();
 	}

@@ -119,6 +119,9 @@ public class GarrysMod : IGarrysMod
 		engine.ServerCommand("sv_allow_voice_from_file 0\n");
 		engine.ServerCommand("sv_client_predict 1\n");
 #endif
+#if CLIENT_DLL
+		engine.SetRestrictServerCommands(true);
+#endif
 #if !SWDS
 		get.IntroScreen()?.Update("Adding Custom Fonts", true);
 #if CLIENT_DLL

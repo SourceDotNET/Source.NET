@@ -141,10 +141,10 @@ public partial class GMOD_Player : HL2MP_Player
 		gGM.CallFinish(1);
 	}
 
-	[ConCommand("gm_showhelp")] static void CC_ShowHelp() => CallShowHook(LUA_POOLEDSTRING.ShowHelp);
-	[ConCommand("gm_showteam")] static void CC_ShowTeam() => CallShowHook(LUA_POOLEDSTRING.ShowTeam);
-	[ConCommand("gm_showspare1")] static void CC_ShowSpare1() => CallShowHook(LUA_POOLEDSTRING.ShowSpare1);
-	[ConCommand("gm_showspare2")] static void CC_ShowSpare2() => CallShowHook(LUA_POOLEDSTRING.ShowSpare2);
+	[ConCommand("gm_showhelp", flags: FCvar.ServerCanExecute)] static void CC_ShowHelp() => CallShowHook(LUA_POOLEDSTRING.ShowHelp);
+	[ConCommand("gm_showteam", flags: FCvar.ServerCanExecute)] static void CC_ShowTeam() => CallShowHook(LUA_POOLEDSTRING.ShowTeam);
+	[ConCommand("gm_showspare1", flags: FCvar.ServerCanExecute)] static void CC_ShowSpare1() => CallShowHook(LUA_POOLEDSTRING.ShowSpare1);
+	[ConCommand("gm_showspare2", flags: FCvar.ServerCanExecute)] static void CC_ShowSpare2() => CallShowHook(LUA_POOLEDSTRING.ShowSpare2);
 #endif
 
 	public static GMOD_Player? CreatePlayer(ReadOnlySpan<char> classname, Edict ed) {
