@@ -22,7 +22,7 @@ public unsafe class LuaInterfaceImpl : ILuaInterface
 	delegate int NativeCFunction(nint L);
 
 	[StructLayout(LayoutKind.Sequential)]
-	struct UserData
+	internal struct UserData
 	{
 		public nint Data;
 		public byte Type;
@@ -419,6 +419,8 @@ public unsafe class LuaInterfaceImpl : ILuaInterface
 	public void Remove(int stackPos) => lua_remove(state, stackPos);
 
 	public bool Next(int stackPos) => Op(SN_NEXT, stackPos) != 0;
+
+	public bool TableToJSON(int stackPos, bool pretty, [NotNullWhen(false)] out string? error) => LuaJson.TableToJSON(this, state, stackPos, pretty, out error);
 
 	public nint NewUserdata(uint size) => lua_newuserdata(state, size);
 

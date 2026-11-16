@@ -651,158 +651,16 @@ public static partial class LuaUtil
 		return 1;
 	}
 
-	static string JSONNumber(double value) {
-		if (double.IsNaN(value) || double.IsInfinity(value))
-			return "0";
-		string str = value.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
-		if (str.IndexOfAny(['.', 'E', 'e']) < 0)
-			str += ".0";
-		return str;
-	}
-
-	static string VectorNumber(float value) => value.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture);
-
-	static void JSONString(System.Text.StringBuilder output, string value) {
-		output.Append('"');
-		foreach (char c in value) {
-			switch (c) {
-				case '"': output.Append("\\\""); break;
-				case '\\': output.Append("\\\\"); break;
-				case '\b': output.Append("\\b"); break;
-				case '\f': output.Append("\\f"); break;
-				case '\n': output.Append("\\n"); break;
-				case '\r': output.Append("\\r"); break;
-				case '\t': output.Append("\\t"); break;
-				default:
-					if (c < 0x20)
-						output.Append("\\u").Append(((int)c).ToString("X4"));
-					else
-						output.Append(c);
-					break;
-			}
-		}
-		output.Append('"');
-	}
-
-	static bool JSONValue(ILuaInterface lua, ILuaObject value, System.Text.StringBuilder output, bool pretty, int depth, HashSet<int> visiting) {
-		switch (value.GetType()) {
-			case LuaType.Bool:
-				output.Append(value.GetBool() ? "true" : "false");
-				return true;
-			case LuaType.Number:
-				output.Append(JSONNumber(value.GetDouble()));
-				return true;
-			case LuaType.String:
-				JSONString(output, value.GetString() ?? "");
-				return true;
-			case LuaType.Vector: {
-					value.Push();
-					System.Numerics.Vector3 vec = LuaVector.Get_Vector(-1);
-					lua.Pop(1);
-					JSONString(output, $"[{VectorNumber(vec.X)} {VectorNumber(vec.Y)} {VectorNumber(vec.Z)}]");
-					return true;
-				}
-			case LuaType.Angle: {
-					value.Push();
-					Source.Common.Mathematics.QAngle ang = LuaAngle.Get_Angle(-1);
-					lua.Pop(1);
-					JSONString(output, $"{{{VectorNumber(ang.X)} {VectorNumber(ang.Y)} {VectorNumber(ang.Z)}}}");
-					return true;
-				}
-			case LuaType.Table:
-				return JSONTable(lua, value, output, pretty, depth + 1, visiting);
-			default:
-				return false;
-		}
-	}
-
-	static bool JSONTable(ILuaInterface lua, ILuaObject table, System.Text.StringBuilder output, bool pretty, int depth, HashSet<int> visiting) {
-		if (depth > 3000) {
-			lua.ErrorFromLua("JSON Depth is too high! > 3000");
-			return false;
-		}
-
-
-		List<(LuaObject Key, LuaObject Value)> entries = [];
-		table.Push();
-		lua.PushNil();
-		while (lua.Next(-2)) {
-			LuaObject value = new(-1, LuaType.None);
-			LuaObject key = new(-2, LuaType.None);
-			lua.Pop(1);
-			entries.Add((key, value));
-		}
-		lua.Pop(1);
-
-		bool isArray = entries.Count > 0;
-		for (int i = 0; i < entries.Count && isArray; i++) {
-			if (entries[i].Key.GetType() != LuaType.Number)
-				isArray = false;
-		}
-		if (isArray) {
-			HashSet<double> keys = [.. entries.Select(e => e.Key.GetDouble())];
-			for (int i = 1; i <= entries.Count; i++) {
-				if (!keys.Contains(i)) {
-					isArray = false;
-					break;
-				}
-			}
-			if (isArray)
-				entries.Sort((a, b) => a.Key.GetDouble().CompareTo(b.Key.GetDouble()));
-		}
-
-		output.Append(isArray ? '[' : '{');
-		bool first = true;
-		foreach ((LuaObject key, LuaObject value) in entries) {
-			if (!isArray && key.GetType() != LuaType.String && key.GetType() != LuaType.Number)
-				continue;
-			int mark = output.Length;
-			if (!first)
-				output.Append(',');
-			if (pretty)
-				output.Append('\n').Append('\t', depth);
-			if (!isArray) {
-				JSONString(output, key.GetType() == LuaType.Number ? JSONKey(key.GetDouble()) : key.GetString() ?? "");
-				output.Append(':');
-				if (pretty)
-					output.Append(' ');
-			}
-			if (!JSONValue(lua, value, output, pretty, depth, visiting))
-				output.Length = mark;
-			else
-				first = false;
-		}
-		if (pretty && !first)
-			output.Append('\n').Append('\t', depth - 1);
-		output.Append(isArray ? ']' : '}');
-
-		foreach ((LuaObject key, LuaObject value) in entries) {
-			key.UnReference();
-			value.UnReference();
-		}
-		return true;
-	}
-
-	static string JSONKey(double key) {
-		if (key == Math.Floor(key) && Math.Abs(key) < 1e15)
-			return ((long)key).ToString(System.Globalization.CultureInfo.InvariantCulture);
-		return key.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
-	}
-
 	[LuaFunction]
 	static int TableToJSON(ILuaInterface lua) {
-		LuaObject table = new(1, LuaType.None);
-		if (!table.isTable()) {
+		if (lua.GetType(1) != LuaType.Table) {
 			lua.TypeError("table", 1);
-			table.UnReference();
 			return 0;
 		}
-		System.Text.StringBuilder output = new();
-		bool ok = JSONTable(lua, table, output, lua.GetBool(2), 1, []);
-		table.UnReference();
-		if (!ok)
-			return 0;
-		lua.PushString(output.ToString());
+
+		if (!lua.TableToJSON(1, lua.GetBool(2), out string? error))
+			lua.Error(error);
+
 		return 1;
 	}
 

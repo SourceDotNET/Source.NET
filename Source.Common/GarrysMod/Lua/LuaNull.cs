@@ -256,6 +256,10 @@ public sealed class LuaNullInterface : ILuaInterface
 	public bool RunString(ReadOnlySpan<char> filename, ReadOnlySpan<char> path, ReadOnlySpan<char> stringToRun, bool run, bool showErrors) => false;
 	public bool IsEqual(ILuaObject? objA, ILuaObject? objB) => false;
 	[DoesNotReturn] public void Error(ReadOnlySpan<char> err) => throw new NotSupportedException(err.ToString());
+	public bool TableToJSON(int stackPos, bool pretty, [NotNullWhen(false)] out string? error) {
+		error = "";
+		return false;
+	}
 	public string GetStringOrError(int index) => "";
 	public bool RunLuaModule(ReadOnlySpan<char> name) => false;
 	public bool FindAndRunScript(ReadOnlySpan<char> filename, bool run, bool showErrors, ReadOnlySpan<char> source, bool noReturns) => false;

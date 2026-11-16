@@ -23,6 +23,82 @@ public static class String
 		}
 
 		public static string UInt64(ulong num) => num.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+		const double ExactLimit = 549755813888.0;
+
+		static ulong RoundTenThousandths(double magnitude) {
+			ulong bits = BitConverter.DoubleToUInt64Bits(magnitude);
+			int exponent = (int)(bits >> 52) & 0x7FF;
+			ulong mantissa = bits & 0xFFFFFFFFFFFFF;
+			if (exponent == 0)
+				exponent = 1;
+			else
+				mantissa |= 1UL << 52;
+
+			int shift = 1071 - exponent;
+			if (shift > 63)
+				return 0;
+
+			ulong scaled = mantissa * 625;
+			ulong quotient = scaled >> shift;
+			ulong rest = scaled & ((1UL << shift) - 1);
+			ulong half = 1UL << (shift - 1);
+			if (rest > half || (rest == half && (quotient & 1) != 0))
+				quotient++;
+
+			return quotient;
+		}
+
+		public static int NiceFloat(float value, Span<byte> target) {
+			double number = value;
+			if (!double.IsFinite(number) || Math.Abs(number) >= ExactLimit) {
+				string text;
+				if (double.IsFinite(number))
+					text = Source.Common.CFormatting.FormatFixed(number, 4).TrimEnd('0').TrimEnd('.');
+				else {
+#if WIN32
+					text = Source.Common.CFormatting.FormatFixed(number, 4);
+#elif LINUX
+					text = double.IsNaN(number) ? double.IsNegative(number) ? "-nan" : "nan" : number < 0 ? "-inf" : "inf";
+#else
+					text = double.IsNaN(number) ? "nan" : number < 0 ? "-inf" : "inf";
+#endif
+				}
+
+				return System.Text.Encoding.ASCII.GetBytes(text, target);
+			}
+
+			ulong scaled = RoundTenThousandths(Math.Abs(number));
+			int length = 0;
+			if (double.IsNegative(number))
+				target[length++] = (byte)'-';
+
+			(scaled / 10000).TryFormat(target[length..], out int written, default, System.Globalization.CultureInfo.InvariantCulture);
+			length += written;
+
+			uint fraction = (uint)(scaled % 10000);
+			if (fraction != 0) {
+				target[length] = (byte)'.';
+				target[length + 1] = (byte)('0' + fraction / 1000);
+				target[length + 2] = (byte)('0' + fraction / 100 % 10);
+				target[length + 3] = (byte)('0' + fraction / 10 % 10);
+				target[length + 4] = (byte)('0' + fraction % 10);
+				length += 5;
+				while (target[length - 1] == '0')
+					length--;
+			}
+
+			return length;
+		}
+
+		// note: returns what To::Double reads back from the NiceDouble text
+		public static double NiceDouble(double value) {
+			if (!double.IsFinite(value) || Math.Abs(value) >= ExactLimit)
+				return value;
+
+			double rounded = RoundTenThousandths(Math.Abs(value)) / 10000.0;
+			return double.IsNegative(value) ? -rounded : rounded;
+		}
 	}
 
 	public static class To

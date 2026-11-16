@@ -59,7 +59,7 @@ internal static unsafe partial class LuaApi
 	[LibraryImport(Lib)] public static partial void lua_setstatef(nint L, delegate* unmanaged<nint, nint, void> f, nint ud);
 
 	[LibraryImport(Lib), SuppressGCTransition] public static partial int lua_gettop(nint L);
-	[LibraryImport(Lib)] public static partial void lua_settop(nint L, int idx);
+	[LibraryImport(Lib), SuppressGCTransition] public static partial void lua_settop(nint L, int idx);
 	[LibraryImport(Lib)] public static partial void lua_pushvalue(nint L, int idx);
 	[LibraryImport(Lib)] public static partial void lua_remove(nint L, int idx);
 	[LibraryImport(Lib)] public static partial void lua_insert(nint L, int idx);
@@ -75,9 +75,10 @@ internal static unsafe partial class LuaApi
 	[LibraryImport(Lib), SuppressGCTransition] public static partial int lua_isstring(nint L, int idx);
 	[LibraryImport(Lib), SuppressGCTransition] public static partial int lua_rawequal(nint L, int idx1, int idx2);
 	[LibraryImport(Lib)] public static partial byte* lua_tolstring(nint L, int idx, nuint* len);
+	[LibraryImport(Lib), SuppressGCTransition] public static partial nint lua_topointer(nint L, int idx);
 	[LibraryImport(Lib)] public static partial byte* lua_typename(nint L, int tp, int idx);
 
-	[LibraryImport(Lib)] public static partial void lua_pushnil(nint L);
+	[LibraryImport(Lib), SuppressGCTransition] public static partial void lua_pushnil(nint L);
 	[LibraryImport(Lib)] public static partial void lua_pushnumber(nint L, double n);
 	[LibraryImport(Lib)] public static partial void lua_pushlstring(nint L, byte* s, nuint len);
 	[LibraryImport(Lib)] public static partial void lua_pushboolean(nint L, int b);
@@ -86,10 +87,10 @@ internal static unsafe partial class LuaApi
 
 	[LibraryImport(Lib)] public static partial void lua_createtable(nint L, int narr, int nrec);
 	[LibraryImport(Lib)] public static partial nint lua_newuserdata(nint L, nuint sz);
-	[LibraryImport(Lib)] public static partial int lua_getmetatable(nint L, int idx);
+	[LibraryImport(Lib), SuppressGCTransition] public static partial int lua_getmetatable(nint L, int idx);
 	[LibraryImport(Lib)] public static partial int lua_setmetatable(nint L, int idx);
 	[LibraryImport(Lib)] public static partial void lua_rawget(nint L, int idx);
-	[LibraryImport(Lib)] public static partial void lua_rawgeti(nint L, int idx, int n);
+	[LibraryImport(Lib), SuppressGCTransition] public static partial void lua_rawgeti(nint L, int idx, int n);
 	[LibraryImport(Lib)] public static partial void lua_rawseti(nint L, int idx, int n);
 
 	[LibraryImport(Lib)] public static partial int lua_pcall(nint L, int nargs, int nresults, int errfunc);
@@ -105,6 +106,10 @@ internal static unsafe partial class LuaApi
 	[LibraryImport(Lib)] public static partial int lua_getinfo(nint L, byte* what, lua_Debug* ar);
 	[LibraryImport(Lib)] public static partial byte* lua_getlocal(nint L, lua_Debug* ar, int n);
 	[LibraryImport(Lib)] public static partial byte* lua_getupvalue(nint L, int funcindex, int n);
+
+	// note: no GC transition, strings only and tables nothing writes to meanwhile
+	[LibraryImport(Lib, EntryPoint = "lua_tolstring"), SuppressGCTransition] public static partial byte* lua_tolstring_fast(nint L, int idx, nuint* len);
+	[LibraryImport(Lib, EntryPoint = "lua_next"), SuppressGCTransition] public static partial int lua_next_fast(nint L, int idx);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static void lua_pop(nint L, int n) => lua_settop(L, -n - 1);

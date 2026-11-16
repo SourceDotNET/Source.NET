@@ -57,6 +57,7 @@ public interface ILuaInterface : ILuaBase
 	bool RunString(ReadOnlySpan<char> filename, ReadOnlySpan<char> path, ReadOnlySpan<char> stringToRun, bool run, bool showErrors);
 	bool IsEqual(ILuaObject? objA, ILuaObject? objB);
 	[DoesNotReturn] void Error(ReadOnlySpan<char> err);
+	bool TableToJSON(int stackPos, bool pretty, [NotNullWhen(false)] out string? error);
 	string GetStringOrError(int index);
 	bool RunLuaModule(ReadOnlySpan<char> name);
 	bool FindAndRunScript(ReadOnlySpan<char> filename, bool run, bool showErrors, ReadOnlySpan<char> source, bool noReturns);
