@@ -1561,8 +1561,12 @@ public partial class Host
 			searchString = searchString[..127];
 
 		bool steamID64 = (id >> 32) != 0;
-		// todo: take the universe from Steam when it is available
 		EUniverse universe = EUniverse.k_EUniversePublic;
+		if (steamID64) {
+			Source.Common.Steam.ISteamUtils? steamUtils = Steam3Client().SteamUtils();
+			if (steamUtils != null)
+				universe = steamUtils.GetConnectedUniverse();
+		}
 
 		IClient? client = null;
 		int i;
