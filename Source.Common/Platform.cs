@@ -1,6 +1,7 @@
 using Source.Common;
 
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 
 namespace Source;
@@ -56,6 +57,10 @@ public static class Platform
 	}
 
 	public static void Initialize() {
+		CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+		CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+		CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+		CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
 		ThreadUtils.SetMainThread();
 	}
 }

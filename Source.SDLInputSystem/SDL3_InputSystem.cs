@@ -634,11 +634,30 @@ public class SDL3_InputSystem(IServiceProvider services) : IInputSystem
 	public unsafe void GetCursorPosition(out int x, out int y) {
 		float fx, fy;
 		SDL3.SDL_GetMouseState(&fx, &fy);
-		x = (int)fx;
-		y = (int)fy;
+		GetCursorScale(out float sx, out float sy);
+		x = (int)(fx * sx);
+		y = (int)(fy * sy);
 	}
 
-	public unsafe void SetCursorPosition(int x, int y) => SDL3.SDL_WarpMouseInWindow((SDL_Window*)Window!.GetHandle(), x, y);
+	public unsafe void SetCursorPosition(int x, int y) {
+		GetCursorScale(out float sx, out float sy);
+		SDL3.SDL_WarpMouseInWindow((SDL_Window*)Window!.GetHandle(), x / sx, y / sy);
+	}
+
+	void GetCursorScale(out float sx, out float sy) {
+		sx = sy = 1.0f;
+#if OSX
+		if (launcherMgr == null)
+			return;
+		int renderWidth = 0, renderHeight = 0;
+		launcherMgr.RenderedSize(false, ref renderWidth, ref renderHeight);
+		launcherMgr.DisplayedSize(out int displayWidth, out int displayHeight);
+		if (renderWidth > 0 && renderHeight > 0 && displayWidth > 0 && displayHeight > 0) {
+			sx = (float)renderWidth / displayWidth;
+			sy = (float)renderHeight / displayHeight;
+		}
+#endif
+	}
 
 	public ButtonCode VirtualKeyToButtonCode(int virtualKey) {
 		return virtualKeyToButtonCode[virtualKey];
