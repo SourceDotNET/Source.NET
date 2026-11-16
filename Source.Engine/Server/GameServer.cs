@@ -78,7 +78,11 @@ public class GameServer : BaseServer
 	}
 
 	public void SetQueryPortFromSteamServer() {
-		// todo
+		if (ServerStartupDataTable == null)
+			return;
+
+		int queryPort = Steam3Server().GetQueryPort();
+		ServerStartupDataTable.AddString(true, "QueryPort", sizeof(int), MemoryMarshal.AsBytes(new ReadOnlySpan<int>(in queryPort)));
 	}
 	internal bool IsLevelMainMenuBackground() {
 		return LevelMainMenuBackground;
