@@ -206,7 +206,7 @@ public class Common(IServiceProvider providers, Sys Sys)
 	static bool logPathSetup;
 
 	public static void SetupLogDir(ReadOnlySpan<char> mapname) {
-		g_pFileSystem.RemoveSearchPaths("LOGDIR");
+		g_pFileSystem.RemoveSearchPath(ReadOnlySpan<char>.Empty, "LOGDIR");
 
 		if (!mapname.IsEmpty && Singleton<Source.Common.Commands.ICommandLine>().CheckParm("-uselogdir")) {
 			int i;
