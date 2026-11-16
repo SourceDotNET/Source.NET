@@ -1374,8 +1374,24 @@ public abstract class BaseServer : IServer
 
 		return false;
 	}
+	const int MAX_REUSE_PER_IP = 5;
+
 	protected virtual bool CheckIPConnectionReuse(NetAddress adr) {
-		throw new NotImplementedException();
+		int simultaneouslyConnections = 0;
+
+		for (int i = 0; i < Clients.Count; i++) {
+			BaseClient client = Clients[i];
+
+			if (client.IsConnected() && !client.IsActive() && !client.IsFakeClient() && adr.CompareAdr(client.NetChannel.GetRemoteAddress(), true))
+				simultaneouslyConnections++;
+		}
+
+		if (simultaneouslyConnections > MAX_REUSE_PER_IP) {
+			Msg($"Too many connect packets from {adr}\n");
+			return false;
+		}
+
+		return true;
 	}
 
 	protected virtual void ReplyChallenge(NetAddress adr, int clientChallenge) {
@@ -1403,7 +1419,15 @@ public abstract class BaseServer : IServer
 		Net.SendPacket(null!, Socket, adr, msg.GetData(), msg.BytesWritten);
 	}
 	protected virtual void ReplyServerChallenge(NetAddress adr) {
-		throw new NotImplementedException();
+		byte[] buffer = new byte[16];
+		bf_write msg = new(buffer, buffer.Length);
+
+		int challengeNr = GetChallengeNr(adr);
+
+		msg.WriteLong(Protocol.CONNECTIONLESS_HEADER);
+		msg.WriteByte(S2C.Challenge);
+		msg.WriteLong(challengeNr);
+		Net.SendPacket(null!, Socket, adr, msg.GetData(), msg.BytesWritten);
 	}
 
 	protected virtual void CalculateCPUUsage() {
