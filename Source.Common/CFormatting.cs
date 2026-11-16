@@ -6,6 +6,7 @@
 	for their arguments instead, along with not trying to reinvent the wheel and read actual C stdlib implementations.
 */
 
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -181,9 +182,12 @@ public ref struct ScanF
 {
 	public CFormatReader Format;
 	ReadOnlySpan<char> input;
-	int readArguments = 0;
-	public readonly int ReadArguments => readArguments - invalidArguments;
-	public readonly bool ReadAny => readArguments > 0;
+	int assigned;
+	bool failed;
+	bool inputFailure;
+
+	public readonly int ReadArguments => assigned == 0 && inputFailure ? -1 : assigned;
+	public readonly bool ReadAny => assigned > 0;
 
 	public ScanF(ReadOnlySpan<char> input, ReadOnlySpan<char> format) {
 		Format = new(format);
@@ -191,92 +195,198 @@ public ref struct ScanF
 	}
 	public readonly bool Overflowed => Format.Overflowed();
 
-	// NOTE: Only unsafe because C# can't tell we're never going to lose track of the stack allocated buffer target
-	// (which is needed to read out a literal)
-	private unsafe bool TryReadVariable(Span<char> incoming, out char type, out int len) {
-		type = '\0';
-		len = 0;
-		if (Format.Overflowed() || input.Length <= 0)
-			return false;
+	static bool IsSpace(char c) => c is ' ' or '\t' or '\n' or '\v' or '\f' or '\r';
+	static int DigitValue(char c) => c is >= '0' and <= '9' ? c - '0' : c is >= 'a' and <= 'f' ? c - 'a' + 10 : c is >= 'A' and <= 'F' ? c - 'A' + 10 : 99;
 
-		// Read until a variable or overflow
-		Span<char> literalBufferTarget = stackalloc char[64];
-		while (!Format.Overflowed() && input.Length > 0) {
-#pragma warning disable CS9080 // Use of variable in this context may expose referenced variables outside of their declaration scope
-			int read = Format.ReadLiteral(literalBufferTarget);
-#pragma warning restore CS9080 // Use of variable in this context may expose referenced variables outside of their declaration scope
-			if (read > 0) {
-				input = input[read..]; // slice so we're aligned
-				continue;
-			}
+	void SkipSpaces() {
+		while (!input.IsEmpty && IsSpace(input[0]))
+			input = input[1..];
+	}
 
-			break;
-		}
-
-		if (Format.ReadVariable(out type, out int variableIdx)) {
-			readArguments = variableIdx + 1;
-			int writePtr = 0;
-			bool hasWarned = false;
-			while (input.Length > 0) {
-				char c = input[0];
-				if (c == ' ')
-					break;
-				input = input[1..];
-				if (writePtr < incoming.Length) // don't overflow but continue to read to not break further arguments
-					incoming[writePtr++] = c;
-				else if (!hasWarned) {
-					Warning($"Overflowed scanf (max: {incoming.Length}). Consider increasing max here! Truncated argument will be provided.\n");
-					hasWarned = true;
-				}
-			}
-			len = writePtr;
-			return true;
-		}
-
+	bool Fail(bool atEnd) {
+		inputFailure = atEnd;
+		failed = true;
 		return false;
 	}
-	public const int DEFAULT_SCANF_MAX = 256;
-	public unsafe ScanF Read(out int i, int max = DEFAULT_SCANF_MAX) {
-		Span<char> incoming = stackalloc char[max];
-		i = default;
-		int iAttempt;
 
-#pragma warning disable CS9080 // Use of variable in this context may expose referenced variables outside of their declaration scope
-		if (TryReadVariable(incoming, out char type, out int len))
-#pragma warning restore CS9080 // Use of variable in this context may expose referenced variables outside of their declaration scope
-			switch (type) {
-				case 'd':
-				case (char)VariableType.SignedDecimalInteger:
-					i = int.TryParse(incoming[..len], out iAttempt) ? iAttempt : default;
-					break;
-				case (char)VariableType.UnsignedHexadecimalInteger:
-					i = int.TryParse(incoming[..len], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out iAttempt) ? iAttempt : default;
-					break;
-				default: throw new NotImplementedException();
+	bool NextConversion(out CFormatSpec spec) {
+		spec = default;
+		if (failed)
+			return false;
+
+		Span<char> literal = stackalloc char[64];
+		while (true) {
+			for (int read = Format.ReadLiteral(literal); read > 0; read = Format.ReadLiteral(literal)) {
+				for (int i = 0; i < read; i++) {
+					if (IsSpace(literal[i])) {
+						SkipSpaces();
+						continue;
+					}
+
+					if (input.IsEmpty || input[0] != literal[i])
+						return Fail(input.IsEmpty);
+					input = input[1..];
+				}
 			}
 
-		return this;
+			if (!Format.ReadSpec(out spec))
+				return Fail(false);
+			if (spec.WidthArg < 0)
+				return true;
+
+			if (CFormatUtils.IsFloatConversion(spec.Type) ? !ScanFloat(in spec, out _) : !ScanInteger(in spec, out _))
+				return false;
+		}
 	}
-	int invalidArguments = 0;
-	public unsafe ScanF Read(out float i, int max = DEFAULT_SCANF_MAX) {
-		Span<char> incoming = stackalloc char[max];
-		i = default;
-		float iAttempt;
 
-#pragma warning disable CS9080 // Use of variable in this context may expose referenced variables outside of their declaration scope
-		if (TryReadVariable(incoming, out char type, out int len))
-#pragma warning restore CS9080 // Use of variable in this context may expose referenced variables outside of their declaration scope
-			switch (type) {
-				case (char)VariableType.DecimalFloatingPoint:
-					if (float.TryParse(incoming[..len], out iAttempt))
-						i = iAttempt;
-					else
-						invalidArguments++;
-					break;
-				default: throw new NotImplementedException();
+	ReadOnlySpan<char> Window(in CFormatSpec spec) {
+		SkipSpaces();
+		return spec.Width > 0 && spec.Width < input.Length ? input[..spec.Width] : input;
+	}
+
+	bool Consume(bool valid, int length) {
+		if (!valid)
+			return Fail(length >= input.Length);
+
+		input = input[length..];
+		return true;
+	}
+
+	bool ScanInteger(in CFormatSpec spec, out long value) {
+		ReadOnlySpan<char> text = Window(in spec);
+		int i = 0;
+		bool negative = false;
+		if (i < text.Length && text[i] is '+' or '-')
+			negative = text[i++] == '-';
+
+		int radix = spec.Type switch {
+			'x' or 'X' => 16,
+			'o' or 'O' => 8,
+			'i' => 0,
+			_ => 10
+		};
+
+		if (radix is 0 or 16 && i + 1 < text.Length && text[i] == '0' && text[i + 1] is 'x' or 'X') {
+			radix = 16;
+			i += 2;
+		}
+		else if (radix == 0)
+			radix = i < text.Length && text[i] == '0' ? 8 : 10;
+
+		int start = i;
+		ulong number = 0;
+		for (; i < text.Length && DigitValue(text[i]) < radix; i++)
+			number = unchecked(number * (ulong)radix + (ulong)DigitValue(text[i]));
+
+		value = unchecked(negative ? -(long)number : (long)number);
+		return Consume(i > start, i);
+	}
+
+	bool ScanFloat(in CFormatSpec spec, out float value) {
+		ReadOnlySpan<char> text = Window(in spec);
+		int i = 0;
+		bool negative = false;
+		if (i < text.Length && text[i] is '+' or '-')
+			negative = text[i++] == '-';
+
+		bool valid;
+		value = 0;
+		if (text[i..].StartsWith("infinity", StringComparison.OrdinalIgnoreCase) || text[i..].StartsWith("inf", StringComparison.OrdinalIgnoreCase)) {
+			i += text[i..].StartsWith("infinity", StringComparison.OrdinalIgnoreCase) ? 8 : 3;
+			value = float.PositiveInfinity;
+			valid = true;
+		}
+		else if (text[i..].StartsWith("nan", StringComparison.OrdinalIgnoreCase)) {
+			i += 3;
+			value = float.NaN;
+			valid = true;
+		}
+		else if (i + 1 < text.Length && text[i] == '0' && text[i + 1] is 'x' or 'X') {
+			i += 2;
+			double mantissa = 0;
+			int digits = 0;
+			int exponent = 0;
+			for (; i < text.Length && DigitValue(text[i]) < 16; i++, digits++)
+				mantissa = mantissa * 16 + DigitValue(text[i]);
+			if (i < text.Length && text[i] == '.') {
+				for (i++; i < text.Length && DigitValue(text[i]) < 16; i++, digits++, exponent -= 4)
+					mantissa = mantissa * 16 + DigitValue(text[i]);
 			}
 
-		return this;
+			valid = digits > 0;
+			if (valid && i < text.Length && text[i] is 'p' or 'P') {
+				bool negativeExponent = ++i < text.Length && text[i] == '-';
+				if (i < text.Length && text[i] is '+' or '-')
+					i++;
+				int exponentDigits = i;
+				int binaryExponent = 0;
+				for (; i < text.Length && char.IsAsciiDigit(text[i]); i++)
+					binaryExponent = Math.Min(binaryExponent * 10 + (text[i] - '0'), 100000);
+				valid = i > exponentDigits;
+				exponent += negativeExponent ? -binaryExponent : binaryExponent;
+			}
+
+			value = (float)Math.ScaleB(mantissa, exponent);
+		}
+		else {
+			int start = i;
+			int digits = 0;
+			for (; i < text.Length && char.IsAsciiDigit(text[i]); i++)
+				digits++;
+			if (i < text.Length && text[i] == '.') {
+				for (i++; i < text.Length && char.IsAsciiDigit(text[i]); i++)
+					digits++;
+			}
+
+			valid = digits > 0;
+			if (valid && i < text.Length && text[i] is 'e' or 'E') {
+				if (++i < text.Length && text[i] is '+' or '-')
+					i++;
+				int exponentDigits = i;
+				while (i < text.Length && char.IsAsciiDigit(text[i]))
+					i++;
+				valid = i > exponentDigits;
+			}
+
+			if (valid)
+				value = float.Parse(text[start..i], NumberStyles.Float, CultureInfo.InvariantCulture);
+		}
+
+		if (negative)
+			value = -value;
+		return Consume(valid, i);
+	}
+
+	[UnscopedRef]
+	public ref ScanF Read(out int i) {
+		Unsafe.SkipInit(out i);
+		if (NextConversion(out CFormatSpec spec)) {
+			if (!CFormatUtils.IsIntegerConversion(spec.Type))
+				throw new NotImplementedException();
+
+			if (ScanInteger(in spec, out long value)) {
+				i = unchecked((int)value);
+				assigned++;
+			}
+		}
+
+		return ref this;
+	}
+
+	[UnscopedRef]
+	public ref ScanF Read(out float i) {
+		Unsafe.SkipInit(out i);
+		if (NextConversion(out CFormatSpec spec)) {
+			if (!CFormatUtils.IsFloatConversion(spec.Type))
+				throw new NotImplementedException();
+
+			if (ScanFloat(in spec, out float value)) {
+				i = value;
+				assigned++;
+			}
+		}
+
+		return ref this;
 	}
 }
 
