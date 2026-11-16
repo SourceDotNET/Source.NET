@@ -55,7 +55,35 @@ public partial class BaseFileSystem : IFileSystem
 		AddSearchPath(AppContext.BaseDirectory, "BASE_PATH", name: PathGroupName.EngineCore);
 	}
 
+	private void RemoveAllMapSearchPaths() {
+		foreach (KeyValuePair<ulong, SearchPathCollection> pair in SearchPaths) {
+			List<ISearchPath> addOrder = pair.Value.GetAddOrder();
+			for (int i = addOrder.Count - 1; i >= 0; i--) {
+				if (addOrder[i] is not ZipPackFileSearchPath)
+					continue;
+
+				RemoveSearchPathFromGroup(addOrder[i], SearchPaths.GetName(pair.Key));
+				addOrder.RemoveAt(i);
+				pair.Value.InvalidateOrder();
+			}
+		}
+	}
+
 	private void AddMapPackFile(ReadOnlySpan<char> path, ReadOnlySpan<char> pathID, SearchPathAdd addType, PathGroupName groupName) {
+		Span<char> fullPath = stackalloc char[MAX_PATH];
+		ReadOnlySpan<char> newPath = RelativePathToFullPath(path, "GAME", fullPath);
+		if (newPath.IsEmpty)
+			return;
+
+		foreach (SearchPathCollection existing in SearchPaths.Values) {
+			foreach (ISearchPath searchPath in existing.GetAddOrder()) {
+				if (searchPath is ZipPackFileSearchPath && searchPath.GetDiskPath().Equals(newPath, StringComparison.OrdinalIgnoreCase))
+					return;
+			}
+		}
+
+		RemoveAllMapSearchPaths();
+
 		using IFileHandle? file = Open(path, FileOpenOptions.Read | FileOpenOptions.Binary, "GAME");
 		if (file == null) {
 			Warning("Couldn't open BSP for embedded pack file\n");
@@ -71,58 +99,39 @@ public partial class BaseFileSystem : IFileSystem
 			return;
 		}
 
-		Span<char> fullPath = stackalloc char[MAX_PATH];
-		ReadOnlySpan<char> newPath = RelativePathToFullPath(path, "GAME", fullPath);
-
-		if (!SearchPaths.OpenOrCreateCollection(pathID, out SearchPathCollection collection)) {
-			for (int i = 0, c = collection.Count; i < c; i++) {
-				var searchPath = collection.GetAddOrder()[i];
-				if (searchPath.GetDiskPath() == newPath) {
-					if ((addType == SearchPathAdd.ToHead && i == 0) || addType == SearchPathAdd.ToTail)
-						return;
-					else {
-						RemoveSearchPathFromGroup(searchPath, pathID);
-						collection.GetAddOrder().RemoveAt(i);
-						collection.InvalidateOrder();
-						i--;
-						c--;
-						break;
-					}
-				}
-			}
-		}
-
 		ZipPackFileSearchPath zip = new(this, new(newPath), file.Stream, in pakfile);
 		if (!zip.IsValid()) {
 			Warning("ZipPackFileSearchPath not valid\n");
 			return;
 		}
 
+		SearchPaths.OpenOrCreateCollection(pathID, out SearchPathCollection collection);
 		AddSearchPathFinal(zip, addType, collection, groupName, pathID);
 	}
 
 	private void AddVPKFile(ReadOnlySpan<char> path, ReadOnlySpan<char> pathID, SearchPathAdd addType, PathGroupName groupName) {
 		string newPath = Path.IsPathFullyQualified(path) ? new(path) : Path.GetFullPath(new(path));
+		ISearchPath? createdSearchPath = null;
 
 		if (!SearchPaths.OpenOrCreateCollection(pathID, out SearchPathCollection collection)) {
-			for (int i = 0, c = collection.Count; i < c; i++) {
-				var searchPath = collection.GetAddOrder()[i];
-				if (searchPath.GetDiskPath() == newPath) {
-					if ((addType == SearchPathAdd.ToHead && i == 0) || addType == SearchPathAdd.ToTail)
-						return;
-					else {
-						RemoveSearchPathFromGroup(searchPath, pathID);
-						collection.GetAddOrder().RemoveAt(i);
-						collection.InvalidateOrder();
-						i--;
-						c--;
-						break;
-					}
-				}
+			for (int i = collection.Count - 1; i >= 0; i--) {
+				ISearchPath searchPath = collection.GetAddOrder()[i];
+				if (searchPath is not PackStoreSearchPath || !searchPath.GetDiskPath().Equals(newPath, StringComparison.OrdinalIgnoreCase))
+					continue;
+
+#if GMOD_DLL
+				Msg($"DUPLICATE: [{searchPath.GetDiskPath()}]\n");
+				RemoveSearchPathFromGroup(searchPath, pathID);
+				collection.GetAddOrder().RemoveAt(i);
+				collection.InvalidateOrder();
+				createdSearchPath = searchPath;
+#else
+				return;
+#endif
 			}
 		}
 
-		ISearchPath createdSearchPath = new PackStoreSearchPath(this, newPath);
+		createdSearchPath ??= new PackStoreSearchPath(this, newPath);
 		AddSearchPathFinal(createdSearchPath, addType, collection, groupName, pathID);
 	}
 	private void AddPackFiles(ReadOnlySpan<char> path, ReadOnlySpan<char> pathID, SearchPathAdd addType) { } // TODO 
@@ -143,7 +152,7 @@ public partial class BaseFileSystem : IFileSystem
 		if (!SearchPaths.OpenOrCreateCollection(pathID, out SearchPathCollection collection)) {
 			for (int i = 0, c = collection.Count; i < c; i++) {
 				var searchPath = collection.GetAddOrder()[i];
-				if (searchPath.GetDiskPath().SequenceEqual(newPath)) {
+				if (searchPath.GetDiskPath().Equals(newPath, StringComparison.OrdinalIgnoreCase)) {
 					if ((addType == SearchPathAdd.ToHead && i == 0) || addType == SearchPathAdd.ToTail)
 						return;
 					else {
@@ -518,10 +527,29 @@ public partial class BaseFileSystem : IFileSystem
 		if (!SearchPaths.TryGetValue(hash, out var collection))
 			return false;
 
+		bool matchAll = false;
+		string newPath = "";
+
+		if (path.IsEmpty) {
+#if GMOD_DLL
+			return false;
+#else
+			matchAll = true;
+#endif
+		}
+		else if (path.Contains(".bsp", StringComparison.OrdinalIgnoreCase)) {
+			Span<char> fullPath = stackalloc char[MAX_PATH];
+			newPath = new(RelativePathToFullPath(path, "GAME", fullPath));
+		}
+		else {
+			newPath = Path.IsPathFullyQualified(path) ? new(path) : Path.GetFullPath(new(path));
+			AddSeparatorAndFixPath(ref newPath);
+		}
+
 		bool ret = false;
 
 		for (int i = collection.Count - 1; i >= 0; i--) {
-			if (collection.GetAddOrder()[i].GetDiskPath() != path)
+			if (!matchAll && !collection.GetAddOrder()[i].GetDiskPath().Equals(newPath, StringComparison.OrdinalIgnoreCase))
 				continue;
 			RemoveSearchPathFromGroup(collection.GetAddOrder()[i], pathID);
 			collection.GetAddOrder().RemoveAt(i);
@@ -700,8 +728,9 @@ public partial class BaseFileSystem : IFileSystem
 				ISearchPath spi = searchpath.path;
 				ReadOnlySpan<char> pack = "";
 				ReadOnlySpan<char> type = "";
-				if (false /* TODO: Map-based pack files */) {
-					// type = "(map)";
+				if (spi is ZipPackFileSearchPath zip) {
+					type = "(map)";
+					pack = zip.GetDiskPath();
 				}
 				else if (spi is PackStoreSearchPath pssp) {
 					type = "(VPK)";
