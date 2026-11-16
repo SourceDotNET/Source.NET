@@ -1444,7 +1444,8 @@ public partial class Host
 			g_GameEventManager.FireEventClientSide(ev);
 
 #if GMOD_DLL
-		// todo: keep_players argument
+		if (args.FindArg("keep_players") != null)
+			sv.KeepPlayers = true;
 #endif
 
 		HostState.Shutdown();
