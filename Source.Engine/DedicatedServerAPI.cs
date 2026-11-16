@@ -76,10 +76,11 @@ public class DedicatedServerAPI(Cbuf Cbuf, IGame game, IServiceProvider services
 	}
 
 	public void UpdateStatus(out float fps, out int active, out int maxPlayers, Span<char> map) {
-		throw new NotImplementedException();
+		services.GetRequiredService<Host>().GetHostInfo(out fps, out active, out maxPlayers, map);
 	}
 
 	public void UpdateHostname(Span<char> hostname) {
-		throw new NotImplementedException();
+		if (!hostname.IsEmpty)
+			strcpy(hostname, sv.GetName());
 	}
 }
