@@ -143,7 +143,7 @@ public partial class BaseFileSystem : IFileSystem
 		if (!SearchPaths.OpenOrCreateCollection(pathID, out SearchPathCollection collection)) {
 			for (int i = 0, c = collection.Count; i < c; i++) {
 				var searchPath = collection.GetAddOrder()[i];
-				if (searchPath.GetDiskPath() == newPath) {
+				if (searchPath.GetDiskPath().SequenceEqual(newPath)) {
 					if ((addType == SearchPathAdd.ToHead && i == 0) || addType == SearchPathAdd.ToTail)
 						return;
 					else {
