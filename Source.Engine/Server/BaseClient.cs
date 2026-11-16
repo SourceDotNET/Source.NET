@@ -704,14 +704,13 @@ public abstract class BaseClient : IGameEventListener2, IClient, IClientMessageH
 
 		switch (id.IDType) {
 			case IDType.Steam:
-				if (Steam3Server().BLanOnly() && id.SteamID == CSteamID.Nil)
+				uint accountID = (uint)id.SteamID.GetAccountID();
+				if (Steam3Server().BLanOnly() && accountID == 0)
 					strcpy(idstr, "STEAM_ID_LAN");
-				else if (id.SteamID == CSteamID.Nil)
+				else if (accountID == 0)
 					strcpy(idstr, "STEAM_ID_PENDING");
-				else {
-					uint accountID = (uint)id.SteamID.GetAccountID();
+				else
 					strcpy(idstr, $"STEAM_0:{accountID & 1}:{accountID >> 1}");
-				}
 				break;
 			case IDType.HLTV: strcpy(idstr, "HLTV"); break;
 			case IDType.Replay: strcpy(idstr, "REPLAY"); break;
