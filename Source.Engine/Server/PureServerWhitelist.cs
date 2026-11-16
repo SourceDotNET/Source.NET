@@ -119,13 +119,13 @@ public class PureFileTracker
 
 	}
 	public bool DoesFileMatch(ReadOnlySpan<char> pathID, ReadOnlySpan<char> relativeFilename, int fileFraction, ref FileHash fileHash, USERID userID) {
-		return true; // todo
+		return true; // note: dead code in GMod
 	}
 	public int ListUserFiles(bool listAll, ReadOnlySpan<char> filenameFind) {
-		return 0; // todo
+		return 0; // note: dead code in GMod
 	}
 	public int ListAllTrackedFiles(bool listAll, ReadOnlySpan<char> filenameFind, int fileFractionMin, int fileFractionMax) {
-		return 0; // todo
+		return 0; // note: dead code in GMod
 	}
 
 	public readonly RedBlackTree<UserReportedFile> TreeAllReportedFiles;
