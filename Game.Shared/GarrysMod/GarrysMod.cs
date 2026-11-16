@@ -640,7 +640,7 @@ public class GarrysMod : IGarrysMod
 		}
 
 		LuaCam.CheckMissingEnds();
-		// todo: reset ShouldDrawLocalPlayer cache
+		LuaCam.ResetFrameStateChecked();
 
 		using (MatRenderContextPtr renderContext = new(materials)) {
 			renderContext.GMOD_ForceFilterMode(true, 0);

@@ -73,6 +73,7 @@
 
 	<PropertyGroup Condition="'$(IsAnalyzer)' == 'true'">
 		<PlatformTarget>AnyCPU</PlatformTarget>
+		<NoWarn>$(NoWarn);RS2008</NoWarn>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="!$(MSBuildProjectName.StartsWith('Source.CodeAnalysis'))">

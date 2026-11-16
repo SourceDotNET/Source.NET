@@ -168,7 +168,7 @@ public unsafe class StudioRender
 		}
 	}
 
-	private void ComputePoseToWorld(Span<Matrix3x4> poseToWorld, StudioHeader studioHdr, int boneMask, in Vector3 viewOrigin, Matrix3x4* pBoneToWorld) {
+	internal void ComputePoseToWorld(Span<Matrix3x4> poseToWorld, StudioHeader studioHdr, int boneMask, in Vector3 viewOrigin, Matrix3x4* pBoneToWorld) {
 		if ((studioHdr.Flags & StudioHdrFlags.StaticProp) != 0) {
 			poseToWorld[0] = pBoneToWorld[0];
 			return;

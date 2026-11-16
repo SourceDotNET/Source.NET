@@ -54,12 +54,19 @@ public partial class
 		return VECTOR_CONE_15DEGREES;
 	}
 
-	public void UpdateLookAt() {
+	public virtual void UpdateLookAt() {
 		if (HeadYawPoseParam < 0 || HeadPitchPoseParam < 0)
 			return;
 
 		// orient eyes
 		ViewTarget = LookAtTarget;
+
+#if CLIENT_DLL
+		if (BlinkTimer.IsElapsed()) {
+			BlinkToggle = BlinkToggle == 0 ? 1 : 0;
+			BlinkTimer.Start(RandomFloat(1.5f, 4.0f));
+		}
+#endif
 
 		// Figure out where we want to look in world space.
 		Vector3 to = LookAtTarget - EyePosition();
@@ -92,18 +99,20 @@ public partial class
 		CurrentHeadPitch = MathLib.AngleNormalize(CurrentHeadPitch);
 		SetPoseParameter(HeadPitchPoseParam, CurrentHeadPitch);
 	}
-	Vector3 ViewTarget;
-	Vector3 LookAtTarget;
+	protected Vector3 LookAtTarget;
 
-	int HeadYawPoseParam;
-	int HeadPitchPoseParam;
-	float LastBodyYaw;
-	float CurrentHeadYaw;
-	float CurrentHeadPitch;
-	float HeadYawMin;
-	float HeadYawMax;
-	float HeadPitchMin;
-	float HeadPitchMax;
+	protected int HeadYawPoseParam;
+	protected int HeadPitchPoseParam;
+	protected float HeadYawMin;
+	protected float HeadYawMax;
+	protected float HeadPitchMin;
+	protected float HeadPitchMax;
+	protected float LastBodyYaw;
+	protected float CurrentHeadYaw;
+	protected float CurrentHeadPitch;
+#if CLIENT_DLL
+	protected readonly CountdownTimer BlinkTimer = new();
+#endif
 
 	internal QAngle GetAnimEyeAngles() => AngEyeAngles;
 }

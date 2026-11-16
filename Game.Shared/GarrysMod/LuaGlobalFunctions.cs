@@ -443,7 +443,6 @@ public static partial class LuaGlobalFunctions
 	[LuaGlobal]
 	static int ErrorNoHalt(ILuaInterface lua) => ErrorNoHalt("ErrorNoHalt tostring ERROR");
 
-#if CLIENT_DLL || MENU_DLL
 	[LuaGlobal]
 	static int Error(ILuaInterface lua) => ErrorNoHalt("Error() tostring ERROR");
 
@@ -468,6 +467,7 @@ public static partial class LuaGlobalFunctions
 		return 0;
 	}
 
+#if CLIENT_DLL || MENU_DLL
 	[LuaGlobal]
 	static int DebugInfo(ILuaInterface lua) {
 		int pos = (int)lua.CheckNumber(1);

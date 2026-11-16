@@ -29,7 +29,11 @@ public partial class UserMessages
 		Register("LogoTimeMsg", 4);
 		Register("AchievementEvent", -1);
 		Register("UpdateJalopyRadar", -1);
-		Register("LuaUserMessage", -1);
+#if CLIENT_DLL
+		Game.Client.GarrysMod.LuaUserMessages.RegisterUserMessages(this);
+#else
+		Game.Server.GarrysMod.LuaUserMessages.RegisterUserMessages(this);
+#endif
 		// Register("LuaCmd", -1);
 		Register("SWEPCmd", -1);
 		Register("AmmoPickup", -1);

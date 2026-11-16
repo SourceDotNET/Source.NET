@@ -296,6 +296,13 @@ public partial class
 		return true;
 	}
 
+#if CLIENT_DLL
+	public virtual void CreateMoveThink() {
+		UpdateLuaData(true);
+		ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.Think, false);
+	}
+#endif
+
 	public override void ItemPostFrame() {
 		if (GetOwner() == null)
 			return;

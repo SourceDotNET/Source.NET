@@ -168,6 +168,11 @@ public static partial class SndDma
 			}
 		}
 
+#if GMOD_DLL
+		if (get != null && get.Audio() != null)
+			get.Audio()!.Update((uint)(long)((float)(Platform.Time - g_LastSoundFrame) * 1000.0f));
+#endif
+
 		if (s_bOnLoadScreen)
 			return;
 

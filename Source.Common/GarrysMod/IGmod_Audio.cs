@@ -31,9 +31,7 @@ public interface IGModAudioChannel
 	void GetPos(out Vector3 unk1, out Vector3 unk2, out Vector3 unk3);
 	void SetTime(TimeUnit_t time, bool unk2);
 	TimeUnit_t GetTime();
-#if WIN32
 	TimeUnit_t GetBufferedTime();
-#endif
 	void Set3DFadeDistance(float unk1, float unk2);
 	void Get3DFadeDistance(out float unk1, out float unk2);
 	void Set3DCone(int unk1, int unk2, float unk3);
@@ -51,10 +49,10 @@ public interface IGModAudioChannel
 	int GetBitsPerSample();
 	float GetAverageBitRate();
 	void GetLevel(out float unk1, out float unk2);
-	void FFT(ref float unk1, GModChannelFFT unk2);
+	int FFT(float[] data, GModChannelFFT size);
 	void SetChannelPan(float unk1);
 	float GetChannelPan();
-	ReadOnlySpan<char> GetTags(int unk1);
+	nint GetTags(int type);
 	void Set3DEnabled(bool unk1);
 	bool Get3DEnabled();
 	void Restart();
@@ -62,17 +60,13 @@ public interface IGModAudioChannel
 
 public interface IBassAudioStream
 {
-	uint Decode(ReadOnlySpan<byte> data);
+	int Decode(Span<byte> buffer);
 	int GetOutputBits();
 	int GetOutputRate();
 	int GetOutputChannels();
 	uint GetPosition();
 	void SetPosition(uint distance);
-	uint GetHandle(); // unsigned long -> DWORD -> HSTREAM
-	void MyFileCloseProc(object? unk1);
-	ulong MyFileLenProc(object? unk1); // unsigned long long -> QWORD
-	uint MyFileReadProc(object? unk1, uint unk2, object? unk3); // unsigned long -> DWORD
-	bool MyFileSeekProc(ulong unk1, object? unk2);
+	uint GetHandle();
 }
 
 public interface IGMod_Audio

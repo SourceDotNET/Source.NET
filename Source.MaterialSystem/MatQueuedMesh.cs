@@ -146,7 +146,7 @@ public sealed unsafe class MatQueuedMesh : IMesh
 		if (verticesToLock != 0 && desc.Vertex.ActualVertexSize != 0)
 			MST_CopyDynamicVB(in desc, info.VertexData, info.VertexCount * info.VertexSizeInBytes);
 
-		if (indicesToLock != 0 && info.IndexData != ScratchIndexBuffer && desc.Index.IndexSize != 0)
+		if (indicesToLock != 0 && info.IndexData != null && info.IndexData != ScratchIndexBuffer && desc.Index.IndexSize != 0)
 			MST_CopyDynamicIB(in desc, info.IndexData, info.IndexCount);
 
 		dynamicMesh.UnlockMesh(verticesToLock, indicesToLock, ref desc);
@@ -311,7 +311,6 @@ public sealed unsafe class MatQueuedMesh : IMesh
 			IndexOverride = IndexOverride,
 			PrimitiveType = Type
 		};
-		Assert(info.IndexData != null || Indices == 0);
 
 		CallQueue.QueueCall(static s => s.Mesh.MST_BuildDynamicBuffers(in s.Info), (Mesh: this, Info: info));
 		CanSetAuxMeshes = true;

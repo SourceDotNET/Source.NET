@@ -109,7 +109,11 @@ public unsafe class SDL3_LauncherManager : ILauncherManager, IGraphicsProvider
 		SDL_WindowFlags flags = default;
 		GraphicsDriver driver = GraphicsDriver.OpenGL46; // todo, dont hardcode
 		switch(driver.GetDriver()){
+#if OSX
+			case GraphicsDriver.OpenGL: flags |= SDL_WindowFlags.SDL_WINDOW_METAL; break;
+#else
 			case GraphicsDriver.OpenGL: flags |= SDL_WindowFlags.SDL_WINDOW_OPENGL; break;
+#endif
 			case GraphicsDriver.Metal: flags |= SDL_WindowFlags.SDL_WINDOW_METAL; break;
 			case GraphicsDriver.Vulkan: flags |= SDL_WindowFlags.SDL_WINDOW_VULKAN; break;
 			default: throw new Exception("Need graphics driver support");
@@ -226,6 +230,10 @@ public unsafe class SDL3_LauncherManager : ILauncherManager, IGraphicsProvider
 		if (set) {
 			renderedWidth = width;
 			renderedHeight = height;
+#if OSX
+			window.RenderWidth = width;
+			window.RenderHeight = height;
+#endif
 		}
 		else {
 			width = renderedWidth;
@@ -355,17 +363,37 @@ public unsafe class SDL3_LauncherManager : ILauncherManager, IGraphicsProvider
 		window = window == null ? this.window : window;
 		if (0 != (deviceInfo.Driver & GraphicsDriver.OpenGL)) {
 			nint handle = (nint)((SDL3_Window)window).HardwareHandle;
+#if OSX
+			int modeWidth = deviceInfo.DisplayMode.Width, modeHeight = deviceInfo.DisplayMode.Height;
+			return SDL3_MesaEGL_Context.Create((SDL_Window*)handle, 4, 6, () => {
+				if (renderedWidth > 0 && renderedHeight > 0)
+					return (renderedWidth, renderedHeight);
+				if (modeWidth > 0 && modeHeight > 0)
+					return (modeWidth, modeHeight);
+				DisplayedSize(out int w, out int h);
+				return (w, h);
+			});
+#else
 			nint ctx = (nint)SDL3.SDL_GL_CreateContext((SDL_Window*)handle);
+			if (ctx == 0) {
+				Warning($"Could not create GL context: {SDL3.SDL_GetError()}\n");
+				return null;
+			}
 			SDL3.SDL_GL_SetSwapInterval(0);
 			gfx = new SDL3_OpenGL46_Context(handle, ctx);
 			return gfx;
+#endif
 		}
 
 		Warning("Cannot support this graphics API\n");
 		return null;
 	}
 
+#if OSX
+	public delegate* unmanaged[Cdecl]<byte*, void*> GL_LoadExtensionsPtr() => &SDL3_MesaEGL_Context.GetProcAddress;
+#else
 	public delegate* unmanaged[Cdecl]<byte*, void*> GL_LoadExtensionsPtr() => &GL_ProcAddress;
+#endif
 
 	ICursor[] DefaultCursors;
 

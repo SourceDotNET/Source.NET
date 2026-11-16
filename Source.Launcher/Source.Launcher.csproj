@@ -21,6 +21,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Game.Client\Game.Client.csproj" />
 		<ProjectReference Include="..\Game.Lua\Game.Lua.csproj" />
+		<ProjectReference Include="..\Game.BASS\Game.BASS.csproj" />
 		<ProjectReference Include="..\Game.MenuSystem\Game.MenuSystem.csproj" />
 		<ProjectReference Include="..\Game.Server\Game.Server.csproj" />
 		<ProjectReference Include="..\Game.UI\Game.UI.csproj" />
@@ -53,9 +54,35 @@
 		<Copy SourceFiles="@(CefRedistLinuxX64)" DestinationFiles="@(CefRedistLinuxX64->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
 	</Target>
 
+	<!-- macOS caps OpenGL at 4.1, so GL 4.6 runs on Mesa (Zink over KosmicKrisp). libEGL is repointed at the bundled libgallium so that Zink's @rpath lookup finds the bundled Vulkan loader. -->
+	<PropertyGroup Condition="'$(IsOSX)'=='true'">
+		<MesaPrefix Condition="'$(MesaPrefix)'==''">/opt/homebrew/opt/mesa</MesaPrefix>
+		<VulkanLoaderPrefix Condition="'$(VulkanLoaderPrefix)'==''">/opt/homebrew/opt/vulkan-loader</VulkanLoaderPrefix>
+		<MesaBundleDir>$(OutputPath)mesa/lib/</MesaBundleDir>
+	</PropertyGroup>
+
+	<Target Name="SNWarnMissingMesa" AfterTargets="Build" Condition="'$(SNClientBuild)'=='true' And '$(IsOSX)'=='true' And (!Exists('$(MesaPrefix)/lib/libEGL.1.dylib') Or !Exists('$(VulkanLoaderPrefix)/lib/libvulkan.1.dylib'))">
+		<Warning Text="Mesa or the Vulkan loader was not found, so the client cannot render on macOS. Run 'brew install mesa vulkan-loader' and rebuild." />
+	</Target>
+
+	<ItemGroup Condition="'$(IsOSX)'=='true'">
+		<MesaBundleFile Include="$(MesaPrefix)/lib/libEGL.1.dylib" />
+		<MesaBundleFile Include="$(MesaPrefix)/lib/libgallium-*.dylib" />
+		<MesaBundleFile Include="$(MesaPrefix)/lib/libvulkan_kosmickrisp.dylib" />
+		<MesaBundleFile Include="$(VulkanLoaderPrefix)/lib/libvulkan.1.dylib" />
+	</ItemGroup>
+
+	<Target Name="SNBundleMesa" AfterTargets="Build" Condition="'$(SNClientBuild)'=='true' And '$(IsOSX)'=='true' And Exists('$(MesaPrefix)/lib/libEGL.1.dylib') And Exists('$(VulkanLoaderPrefix)/lib/libvulkan.1.dylib')" Inputs="@(MesaBundleFile)" Outputs="$(MesaBundleDir)libEGL.1.dylib">
+		<Copy SourceFiles="@(MesaBundleFile)" DestinationFolder="$(MesaBundleDir)" />
+		<Exec WorkingDirectory="$(MesaBundleDir)" Command="old=`otool -L libEGL.1.dylib | awk '/libgallium/{print $1}'` &amp;&amp; install_name_tool -change &quot;$old&quot; &quot;@loader_path/`basename $old`&quot; libEGL.1.dylib 2&gt;/dev/null &amp;&amp; codesign -f -s - libEGL.1.dylib" />
+		<WriteLinesToFile File="$(MesaBundleDir)kosmickrisp_icd.json" Lines="{ &quot;file_format_version&quot;: &quot;1.0.1&quot;, &quot;ICD&quot;: { &quot;library_path&quot;: &quot;./libvulkan_kosmickrisp.dylib&quot;, &quot;api_version&quot;: &quot;1.4.0&quot; } }" Overwrite="true" />
+	</Target>
+
 	<!-- Copy LuaJIT (Game.Lua imports "lua51", which .NET resolves to liblua51.so on Linux) -->
 	<ItemGroup>
 		<None Include="$(MSBuildThisFileDirectory)..\Dependencies\LuaJIT\win64\lua51.dll" Link="lua51.dll" CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="'$(IsWindows)'=='true'" />
 		<None Include="$(MSBuildThisFileDirectory)..\Dependencies\LuaJIT\linux64\libluajit.so" Link="liblua51.so" CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="'$(IsLinux)'=='true'" />
+		<None Include="$(MSBuildThisFileDirectory)..\Dependencies\LuaJIT\osx64\libluajit.dylib" Link="liblua51.dylib" CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="'$(IsOSX)'=='true' And '$(PlatformTarget)' != 'arm64'" />
+		<None Include="$(MSBuildThisFileDirectory)..\Dependencies\LuaJIT\osxarm64\libluajit.dylib" Link="liblua51.dylib" CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="'$(IsOSX)'=='true' And '$(PlatformTarget)' == 'arm64'" />
 	</ItemGroup>
 </Project>

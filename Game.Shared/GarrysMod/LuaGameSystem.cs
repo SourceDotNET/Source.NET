@@ -50,6 +50,7 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 		materials.CacheUsedMaterials();
 	}
 	public override void Update(double frametime) {
+		LuaMesh.FlushPendingDestroy();
 		// RemoveQueuedRenderTargets();
 		LuaEntity.RemoveQueuedEntities();
 		// RunMapCleanupIfNeeded();
@@ -99,7 +100,7 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 	public override void LevelShutdownPreEntity() {
 #if CLIENT_DLL
 		LuaProjectedTexture.RemoveAll();
-		// todo: IMesh delete list
+		LuaMesh.FlushPendingDestroy();
 #else
 		// todo: server LevelShutdownPreEntity
 #endif

@@ -6,6 +6,7 @@ using Source;
 using Source.Common;
 using Source.Common.Audio;
 using Source.Common.Engine;
+using Source.Common.Formats.BSP;
 using Source.Common.GarrysMod.Lua;
 using Source.Common.Mathematics;
 using Source.Common.Physics;
@@ -1610,6 +1611,121 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__AddEFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent) || ent.IsMarkedForDeletion())
+			return 0;
+		int flags = (int)lua.CheckNumber(2);
+		if ((flags & 1) == 0)
+			ent.AddEFlags((EFL)flags);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__RemoveEFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent) || ent.IsMarkedForDeletion())
+			return 0;
+		int flags = (int)lua.CheckNumber(2);
+		if ((flags & 1) == 0)
+			ent.RemoveEFlags((EFL)flags);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetMaterial(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetMaterialOverride(lua.GetType(2) == LuaType.Nil ? null : lua.CheckString(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetMaterial(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushString(ent.GetMaterialOverride());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetRotatedAABB(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Vector3 mins = LuaVector.Get_Vector(2);
+		Vector3 maxs = LuaVector.Get_Vector(3);
+		MathLib.RotateAABB(ent.EntityToWorldTransform(), mins, maxs, out Vector3 minsOut, out Vector3 maxsOut);
+		LuaVector.Push_Vector(minsOut);
+		LuaVector.Push_Vector(maxsOut);
+		return 2;
+	}
+
+	[LuaMethod]
+	static int Entity__GetSubMaterial(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		lua.PushString(ent.GetSubMaterialOverride((int)lua.CheckNumber(2)));
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetSubMaterial(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (lua.GetType(2) == LuaType.Nil) {
+			ent.ClearSubMaterialOverrides();
+			return 0;
+		}
+		int index = (int)lua.GetNumber(2);
+		ReadOnlySpan<char> name = lua.GetType(3) == LuaType.Nil ? null : lua.GetString(3);
+		ent.SetSubMaterialOverride(index, name);
+		return 0;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__TakePhysicsDamage(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.VPhysicsTakeDamage(LuaTakeDamageInfo.Get_TakeDamageInfo(2));
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
+	static int Entity__NextThink(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetNextThink((float)lua.CheckNumber(2));
+		return 0;
+	}
+
+#if GAME_DLL
+	[LuaMethod]
+	static int Entity__DropToFloor(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int mask = (int)lua.CheckNumberOpt(2, (double)Mask.Solid);
+		BaseEntity? ignore = Get_Entity(3, true);
+		float distance = (float)lua.CheckNumberOpt(4, 256.0);
+		Util.DropToFloor(ent, (Mask)mask, ignore, distance);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetUseType(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		int type = (int)lua.CheckNumber(2);
+		if (type == 1) {
+			ent.SetUseType((int)EntityCapabilities.OnOffUse);
+			return 0;
+		}
+		if (type == 2) {
+			ent.SetUseType((int)EntityCapabilities.DirectionalUse);
+			return 0;
+		}
+		if (type == 3) {
+			ent.SetUseType((int)EntityCapabilities.ImpulseUse);
+			return 0;
+		}
+		ent.SetUseType((int)EntityCapabilities.ContinuousUse);
+		return 0;
+	}
+#endif
+
+	[LuaMethod]
 	static int Entity__LocalToWorld(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		Vector3 local = LuaVector.Get_Vector(2);
@@ -2990,6 +3106,7 @@ public static partial class LuaEntity
 		LuaVector.Push_Vector(manipulator.GetBoneScale((byte)(int)lua.CheckNumber(2)));
 		return 1;
 	}
+#endif
 
 	[LuaMethod]
 	static int Entity__ManipulateBonePosition(ILuaInterface lua) {
@@ -3022,9 +3139,11 @@ public static partial class LuaEntity
 		if (animating == null || ent.IsEFlagSet(EFL.KillMe) || animating.GetBoneManipulator(true) is not BoneManipulate manipulator)
 			return 0;
 		Vector3 scale = LuaVector.Get_Vector(3);
-		manipulator.SetBoneScale((byte)(int)lua.CheckNumber(2), scale);
+		manipulator.SetBoneScale((byte)(int)lua.CheckNumber(2), scale, true);
 		return 0;
 	}
+
+#if GAME_DLL
 
 	[LuaMethod]
 	static int Entity__GetName(ILuaInterface lua) {
@@ -3131,6 +3250,43 @@ public static partial class LuaEntity
 	static int Entity__InvalidateBoneCache(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		ent.GetBaseAnimating()?.InvalidateBoneCache();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetBoneMatrix(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+
+		int bone = (int)lua.CheckNumber(2);
+		if (bone < 0)
+			return 0;
+
+		mdlcache.BeginLock();
+		if (!animating.IsDynamicModelLoading()) {
+			StudioHdr? hdr = animating.GetModelPtr();
+			if (hdr != null && bone < hdr.NumBones() && (animating.AccumulatedBoneMask & hdr.BoneFlags(bone)) != 0) {
+				Matrix4x4 matrix = default;
+				matrix.Init(animating.GetBone(bone));
+				LuaVMatrix.Push_VMatrix(matrix);
+				mdlcache.EndLock();
+				return 1;
+			}
+		}
+		mdlcache.EndLock();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__SetupBones(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating != null) {
+			animating.InvalidateBoneCache();
+			animating.SetupBones(null, -1, Studio.BONE_USED_BY_ANYTHING, gpGlobals.CurTime);
+		}
 		return 0;
 	}
 #endif

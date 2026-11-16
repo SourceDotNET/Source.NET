@@ -80,6 +80,11 @@ static class AssetUtils
 				}
 			}
 		}
+		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+			string p = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "Steam");
+			if (Directory.Exists(p))
+				steamPath = p;
+		}
 
 		if (string.IsNullOrEmpty(steamPath))
 			return null;

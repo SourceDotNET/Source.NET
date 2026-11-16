@@ -1,4 +1,5 @@
 using Source.Common.MaterialSystem;
+using Source.Common.ShaderAPI;
 
 using System.Runtime.InteropServices;
 
@@ -22,6 +23,8 @@ public unsafe class VertexBufferGl46 : IDisposable
 	internal bool SoftwareVertexProcessing;
 	internal bool LateCreateShouldDiscard;
 	internal bool Written;
+	internal bool LateCreate;
+	internal IShaderUtil? ShaderUtil;
 
 	int vbo = -1;
 	PersistentBufferRing? ring;
@@ -32,7 +35,8 @@ public unsafe class VertexBufferGl46 : IDisposable
 		Dynamic = dynamic;
 	}
 
-	public VertexBufferGl46(VertexFormat format, int vertexSize, int vertexCount, bool dynamic) {
+	public VertexBufferGl46(VertexFormat format, int vertexSize, int vertexCount, bool dynamic, IShaderUtil? shaderUtil = null) {
+		ShaderUtil = shaderUtil;
 		VertexBufferFormat = format;
 		VertexSize = vertexSize;
 		VertexCount = vertexCount;
@@ -146,8 +150,10 @@ public unsafe class VertexBufferGl46 : IDisposable
 			return;
 		}
 
+		bool renderThreadSafe = ShaderUtil == null || ShaderUtil.IsRenderThreadSafe();
+
 		// Create the VBO if it doesn't exist
-		if (vbo == -1)
+		if (vbo == -1 && renderThreadSafe)
 			vbo = (int)glCreateBuffer();
 		// Deallocate if Sysmembuffer != null and we cant fit in what we already allocated.
 		if (BufferSize > lastBufferSize) {
@@ -157,7 +163,10 @@ public unsafe class VertexBufferGl46 : IDisposable
 			}
 			lastBufferSize = BufferSize;
 			SysmemBuffer = NativeMemory.AllocZeroed((nuint)BufferSize);
-			glNamedBufferData((uint)vbo, BufferSize, null, Dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+			if (renderThreadSafe)
+				glNamedBufferData((uint)vbo, BufferSize, null, Dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+			else
+				LateCreate = true;
 		}
 
 	}
@@ -219,8 +228,10 @@ public unsafe class VertexBufferGl46 : IDisposable
 		if (bufferSize > 0) {
 			if (Dynamic)
 				Written = true;
-			else
+			else if (!LateCreate && (ShaderUtil == null || ShaderUtil.IsRenderThreadSafe()))
 				glNamedBufferSubData((uint)vbo, lockOffset, bufferSize, (byte*)SysmemBuffer + lockOffset);
+			else
+				LateCreate = true;
 		}
 		Position = lockOffset + bufferSize;
 		Locked = false;
@@ -255,8 +266,10 @@ public unsafe class VertexBufferGl46 : IDisposable
 		if (vertexCount > 0) {
 			if (Dynamic)
 				Written = true;
-			else
+			else if (!LateCreate && (ShaderUtil == null || ShaderUtil.IsRenderThreadSafe()))
 				glNamedBufferSubData((uint)vbo, modifyOffset, vertexCount * VertexSize, (byte*)SysmemBuffer + modifyOffset);
+			else
+				LateCreate = true;
 		}
 		Locked = false;
 	}
@@ -418,6 +431,12 @@ public unsafe class VertexBufferGl46 : IDisposable
 	}
 
 	internal void HandleLateCreation() {
+		if (!LateCreate)
+			return;
 
+		if (vbo == -1)
+			vbo = (int)glCreateBuffer();
+		glNamedBufferData((uint)vbo, BufferSize, SysmemBuffer, GL_STATIC_DRAW);
+		LateCreate = false;
 	}
 }

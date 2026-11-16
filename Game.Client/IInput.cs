@@ -32,6 +32,8 @@ public interface IInput
 	void CAM_ToThirdPerson();
 	void CAM_ToFirstPerson();
 	bool CAM_IsThirdPerson();
+	bool CAM_IsOrthographic();
+	void CAM_OrthographicSize(out float w, out float h);
 	void CAM_SetCameraThirdData(CameraThirdData? value, QAngle vec3_angle);
 	void AccumulateMouse();
 }

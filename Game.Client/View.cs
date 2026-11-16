@@ -221,9 +221,6 @@ public class ViewRender : IViewRender
 		viewEye.StereoEye = StereoEye.Mono;
 
 		C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
-		bool calcViewModelView = false;
-		Vector3 viewModelOrigin = default;
-		QAngle viewModelAngles = default;
 
 		if (player != null) {
 			player.CalcView(ref viewEye.Origin, ref viewEye.Angles, ref viewEye.ZNear, ref viewEye.ZFar, ref viewEye.FOV);
@@ -237,10 +234,6 @@ public class ViewRender : IViewRender
 					viewEye.Angles = ve.GetAbsAngles();
 				}
 			}
-
-			calcViewModelView = true;
-			viewModelOrigin = viewEye.Origin;
-			viewModelAngles = viewEye.Angles;
 		}
 
 		clientMode.OverrideView(ref viewEye);
@@ -249,11 +242,6 @@ public class ViewRender : IViewRender
 		float flFOVOffset = fDefaultFov - viewEye.FOV;
 
 		viewEye.FOVViewmodel = MathF.Abs(clientMode.GetViewModelFOV() - flFOVOffset);
-
-		if (calcViewModelView) {
-			Assert(player != null);
-			player.CalcViewModelView(in viewModelOrigin, in viewModelAngles);
-		}
 
 		ViewRender.g_VecPrevRenderOrigin = ViewRender.g_VecRenderOrigin;
 		ViewRender.g_VecPrevRenderAngles = ViewRender.g_VecRenderAngles;
