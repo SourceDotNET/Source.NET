@@ -736,7 +736,7 @@ public class GameServer : BaseServer
 			ev.SetString("game", Common.Gamedir);
 			ev.SetString("mapname", GetMapName());
 			ev.SetInt("maxplayers", GetMaxClients());
-			ev.SetInt("password", 0);              // TODO
+			ev.SetInt("password", 0);
 #if WIN32
 			ev.SetString("os", "WIN32");
 #elif LINUX
