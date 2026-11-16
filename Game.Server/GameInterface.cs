@@ -355,6 +355,7 @@ public class ServerGameDLL(IFileSystem filesystem, ICommandLine CommandLine) : I
 #endif
 
 		IGameSystem.Add(PhysicsGameSystem());
+		IGameSystem.Add(GameLogSystem());
 		IGameSystem.Add(g_SoundEmitterSystem);
 
 		if (!IGameSystem.InitAllSystems())
