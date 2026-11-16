@@ -29,6 +29,11 @@ public class CefSystem : IHtmlSystem
 		if (OperatingSystem.IsWindows() && !LowIntegrityLabel.Apply(rootCachePath))
 			resourceHandler.Message($"Chromium: failed to set a low integrity label on {rootCachePath}, cookies and storage will not persist.\n");
 
+		if (OperatingSystem.IsMacOS() && !Directory.Exists(Path.Combine(chromiumDir, "Chromium Embedded Framework.framework"))) {
+			resourceHandler.Message($"Chromium failed to load: Chromium Embedded Framework.framework is missing from {chromiumDir}\n");
+			return false;
+		}
+
 		try {
 			if (OperatingSystem.IsWindows())
 				CefRuntime.Load(chromiumDir);

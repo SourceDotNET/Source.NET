@@ -157,11 +157,7 @@ public class GameUI(IEngineClient engine) : IGameUI
 	private bool FindPlatformDirectory(out ReadOnlySpan<char> platformDir) {
 		platformDir = string.Empty;
 
-#if WIN32
-		string? dir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-#else
-		string? dir = Directory.GetCurrentDirectory();
-#endif
+		string? dir = AppContext.BaseDirectory;
 		if (string.IsNullOrEmpty(dir))
 			return false;
 

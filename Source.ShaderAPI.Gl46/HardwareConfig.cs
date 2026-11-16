@@ -14,9 +14,7 @@ public class HardwareConfig : IMaterialSystemHardwareConfig
 		throw new NotImplementedException();
 	}
 
-	public bool CanDoSRGBReadFromRTs() {
-		throw new NotImplementedException();
-	}
+	public bool CanDoSRGBReadFromRTs() => true;
 
 	public bool FakeSRGBWrite() {
 		throw new NotImplementedException();

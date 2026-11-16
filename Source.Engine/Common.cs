@@ -103,7 +103,7 @@ public class Common(IServiceProvider providers, Sys Sys)
 		FileSystem FileSystem = providers.GetRequiredService<FileSystem>();
 
 		initInfo.FileSystem = engineAPI.GetRequiredService<IFileSystem>();
-		initInfo.DirectoryName = new(fullModPath);
+		initInfo.DirectoryName = fullModPath.IsEmpty ? "" : Path.GetFullPath(new string(fullModPath), AppContext.BaseDirectory);
 		if (initInfo.DirectoryName == null)
 			initInfo.DirectoryName = Host.GetCurrentGame();
 

@@ -43,6 +43,8 @@ public unsafe class SDL3_Window : IWindow
 
 	public float MouseXScale = 1.0f;
 	public float MouseYScale = 1.0f;
+	public int RenderWidth;
+	public int RenderHeight;
 
 	public int GetEvents(WindowEvent[] buffer, int maxEvents) {
 		if (maxEvents == 0) return 0;
@@ -118,6 +120,14 @@ public unsafe class SDL3_Window : IWindow
 	public void PumpMessages() {
 		SDL_Event ev;
 		int eventsProcessed = 0;
+
+		if (RenderWidth > 0 && RenderHeight > 0) {
+			int w, h;
+			if (SDL3.SDL_GetWindowSize(window, &w, &h) && w > 0 && h > 0) {
+				MouseXScale = (float)RenderWidth / w;
+				MouseYScale = (float)RenderHeight / h;
+			}
+		}
 		while (SDL3.SDL_PollEvent(&ev) && eventsProcessed < 100) {
 			eventsProcessed += 1;
 

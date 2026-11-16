@@ -101,7 +101,7 @@ public partial class BaseFileSystem : IFileSystem
 	}
 
 	private void AddVPKFile(ReadOnlySpan<char> path, ReadOnlySpan<char> pathID, SearchPathAdd addType, PathGroupName groupName) {
-		string newPath = Path.IsPathFullyQualified(path) ? new(path) : Path.GetFullPath(new(path));
+		string newPath = Path.IsPathFullyQualified(path) ? new(path) : Path.GetFullPath(new(path), AppContext.BaseDirectory);
 
 		if (!SearchPaths.OpenOrCreateCollection(pathID, out SearchPathCollection collection)) {
 			for (int i = 0, c = collection.Count; i < c; i++) {
@@ -136,7 +136,7 @@ public partial class BaseFileSystem : IFileSystem
 			case ".vpk": AddVPKFile(path, pathID, addType, groupName); return;
 		}
 
-		string newPath = Path.IsPathFullyQualified(path) ? new(path) : Path.GetFullPath(new(path));
+		string newPath = Path.IsPathFullyQualified(path) ? new(path) : Path.GetFullPath(new(path), AppContext.BaseDirectory);
 		AddSeparatorAndFixPath(ref newPath);
 
 		if (!SearchPaths.OpenOrCreateCollection(pathID, out SearchPathCollection collection)) {

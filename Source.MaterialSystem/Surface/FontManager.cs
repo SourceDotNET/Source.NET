@@ -622,7 +622,7 @@ public unsafe class FontManager
 
 		for (KeyValues? kv = fallbackFonts.GetFirstSubKey(); kv != null; kv = kv.GetNextKey()) {
 			string? key = kv.Name == "NULL" ? null : kv.Name;
-			string? value = kv.GetString() == "NULL" ? null : new(kv.GetString());
+			string? value = kv.GetString().SequenceEqual("NULL") ? null : new(kv.GetString());
 			FallbackFonts[ffidx++] = new(key, value);
 		}
 
