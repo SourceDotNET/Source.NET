@@ -699,7 +699,7 @@ public abstract class BaseClient : IGameEventListener2, IClient, IClientMessageH
 	public int GetClientChallenge() => ClientChallenge;
 
 	static readonly char[] idstr = new char[Constants.MAX_NETWORKID_LENGTH];
-	public ReadOnlySpan<char> GetUserIDString(USERID id) {
+	public static ReadOnlySpan<char> GetUserIDString(USERID id) {
 		idstr[0] = '\0';
 
 		switch (id.IDType) {
@@ -708,15 +708,17 @@ public abstract class BaseClient : IGameEventListener2, IClient, IClientMessageH
 					strcpy(idstr, "STEAM_ID_LAN");
 				else if (id.SteamID == CSteamID.Nil)
 					strcpy(idstr, "STEAM_ID_PENDING");
-				else
-					strcpy(idstr, id.SteamID.Render());
+				else {
+					uint accountID = (uint)id.SteamID.GetAccountID();
+					strcpy(idstr, $"STEAM_0:{accountID & 1}:{accountID >> 1}");
+				}
 				break;
 			case IDType.HLTV: strcpy(idstr, "HLTV"); break;
 			case IDType.Replay: strcpy(idstr, "REPLAY"); break;
 			default: strcpy(idstr, "UNKNOWN"); break;
 		}
 
-		return idstr;
+		return ((ReadOnlySpan<char>)idstr).SliceNullTerminatedString();
 	}
 
 	public USERID GetNetworkID() {
