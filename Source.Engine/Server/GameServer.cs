@@ -110,6 +110,11 @@ public class GameServer : BaseServer
 	public override void Clear() {
 		host_state.SetWorldModel(null);
 
+		NumEdicts = 0;
+		MaxEdicts = 0;
+		FreeEdicts = 0;
+		Edicts = null;
+
 		for (ServerClass? cls = serverGameDLL.GetAllServerClasses(); cls != null; cls = cls.Next)
 			cls.InstanceBaselineIndex = INetworkStringTable.INVALID_STRING_INDEX;
 
