@@ -85,6 +85,8 @@ public class ClientLauncherAPI(IGame game, IServiceProvider services, Common COM
 
 
 	public void SetStartupInfo(in StartupInfo info) {
+		g_pFileSystem.SetWarningFunc(Warning);
+
 		Sys.TextMode = info.TextMode;
 		host_parms.BaseDir = info.BaseDirectory;
 		startupInfo = info;

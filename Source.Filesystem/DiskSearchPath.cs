@@ -120,7 +120,18 @@ public class DiskSearchPath : BaseSearchPath
 		FileShare share = access == FileAccess.Read ? FileShare.ReadWrite | FileShare.Delete : FileShare.Read;
 
 		try {
-			return new DiskFileHandle(parent, info.Open(mode, access, share), parent.FindOrAddFileName(path));
+#if WIN32
+			string traceName = absPath.Replace('/', '\\');
+#else
+			string traceName = absPath;
+#endif
+			DiskFileHandle handle = new(parent, info.Open(mode, access, share), parent.FindOrAddFileName(path), traceName);
+			(parent as BaseFileSystem)?.Trace_FOpen(traceName, operation switch {
+				FileOpenOptions.Write => options.Extended() ? "w+" : "w",
+				FileOpenOptions.Append => options.Extended() ? "a+" : "a",
+				_ => options.Extended() ? "r+" : "r"
+			});
+			return handle;
 		}
 		catch {
 			return null;
@@ -176,6 +187,7 @@ public class DiskSearchPath : BaseSearchPath
 		if (!info.Exists)
 			return BaseFileSystem.g_AddonFileSystem.GetFileSize(absPath) >= 0 ? DateTime.UnixEpoch.AddSeconds(1) : DateTime.UnixEpoch;
 
+		(parent as BaseFileSystem)?.LogAccessToFile("filetime", absPath, "");
 		return info.LastWriteTimeUtc;
 	}
 

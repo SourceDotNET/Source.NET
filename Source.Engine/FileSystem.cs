@@ -164,4 +164,54 @@ public class FileSystem(IFileSystem fileSystem, IServiceProvider services)
 		fileSystem.PrintSearchPaths();
 	}
 
+	[ConCommand(helpText: "Show all files currently opened by the engine.")]
+	void fs_printopenfiles() {
+		fileSystem.PrintOpenedFiles();
+	}
+
+	[ConCommand(helpText: "Set the filesystem warning level.")]
+	void fs_warning_level(in TokenizedCommand args) {
+		if (args.ArgC() != 2) {
+			Warning("\"fs_warning_level n\" where n is one of:\n");
+			Warning("\t0:\tFILESYSTEM_WARNING_QUIET\n");
+			Warning("\t1:\tFILESYSTEM_WARNING_REPORTUNCLOSED\n");
+			Warning("\t2:\tFILESYSTEM_WARNING_REPORTUSAGE\n");
+			Warning("\t3:\tFILESYSTEM_WARNING_REPORTALLACCESSES\n");
+			Warning("\t4:\tFILESYSTEM_WARNING_REPORTALLACCESSES_READ\n");
+			Warning("\t5:\tFILESYSTEM_WARNING_REPORTALLACCESSES_READWRITE\n");
+			Warning("\t6:\tFILESYSTEM_WARNING_REPORTALLACCESSES_ASYNC\n");
+			return;
+		}
+
+		int level = atoi(args[1]);
+		switch ((FileWarningLevel)level) {
+			case FileWarningLevel.Quiet:
+				Warning("fs_warning_level = FILESYSTEM_WARNING_QUIET\n");
+				break;
+			case FileWarningLevel.ReportUnclosed:
+				Warning("fs_warning_level = FILESYSTEM_WARNING_REPORTUNCLOSED\n");
+				break;
+			case FileWarningLevel.ReportUsage:
+				Warning("fs_warning_level = FILESYSTEM_WARNING_REPORTUSAGE\n");
+				break;
+			case FileWarningLevel.ReportAllAccesses:
+				Warning("fs_warning_level = FILESYSTEM_WARNING_REPORTALLACCESSES\n");
+				break;
+			case FileWarningLevel.ReportAllAccessesRead:
+				Warning("fs_warning_level = FILESYSTEM_WARNING_REPORTALLACCESSES_READ\n");
+				break;
+			case FileWarningLevel.ReportAllAccessesReadWrite:
+				Warning("fs_warning_level = FILESYSTEM_WARNING_REPORTALLACCESSES_READWRITE\n");
+				break;
+			case FileWarningLevel.ReportAllAccessesAsync:
+				Warning("fs_warning_level = FILESYSTEM_WARNING_REPORTALLACCESSES_ASYNC\n");
+				break;
+			default:
+				Warning("fs_warning_level = UNKNOWN!!!!!!!\n");
+				return;
+		}
+
+		fileSystem.SetWarningLevel((FileWarningLevel)level);
+	}
+
 }
