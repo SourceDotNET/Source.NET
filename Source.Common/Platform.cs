@@ -44,6 +44,22 @@ public static class Platform
 	public static double Time => __timer.Value.Elapsed.TotalSeconds;
 	public static double MSTime => __timer.Value.Elapsed.TotalMilliseconds;
 
+	public static ulong ApproximateProcessMemoryUsage() {
+#if POSIX
+		try {
+			ReadOnlySpan<char> statm = File.ReadAllText("/proc/self/statm").AsSpan().TrimStart();
+			int end = statm.IndexOfAny(' ', '\t');
+			if (ulong.TryParse(end < 0 ? statm : statm[..end], out ulong size))
+				return 4096 * size;
+		}
+		catch (IOException) {
+		}
+		catch (UnauthorizedAccessException) {
+		}
+#endif
+		return 0;
+	}
+
 #if WIN32
 	[DllImport("kernel32.dll")]
 	unsafe static extern void OutputDebugStringW(char* lpOutputString);
