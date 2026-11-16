@@ -72,6 +72,12 @@ public unsafe class IndexBufferGl46 : IDisposable
 	public short* Lock(bool readOnly, int indexCount, out int startIndex, int firstIndex) {
 		Assert(!Locked);
 
+		if (indexCount > IndexCount) {
+			startIndex = 0;
+			Error($"too many indices for index buffer. . tell a programmer ({indexCount}>{IndexCount})\n");
+			return null;
+		}
+
 		bool discard = false;
 		if (Dynamic) {
 			if (Position == 0 || Flush || !HasEnoughRoom(indexCount)) {
@@ -105,6 +111,9 @@ public unsafe class IndexBufferGl46 : IDisposable
 			LockedPosition = position;
 			return (short*)ring!.Memory + position;
 		}
+
+		if (position + indexCount > IndexCount)
+			return null;
 
 		if (SysmemBuffer == null) {
 			RecomputeIBO();

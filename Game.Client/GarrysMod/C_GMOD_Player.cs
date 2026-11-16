@@ -322,9 +322,6 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 
 		bool ret = base.CreateMove(inputSampleTime, ref cmd);
 
-		if (gpGlobals.MaxClients == 1 && IsLocalPlayer())
-			UpdateButtonState(cmd.Buttons);
-
 		if ((GModPlayerFlags & 8) != 0)
 			AvoidPlayers(ref cmd);
 
@@ -359,6 +356,12 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 		}
 
 		return ret;
+	}
+
+	public override void Simulate() {
+		if (gpGlobals.MaxClients == 1 && IsLocalPlayer())
+			UpdateButtonState(input.GetButtonBits(1));
+		base.Simulate();
 	}
 
 	public override void UpdateButtonState(InButtons userCmdButtonMask) {

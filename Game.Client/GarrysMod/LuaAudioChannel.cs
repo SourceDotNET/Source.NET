@@ -434,7 +434,19 @@ public static partial class LuaAudioChannel
 			return 0;
 		channel.Stop();
 		channel.Destroy();
+		lua.ReleaseUserTypeObject(channel);
 		lua.SetUserType(1, 0);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int IGModAudioChannel____gc(ILuaInterface lua) {
+		IGModAudioChannel? channel = (IGModAudioChannel?)LC_IGModAudioChannel.Get(1);
+		if (channel != null) {
+			channel.Destroy();
+			lua.ReleaseUserTypeObject(channel);
+			lua.SetUserType(1, 0);
+		}
 		return 0;
 	}
 

@@ -69,9 +69,15 @@ public unsafe class DynamicMeshGl46 : MeshGl46
 		if (IndexOverride || HasFlexMesh())
 			desc.Vertex.FirstVertex -= FirstVertex;
 
-		int firstIndex = Lock(false, -1, indexCount, ref desc.Index);
-		if (FirstIndex < 0)
-			FirstIndex = firstIndex;
+		if (Type != MaterialPrimitiveType.Points) {
+			int firstIndex = Lock(false, -1, indexCount, ref desc.Index);
+			if (FirstIndex < 0)
+				FirstIndex = firstIndex;
+		}
+		else {
+			desc.Index.Indices = ScratchIndexBuffer;
+			desc.Index.IndexSize = 0;
+		}
 
 		base.Locked = true;
 	}
