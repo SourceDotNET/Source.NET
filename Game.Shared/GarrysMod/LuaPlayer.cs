@@ -123,11 +123,7 @@ public static partial class LuaPlayer
 	static int Player__AccountID(ILuaInterface lua) {
 		BasePlayer player = Get_Player(1, false)!;
 		if (!player.GetSteamID(out Steamworks.CSteamID steamID)) {
-#if GAME_DLL
 			lua.PushNumber(-1);
-#else
-			lua.PushNumber(0);
-#endif
 			return 1;
 		}
 		lua.PushNumber(steamID.GetAccountID().m_AccountID);

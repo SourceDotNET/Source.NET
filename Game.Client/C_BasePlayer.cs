@@ -96,15 +96,20 @@ public partial class C_BasePlayer : C_BaseCombatCharacter, IGameEventListener2
 	static EUniverse SteamIDUniverse = EUniverse.k_EUniverseInvalid;
 	public bool GetSteamID(out CSteamID id) {
 		id = default;
-		if (engine.GetPlayerInfo(EntIndex(), out PlayerInfo pi)) {
-			if (pi.FriendsID != 0 && SteamAPI.IsSteamRunning()) {
-				if (SteamIDUniverse == EUniverse.k_EUniverseInvalid)
-					SteamIDUniverse = SteamUtils.GetConnectedUniverse();
-				id.InstancedSet(new AccountID_t(pi.FriendsID), 1, SteamIDUniverse, EAccountType.k_EAccountTypeIndividual);
-				return true;
-			}
-		}
-		return false;
+		if (!engine.GetPlayerInfo(EntIndex(), out PlayerInfo pi))
+			return false;
+
+		if (pi.FriendsID == 0 && !pi.FakePlayer)
+			return false;
+
+		if (!SteamAPI.IsSteamRunning())
+			return false;
+
+		if (SteamIDUniverse == EUniverse.k_EUniverseInvalid)
+			SteamIDUniverse = SteamUtils.GetConnectedUniverse();
+
+		id.InstancedSet(new AccountID_t(pi.FriendsID), 1, SteamIDUniverse, pi.FakePlayer ? EAccountType.k_EAccountTypeAnonGameServer : EAccountType.k_EAccountTypeIndividual);
+		return true;
 	}
 	public int GetUserID() {
 		if (!engine.GetPlayerInfo(EntIndex(), out PlayerInfo pi))
