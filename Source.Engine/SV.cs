@@ -145,6 +145,27 @@ public partial class SV(IServiceProvider services, Cbuf Cbuf, ED ED, Host Host, 
 	readonly ConVar tv_enable = new("tv_enable", "0", FCvar.Notify, "Activates SourceTV on server.");
 
 
+	[ConCommand(helpText: "Show user info for players on server.")]
+	void users() {
+		if (!sv.IsActive()) {
+			ConMsg("Can't 'users', not running a server\n");
+			return;
+		}
+
+		int c = 0;
+		ConMsg("<slot:userid:\"name\">\n");
+		for (int i = 0; i < sv.GetClientCount(); i++) {
+			IClient client = sv.GetClient(i)!;
+
+			if (client.IsConnected()) {
+				ConMsg($"{client.GetPlayerSlot()}:{client.GetUserID()}:\"{client.GetClientName()}\"\n");
+				c++;
+			}
+		}
+
+		ConMsg($"{c} users\n");
+	}
+
 	[ConCommand(helpText: "Change the maximum number of players allowed on this server.")]
 	void maxplayers(in TokenizedCommand args) {
 		if (args.ArgC() != 2) {
