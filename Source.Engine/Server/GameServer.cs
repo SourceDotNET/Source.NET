@@ -346,7 +346,26 @@ public class GameServer : BaseServer
 		int idx = DecalPrecacheTable.AddString(true, name);
 		if (idx == INetworkStringTable.INVALID_STRING_INDEX)
 			return -1;
-		throw new NotImplementedException();
+
+		// todo: MapReslistGenerator().OnResourcePrecached(name);
+
+		PrecacheUserData p = new();
+		Span<PrecacheUserData> existing = DecalPrecacheTable.GetStringUserData(idx).AsSpan().Cast<byte, PrecacheUserData>();
+
+		if (existing.IsEmpty)
+			p.Flags = flags;
+		else {
+			p = existing[0];
+			p.Flags |= flags;
+		}
+
+		DecalPrecacheTable.SetStringUserData(idx, Unsafe.SizeOf<PrecacheUserData>(), MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref p, 1)));
+
+		PrecacheItem slot = DecalPrecache[idx];
+		slot ??= DecalPrecache[idx] = new PrecacheItem();
+		slot.SetDecal(new(name));
+
+		return idx;
 	}
 	public int LookupDecalIndex(ReadOnlySpan<char> name) {
 		if (DecalPrecacheTable == null)
