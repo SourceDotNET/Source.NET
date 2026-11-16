@@ -612,7 +612,6 @@ public partial class BaseFileSystem : IFileSystem
 	}
 	private ISearchPath? FindWritePath(ReadOnlySpan<char> filename, ReadOnlySpan<char> pathID) {
 		ulong hash = pathID.Hash();
-		if (hash == 0) return null;
 
 		foreach (var searchPaths in SearchPaths) {
 			foreach (var searchPath in searchPaths.Value.GetSortOrder()) {
@@ -630,7 +629,7 @@ public partial class BaseFileSystem : IFileSystem
 		if (!pathID.IsEmpty && pathID.Length > 0) {
 			if (pathID.Equals("game", StringComparison.OrdinalIgnoreCase))
 				searchPath = FindWritePath(filename, "game_write");
-			else if (pathID.Equals("game", StringComparison.OrdinalIgnoreCase))
+			else if (pathID.Equals("mod", StringComparison.OrdinalIgnoreCase))
 				searchPath = FindWritePath(filename, "mod_write");
 
 			searchPath ??= FindWritePath(filename, pathID);
