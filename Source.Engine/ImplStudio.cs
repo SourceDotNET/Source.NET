@@ -451,6 +451,56 @@ public class ModelRender : IModelRender
 		StudioRender.SetEyeViewTarget(studioHdr.GetRenderHdr(), bodyIndex, in target);
 	}
 
+	public void SetupLighting(in Vector3 center) {
+		LightingState state = default;
+		LightcacheGetDynamic_Stats stats = default;
+		ITexture? envCubemapTexture = Render.LightcacheGetDynamic(center, ref state, ref stats);
+
+		Span<LightDesc> lightDescs = stackalloc LightDesc[2];
+		int lightCount = 0;
+		for (int i = 0; i < state.NumLights; i++) {
+			if (!WorldLightToMaterialLight(ref state.LocalLight[i].Dereference(), out LightDesc lightDesc))
+				continue;
+			lightDesc.Color *= Render.LightStyleValue((byte)state.LocalLight[i].Dereference().Style);
+			lightDescs[lightCount] = lightDesc;
+			if (++lightCount >= lightDescs.Length)
+				break;
+		}
+		int maxLights = HardwareConfig.MaxNumLights();
+		if (lightCount > maxLights)
+			lightCount = maxLights;
+
+		Span<Vector4> ambientCube = stackalloc Vector4[6];
+		for (int i = 0; i < 6; i++)
+			ambientCube[i] = new(state.BoxColor[i], 1.0f);
+
+		using MatRenderContextPtr renderContext = new(materials);
+		renderContext.SetAmbientLightCube(ambientCube);
+
+		if (envCubemapTexture != null)
+			renderContext.BindLocalCubemap(envCubemapTexture);
+
+		int light = 0;
+		for (; light < lightCount; light++) {
+			ref LightDesc desc = ref lightDescs[light];
+			LightTypeOptimizationFlags flags = 0;
+			if (desc.Attenuation0 != 0.0f)
+				flags |= LightTypeOptimizationFlags.HasAttenuation0;
+			if (desc.Attenuation1 != 0.0f)
+				flags |= LightTypeOptimizationFlags.HasAttenuation1;
+			if (desc.Attenuation2 != 0.0f)
+				flags |= LightTypeOptimizationFlags.HasAttenuation2;
+			desc.Flags = (uint)flags;
+			renderContext.SetLight(light, in desc);
+		}
+
+		for (; light < maxLights; light++) {
+			LightDesc disableDesc = default;
+			disableDesc.Type = LightType.Disable;
+			renderContext.SetLight(light, in disableDesc);
+		}
+	}
+
 	readonly IMDLCache MDLCache;
 	readonly IStudioRender StudioRender;
 	readonly IMaterialSystem materials;
@@ -1784,7 +1834,7 @@ public class ModelRender : IModelRender
 
 	const float MIN_LIGHT_VALUE = 0.03f;
 
-	private static bool WorldLightToMaterialLight(ref BSPDWorldLight worldLight, out LightDesc light) {
+	internal static bool WorldLightToMaterialLight(ref BSPDWorldLight worldLight, out LightDesc light) {
 		light = default;
 		light.Attenuation0 = 0.0f;
 		light.Attenuation1 = 0.0f;

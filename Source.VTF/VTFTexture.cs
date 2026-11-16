@@ -44,6 +44,7 @@ public sealed class VTFTexture : IVTFTexture
 	int CoarsestMipmapLevel;
 
 	List<ResourceEntryInfo> ResourcesInfo = [];
+	readonly Dictionary<ResourceEntryType, byte[]> ResourcesData = [];
 	float IVTFTexture.BumpScale() => BumpScale;
 
 	public void ComputeAlphaFlags() {
@@ -224,15 +225,10 @@ public sealed class VTFTexture : IVTFTexture
 		throw new NotImplementedException();
 	}
 
-	public unsafe Span<byte> GetResourceData(ResourceEntryType type) {
-		ref ResourceEntryInfo info = ref FindResourceEntryInfo(type);
+	public Span<byte> GetResourceData(ResourceEntryType type)
+		=> ResourcesData.TryGetValue(type & ~ResourceEntryType.Flag_Mask, out byte[]? data) ? data : default;
 
-		return null;
-	}
-
-	public bool HasResourceEntry(ResourceEntryType type) {
-		throw new NotImplementedException();
-	}
+	public bool HasResourceEntry(ResourceEntryType type) => !Unsafe.IsNullRef(ref FindResourceEntryInfo(type));
 
 	int IVTFTexture.Height() => Height;
 
@@ -479,6 +475,9 @@ public sealed class VTFTexture : IVTFTexture
 		if (!ReadHeader(stream, out header))
 			return false;
 
+		ResourcesInfo.Clear();
+		ResourcesData.Clear();
+
 		header.Flags |= (uint)forceFlags;
 		var flags = (TextureFlags)header.Flags;
 
@@ -573,7 +572,8 @@ public sealed class VTFTexture : IVTFTexture
 				return false;
 		}
 
-		// TODO: LoadNewResources
+		if (!LoadNewResources(stream))
+			return false;
 
 		ref ResourceEntryInfo imageDataInfo = ref FindResourceEntryInfo(ResourceEntryType.HighResImageData);
 		if (!Unsafe.IsNullRef(ref imageDataInfo)) {
@@ -584,6 +584,31 @@ public sealed class VTFTexture : IVTFTexture
 		else
 			return false;
 
+		return true;
+	}
+
+	private bool LoadNewResources(Stream stream) {
+		using BinaryReader reader = new(stream, Encoding.ASCII, true);
+		foreach (ResourceEntryInfo resource in ResourcesInfo) {
+			ResourceEntryType type = resource.Tag & ~ResourceEntryType.Flag_Mask;
+			if (type == ResourceEntryType.LowResThumbnail || type == ResourceEntryType.HighResImageData)
+				continue;
+
+			if ((resource.Flags & ((uint)ResourceEntryType.Flag_HasNoDataChunk >> 24)) != 0) {
+				ResourcesData[type] = BitConverter.GetBytes(resource.Offset);
+				continue;
+			}
+
+			if (resource.Offset > stream.Length - sizeof(int))
+				return false;
+
+			stream.Seek(resource.Offset, SeekOrigin.Begin);
+			int numBytes = reader.ReadInt32();
+			if (numBytes < 0 || numBytes > stream.Length - stream.Position)
+				return false;
+
+			ResourcesData[type] = reader.ReadBytes(numBytes);
+		}
 		return true;
 	}
 
@@ -615,16 +640,6 @@ public sealed class VTFTexture : IVTFTexture
 		bool mipDataPresent = true;
 		int firstAvailableMip = 0;
 		int lastAvailableMip = MipCount - 1;
-
-		Span<byte> data = GetResourceData(ResourceEntryType.TextureLOD);
-		if (!data.IsEmpty) {
-			ref TextureStreamSettings_t streamSettings = ref MemoryMarshal.Cast<byte, TextureStreamSettings_t>(data)[0];
-			firstAvailableMip = Math.Max(0, streamSettings.FirstAvailableMip - skipMipLevels);
-			lastAvailableMip = Math.Max(0, streamSettings.LastAvailableMip - skipMipLevels);
-			mipDataPresent = false;
-		}
-
-		// Not doing streamable textures right now
 
 		Assert(firstAvailableMip >= 0 && firstAvailableMip <= lastAvailableMip && lastAvailableMip < MipCount);
 

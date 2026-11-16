@@ -541,6 +541,13 @@ public partial class SceneEntity : PointEntity, IChoreoEventCallback
 		DEFINE.INPUTFUNC(FieldType.Float, "PitchShift", nameof(InputPitchShiftPlayback), (INPUTFUNCPTR)((self, data) => ((SceneEntity)self).InputPitchShiftPlayback(data))),
 		DEFINE.INPUTFUNC(FieldType.Void, "StopWaitingForActor", nameof(InputStopWaitingForActor), (INPUTFUNCPTR)((self, data) => ((SceneEntity)self).InputStopWaitingForActor(data))),
 		DEFINE.INPUTFUNC(FieldType.Integer, "Trigger", nameof(InputTriggerEvent), (INPUTFUNCPTR)((self, data) => ((SceneEntity)self).InputTriggerEvent(data))),
+		// todo: InterjectResponse input, it needs the response system (CAI_BaseActor::SpeakFindResponse/SpeakDispatchResponse) ported first
+#if GMOD_DLL
+		DEFINE.INPUTFUNC(FieldType.String, "SetTarget1", nameof(InputSetTarget1), (INPUTFUNCPTR)((self, data) => ((SceneEntity)self).InputSetTarget1(data))),
+		DEFINE.INPUTFUNC(FieldType.String, "SetTarget2", nameof(InputSetTarget2), (INPUTFUNCPTR)((self, data) => ((SceneEntity)self).InputSetTarget2(data))),
+		DEFINE.INPUTFUNC(FieldType.String, "SetTarget3", nameof(InputSetTarget3), (INPUTFUNCPTR)((self, data) => ((SceneEntity)self).InputSetTarget3(data))),
+		DEFINE.INPUTFUNC(FieldType.String, "SetTarget4", nameof(InputSetTarget4), (INPUTFUNCPTR)((self, data) => ((SceneEntity)self).InputSetTarget4(data))),
+#endif
 
 		DEFINE.KEYFIELD(nameof(PlayerDeathBehavior), FieldType.Integer, "onplayerdeath"),
 		DEFINE.INPUTFUNC(FieldType.Void, "ScriptPlayerDeath", nameof(InputScriptPlayerDeath), (INPUTFUNCPTR)((self, data) => ((SceneEntity)self).InputScriptPlayerDeath(data))),
@@ -718,7 +725,151 @@ public partial class SceneEntity : PointEntity, IChoreoEventCallback
 		GetSceneManager()?.RemoveSceneEntity(this);
 	}
 
-	ChoreoScene? GenerateSceneForSound(BaseFlex? flexActor, ReadOnlySpan<char> soundname) => throw new NotImplementedException();
+	ChoreoScene? GenerateSceneForSound(BaseFlex? flexActor, ReadOnlySpan<char> soundname) {
+		float duration = GetSoundDuration(soundname, flexActor != null ? flexActor.GetModelName() : null);
+		if (duration <= 0.0f) {
+			Warning($"CSceneEntity::GenerateSceneForSound:  Couldn't determine duration of {soundname}\n");
+			return null;
+		}
+
+		ChoreoScene scene = new(this);
+		scene.SetPrintFunc(Scene_Printf);
+
+		ChoreoActor actor = scene.AllocActor();
+		ChoreoChannel channel = scene.AllocChannel();
+		ChoreoEvent ev = scene.AllocEvent();
+
+		actor.SetName("!self");
+		actor.SetActive(true);
+
+		channel.SetName(SceneFile);
+		channel.SetActor(actor);
+
+		actor.AddChannel(channel);
+
+		ev.SetType(EventType.Speak);
+		ev.SetName(soundname);
+		ev.SetParameters(soundname);
+		ev.SetStartTime(0.0f);
+		ev.SetUsingRelativeTag(false);
+		ev.SetEndTime(duration);
+		ev.SnapTimes();
+
+		channel.AddEvent(ev);
+
+		ev.SetChannel(channel);
+		ev.SetActor(actor);
+
+		return scene;
+	}
+
+	public void PrecacheScene(ChoreoScene scene) {
+		Assert(scene != null);
+
+		for (int i = 0; i < scene.GetNumEvents(); i++) {
+			ChoreoEvent? ev = scene.GetEvent(i);
+			if (ev == null)
+				continue;
+
+			switch (ev.GetType()) {
+				default:
+					break;
+				case EventType.Speak:
+					PrecacheScriptSound(ev.GetParameters());
+					// todo: precache the close caption token sound of CC_MASTER events with slaves once ChoreoEvent has close captions
+					break;
+				case EventType.SubScene:
+					if (!scene.IsSubScene()) {
+						ChoreoScene? subscene = ev.GetSubScene();
+						if (subscene == null) {
+							subscene = LoadScene(ev.GetParameters(), this);
+							if (subscene == null)
+								break;
+							subscene.SetSubScene(true);
+							ev.SetSubScene(subscene);
+
+							PrecacheScene(subscene);
+						}
+					}
+					break;
+			}
+		}
+	}
+
+	public override void OnRestore() {
+		base.OnRestore();
+
+		if (Pitch < SCENE_MIN_PITCH || Pitch > SCENE_MAX_PITCH)
+			Pitch = 1.0f;
+
+		if (!IsPlayingBack)
+			return;
+
+		if (Scene == null) {
+			Scene = LoadScene(SceneFile, this);
+			if (Scene == null) {
+				SceneMissing = true;
+				return;
+			}
+
+			OnLoaded();
+
+			if (ShouldNetwork())
+				SceneStringIndex = g_pStringTableClientSideChoreoScenes!.AddString(IsServer(), SceneFile);
+
+			UpdateTransmitState();
+		}
+
+		SceneMissing = false;
+
+		for (int i = 0; i < Scene.GetNumActors(); i++) {
+			BaseFlex? testActor = FindNamedActor(i);
+			if (testActor == null)
+				continue;
+
+			if (testActor.MyCombatCharacterPointer() == null)
+				continue;
+
+			testActor.StartChoreoScene(Scene);
+		}
+
+		TimeUnit_t dt = SCENE_THINK_INTERVAL;
+
+		bool paused = Paused;
+
+		Paused = false;
+
+		Scene.ResetSimulation(true, (float)(CurrentTime - SCENE_THINK_INTERVAL), (float)CurrentTime);
+		Scene.SetTime(CurrentTime - SCENE_THINK_INTERVAL);
+
+		SetCurrentTime(CurrentTime, true);
+
+		SetRestoring(true);
+
+		DoThink(dt);
+
+		SetRestoring(false);
+
+		if (paused)
+			PausePlayback();
+
+		NetworkProp().NetworkStateForceUpdate();
+	}
+
+#if GMOD_DLL
+	void SetTargetFromInput(ref string? target, ref EHANDLE handle, in InputData inputdata) {
+		ReadOnlySpan<char> value = inputdata.Value.String();
+		target = value.IsEmpty ? null : new string(value);
+		ActorList.Clear();
+		NetworkProp().NetworkStateForceUpdate();
+		handle.Set(FindNamedTarget(target, false));
+	}
+
+	public void InputSetTarget1(InputData inputdata) => SetTargetFromInput(ref Target1, ref HTarget1, in inputdata);
+	public void InputSetTarget2(InputData inputdata) => SetTargetFromInput(ref Target2, ref HTarget2, in inputdata);
+	public void InputSetTarget3(InputData inputdata) => SetTargetFromInput(ref Target3, ref HTarget3, in inputdata);
+	public void InputSetTarget4(InputData inputdata) => SetTargetFromInput(ref Target4, ref HTarget4, in inputdata);
+#endif
 
 	public override void Activate() {
 		if (Generated && Scene == null)
@@ -1330,8 +1481,19 @@ public partial class SceneEntity : PointEntity, IChoreoEventCallback
 	}
 
 	public virtual void QueueResumePlayback() {
-		if (!string.IsNullOrEmpty(ResumeSceneFile))
-			throw new NotImplementedException();
+		if (!string.IsNullOrEmpty(ResumeSceneFile)) {
+			bool startedScene = false;
+
+			if (!stristr(ResumeSceneFile, ".vcd").IsEmpty)
+				startedScene = InstancedScriptedScene(null, ResumeSceneFile, ref WaitingForThisResumeScene, 0, false) != 0;
+
+			// todo: if no scene started, find a response for the first actor (CAI_BaseActor::SpeakFindResponse) and play it, once the response system is ported
+
+			if (startedScene)
+				WaitingForResumeScene = true;
+			else
+				ResumePlayback();
+		}
 		else
 			ResumePlayback();
 	}

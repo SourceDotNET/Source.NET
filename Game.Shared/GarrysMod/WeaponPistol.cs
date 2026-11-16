@@ -18,6 +18,76 @@ public partial class WeaponPistol : HL2MPMachineGun
 		new(nameof(NumShotsFired)) { Bits = 16 },
 	];
 
+	static readonly ActTable[] acttable = [
+		new() { BaseAct = Activity.ACT_MP_STAND_IDLE, WeaponAct = Activity.ACT_HL2MP_IDLE_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_MP_CROUCH_IDLE, WeaponAct = Activity.ACT_HL2MP_IDLE_CROUCH_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_MP_RUN, WeaponAct = Activity.ACT_HL2MP_RUN_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_MP_WALK, WeaponAct = Activity.ACT_HL2MP_WALK_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_MP_CROUCHWALK, WeaponAct = Activity.ACT_HL2MP_WALK_CROUCH_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_MP_SWIM, WeaponAct = Activity.ACT_HL2MP_SWIM_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_MP_SWIM_IDLE, WeaponAct = Activity.ACT_HL2MP_SWIM_IDLE_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_MP_ATTACK_STAND_PRIMARYFIRE, WeaponAct = Activity.ACT_HL2MP_GESTURE_RANGE_ATTACK_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_MP_ATTACK_CROUCH_PRIMARYFIRE, WeaponAct = Activity.ACT_HL2MP_GESTURE_RANGE_ATTACK_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_MP_RELOAD_STAND, WeaponAct = Activity.ACT_HL2MP_GESTURE_RELOAD_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_MP_RELOAD_CROUCH, WeaponAct = Activity.ACT_HL2MP_GESTURE_RELOAD_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_MP_JUMP, WeaponAct = Activity.ACT_HL2MP_JUMP_PISTOL, Required = false },
+	];
+
+	static readonly ActTable[] acttable_npc = [
+		new() { BaseAct = Activity.ACT_IDLE, WeaponAct = Activity.ACT_IDLE_PISTOL, Required = true },
+		new() { BaseAct = Activity.ACT_IDLE_ANGRY, WeaponAct = Activity.ACT_IDLE_ANGRY_PISTOL, Required = true },
+		new() { BaseAct = Activity.ACT_RANGE_ATTACK1, WeaponAct = Activity.ACT_RANGE_ATTACK_PISTOL, Required = true },
+		new() { BaseAct = Activity.ACT_RELOAD, WeaponAct = Activity.ACT_RELOAD_PISTOL, Required = true },
+		new() { BaseAct = Activity.ACT_WALK_AIM, WeaponAct = Activity.ACT_WALK_AIM_PISTOL, Required = true },
+		new() { BaseAct = Activity.ACT_RUN_AIM, WeaponAct = Activity.ACT_RUN_AIM_PISTOL, Required = true },
+		new() { BaseAct = Activity.ACT_GESTURE_RANGE_ATTACK1, WeaponAct = Activity.ACT_GESTURE_RANGE_ATTACK_PISTOL, Required = true },
+		new() { BaseAct = Activity.ACT_RELOAD_LOW, WeaponAct = Activity.ACT_RELOAD_PISTOL_LOW, Required = false },
+		new() { BaseAct = Activity.ACT_RANGE_ATTACK1_LOW, WeaponAct = Activity.ACT_RANGE_ATTACK_PISTOL_LOW, Required = false },
+		new() { BaseAct = Activity.ACT_COVER_LOW, WeaponAct = Activity.ACT_COVER_PISTOL_LOW, Required = false },
+		new() { BaseAct = Activity.ACT_RANGE_AIM_LOW, WeaponAct = Activity.ACT_RANGE_AIM_PISTOL_LOW, Required = false },
+		new() { BaseAct = Activity.ACT_GESTURE_RELOAD, WeaponAct = Activity.ACT_GESTURE_RELOAD_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_WALK, WeaponAct = Activity.ACT_WALK_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_RUN, WeaponAct = Activity.ACT_RUN_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_IDLE_RELAXED, WeaponAct = Activity.ACT_IDLE_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_IDLE_STIMULATED, WeaponAct = Activity.ACT_IDLE_STIMULATED, Required = false },
+		new() { BaseAct = Activity.ACT_IDLE_AGITATED, WeaponAct = Activity.ACT_IDLE_ANGRY_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_IDLE_STEALTH, WeaponAct = Activity.ACT_IDLE_STEALTH_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_WALK_RELAXED, WeaponAct = Activity.ACT_WALK, Required = false },
+		new() { BaseAct = Activity.ACT_WALK_STIMULATED, WeaponAct = Activity.ACT_WALK_STIMULATED, Required = false },
+		new() { BaseAct = Activity.ACT_WALK_AGITATED, WeaponAct = Activity.ACT_WALK_AIM_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_WALK_STEALTH, WeaponAct = Activity.ACT_WALK_STEALTH_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_RUN_RELAXED, WeaponAct = Activity.ACT_RUN, Required = false },
+		new() { BaseAct = Activity.ACT_RUN_STIMULATED, WeaponAct = Activity.ACT_RUN_STIMULATED, Required = false },
+		new() { BaseAct = Activity.ACT_RUN_AGITATED, WeaponAct = Activity.ACT_RUN_AIM_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_RUN_STEALTH, WeaponAct = Activity.ACT_RUN_STEALTH_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_IDLE_AIM_RELAXED, WeaponAct = Activity.ACT_IDLE_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_IDLE_AIM_STIMULATED, WeaponAct = Activity.ACT_IDLE_ANGRY_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_IDLE_AIM_AGITATED, WeaponAct = Activity.ACT_IDLE_ANGRY_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_IDLE_AIM_STEALTH, WeaponAct = Activity.ACT_IDLE_STEALTH_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_WALK_AIM_RELAXED, WeaponAct = Activity.ACT_WALK, Required = false },
+		new() { BaseAct = Activity.ACT_WALK_AIM_STIMULATED, WeaponAct = Activity.ACT_WALK_AIM_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_WALK_AIM_AGITATED, WeaponAct = Activity.ACT_WALK_AIM_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_WALK_AIM_STEALTH, WeaponAct = Activity.ACT_WALK_AIM_STEALTH_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_RUN_AIM_RELAXED, WeaponAct = Activity.ACT_RUN, Required = false },
+		new() { BaseAct = Activity.ACT_RUN_AIM_STIMULATED, WeaponAct = Activity.ACT_RUN_AIM_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_RUN_AIM_AGITATED, WeaponAct = Activity.ACT_RUN_AIM_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_RUN_AIM_STEALTH, WeaponAct = Activity.ACT_RUN_AIM_STEALTH_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_CROUCHIDLE_STIMULATED, WeaponAct = Activity.ACT_HL2MP_IDLE_CROUCH_PISTOL, Required = false },
+		new() { BaseAct = Activity.ACT_CROUCHIDLE_AIM_STIMULATED, WeaponAct = Activity.ACT_RANGE_AIM_PISTOL_LOW, Required = false },
+		new() { BaseAct = Activity.ACT_CROUCHIDLE_AGITATED, WeaponAct = Activity.ACT_RANGE_AIM_PISTOL_LOW, Required = false },
+		new() { BaseAct = Activity.ACT_READINESS_RELAXED_TO_STIMULATED, WeaponAct = Activity.ACT_READINESS_PISTOL_RELAXED_TO_STIMULATED, Required = false },
+		new() { BaseAct = Activity.ACT_READINESS_RELAXED_TO_STIMULATED_WALK, WeaponAct = Activity.ACT_READINESS_PISTOL_RELAXED_TO_STIMULATED_WALK, Required = false },
+		new() { BaseAct = Activity.ACT_READINESS_AGITATED_TO_STIMULATED, WeaponAct = Activity.ACT_READINESS_PISTOL_AGITATED_TO_STIMULATED, Required = false },
+		new() { BaseAct = Activity.ACT_READINESS_STIMULATED_TO_RELAXED, WeaponAct = Activity.ACT_READINESS_PISTOL_STIMULATED_TO_RELAXED, Required = false },
+	];
+
+	public override ReadOnlySpan<ActTable> ActivityList() {
+		BaseCombatCharacter? owner = GetOwner();
+		if (owner != null && owner.IsNPC())
+			return acttable_npc;
+		return acttable;
+	}
+
 	[PredictionTable]
 	public static readonly new PredictionField[] Prediction = [
 		nameof(SoonestPrimaryAttack),

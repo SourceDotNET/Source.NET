@@ -22,4 +22,6 @@ public partial class TEConcussiveExplosion(ReadOnlySpan<char> name) : TEParticle
 	public int Radius;
 	[NetworkVar("m_nMagnitude")]
 	public int Magnitude;
+
+	// todo: TE_ConcussiveExplosion sender (hl2/weapon_cguard.cpp)
 }

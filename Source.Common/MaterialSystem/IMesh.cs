@@ -1029,7 +1029,7 @@ public unsafe struct MeshBuilder : IDisposable
 	public void TexCoord3f(int stage, float s, float t, float u) => VertexBuilder.TexCoord3f(stage, s, t, u);
 	public void TexCoord3fv(int stage, ReadOnlySpan<float> stu) => VertexBuilder.TexCoord3f(stage, stu[0], stu[1], stu[2]);
 	public void TexCoord4f(int stage, float s, float t, float u, float w) => VertexBuilder.TexCoord4f(stage, s, t, u, w);
-	public void TexCoord4fv(int stage, ReadOnlySpan<float> stuv) => throw new NotImplementedException();
+	public void TexCoord4fv(int stage, ReadOnlySpan<float> stuv) => VertexBuilder.TexCoord4f(stage, stuv[0], stuv[1], stuv[2], stuv[3]);
 
 	public void TexCoordSubRect2f(int stage, float s, float t, float offsetS, float offsetT, float scaleS, float scaleT) => throw new NotImplementedException();
 	public void TexCoordSubRect2fv(int stage, ReadOnlySpan<float> st, ReadOnlySpan<float> offset, ReadOnlySpan<float> scale) => throw new NotImplementedException();

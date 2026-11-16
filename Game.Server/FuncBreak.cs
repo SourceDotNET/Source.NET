@@ -7,6 +7,7 @@ namespace Game.Server;
 [LinkEntityToClass("func_breakable")]
 public class Breakable : BaseEntity, IBreakableWithPropData
 {
+	// todo: SetHealth/AddHealth/RemoveHealth inputs, they need UpdateHealth, OnHealthChanged and Break ported first
 	public void SetDmgModBullet(float dmgMod) => DmgModBullet = dmgMod;
 	public void SetDmgModClub(float dmgMod) => DmgModClub = dmgMod;
 	public void SetDmgModExplosive(float dmgMod) => DmgModExplosive = dmgMod;

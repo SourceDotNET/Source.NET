@@ -379,8 +379,19 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		DEFINE.FIELD(nameof(DidDeathCleanup), FieldType.Boolean),
 		DEFINE.OUTPUT(nameof(OnDeath), "OnDeath", eventFuncs),
 		DEFINE.OUTPUT(nameof(OnDenyCommanderUse), "OnDenyCommanderUse", eventFuncs),
+
+		DEFINE.INPUTFUNC(FieldType.Integer, "SetHealth", nameof(InputSetHealth), (INPUTFUNCPTR)((self, data) => ((AI_BaseNPC)self).InputSetHealth(data))),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
+
+	public void InputSetHealth(InputData inputdata) {
+		int newHealth = inputdata.Value.Int();
+		int delta = Math.Abs(GetHealth() - newHealth);
+		if (newHealth > GetHealth())
+			TakeHealth(delta, DamageType.Generic);
+		else if (newHealth < GetHealth())
+			TakeDamage(new TakeDamageInfo(this, this, delta, DamageType.Generic));
+	}
 
 	[NetworkVar("m_bPerformAvoidance")]
 	public partial bool PerformAvoidance { get; set; }

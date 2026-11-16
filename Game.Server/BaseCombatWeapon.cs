@@ -111,8 +111,36 @@ public partial class BaseCombatWeapon : BaseAnimating
 	public override bool IsWeapon() => true;
 	public override GarrysMod.LuaClass Lua_GetLuaClass() => GarrysMod.LuaEntity.LC_Weapon;
 
-	public static void W_Precache() {
+	public static short g_sModelIndexLaser;
+	public const string g_pModelNameLaser = "sprites/laserbeam.vmt";
+	public static short g_sModelIndexFireball;
+	public static short g_sModelIndexSmoke;
+	public static short g_sModelIndexBubbles;
 
+	public static void W_Precache() {
+		WeaponParse.PrecacheFileWeaponInfoDatabase(filesystem);
+
+		g_sModelIndexFireball = -1;
+
+		g_sModelIndexSmoke = (short)PrecacheModel("sprites/steam1.vmt");
+		g_sModelIndexBubbles = (short)PrecacheModel("sprites/bubble.vmt");
+		g_sModelIndexLaser = (short)PrecacheModel(g_pModelNameLaser);
+
+		PrecacheParticleSystem("blood_impact_red_01");
+		PrecacheParticleSystem("blood_impact_green_01");
+		PrecacheParticleSystem("blood_impact_yellow_01");
+#if GMOD_DLL
+		PrecacheParticleSystem("blood_impact_antlion_01");
+		PrecacheParticleSystem("blood_impact_zombie_01");
+		PrecacheParticleSystem("blood_impact_antlion_worker_01");
+#endif
+
+		PrecacheModel("effects/bubble.vmt");
+
+		PrecacheModel("models/weapons/w_bullet.mdl");
+
+		PrecacheScriptSound("BaseCombatWeapon.WeaponDrop");
+		PrecacheScriptSound("BaseCombatWeapon.WeaponMaterialize");
 	}
 
 	public virtual Capability CapabilitiesGet() => 0;

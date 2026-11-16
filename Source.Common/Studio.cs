@@ -3113,6 +3113,8 @@ public class StudioHeader
 	public string SurfaceProp() => Studio.ProduceASCIIString(ref surfacePropCache, Data.Span[SurfacePropIndex..]);
 	public int KeyValueIndex;
 	public int KeyValueSize;
+	string? keyValueTextCache;
+	public string? KeyValueText() => KeyValueSize != 0 ? Studio.ProduceASCIIString(ref keyValueTextCache, Data.Span.Slice(KeyValueIndex, KeyValueSize)) : null;
 
 	public int NumLocalIKAutoplayLocks;
 	public int LocalIKAutoplayLockIndex;

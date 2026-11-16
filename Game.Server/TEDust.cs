@@ -1,4 +1,5 @@
 using Source.Common;
+using Source.Common.Mathematics;
 using Source;
 using Game.Shared;
 using System.Numerics;
@@ -19,6 +20,8 @@ public partial class TEDust(ReadOnlySpan<char> name) : TEParticleSystem(name)
 	public float LSpeed;
 	[NetworkVar("m_vecDirection")]
 	public Vector3 Direction;
+
+	public override void Test(in Vector3 current_origin, in QAngle current_angles) { }
 }
 
 public static partial class TempEnts

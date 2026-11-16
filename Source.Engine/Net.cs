@@ -141,22 +141,6 @@ public class Net
 		// todo
 	}
 
-	public bool StringToAdr(ReadOnlySpan<char> host, int port, [NotNullWhen(true)] out IPEndPoint? ep) {
-		ep = null;
-		if (host.IsEmpty) return false;
-
-		if (host == "localhost") {
-			ep = new IPEndPoint(IPAddress.Loopback, port);
-			return true;
-		}
-		if (IPAddress.TryParse(host, out IPAddress? ip)) {
-			ep = new IPEndPoint(ip, port < 0 ? 0 : port);
-			return true;
-		}
-
-		return false;
-	}
-
 	public bool StringToAdr(ReadOnlySpan<char> host, [NotNullWhen(true)] out IPEndPoint? ep) {
 		host = host.SliceNullTerminatedString();
 		ep = null;
@@ -167,8 +151,30 @@ public class Net
 		if (strncmp(address, "localhost", 10) == 0 || strncmp(address, "localhost:", 10) == 0)
 			memcpy(address, "127.0.0.1");
 
-		if (!IPEndPoint.TryParse(address.SliceNullTerminatedString(), out ep))
-			return false;
+		address = address.SliceNullTerminatedString();
+		if (!IPEndPoint.TryParse(address, out ep)) {
+			bool hasPort = false;
+			string hostname = address.ToString();
+			string port = "";
+			if (address.IndexOf(':') > -1) {
+				hasPort = true;
+
+				string[] split = hostname.Split(':');
+				hostname = split[0];
+				port = split[1];
+			}
+
+			IPAddress[] ips = Dns.GetHostAddresses(hostname);
+			if (ips.Length == 0)
+				return false;
+
+			string addr = ips[0].ToString();
+			if (hasPort)
+				addr += $":{port}";
+
+			if(!IPEndPoint.TryParse(addr, out ep))
+				return false;
+		}
 
 		if (ep.Port == 0)
 			ep.Port = Net.PORT_SERVER;
@@ -917,6 +923,14 @@ public class Net
 
 	public void Init(bool isDedicated) {
 		Time = 0;
+
+		ICommandLine commandLine = Singleton<ICommandLine>();
+		int port = commandLine.ParmValue("-port", -1);
+		if (port == -1)
+			port = commandLine.ParmValue("+port", -1);
+
+		if (port != -1)
+			hostport.SetValue(port);
 
 		NetSockets.EnsureCount(NetSocket.MAX);
 		NetPackets.EnsureCount(NetSocket.MAX);

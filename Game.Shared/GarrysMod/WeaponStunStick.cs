@@ -30,20 +30,30 @@ public partial class WeaponStunStick : BaseHL2MPBludgeonWeapon
 	public const float STUNSTICK_REFIRE = 0.8f;
 	public const string STUNSTICK_BEAM_MATERIAL = "sprites/lgtning.vmt";
 
-#if !CLIENT_DLL
 	static readonly ActTable[] acttable = [
-		new() { BaseAct = Activity.ACT_RANGE_ATTACK1, WeaponAct = Activity.ACT_RANGE_ATTACK_SLAM, Required = true },
-		new() { BaseAct = Activity.ACT_HL2MP_IDLE, WeaponAct = Activity.ACT_HL2MP_IDLE_MELEE, Required = false },
-		new() { BaseAct = Activity.ACT_HL2MP_RUN, WeaponAct = Activity.ACT_HL2MP_RUN_MELEE, Required = false },
-		new() { BaseAct = Activity.ACT_HL2MP_IDLE_CROUCH, WeaponAct = Activity.ACT_HL2MP_IDLE_CROUCH_MELEE, Required = false },
-		new() { BaseAct = Activity.ACT_HL2MP_WALK_CROUCH, WeaponAct = Activity.ACT_HL2MP_WALK_CROUCH_MELEE, Required = false },
-		new() { BaseAct = Activity.ACT_HL2MP_GESTURE_RANGE_ATTACK, WeaponAct = Activity.ACT_HL2MP_GESTURE_RANGE_ATTACK_MELEE, Required = false },
-		new() { BaseAct = Activity.ACT_HL2MP_GESTURE_RELOAD, WeaponAct = Activity.ACT_HL2MP_GESTURE_RELOAD_MELEE, Required = false },
-		new() { BaseAct = Activity.ACT_HL2MP_JUMP, WeaponAct = Activity.ACT_HL2MP_JUMP_MELEE, Required = false },
+		new() { BaseAct = Activity.ACT_MP_STAND_IDLE, WeaponAct = Activity.ACT_HL2MP_IDLE_MELEE, Required = false },
+		new() { BaseAct = Activity.ACT_MP_CROUCH_IDLE, WeaponAct = Activity.ACT_HL2MP_IDLE_CROUCH_MELEE, Required = false },
+		new() { BaseAct = Activity.ACT_MP_RUN, WeaponAct = Activity.ACT_HL2MP_RUN_MELEE, Required = false },
+		new() { BaseAct = Activity.ACT_MP_WALK, WeaponAct = Activity.ACT_HL2MP_WALK_MELEE, Required = false },
+		new() { BaseAct = Activity.ACT_MP_CROUCHWALK, WeaponAct = Activity.ACT_HL2MP_WALK_CROUCH_MELEE, Required = false },
+		new() { BaseAct = Activity.ACT_MP_ATTACK_STAND_PRIMARYFIRE, WeaponAct = Activity.ACT_HL2MP_GESTURE_RANGE_ATTACK_MELEE, Required = false },
+		new() { BaseAct = Activity.ACT_MP_ATTACK_CROUCH_PRIMARYFIRE, WeaponAct = Activity.ACT_HL2MP_GESTURE_RANGE_ATTACK_MELEE, Required = false },
+		new() { BaseAct = Activity.ACT_MP_RELOAD_STAND, WeaponAct = Activity.ACT_HL2MP_GESTURE_RELOAD_MELEE, Required = false },
+		new() { BaseAct = Activity.ACT_MP_RELOAD_CROUCH, WeaponAct = Activity.ACT_HL2MP_GESTURE_RELOAD_MELEE, Required = false },
+		new() { BaseAct = Activity.ACT_MP_JUMP, WeaponAct = Activity.ACT_HL2MP_JUMP_MELEE, Required = false },
 	];
 
-	public override ReadOnlySpan<ActTable> ActivityList() => acttable;
-#endif
+	static readonly ActTable[] acttable_npc = [
+		new() { BaseAct = Activity.ACT_MELEE_ATTACK1, WeaponAct = Activity.ACT_MELEE_ATTACK_SWING, Required = true },
+		new() { BaseAct = Activity.ACT_IDLE_ANGRY, WeaponAct = Activity.ACT_IDLE_ANGRY_MELEE, Required = true },
+	];
+
+	public override ReadOnlySpan<ActTable> ActivityList() {
+		BaseCombatCharacter? owner = GetOwner();
+		if (owner != null && owner.IsNPC())
+			return acttable_npc;
+		return acttable;
+	}
 
 	public WeaponStunStick() {
 		Active = false;

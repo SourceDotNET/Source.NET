@@ -43,4 +43,6 @@ public partial class TEHL2MPFireBullets(ReadOnlySpan<char> name) : BaseTempEntit
 	public InlineArray256<char> TracerType;
 	[NetworkVar("m_flSpreadY")]
 	public float SpreadY;
+
+	// todo: TE_HL2MPFireBullets sender (hl2mp/te_hl2mp_shotgun_shot.cpp)
 }

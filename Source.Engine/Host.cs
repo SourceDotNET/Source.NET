@@ -649,7 +649,7 @@ public partial class Host
 		if (configBuff.Length == 0)
 			return;
 
-		// TODO: see if we are doing the steam cloud logic
+		// todo: see if we are doing the steam cloud logic
 		fileSystem.WriteFile(fileName, "MOD", Encoding.UTF8.GetBytes(configBuff.ToString()));
 
 		ConMsg($"Host_WriteConfiguration: Wrote {fileName}\n");

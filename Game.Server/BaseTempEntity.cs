@@ -1,5 +1,8 @@
 
 using Source.Common;
+using Source.Common.Mathematics;
+
+using System.Numerics;
 
 namespace Game.Server;
 
@@ -25,10 +28,22 @@ public partial class BaseTempEntity
 	}
 
 	public static BaseTempEntity? GetList() => s_pTempEntities;
+	public ReadOnlySpan<char> GetName() => Name;
 	public BaseTempEntity? GetNext() => Next;
 
-	public void Precache(){
+	public virtual void Precache(){
 
+	}
+
+	public virtual void Test(in Vector3 current_origin, in QAngle current_angles) {
+		Msg($"{Name}\n");
+		MathLib.AngleVectors(current_angles, out Vector3 forward);
+
+		MathLib.VectorMA(current_origin, 20, forward, out Vector3 origin);
+
+		BroadcastRecipientFilter filter = new();
+
+		Create(ref filter, 0.0f);
 	}
 
 	public static void PrecacheTempEnts() {

@@ -42,6 +42,7 @@ public class IPredictionSystem
 
 
 	public bool SuppressEvent;
+	// todo: GMod keeps the suppress host as an EHANDLE, so a removed host counts as no host
 	public BaseEntity? SuppressHost;
 	public int StatusPushed;
 

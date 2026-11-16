@@ -81,5 +81,7 @@ public partial class C_RopeKeyframe : C_BaseEntity
 	public float Width;
 	[NetworkVar("m_flScrollSpeed")]
 	public float ScrollSpeed;
+
+	public override Vector3 WorldSpaceCenter() => GetAbsOrigin();
 }
 

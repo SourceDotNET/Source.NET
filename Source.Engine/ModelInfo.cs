@@ -292,7 +292,14 @@ public abstract class ModelInfo(IFileSystem filesystem, IModelLoader modelloader
 	}
 
 	public ReadOnlySpan<char> GetModelKeyValueText(Model? model) {
-		throw new NotImplementedException();
+		if (model == null || model.Type != ModelType.Studio)
+			return null;
+
+		StudioHeader? studioHdr = mdlCache.GetStudioHdr(model.Studio);
+		if (studioHdr == null)
+			return null;
+
+		return studioHdr.KeyValueText();
 	}
 
 	public float GetModelRadius(Model? model) => model?.Radius ?? 0;

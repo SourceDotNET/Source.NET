@@ -1,4 +1,5 @@
 using Source.Common;
+using Source.Common.Mathematics;
 using Source;
 using Game.Shared;
 using System.Numerics;
@@ -22,5 +23,20 @@ public partial class TEFootprintDecal(ReadOnlySpan<char> name) : BaseTempEntity(
 	public int Entity;
 	[NetworkVar("m_nIndex")]
 	public int Index;
-	public int ChMaterialType;
+}
+
+public static partial class TempEnts
+{
+	static readonly TEFootprintDecal g_TEFootprintDecal = new("Footprint Decal");
+
+	public static void TE_FootprintDecal<IRF>(scoped ref IRF filter, float delay, in Vector3 origin, in Vector3 right, int entity, int index, byte materialType) where IRF : IRecipientFilter {
+		g_TEFootprintDecal.Origin = origin;
+		g_TEFootprintDecal.Direction = right;
+		g_TEFootprintDecal.Entity = entity;
+		g_TEFootprintDecal.Index = index;
+
+		MathLib.VectorNormalize(ref g_TEFootprintDecal.Direction);
+
+		g_TEFootprintDecal.Create(ref filter, delay);
+	}
 }

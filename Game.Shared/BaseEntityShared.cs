@@ -635,9 +635,7 @@ public partial class
 	}
 
 	public BasePlayer? GetSimulatingPlayer() => PlayerSimulationOwner.Get();
-	public virtual ref readonly Vector3 WorldSpaceCenter() {
-		return ref GetAbsOrigin(); // todo
-	}
+	public virtual Vector3 WorldSpaceCenter() => CollisionProp().WorldSpaceCenter();
 
 	public void SetPlayerSimulated(BasePlayer owner) {
 		b_IsPlayerSimulated = true;
@@ -800,6 +798,13 @@ public partial class
 	}
 
 	public static void PrefetchScriptSound(ReadOnlySpan<char> soundname) => g_SoundEmitterSystem.PrefetchScriptSound(soundname);
+
+	public static float GetSoundDuration(ReadOnlySpan<char> soundname, ReadOnlySpan<char> actormodel) {
+		ReadOnlySpan<char> wavname = !stristr(soundname, ".wav").IsEmpty || !stristr(soundname, ".mp3").IsEmpty
+			? soundname
+			: soundemitterbase.GetWavFileForSound(soundname, actormodel);
+		return (float)enginesound.GetSoundDuration(SoundCharsUtils.SkipSoundChars(wavname));
+	}
 
 	public static bool PrecacheSound(ReadOnlySpan<char> name) {
 #if GAME_DLL

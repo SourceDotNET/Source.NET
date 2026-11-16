@@ -609,12 +609,12 @@ public abstract class BaseServer : IServer
 					if (!QueryRateChecker.CheckIP(packet.From))
 						return false;
 
-					if (Steam3Server().SteamGameServer() != null) {
+					if (Steam3Server().SteamGameServer() != null && Steam3Server().IsMasterServerUpdaterSharingGameSocket()) {
 						SteamGameServer.HandleIncomingPacket(
 							packet.Message.GetData(),
 							packet.Message.BytesAvailable,
-							(uint)packet.From.Endpoint!.AddressFamily,
-							(ushort)packet.From.Endpoint!.Port
+							packet.From.GetIPHostByteOrder(),
+							(ushort)packet.From.GetPort()
 							);
 
 						ForwardPacketsFromMasterServerUpdater();
@@ -1470,6 +1470,7 @@ public abstract class BaseServer : IServer
 
 			// Send this packet for them..
 			adr.SetIP(netadrAddress, netadrPort);
+			adr.Type = NetAddressType.IP;
 			Net.SendPacket(null!, Socket, adr, packetData, len);
 		}
 	}

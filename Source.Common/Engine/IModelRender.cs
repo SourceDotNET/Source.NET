@@ -70,6 +70,7 @@ public interface IModelRender
 	int DrawStaticPropArrayFast(Span<StaticPropRenderInfo> props, int count, bool shadowDepth);
 	void SetStaticLighting(ModelInstanceHandle_t handle, LightCacheHandle_t? cache);
 	void SetViewTarget(StudioHdr studioHdr, int bodyIndex, in Vector3 target);
+	void SetupLighting(in Vector3 center);
 	void DrawModelExecute(ref DrawModelState state, ref ModelRenderInfo info, Span<Matrix3x4> boneToWorldArray);
 	bool DrawModelSetup(ref ModelRenderInfo info, ref DrawModelState state, Span<Matrix3x4> customBoneToWorld, out Span<Matrix3x4> boneToWorldArray);
 	ref Matrix4x4 SetupModelState(IClientRenderable renderable);
