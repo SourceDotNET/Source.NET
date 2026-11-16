@@ -386,7 +386,37 @@ public partial class BaseFileSystem : IFileSystem
 	}
 
 	public bool IsDirectory(ReadOnlySpan<char> fileName, ReadOnlySpan<char> pathID) {
-		return FirstToThePost(fileName, pathID, new IsDirectory_Op(), false, out _);
+		Span<char> tempBuf = stackalloc char[MAX_PATH];
+		strcpy(tempBuf, fileName);
+		StrTools.StripTrailingSlash(tempBuf);
+		scoped ReadOnlySpan<char> name = tempBuf.SliceNullTerminatedString();
+
+		Span<char> tempPathID = stackalloc char[MAX_PATH];
+		scoped ReadOnlySpan<char> id = pathID;
+		ParsePathID(ref name, ref id, tempPathID);
+		if (StrTools.IsAbsolutePath(name))
+			return Directory.Exists(DiskSearchPath.ResolveDiskPath(new(name)));
+
+		return FirstToThePost(name, id, new IsDirectory_Op(), false, out _);
+	}
+
+	static void ParsePathID(scoped ref ReadOnlySpan<char> fileName, scoped ref ReadOnlySpan<char> pathID, Span<char> tempPathID) {
+		tempPathID[0] = '\0';
+
+		if (fileName.Length < 2 || fileName[0] != '/' || fileName[1] != '/')
+			return;
+
+		if (!pathID.IsEmpty)
+			Warning($"FS: Specified two path IDs ({fileName}, {pathID}).\n");
+
+		int read = 2;
+		int written = 0;
+		while (read < fileName.Length && !fileName[read].IsPathSeparator() && written < MAX_PATH - 1)
+			tempPathID[written++] = fileName[read++];
+
+		tempPathID[written] = '\0';
+		pathID = tempPathID[0] == '*' ? default : tempPathID[..written];
+		fileName = read == fileName.Length ? fileName[read..] : fileName[(read + 1)..];
 	}
 
 	readonly ref struct IsFileWritable_Op() : IFirstToThePostOp<bool>
@@ -455,8 +485,7 @@ public partial class BaseFileSystem : IFileSystem
 		StrTools.FixDoubleSlashes(fixedUpFileName);
 
 		Span<char> fixedUp = fixedUpFileName[..(int)strlen(fixedUpFileName)];
-		bool isAbsolute = (fixedUp.Length > 1 && fixedUp[1] == ':') || (fixedUp.Length > 0 && (fixedUp[0] == '/' || fixedUp[0] == '\\'));
-		if (!isAbsolute) {
+		if (!StrTools.IsAbsolutePath(fixedUp)) {
 			for (int i = 0; i < fixedUp.Length; i++)
 				fixedUp[i] = char.ToLowerInvariant(fixedUp[i]);
 		}
