@@ -1437,11 +1437,21 @@ public partial class Host
 			// EngineVGui.ConfirmQuit();
 			return;
 		}
-
-		// TODO: game events.
-		HostState.Shutdown();
 #endif
+
+		IGameEvent? ev = g_GameEventManager.CreateEvent("host_quit");
+		if (ev != null)
+			g_GameEventManager.FireEventClientSide(ev);
+
+#if GMOD_DLL
+		// todo: keep_players argument
+#endif
+
+		HostState.Shutdown();
 	}
+
+	[ConCommand("exit", "Exit the engine.")]
+	void exit(in TokenizedCommand args) => quit(in args);
 
 	readonly ConVar voice_recordtofile = new("voice_recordtofile", "0", 0, "Record mic data and decompressed voice data into 'voice_micdata.wav' and 'voice_decompressed.wav'");
 	readonly ConVar voice_inputfromfile;
