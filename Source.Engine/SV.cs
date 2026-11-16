@@ -39,7 +39,83 @@ public partial class SV(IServiceProvider services, Cbuf Cbuf, ED ED, Host Host, 
 	EngineVGui EngineVGui => field ??= Singleton<EngineVGui>();
 #endif
 
-	public static readonly ConVar sv_pure_kick_clients = new("sv_pure_kick_clients", "1", 0, "If set to 1, the server will kick clients with mismatching files. Otherwise, it will issue a warning to the client.");
+#if GMOD_DLL
+	static int g_sv_pure_mode = -2;
+
+	static int GetSvPureModeFromCommandLine() {
+		if (commandLine.CheckParm("+sv_pure"))
+			return commandLine.ParmValue("+sv_pure", 1);
+
+		if (commandLine.CheckParm("-sv_pure"))
+			return commandLine.ParmValue("-sv_pure", 1);
+
+		return -1;
+	}
+
+	public static int GetSvPureMode() {
+		if (g_sv_pure_mode == -2)
+			g_sv_pure_mode = GetSvPureModeFromCommandLine();
+
+		return g_sv_pure_mode;
+	}
+#else
+	static int g_sv_pure_mode;
+
+	public static int GetSvPureMode() => g_sv_pure_mode;
+#endif
+
+	[ConCommand(helpText: "Show user data.")]
+	void sv_pure(in TokenizedCommand args) {
+		int pureMode = -2;
+		if (args.ArgC() == 2)
+			pureMode = atoi(args[1]);
+
+		Msg("--------------------------------------------------------\n");
+		if (pureMode >= -1 && pureMode <= 2) {
+#if GMOD_DLL
+			if (pureMode > 0 && GetSvPureModeFromCommandLine() <= 0) {
+				Msg("sv_pure must be specified on the command line to function properly. sv_pure mode not changed\n");
+				return;
+			}
+#endif
+
+			if (pureMode == GetSvPureMode())
+				Msg("sv_pure value unchanged (current value is %d).\n", GetSvPureMode());
+			else {
+				g_sv_pure_mode = pureMode;
+				Msg("sv_pure set to %d.\n", g_sv_pure_mode);
+
+#if GMOD_DLL
+				if (sv.IsActive())
+					Msg("Note: Changes to sv_pure take effect when the next map is loaded.\n");
+#endif
+			}
+		}
+		else
+			Msg("sv_pure: Only allow client to use certain files.\n" +
+				"\n" +
+				"  -1 - Do not apply any rules or restrict which files the client may load.\n" +
+				"   0 - Apply rules in cfg/pure_server_minimal.txt only.\n" +
+				"   1 - Apply rules in cfg/pure_server_full.txt and then cfg/pure_server_whitelist.txt.\n" +
+				"   2 - Apply rules in cfg/pure_server_full.txt.\n" +
+				"\n" +
+				"   See cfg/pure_server_whitelist_example.txt for more details.\n");
+
+		if (pureMode == -2) {
+#if !SWDS
+			if (cl.IsConnected()) {
+				Msg("\n\n");
+				CL.PrintWhitelistInfo();
+			}
+			else
+#endif
+				Msg("\nCurrent sv_pure value is %d.\n", GetSvPureMode());
+		}
+
+		Msg("--------------------------------------------------------\n");
+	}
+
+	public static readonly ConVar sv_pure_kick_clients = new("sv_pure_kick_clients", "1", 0,"If set to 1, the server will kick clients with mismatching files. Otherwise, it will issue a warning to the client.");
 	public static readonly ConVar sv_pure_trace = new("sv_pure_trace", "0", 0, "If set to 1, the server will print a message whenever a client is verifying a CRC for a file.");
 	public static readonly ConVar sv_pure_consensus = new("sv_pure_consensus", "5", 0, "Minimum number of file hashes to agree to form a consensus.");
 	public static readonly ConVar sv_pure_retiretime = new("sv_pure_retiretime", "900", 0, "Seconds of server idle time to flush the sv_pure file hash cache.");

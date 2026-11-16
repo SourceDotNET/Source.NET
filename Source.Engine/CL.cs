@@ -11,6 +11,7 @@ using Source.Common.Engine;
 using Source.Common.Launcher;
 using Source.Common.MaterialSystem;
 using Source.Common.Networking;
+using Source.Common.Utilities;
 using Source.Engine.Client;
 using Source.Engine.Server;
 
@@ -519,6 +520,32 @@ public partial class CL(IServiceProvider services, Net Net,
 	internal bool CheckCRCs(ReadOnlySpan<char> levelFileName) {
 		return true;
 	}
+
+	public static PureServerWhitelist? LoadWhitelist(INetworkStringTable table, ReadOnlySpan<char> name) {
+		int stringIdx = table.FindStringIndex(name);
+		if (stringIdx == INetworkStringTable.INVALID_STRING_INDEX)
+			return null;
+
+		byte[]? data = table.GetStringUserData(stringIdx);
+		if (data == null)
+			return null;
+
+		UtlBuffer buf = new(data, UtlBuffer.BufferFlags.ReadOnly);
+
+		PureServerWhitelist whitelist = PureServerWhitelist.Create(g_pFileSystem);
+		whitelist.Decode(buf);
+		return whitelist;
+	}
+
+	public static void CheckForPureServerWhitelist() {
+		if (cl.MaxClients <= 1 || cl.IsHLTV)
+			return;
+
+		if (cl.ServerStartupTable != null)
+			LoadWhitelist(cl.ServerStartupTable, "PureServerWhitelist");
+	}
+
+	public static void PrintWhitelistInfo() => cl.PureServerWhitelist?.PrintWhitelistContents();
 
 	readonly byte[] voiceData = new byte[2048];
 

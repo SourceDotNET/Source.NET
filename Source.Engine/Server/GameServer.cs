@@ -4,6 +4,7 @@ using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Filesystem;
 using Source.Common.Formats.BSP;
+using Source.Common.Formats.Keyvalues;
 using Source.Common.Networking;
 using Source.Common.Server;
 using Source.Common.Utilities;
@@ -80,6 +81,34 @@ public class GameServer : BaseServer
 	public void SetQueryPortFromSteamServer() {
 		// todo
 	}
+
+	public void CopyPureServerWhitelistToStringTable() {
+		if (PureServerWhitelist == null)
+			return;
+
+		UtlBuffer buf = new();
+		PureServerWhitelist.Encode(buf);
+		ServerStartupDataTable!.AddString(true, "PureServerWhitelist", buf.TellPut(), buf.Base().AsSpan(0, buf.TellPut()));
+	}
+
+	public void ReloadWhitelist(ReadOnlySpan<char> mapName) {
+		PureServerWhitelist = null;
+
+		if (GetMaxClients() <= 1)
+			return;
+
+		if (SV.GetSvPureMode() < 0)
+			return;
+
+		PureServerWhitelist = PureServerWhitelist.Create(g_pFileSystem);
+		PureServerWhitelist.Load(SV.GetSvPureMode());
+
+		if (SV.GetSvPureMode() == 1) {
+			KeyValues kv = new("");
+			if (kv.LoadFromFile(g_pFileSystem, $"maps/{mapName}_whitelist.txt"))
+				PureServerWhitelist.LoadCommandsFromKeyValues(kv);
+		}
+	}
 	internal bool IsLevelMainMenuBackground() {
 		return LevelMainMenuBackground;
 	}
@@ -147,7 +176,7 @@ public class GameServer : BaseServer
 		ServerStartupDataTable = StringTables.CreateStringTable(Protocol.SERVER_STARTUP_DATA_TABLENAME, 4);
 
 		SetQueryPortFromSteamServer();
-		// CopyPureServerWhitelistToStringTable();
+		CopyPureServerWhitelistToStringTable();
 
 		Assert(
 			DownloadableFileTable != null &&
@@ -589,7 +618,7 @@ public class GameServer : BaseServer
 		}
 #endif
 
-		// ReloadWhitelist(mapName);
+		ReloadWhitelist(mapName);
 		Common.TimestampedLog($"SV_SpawnServer({mapName})");
 #if !SWDS
 		EngineVGui().UpdateProgressBar(LevelLoadingProgress.SpawnServer);
