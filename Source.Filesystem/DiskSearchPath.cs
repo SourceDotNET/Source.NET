@@ -125,7 +125,7 @@ public class DiskSearchPath : BaseSearchPath
 #else
 			string traceName = absPath;
 #endif
-			DiskFileHandle handle = new(parent, info.Open(mode, access, share), parent.FindOrAddFileName(path), traceName);
+			DiskFileHandle handle = new(parent, new DiskFileStream(parent as BaseFileSystem, info.FullName, traceName, mode, access, share), parent.FindOrAddFileName(path));
 			(parent as BaseFileSystem)?.Trace_FOpen(traceName, operation switch {
 				FileOpenOptions.Write => options.Extended() ? "w+" : "w",
 				FileOpenOptions.Append => options.Extended() ? "a+" : "a",

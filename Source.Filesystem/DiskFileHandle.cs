@@ -5,7 +5,21 @@ using Source.Common.Filesystem;
 
 namespace Source.FileSystem;
 
-public class DiskFileHandle(IFileSystem filesystem, FileStream data, FileNameHandle_t fileName, string? fullPath = null) : IFileHandle, IDisposable
+public sealed class DiskFileStream(BaseFileSystem? filesystem, string path, string traceName, FileMode mode, FileAccess access, FileShare share) : FileStream(path, mode, access, share)
+{
+	bool closed;
+
+	protected override void Dispose(bool disposing) {
+		if (disposing && !closed) {
+			closed = true;
+			filesystem?.Trace_FClose(this, traceName);
+		}
+
+		base.Dispose(disposing);
+	}
+}
+
+public class DiskFileHandle(IFileSystem filesystem, FileStream data, FileNameHandle_t fileName) : IFileHandle, IDisposable
 {
 	private bool disposedValue;
 
@@ -16,8 +30,6 @@ public class DiskFileHandle(IFileSystem filesystem, FileStream data, FileNameHan
 
 	protected virtual void Dispose(bool disposing) {
 		if (!disposedValue && disposing) {
-			if (fullPath != null)
-				(filesystem as BaseFileSystem)?.Trace_FClose(this, fullPath);
 			data.Dispose();
 			disposedValue = true;
 		}
