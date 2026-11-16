@@ -71,6 +71,9 @@ public static class SourceDllMain
 	[Dependency] public static ICvar cvar { get; private set; } = null!;
 	[Dependency] public static Cmd cmd { get; private set; } = null!;
 	[Dependency] public static Log g_Log { get; private set; } = null!;
+#if GMOD_DLL
+	public static int build_number() => (int)Sys.BuildNumber();
+#endif
 	[Dependency] public static IMaterialSystemHardwareConfig HardwareConfig { get; private set; } = null!;
 	[Dependency] public static ICommandLine commandLine { get; private set; } = null!;
 	[KeyedDependency(Key = Realm.Server)] public static NetworkStringTableContainer networkStringTableContainerServer { get; private set; } = null!;
