@@ -1255,7 +1255,7 @@ public abstract class BaseServer : IServer
 			return Protocol.PROTOCOL_HASHEDCDKEY;
 
 #if !SWDS
-		if (Host.IsSinglePlayerGame() || !IsDedicated())
+		if (Host.IsSinglePlayerGame() || (Steam3Client().SteamUser() == null && !IsDedicated()))
 			return Protocol.PROTOCOL_HASHEDCDKEY;
 		else
 #endif
