@@ -1461,6 +1461,7 @@ public partial class Host
 #endif
 
 	[ConCommand(helpText: "Exits the engine")]
+	[ConCommand("exit", "Exit the engine.")]
 	void quit(in TokenizedCommand args) {
 #if !SWDS
 		if (!args.FindArg("prompt").IsEmpty) {
@@ -1480,9 +1481,6 @@ public partial class Host
 
 		HostState.Shutdown();
 	}
-
-	[ConCommand("exit", "Exit the engine.")]
-	void exit(in TokenizedCommand args) => quit(in args);
 
 	static ulong atoui64(ReadOnlySpan<char> str) {
 		ulong val = 0;
