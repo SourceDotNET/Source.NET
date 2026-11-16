@@ -1332,7 +1332,16 @@ public abstract class BaseServer : IServer
 				return false;
 			}
 
-			// Matchmaking
+			IServerGCLobby? lobby = serverGameDLL.GetServerGCLobby();
+			if (lobby != null) {
+				if (!lobby.SteamIDAllowedToConnect(client.SteamID)) {
+					ISteamGameServer? steamGameServer = Steam3Server().SteamGameServer();
+					steamGameServer?.SendUserDisconnect_DEPRECATED(client.SteamID);
+
+					RejectConnection(adr, clientChallenge, "#GameUI_ServerRejectMustUseMatchmaking");
+					return false;
+				}
+			}
 		}
 		else {
 			if (!Steam3Server().NotifyLocalClientConnect(client)) {

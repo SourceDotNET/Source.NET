@@ -655,6 +655,8 @@ public class ServerGameDLL(IFileSystem filesystem, ICommandLine CommandLine) : I
 		IsHibernating = bHibernating;
 	}
 
+	public IServerGCLobby? GetServerGCLobby() => null;
+
 	public bool ShouldHideServer() => false;
 
 	public void Think(bool finalTick) {

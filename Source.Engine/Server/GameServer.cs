@@ -5,6 +5,7 @@ using Source.Common.Engine;
 using Source.Common.Filesystem;
 using Source.Common.Formats.BSP;
 using Source.Common.Networking;
+using Source.Common.Server;
 using Source.Common.Utilities;
 
 using System.Runtime.InteropServices;
@@ -374,8 +375,8 @@ public class GameServer : BaseServer
 			}
 		}
 
-		// todo: serverGameDLL.GetServerGCLobby()?.ShouldHibernate(), it needs IServerGCLobby ported first
-		bool hibernateFromGCServer = true;
+		IServerGCLobby? lobby = serverGameDLL.GetServerGCLobby();
+		bool hibernateFromGCServer = lobby == null || lobby.ShouldHibernate();
 
 		SetHibernating(hibernateFromGCServer && !haveAnyClients);
 	}
