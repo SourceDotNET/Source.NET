@@ -423,7 +423,11 @@ public class Log(Host Host, Net Net, ICommandLine CommandLine) : IGameEventListe
 			else
 				filename = $"{fname}{i:D3}.{ext}";
 
+#if WIN32
+			filename = filename.Replace('/', '\\');
+#else
 			filename = filename.Replace('\\', '/');
+#endif
 			Common.CreatePath(filename);
 
 			if (!g_pFileSystem.FileExists(filename, "LOGDIR"))
@@ -438,23 +442,50 @@ public class Log(Host Host, Net Net, ICommandLine CommandLine) : IGameEventListe
 		if (compressed == null)
 			return false;
 
+		using IFileHandle? output = g_pFileSystem.Open(compressed, FileOpenOptions.Write | FileOpenOptions.Binary, "LOGDIR");
+		if (output == null)
+			return false;
+
 		Msg($"Compressing {filename} to {compressed}...\n");
 
+		bool ret = true;
+		GZipStream gzip = new(output.Stream, CompressionLevel.Optimal, true);
+
 		using IFileHandle? input = g_pFileSystem.Open(filename, FileOpenOptions.Read | FileOpenOptions.Binary, "LOGDIR");
-		using IFileHandle? output = g_pFileSystem.Open(compressed, FileOpenOptions.Write | FileOpenOptions.Binary, "LOGDIR");
-		if (input == null || output == null)
-			return false;
+		if (input != null) {
+			byte[] buf = new byte[16384];
+			for (; ; ) {
+				int len;
+				try {
+					len = input.Stream.Read(buf, 0, buf.Length);
+				}
+				catch (IOException) {
+					Msg("gzip_file_compress: fread failed.\n");
+					break;
+				}
+
+				if (len == 0)
+					break;
+
+				try {
+					gzip.Write(buf, 0, len);
+				}
+				catch (IOException) {
+					Msg("gzip_file_compress: gzwrite failed.\n");
+					break;
+				}
+			}
+		}
 
 		try {
-			using GZipStream gzip = new(output.Stream, CompressionLevel.Optimal, true);
-			input.Stream.CopyTo(gzip, 16384);
+			gzip.Dispose();
 		}
 		catch (IOException) {
-			Msg("gzip_file_compress: gzwrite failed.\n");
-			return false;
+			Msg("gzip_file_compress: gzclose failed.\n");
+			ret = false;
 		}
 
-		return true;
+		return ret;
 	}
 
 	static void FixupInvalidPathChars(Span<char> filename) {
@@ -579,42 +610,118 @@ public class Log(Host Host, Net Net, ICommandLine CommandLine) : IGameEventListe
 #endif
 	}
 
-	static string strftime(string format, DateTime time) {
+	static string strftime(ReadOnlySpan<char> format, DateTime time) {
+		CultureInfo culture = CultureInfo.InvariantCulture;
 		StringBuilder result = new();
+		int yday = time.DayOfYear - 1;
+		int wday = (int)time.DayOfWeek;
+
 		for (int i = 0; i < format.Length; i++) {
-			if (format[i] != '%' || i + 1 >= format.Length) {
+			if (format[i] != '%') {
 				result.Append(format[i]);
 				continue;
 			}
 
-			char spec = format[++i];
+			int start = i;
+			char flag = '\0';
+#if WIN32
+			if (i + 1 < format.Length && format[i + 1] == '#')
+				flag = format[++i];
+#else
+			if (i + 1 < format.Length && (format[i + 1] is '-' or '_' or '0' or '^' or '#'))
+				flag = format[++i];
+#endif
+			if (i + 1 < format.Length && (format[i + 1] is 'E' or 'O'))
+				i++;
+
+			char spec = i + 1 < format.Length ? format[++i] : '\0';
+
+			void Text(string text) => result.Append(flag == '^' ? text.ToUpperInvariant() : text);
+
+			void Num(int value, int width, char pad = '0') {
+#if WIN32
+				if (flag == '#')
+					width = 0;
+#else
+				if (flag == '-')
+					width = 0;
+				else if (flag == '_')
+					pad = ' ';
+				else if (flag == '0')
+					pad = '0';
+#endif
+				string digits = value.ToString(culture);
+				result.Append(pad, Math.Max(0, width - digits.Length)).Append(digits);
+			}
+
 			switch (spec) {
-				case 'Y': result.Append(time.Year.ToString("D4", CultureInfo.InvariantCulture)); break;
-				case 'y': result.Append((time.Year % 100).ToString("D2", CultureInfo.InvariantCulture)); break;
-				case 'm': result.Append(time.Month.ToString("D2", CultureInfo.InvariantCulture)); break;
-				case 'd': result.Append(time.Day.ToString("D2", CultureInfo.InvariantCulture)); break;
-				case 'H': result.Append(time.Hour.ToString("D2", CultureInfo.InvariantCulture)); break;
-				case 'I': result.Append((time.Hour % 12 == 0 ? 12 : time.Hour % 12).ToString("D2", CultureInfo.InvariantCulture)); break;
-				case 'M': result.Append(time.Minute.ToString("D2", CultureInfo.InvariantCulture)); break;
-				case 'S': result.Append(time.Second.ToString("D2", CultureInfo.InvariantCulture)); break;
-				case 'j': result.Append(time.DayOfYear.ToString("D3", CultureInfo.InvariantCulture)); break;
-				case 'p': result.Append(time.Hour < 12 ? "AM" : "PM"); break;
-				case 'a': result.Append(time.ToString("ddd", CultureInfo.InvariantCulture)); break;
-				case 'A': result.Append(time.ToString("dddd", CultureInfo.InvariantCulture)); break;
-				case 'b': result.Append(time.ToString("MMM", CultureInfo.InvariantCulture)); break;
-				case 'B': result.Append(time.ToString("MMMM", CultureInfo.InvariantCulture)); break;
-				case 'w': result.Append((int)time.DayOfWeek); break;
-				case 'F': result.Append(time.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)); break;
-				case 'T': result.Append(time.ToString("HH:mm:ss", CultureInfo.InvariantCulture)); break;
-				case 'D': result.Append(time.ToString("MM/dd/yy", CultureInfo.InvariantCulture)); break;
-				case 'R': result.Append(time.ToString("HH:mm", CultureInfo.InvariantCulture)); break;
-				case 'c': result.Append(time.ToString("ddd MMM d HH:mm:ss yyyy", CultureInfo.InvariantCulture)); break;
-				case 'x': result.Append(time.ToString("MM/dd/yy", CultureInfo.InvariantCulture)); break;
-				case 'X': result.Append(time.ToString("HH:mm:ss", CultureInfo.InvariantCulture)); break;
+				case 'a': Text(time.ToString("ddd", culture)); break;
+				case 'A': Text(time.ToString("dddd", culture)); break;
+				case 'b':
+				case 'h': Text(time.ToString("MMM", culture)); break;
+				case 'B': Text(time.ToString("MMMM", culture)); break;
+				case 'c':
+#if WIN32
+					result.Append(flag == '#' ? time.ToString("dddd, MMMM dd, yyyy HH:mm:ss", culture) : strftime("%m/%d/%y %H:%M:%S", time));
+#else
+					result.Append(strftime("%a %b %e %H:%M:%S %Y", time));
+#endif
+					break;
+				case 'C': Num(time.Year / 100, 2); break;
+				case 'd': Num(time.Day, 2); break;
+				case 'D': result.Append(strftime("%m/%d/%y", time)); break;
+				case 'e': Num(time.Day, 2, ' '); break;
+				case 'F': result.Append(strftime("%Y-%m-%d", time)); break;
+				case 'g': Num(ISOWeek.GetYear(time) % 100, 2); break;
+				case 'G': Num(ISOWeek.GetYear(time), 4); break;
+				case 'H': Num(time.Hour, 2); break;
+				case 'I': Num(time.Hour % 12 == 0 ? 12 : time.Hour % 12, 2); break;
+				case 'j': Num(time.DayOfYear, 3); break;
+				case 'm': Num(time.Month, 2); break;
+				case 'M': Num(time.Minute, 2); break;
 				case 'n': result.Append('\n'); break;
+				case 'p': Text(time.Hour < 12 ? "AM" : "PM"); break;
+				case 'r': result.Append(strftime("%I:%M:%S %p", time)); break;
+				case 'R': result.Append(strftime("%H:%M", time)); break;
+				case 'S': Num(time.Second, 2); break;
 				case 't': result.Append('\t'); break;
+				case 'T': result.Append(strftime("%H:%M:%S", time)); break;
+				case 'u': Num(wday == 0 ? 7 : wday, 1); break;
+				case 'U': Num((yday + 7 - wday) / 7, 2); break;
+				case 'V': Num(ISOWeek.GetWeekOfYear(time), 2); break;
+				case 'w': Num(wday, 1); break;
+				case 'W': Num((yday + 7 - (wday + 6) % 7) / 7, 2); break;
+				case 'x':
+#if WIN32
+					result.Append(flag == '#' ? time.ToString("dddd, MMMM dd, yyyy", culture) : strftime("%m/%d/%y", time));
+#else
+					result.Append(strftime("%m/%d/%y", time));
+#endif
+					break;
+				case 'X': result.Append(strftime("%H:%M:%S", time)); break;
+				case 'y': Num(time.Year % 100, 2); break;
+				case 'Y': Num(time.Year, 4); break;
+				case 'z': {
+					TimeSpan offset = TimeZoneInfo.Local.GetUtcOffset(time);
+					result.Append(offset < TimeSpan.Zero ? '-' : '+');
+					offset = offset.Duration();
+					result.Append(offset.Hours.ToString("D2", culture)).Append(offset.Minutes.ToString("D2", culture));
+					break;
+				}
+				case 'Z': Text(TimeZoneInfo.Local.IsDaylightSavingTime(time) ? TimeZoneInfo.Local.DaylightName : TimeZoneInfo.Local.StandardName); break;
 				case '%': result.Append('%'); break;
-				default: result.Append('%').Append(spec); break;
+#if !WIN32
+				case 'k': Num(time.Hour, 2, ' '); break;
+				case 'l': Num(time.Hour % 12 == 0 ? 12 : time.Hour % 12, 2, ' '); break;
+				case 's': result.Append(new DateTimeOffset(time).ToUnixTimeSeconds().ToString(culture)); break;
+#endif
+				default:
+#if WIN32
+					return "";
+#else
+					result.Append(format[start..Math.Min(i + 1, format.Length)]);
+					break;
+#endif
 			}
 		}
 
