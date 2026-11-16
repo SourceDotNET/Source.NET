@@ -226,7 +226,7 @@ public partial class BaseFileSystem : IFileSystem
 			if (currentCollection == null)
 				return false;
 
-			currentSearchPath = currentCollection.AtSorted(currentSearchPathIdx);
+			currentSearchPath = iterateCollections && currentCollection.RequestOnly ? null : currentCollection.AtSorted(currentSearchPathIdx);
 			if (currentSearchPath == null) {
 				if (iterateCollections) {
 					currentCollectionIdx++;
@@ -345,6 +345,9 @@ public partial class BaseFileSystem : IFileSystem
 			if (!pathID.IsEmpty && searchPaths.Key != pathIDHash)
 				continue;
 
+			if (pathID.IsEmpty && searchPaths.Value.RequestOnly)
+				continue;
+
 			foreach (var searchPath in searchPaths.Value.GetSortOrder()) {
 				if (searchPath is not DiskSearchPath)
 					continue;
@@ -399,12 +402,7 @@ public partial class BaseFileSystem : IFileSystem
 
 	public void MarkPathIDByRequestOnly(ReadOnlySpan<char> pathID, bool requestOnly) {
 		using Lock.Scope scope = SearchPathLock.EnterScope();
-		ulong hashID = pathID.Hash();
-
-		if (!SearchPaths.TryGetValue(hashID, out var collection))
-			return;
-
-		collection.RequestOnly = requestOnly;
+		SearchPaths.MarkPathIDByRequestOnly(pathID.Hash(), requestOnly);
 	}
 
 	public int GetSearchPath(ReadOnlySpan<char> pathID, bool getPackFiles, Span<char> dest) {
@@ -864,8 +862,13 @@ public partial class BaseFileSystem : IFileSystem
 		}
 
 		SearchPathCollection? NextCollection() {
-			if (PathID == 0)
-				return system.SearchPaths.At(Interlocked.Increment(ref CollectionIdx));
+			if (PathID == 0) {
+				SearchPathCollection? collection;
+				do
+					collection = system.SearchPaths.At(Interlocked.Increment(ref CollectionIdx));
+				while (collection != null && collection.RequestOnly);
+				return collection;
+			}
 
 			if (Interlocked.CompareExchange(ref ranAtLeastOnce, 1, 0) == 0)
 				return system.SearchPaths.TryGetValue(PathID.String().Hash(), out var found) ? found : null;
