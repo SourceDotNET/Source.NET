@@ -789,9 +789,7 @@ public class MatRenderContext : MatRenderContextBase, IMatRenderContextInternal
 
 	public void ReadPixels(int x, int y, int width, int height, Span<byte> data, ImageFormat dstFormat) => shaderAPI.ReadPixels(x, y, width, height, data, dstFormat);
 
-	public void ReadPixelsAndStretch(ref System.Drawing.Rectangle srcRect, ref System.Drawing.Rectangle pDstRect, Span<byte> buffer, ImageFormat dstFormat, int dstStride) {
-		throw new NotImplementedException("Incomplete port of IMatRenderContext");
-	}
+	public void ReadPixelsAndStretch(ref System.Drawing.Rectangle srcRect, ref System.Drawing.Rectangle pDstRect, Span<byte> buffer, ImageFormat dstFormat, int dstStride) => shaderAPI.ReadPixels(ref srcRect, ref pDstRect, buffer, dstFormat, dstStride);
 
 	public void RefreshFrontBufferNonInteractive() {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");

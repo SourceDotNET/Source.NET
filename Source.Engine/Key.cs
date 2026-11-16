@@ -308,6 +308,11 @@ public class Key(IServiceProvider services, Cbuf Cbuf)
 		}
 	}
 
+#if !SWDS
+	[ConCommand(helpText: "Escape key pressed.", flags: FCvar.ClientCmdCanExecute)]
+	void escape() => EngineVGui().HideGameUI();
+#endif
+
 	[ConCommand(helpText: "List bound keys with bindings.")]
 	void key_listboundkeys(in TokenizedCommand args) {
 		for (int i = 0; i < (int)ButtonCode.Last; i++) {

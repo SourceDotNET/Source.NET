@@ -560,7 +560,25 @@ public partial class Render
 	}
 
 	public static void DecalTerm(WorldBrushData? brushData, bool termPermanentDecals) {
-		throw new NotImplementedException();
+		if (brushData == null)
+			return;
+
+		for (int i = 0; i < brushData.NumSurfaces; i++) {
+			Decal? next;
+			for (Decal? decal = MSurf_DecalPointer(i); decal != null; decal = next) {
+				next = decal.Next;
+				if (termPermanentDecals || ((decal.Flags & FDecal.Permanent) == 0 && (decal.Flags & FDecal.PlayerSpray) == 0))
+					DecalUnlink(decal, brushData);
+				else if ((decal.Flags & FDecal.PlayerSpray) != 0) {
+					decal.FadeStartTime += 1.0f;
+					if (decal.FadeStartTime >= r_spray_lifetime.GetFloat())
+						DecalUnlink(decal, brushData);
+				}
+			}
+
+			if (termPermanentDecals)
+				Assert(MSurf_DecalPointer(i) == null);
+		}
 	}
 
 	public static void DecalTermAll() {

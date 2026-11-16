@@ -51,7 +51,7 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 	readonly ConVar cl_backspeed = new("450", FCvar.Replicated | FCvar.Cheat);
 	readonly ConVar lookspring = new("0", FCvar.Archive);
 	readonly ConVar lookstrafe = new("0", FCvar.Archive);
-	readonly ConVar in_joystick = new("0", FCvar.Archive);
+	readonly ConVar in_joystick = new("joystick", "0", FCvar.Archive);
 	readonly ConVar thirdperson_platformer = new("0", 0, "Player will aim in the direction they are moving.");
 	readonly ConVar thirdperson_screenspace = new("0", 0, "Movement will be relative to the camera, eg: left means screen-left");
 	readonly ConVar sv_noclipduringpause = new("0", FCvar.Replicated | FCvar.Cheat, "If cheats are enabled, then you can noclip with the game paused (for doing screenshots, etc.).");
@@ -86,6 +86,8 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 	KeyButtonState in_score;
 	KeyButtonState in_break;
 	KeyButtonState in_zoom;
+	KeyButtonState in_grenade1;
+	KeyButtonState in_grenade2;
 	KeyButtonState in_attack3;
 	Handle<BaseCombatWeapon> SelectedWeapon = new();
 
@@ -208,6 +210,8 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 	[ConCommand(name: "+graph", flags: IN_COMMAND_FLAGS)] void IN_GraphDown(in TokenizedCommand args) => KeyDown(ref in_graph, args[1]);
 	[ConCommand(name: "+break", flags: IN_COMMAND_FLAGS)] void IN_BreakDown(in TokenizedCommand args) => KeyDown(ref in_break, args[1]);
 	[ConCommand(name: "+zoom", flags: IN_COMMAND_FLAGS)] void IN_ZoomDown(in TokenizedCommand args) => KeyDown(ref in_zoom, args[1]);
+	[ConCommand(name: "+grenade1", flags: IN_COMMAND_FLAGS)] void IN_Grenade1Down(in TokenizedCommand args) => KeyDown(ref in_grenade1, args[1]);
+	[ConCommand(name: "+grenade2", flags: IN_COMMAND_FLAGS)] void IN_Grenade2Down(in TokenizedCommand args) => KeyDown(ref in_grenade2, args[1]);
 	[ConCommand(name: "+attack3")] void IN_Attack3Down(in TokenizedCommand args) => KeyDown(ref in_attack3, args[1]);
 
 
@@ -248,7 +252,19 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 	[ConCommand(name: "-graph", flags: IN_COMMAND_FLAGS)] void IN_GraphUp(in TokenizedCommand args) => KeyUp(ref in_graph, args[1]);
 	[ConCommand(name: "-break", flags: IN_COMMAND_FLAGS)] void IN_BreakUp(in TokenizedCommand args) => KeyUp(ref in_break, args[1]);
 	[ConCommand(name: "-zoom", flags: IN_COMMAND_FLAGS)] void IN_ZoomUp(in TokenizedCommand args) => KeyUp(ref in_zoom, args[1]);
+	[ConCommand(name: "-grenade1", flags: IN_COMMAND_FLAGS)] void IN_Grenade1Up(in TokenizedCommand args) => KeyUp(ref in_grenade1, args[1]);
+	[ConCommand(name: "-grenade2", flags: IN_COMMAND_FLAGS)] void IN_Grenade2Up(in TokenizedCommand args) => KeyUp(ref in_grenade2, args[1]);
 	[ConCommand(name: "-attack3")] void IN_Attack3Up(in TokenizedCommand args) => KeyUp(ref in_attack3, args[1]);
+
+	[ConCommand(flags: IN_COMMAND_FLAGS)]
+	void force_centerview() {
+		engine.GetViewAngles(out QAngle viewangles);
+		viewangles[PITCH] = 0;
+		engine.SetViewAngles(in viewangles);
+	}
+
+	[ConCommand(flags: FCvar.ClientCmdCanExecute)]
+	void joyadvancedupdate() => Joystick_Advanced();
 
 	Hud Hud = null!;
 
@@ -783,6 +799,8 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 		CalcButtonBits(ref bits, InButtons.Alt2, ClearInputState, ref in_alt2, resetState);
 		CalcButtonBits(ref bits, InButtons.Score, ClearInputState, ref in_score, resetState);
 		CalcButtonBits(ref bits, InButtons.Zoom, ClearInputState, ref in_zoom, resetState);
+		CalcButtonBits(ref bits, InButtons.Grenade1, ClearInputState, ref in_grenade1, resetState);
+		CalcButtonBits(ref bits, InButtons.Grenade2, ClearInputState, ref in_grenade2, resetState);
 		CalcButtonBits(ref bits, InButtons.Attack3, ClearInputState, ref in_attack3, resetState);
 
 		// TODO: duck toggle

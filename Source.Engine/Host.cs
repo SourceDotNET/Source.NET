@@ -337,6 +337,29 @@ public partial class Host
 
 	public void SetAudioState(in AudioState state) => audioState = state;
 
+#if !SWDS
+	[ConCommand(helpText: "Fade client volume.", flags: FCvar.ServerCanExecute)]
+	void soundfade(in TokenizedCommand args) {
+		if (args.ArgC() != 3 && args.ArgC() != 5) {
+			Msg("soundfade <percent> <hold> [<out> <int>]\n");
+			return;
+		}
+
+		float percent = Math.Clamp((float)atof(args[1]), 0.0f, 100.0f);
+		float holdTime = Math.Max(0.0f, (float)atof(args[2]));
+
+		float inTime = 0.0f;
+		float outTime = 0.0f;
+		if (args.ArgC() == 5) {
+			outTime = Math.Max(0.0f, (float)atof(args[3]));
+			inTime = Math.Max(0.0f, (float)atof(args[4]));
+		}
+
+		// note: GMod passes the out time where the in time is expected
+		Sound.SoundFade(percent, holdTime, outTime, inTime);
+	}
+#endif
+
 	[ConCommand("snd_restart", "Restart sound system.")]
 	public void Snd_Restart_f() {
 #if !SWDS
