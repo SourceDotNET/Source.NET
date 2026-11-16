@@ -660,16 +660,13 @@ public abstract class BaseServer : IServer
 
 	private void SetMasterServerKeyValue(ISteamGameServer server, IConVar var) {
 		if (var.IsFlagSet(FCvar.Protected)) {
-			if (var.GetString()[0] != '\0' && 0 != stricmp(var.GetString(), "none"))
+			if (var.GetString().Length != 0 && 0 != stricmp(var.GetString(), "none"))
 				SteamGameServer.SetKeyValue(var.GetName(), "1");
 			else
 				SteamGameServer.SetKeyValue(var.GetName(), "0");
 		}
 		else
 			SteamGameServer.SetKeyValue(var.GetName(), var.GetString());
-
-		if (Steam3Server().BIsActive())
-			sv.RecalculateTags();
 	}
 
 	public virtual void Clear() {
@@ -1044,19 +1041,6 @@ public abstract class BaseServer : IServer
 
 	public void SetMasterServerRulesDirty() {
 		MasterServerRulesDirty = true;
-	}
-	public void SendQueryPortToClient(NetAddress adr) {
-		throw new NotImplementedException();
-	}
-
-	public void RecalculateTags() {
-		throw new NotImplementedException();
-	}
-	public void AddTag(ReadOnlySpan<char> pszTag) {
-		throw new NotImplementedException();
-	}
-	public void RemoveTag(ReadOnlySpan<char> pszTag) {
-		throw new NotImplementedException();
 	}
 
 	public int GetNumConnections() => NumConnections;
@@ -1488,7 +1472,28 @@ public abstract class BaseServer : IServer
 		UpdateMasterServerPlayers();
 		Steam3Server().SendUpdatedServerDetails();
 	}
-	protected void UpdateMasterServerRules() { }
+	protected void UpdateMasterServerRules() {
+		if (!MasterServerRulesDirty)
+			return;
+
+		ISteamGameServer? updater = Steam3Server().SteamGameServer();
+		if (updater == null)
+			return;
+
+		updater.ClearAllKeyValues();
+
+		foreach (ConCommandBase var in cvar.GetCommands()) {
+			if (!var.IsFlagSet(FCvar.Notify))
+				continue;
+
+			if (var is not ConVar conVar)
+				continue;
+
+			SetMasterServerKeyValue(updater, conVar);
+		}
+
+		MasterServerRulesDirty = false;
+	}
 	protected virtual void UpdateMasterServerPlayers() { }
 	readonly byte[] packetData = new byte[16 * 1024];
 	readonly NetAddress adr = new();
