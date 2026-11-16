@@ -70,6 +70,7 @@ public static class SourceDllMain
 	[Dependency] public static Cbuf cbuf { get; private set; } = null!;
 	[Dependency] public static ICvar cvar { get; private set; } = null!;
 	[Dependency] public static Cmd cmd { get; private set; } = null!;
+	[Dependency] public static Log g_Log { get; private set; } = null!;
 	[Dependency] public static IMaterialSystemHardwareConfig HardwareConfig { get; private set; } = null!;
 	[Dependency] public static ICommandLine commandLine { get; private set; } = null!;
 	[KeyedDependency(Key = Realm.Server)] public static NetworkStringTableContainer networkStringTableContainerServer { get; private set; } = null!;

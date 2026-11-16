@@ -654,7 +654,7 @@ internal class EngineServer(Cbuf Cbuf, Host Host) : IEngineServer
 	}
 
 	public void LogPrint(ReadOnlySpan<char> msg) {
-		// todo
+		g_Log.Print(msg);
 	}
 
 	int Message_CheckMessageLength() {
