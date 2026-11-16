@@ -1097,6 +1097,25 @@ public class ClientDLL(IServiceProvider services
 		ClientLeafSystem = services.GetRequiredService<IClientLeafSystemEngine>();
 
 		InitRecvTableMgr();
+		InitExtraClientCmdCanExecuteVars();
+	}
+
+	void InitExtraClientCmdCanExecuteVars() {
+		Cmd cmd = services.GetRequiredService<Cmd>();
+		cmd.AddClientCmdCanExecuteVar("cancelselect");
+		cmd.AddClientCmdCanExecuteVar("spec_next");
+		cmd.AddClientCmdCanExecuteVar("spec_prev");
+		cmd.AddClientCmdCanExecuteVar("spec_mode");
+		cmd.AddClientCmdCanExecuteVar("spec_menu");
+		cmd.AddClientCmdCanExecuteVar("spec_autodirector");
+		cmd.AddClientCmdCanExecuteVar("overview_zoom");
+		cmd.AddClientCmdCanExecuteVar("overview_mode");
+		cmd.AddClientCmdCanExecuteVar("overview_health");
+		cmd.AddClientCmdCanExecuteVar("overview_names");
+		cmd.AddClientCmdCanExecuteVar("overview_tracks");
+		cmd.AddClientCmdCanExecuteVar("overview_locked");
+		cmd.AddClientCmdCanExecuteVar("overview_alpha");
+		cmd.AddClientCmdCanExecuteVar("playgamesound");
 	}
 
 	private void InitRecvTableMgr() {
