@@ -19,6 +19,7 @@ using System.Text;
 namespace Source.FileSystem;
 
 // Maybe we redo this one day...
+// todo: performance improvements from https://github.com/Facepunch/garrysmod-requests/issues/2530
 public partial class BaseFileSystem : IFileSystem
 {
 	readonly Lock SearchPathLock = new();
