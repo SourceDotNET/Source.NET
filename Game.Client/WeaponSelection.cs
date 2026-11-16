@@ -45,7 +45,7 @@ public class BaseHudWeaponSelection : EditableHudElement
 
 	void UpdateSelectionTime() => SelectionTime = gpGlobals.CurTime;
 	static BaseHudWeaponSelection GetInstance() => Instance!;
-	BaseHudWeaponSelection GetHudWeaponSelection() => GetInstance();
+	public static BaseHudWeaponSelection GetHudWeaponSelection() => GetInstance();
 
 	public void VidInit() {
 		gWR.LoadAllWeaponSprites();
@@ -128,7 +128,7 @@ public class BaseHudWeaponSelection : EditableHudElement
 		return 1;
 	}
 
-	void OnWeaponPickup(BaseCombatWeapon weapon) { }
+	public virtual void OnWeaponPickup(BaseCombatWeapon weapon) { }
 
 	static private void UserCmd_Slot(int slot) {
 		int fastSwitchMode = hud_fastswitch.GetInt();

@@ -243,9 +243,7 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 		throw new NotImplementedException();
 	}
 
-	public ReadOnlySpan<char> Key_BindingForKey(ButtonCode code) {
-		throw new NotImplementedException();
-	}
+	public ReadOnlySpan<char> Key_BindingForKey(ButtonCode code) => Key.BindingForKey(code);
 
 	public void StartKeyTrapMode() => Key.StartTrapMode();
 

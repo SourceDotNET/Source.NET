@@ -646,11 +646,32 @@ public struct IndexBuilder
 	}
 
 	private unsafe static void GenerateLineStripIndexBuffer(ushort* indices, int indexCount, int indexOffset) {
-		throw new NotImplementedException();
+		if (indices == null)
+			return;
+
+		int numLines = indexCount / 2;
+		for (int i = 0; i < numLines; ++i) {
+			indices[0] = (ushort)(indexOffset + i);
+			indices[1] = (ushort)(indexOffset + i + 1);
+			indices += 2;
+		}
 	}
 
 	private unsafe static void GenerateLineLoopIndexBuffer(ushort* indices, int indexCount, int indexOffset) {
-		throw new NotImplementedException();
+		if (indices == null)
+			return;
+
+		int numLines = indexCount / 2;
+
+		indices[0] = (ushort)(indexOffset + numLines - 1);
+		indices[1] = (ushort)indexOffset;
+		indices += 2;
+
+		for (int i = 1; i < numLines; ++i) {
+			indices[0] = (ushort)(indexOffset + i - 1);
+			indices[1] = (ushort)(indexOffset + i);
+			indices += 2;
+		}
 	}
 
 	private unsafe static void GenerateSequentialIndexBuffer(ushort* indices, int indexCount, int indexOffset) {

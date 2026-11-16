@@ -271,7 +271,6 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 			ComputeForwardMove(ref cmd);
 			ScaleMovements(ref cmd);
 			ControllerMove(inputSampleFrametime, ref cmd);
-			ApplyExtras(ref cmd);
 		}
 
 		cmd.Buttons = GetButtonBits(1);
@@ -307,10 +306,6 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 		}
 		MouseWheel = 0;
 #endif
-	}
-
-	private void ApplyExtras(ref UserCmd cmd) {
-		cmd.IsTyping = clientMode!.IsTyping();
 	}
 
 	public void ValidateUserCmd(ref UserCmd f, int from) {

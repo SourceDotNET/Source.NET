@@ -21,6 +21,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Game.Client\Game.Client.csproj" />
 		<ProjectReference Include="..\Game.Lua\Game.Lua.csproj" />
+		<ProjectReference Include="..\Game.BASS\Game.BASS.csproj" />
 		<ProjectReference Include="..\Game.MenuSystem\Game.MenuSystem.csproj" />
 		<ProjectReference Include="..\Game.Server\Game.Server.csproj" />
 		<ProjectReference Include="..\Game.UI\Game.UI.csproj" />
@@ -57,5 +58,7 @@
 	<ItemGroup>
 		<None Include="$(MSBuildThisFileDirectory)..\Dependencies\LuaJIT\win64\lua51.dll" Link="lua51.dll" CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="'$(IsWindows)'=='true'" />
 		<None Include="$(MSBuildThisFileDirectory)..\Dependencies\LuaJIT\linux64\libluajit.so" Link="liblua51.so" CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="'$(IsLinux)'=='true'" />
+		<None Include="$(MSBuildThisFileDirectory)..\Dependencies\LuaJIT\osx64\libluajit.dylib" Link="liblua51.dylib" CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="'$(IsOSX)'=='true' And '$(PlatformTarget)' != 'arm64'" />
+		<None Include="$(MSBuildThisFileDirectory)..\Dependencies\LuaJIT\osxarm64\libluajit.dylib" Link="liblua51.dylib" CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="'$(IsOSX)'=='true' And '$(PlatformTarget)' == 'arm64'" />
 	</ItemGroup>
 </Project>

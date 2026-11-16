@@ -2470,7 +2470,7 @@ public class LuaGameEnums : LuaUser
 		global.SetMemberEnumValue($"{RENDERGROUP}_OPAQUE_HUGE", RenderGroup.OpaqueEntityHuge);
 		global.SetMemberEnumValue($"{RENDERGROUP}_TRANSLUCENT", RenderGroup.TranslucentEntity);
 		global.SetMemberEnumValue($"{RENDERGROUP}_OPAQUE", RenderGroup.OpaqueEntity);
-		global.SetMemberEnumValue($"{RENDERGROUP}_BOTH", RenderGroup.OpaqueEntity | RenderGroup.OpaqueEntityHuge);
+		global.SetMemberEnumValue($"{RENDERGROUP}_BOTH", RenderGroup.TwoPass);
 		global.SetMemberEnumValue($"{RENDERGROUP}_VIEWMODEL", RenderGroup.ViewModelOpaque);
 		global.SetMemberEnumValue($"{RENDERGROUP}_VIEWMODEL_TRANSLUCENT", RenderGroup.ViewModelTranslucent);
 		global.SetMemberEnumValue($"{RENDERGROUP}_OPAQUE_BRUSH", RenderGroup.OpaqueBrush);

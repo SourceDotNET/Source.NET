@@ -308,6 +308,10 @@ public class VGuiInput : IVGuiInput
 		return context.MouseCapture;
 	}
 
+	public IPanel? GetMouseFocus() {
+		return GetInputContext(Context).MouseFocus;
+	}
+
 	public IPanel? GetMouseOver() {
 		return GetInputContext(Context).MouseOver;
 	}

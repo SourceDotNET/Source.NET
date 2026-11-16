@@ -206,9 +206,25 @@ public partial class BaseAnimating : BaseEntity
 		SetSequence(0);
 
 		PopulatePoseParameters();
+		ResetPoseParameters();
 	}
 
 	protected virtual void PopulatePoseParameters() { }
+
+	public void ResetPoseParameters() {
+		if (IsDynamicModelLoading())
+			return;
+
+		StudioHdr? studioHdr = GetModelPtr();
+		if (studioHdr == null)
+			return;
+
+		for (int i = 0; i < NUM_POSEPAREMETERS; i++) {
+			BoneSetup.Studio_SetPoseParameter(studioHdr, i, 0.0f, out float ctlValue);
+			if (ctlValue != PoseParameter[i])
+				PoseParameterForModify()[i] = ctlValue;
+		}
+	}
 
 	public void ResetSequence(int sequence) {
 		SetSequence(sequence);

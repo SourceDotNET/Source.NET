@@ -1961,6 +1961,11 @@ public partial class BaseEntity : IServerEntity
 	public partial ushort OverrideMaterial { get; set; }
 	[NetworkVar("m_OverrideSubMaterials")]
 	public partial ref readonly InlineArray32<ushort> OverrideSubMaterials { get; }
+	public ReadOnlySpan<char> GetSubMaterialOverride(int index) {
+		if ((uint)index < 32 && NetworkString.Convert(OverrideSubMaterials[index]) is string name)
+			return name;
+		return "";
+	}
 	[NetworkVar("m_iHealth")]
 	public partial int Health { get; set; }
 	[NetworkVar("m_iMaxHealth")]
@@ -3456,6 +3461,60 @@ public partial class BaseEntity : IServerEntity
 	}
 
 	public virtual void Think() => FnThink?.Invoke(this);
+
+#if GMOD_DLL
+	public virtual void SetUseType(int type) { }
+
+	InlineArray256<char> OverrideMaterialName;
+
+	public virtual void SetMaterialOverride(ReadOnlySpan<char> name) {
+		if (!name.IsEmpty && name[0] != '\0') {
+			int index = NetworkString.Add(name);
+			if (index != OverrideMaterial)
+				OverrideMaterial = (ushort)index;
+			strcpy(OverrideMaterialName, name);
+			return;
+		}
+
+		strcpy(OverrideMaterialName, "");
+		if (OverrideMaterial == 0)
+			return;
+		OverrideMaterial = 0;
+	}
+
+	public virtual ReadOnlySpan<char> GetMaterialOverride() => NetworkString.Convert(OverrideMaterial) ?? "";
+
+	InlineArray32<string?> SubMaterialOverrideNames;
+
+	public void SetSubMaterialOverride(int index, ReadOnlySpan<char> name) {
+		if ((uint)index > 31)
+			return;
+
+		if (!name.IsEmpty && name[0] != '\0') {
+			int stringIndex = NetworkString.Add(name);
+			if (stringIndex != OverrideSubMaterials[index])
+				OverrideSubMaterialsForModify()[index] = (ushort)stringIndex;
+			string? converted = NetworkString.Convert(stringIndex);
+			if (converted != null && converted.Length == 0)
+				converted = null;
+			SubMaterialOverrideNames[index] = converted;
+			return;
+		}
+
+		SubMaterialOverrideNames[index] = null;
+		if (OverrideSubMaterials[index] == 0)
+			return;
+		OverrideSubMaterialsForModify()[index] = 0;
+	}
+
+	public void ClearSubMaterialOverrides() {
+		for (int i = 0; i < 32; i++) {
+			SubMaterialOverrideNames[i] = null;
+			if (OverrideSubMaterials[i] != 0)
+				OverrideSubMaterialsForModify()[i] = 0;
+		}
+	}
+#endif
 
 	public virtual EntityCapabilities ObjectCaps() {
 		Model? model = GetModel();

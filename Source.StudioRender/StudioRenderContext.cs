@@ -100,6 +100,107 @@ public class StudioRenderContext(IMaterialSystem materialSystem, IStudioDataCach
 		}
 	}
 
+	public unsafe void GetTriangles(ref DrawModelInfo info, Span<Matrix3x4> boneToWorld, GetTrianglesOutput output) {
+		output.MaterialBatches.Clear();
+
+		if (info.StudioHdr == null || info.HardwareData == null || info.HardwareData.NumLODs == 0 || info.HardwareData.LODs == null)
+			return;
+
+		int lod = info.Lod;
+		int lastlod = info.HardwareData.NumLODs - 1;
+
+		if (lod == Studio.USESHADOWLOD)
+			lod = lastlod;
+		else
+			lod = Math.Clamp(lod, 0, lastlod);
+
+		if (lod < info.HardwareData.RootLOD)
+			lod = info.HardwareData.RootLOD;
+
+		int skin = info.Skin;
+		if (skin >= info.StudioHdr.NumSkinFamilies)
+			skin = 0;
+
+		Span<short> skinRef = info.StudioHdr.SkinRef(0)[(skin * info.StudioHdr.NumSkinRef)..];
+
+		StudioMeshData[] studioMeshes = info.HardwareData.LODs[lod].MeshData!;
+		IMaterial[] materials = info.HardwareData.LODs[lod].Materials!;
+
+		int boneMask = Studio.BONE_USED_BY_VERTEX_AT_LOD(lod);
+		fixed (Matrix3x4* pBoneToWorld = boneToWorld)
+			studioRenderImp.ComputePoseToWorld(output.PoseToWorld, info.StudioHdr, boneMask, RC.ViewOrigin, pBoneToWorld);
+
+		for (int i = 0; i < info.StudioHdr.NumBodyParts; i++) {
+			studioRenderImp.R_StudioSetupModel(i, info.Body, out MStudioModel? model, info.StudioHdr);
+
+			for (int k = 0; k < model!.NumMeshes; ++k) {
+				GetTrianglesMaterialBatch materialBatch = new();
+				output.MaterialBatches.Add(materialBatch);
+				MStudioMesh mesh = model.Mesh(k);
+
+				if (model.CacheVertexData(studioDataCache, info.StudioHdr) == null)
+					continue;
+
+				MStudioMeshVertexData? vertData = mesh.GetVertexData(studioDataCache, info.StudioHdr);
+				Assert(vertData != null);
+
+				for (int vertID = 0; vertID < mesh.NumVertices; vertID++) {
+					GetTrianglesVertex vert = default;
+
+					vert.Position = vertData!.Position(vertID);
+					vert.Normal = vertData.Normal(vertID);
+					vert.TexCoord = vertData.TexCoord(vertID);
+
+					if (vertData.HasTangentData())
+						vert.TangentS = vertData.TangentS(vertID);
+
+					ref MStudioBoneWeight vertexBoneWeight = ref vertData.BoneWeights(vertID);
+					vert.NumBones = vertexBoneWeight.NumBones;
+					for (int j = 0; j < vert.NumBones; j++) {
+						vert.BoneWeight = vert.BoneWeight.WithElement(j, vertexBoneWeight.Weight[j]);
+						vert.BoneIndex[j] = vertexBoneWeight.Bone[j];
+					}
+					materialBatch.Verts.Add(vert);
+				}
+
+				IMaterial material = materials[skinRef[mesh.Material]];
+				Assert(material != null);
+				materialBatch.Material = material;
+				StudioMeshData meshData = studioMeshes[mesh.MeshID];
+				if (meshData.NumGroup == 0)
+					continue;
+
+				materialBatch.TriListIndices.Clear();
+
+				for (int stripGroupID = 0; stripGroupID < meshData.NumGroup; stripGroupID++) {
+					StudioMeshGroup meshGroup = meshData.MeshGroup![stripGroupID];
+
+					for (int stripID = 0; stripID < meshGroup.NumStrips; stripID++) {
+						OptimizedModel.StripHeader stripData = meshGroup.StripData![stripID];
+						if ((stripData.Flags & OptimizedModel.StripHeaderFlags.IsTriList) != 0) {
+							for (int t = 0; t < stripData.NumIndices; t += 3) {
+								int idx = stripData.IndexOffset + t;
+								materialBatch.TriListIndices.Add(meshGroup.MeshIndex(idx));
+								materialBatch.TriListIndices.Add(meshGroup.MeshIndex(idx + 1));
+								materialBatch.TriListIndices.Add(meshGroup.MeshIndex(idx + 2));
+							}
+						}
+						else {
+							Assert((stripData.Flags & OptimizedModel.StripHeaderFlags.IsTriStrip) != 0);
+							for (int t = 0; t < stripData.NumIndices - 2; ++t) {
+								int idx = stripData.IndexOffset + t;
+								int ccw = (t & 1) == 0 ? 1 : 0;
+								materialBatch.TriListIndices.Add(meshGroup.MeshIndex(idx));
+								materialBatch.TriListIndices.Add(meshGroup.MeshIndex(idx + 1 + ccw));
+								materialBatch.TriListIndices.Add(meshGroup.MeshIndex(idx + 2 - ccw));
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	public void GetMaterialList(StudioHeader studioHDR, ref SpanList<IMaterial> materials) {
 		AssertMsg(studioHDR != null, "Don't ignore this assert! StudioRenderContext.GetMaterialList() has null studioHDR.");
 

@@ -881,7 +881,8 @@ public class MDLCache : IMDLCache, IStudioDataCache
 	}
 
 	public bool PreloadModel(MDLHandle_t handle) {
-		throw new NotImplementedException();
+		// TODO!!
+		return false;
 	}
 
 	public int Release(MDLHandle_t handle) {

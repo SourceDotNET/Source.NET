@@ -91,7 +91,7 @@ class HudWeaponSelection : BaseHudWeaponSelection, IHudElement
 	}
 #endif
 
-	void OnWeaponPickup(BaseCombatWeapon weapon) {
+	public override void OnWeaponPickup(BaseCombatWeapon weapon) {
 		HudHistoryResource? hr = gHUD.FindElement("CHudHistoryResource") as HudHistoryResource;
 		hr?.AddToHistory(weapon);
 	}

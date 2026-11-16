@@ -8,6 +8,8 @@ public class ToolFrameworkClient
 {
 	public static bool ToolsEnabled() => false;
 
+	public static bool ToolFramework_IsThirdPersonCamera() => false;
+
 	public static void ToolFramework_RecordMaterialParams(IMaterial material) {
 		// todo
 	}
