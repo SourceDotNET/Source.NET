@@ -110,6 +110,11 @@ public class GameServer : BaseServer
 	public override void Clear() {
 		host_state.SetWorldModel(null);
 
+		NumEdicts = 0;
+		MaxEdicts = 0;
+		FreeEdicts = 0;
+		Edicts = null;
+
 		for (ServerClass? cls = serverGameDLL.GetAllServerClasses(); cls != null; cls = cls.Next)
 			cls.InstanceBaselineIndex = INetworkStringTable.INVALID_STRING_INDEX;
 
@@ -346,7 +351,26 @@ public class GameServer : BaseServer
 		int idx = DecalPrecacheTable.AddString(true, name);
 		if (idx == INetworkStringTable.INVALID_STRING_INDEX)
 			return -1;
-		throw new NotImplementedException();
+
+		// todo: MapReslistGenerator().OnResourcePrecached(name);
+
+		PrecacheUserData p = new();
+		Span<PrecacheUserData> existing = DecalPrecacheTable.GetStringUserData(idx).AsSpan().Cast<byte, PrecacheUserData>();
+
+		if (existing.IsEmpty)
+			p.Flags = flags;
+		else {
+			p = existing[0];
+			p.Flags |= flags;
+		}
+
+		DecalPrecacheTable.SetStringUserData(idx, Unsafe.SizeOf<PrecacheUserData>(), MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref p, 1)));
+
+		PrecacheItem slot = DecalPrecache[idx];
+		slot ??= DecalPrecache[idx] = new PrecacheItem();
+		slot.SetDecal(new(name));
+
+		return idx;
 	}
 	public int LookupDecalIndex(ReadOnlySpan<char> name) {
 		if (DecalPrecacheTable == null)
@@ -712,7 +736,7 @@ public class GameServer : BaseServer
 			ev.SetString("game", Common.Gamedir);
 			ev.SetString("mapname", GetMapName());
 			ev.SetInt("maxplayers", GetMaxClients());
-			ev.SetInt("password", 0);              // TODO
+			ev.SetInt("password", 0);
 #if WIN32
 			ev.SetString("os", "WIN32");
 #elif LINUX

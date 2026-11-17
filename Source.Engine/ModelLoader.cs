@@ -2324,6 +2324,10 @@ public class ModelLoader(IFileSystem fileSystem, Host Host,
 				// Let it free data or call destructors..
 				Map_UnloadModel(model);
 
+#if GMOD_DLL
+				fileSystem.Games().Refresh();
+#endif
+
 				// Remove from file system
 				fileSystem.RemoveSearchPath(model.StrName, "GAME");
 
