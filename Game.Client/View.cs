@@ -120,9 +120,7 @@ public class ViewRender : IViewRender
 
 	internal IRenderView render;
 
-	public void DisableVis() {
-		throw new NotImplementedException();
-	}
+	public void DisableVis() => ForceNoVis = true;
 
 	public void DriftPitch() {
 		throw new NotImplementedException();
@@ -183,6 +181,9 @@ public class ViewRender : IViewRender
 
 	public void Init() {
 		render = services.GetRequiredService<IRenderView>();
+
+		DrawEntities = cvar.FindVar("r_drawentities");
+		DrawBrushModels = cvar.FindVar("r_drawbrushmodels");
 
 		TranslucentSingleColor.Init("debug/debugtranslucentsinglecolor", MaterialDefines.TEXTURE_GROUP_OTHER);
 		ModulateSingleColor.Init("engine/modulatesinglecolor", MaterialDefines.TEXTURE_GROUP_OTHER);
@@ -984,9 +985,7 @@ public class ViewRender : IViewRender
 		throw new NotImplementedException();
 	}
 
-	public bool ShouldDrawBrushModels() {
-		throw new NotImplementedException();
-	}
+	public bool ShouldDrawBrushModels() => DrawBrushModels == null || DrawBrushModels.GetInt() != 0;
 
 	public void Shutdown() {
 		throw new NotImplementedException();
@@ -1019,6 +1018,7 @@ public class ViewRender : IViewRender
 	}
 
 	ConVar? DrawEntities;
+	ConVar? DrawBrushModels;
 
 	internal bool ShouldDrawEntities() {
 		return DrawEntities == null || DrawEntities.GetInt() != 0;

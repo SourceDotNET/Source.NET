@@ -132,7 +132,7 @@ public partial class Host
 		soundServices.SetSoundFrametime(dt, FrameTime);
 	}
 
-	int gHostSpawnCount;
+	internal int gHostSpawnCount;
 
 	public int GetServerCount() {
 		if (cl.SignOnState >= SignOnState.New)
@@ -1603,7 +1603,6 @@ public partial class Host
 	static readonly ConVar cvarNext = new("next", "0", FCvar.Cheat, "Set to 1 to advance to next frame ( when singlestep == 1 )");
 
 	int ShouldRun_CurrentTick;
-	internal int SpawnCount;
 
 	public bool ShouldRun() {
 		if (singlestep.GetInt() == 0)

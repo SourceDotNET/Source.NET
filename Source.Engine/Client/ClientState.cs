@@ -1309,7 +1309,7 @@ IModelLoader modelloader, ICommandLine commandLine,
 
 		g_ClientDLL?.HudVidInit();
 
-		// gHostSpawnCount = m_nServerCount;
+		Host.gHostSpawnCount = ServerCount;
 #if !SWDS
 		((VideoMode_Common)videoMode).MarkClientViewRectDirty();
 #endif
