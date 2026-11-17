@@ -8,7 +8,8 @@ public delegate void OnEnterFn(ReadOnlySpan<char> text);
 
 public class UserConsoleInput
 {
-	const int MAX_CONSOLE_TEXTLEN = 256;
+	// note: 256 by default in GMod, raised to the longest command the command buffer accepts
+	const int MAX_CONSOLE_TEXTLEN = 512;
 	const int MAX_BUFFER_LINES = 30;
 
 	readonly Lock consoleLock = new();
