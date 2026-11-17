@@ -11,7 +11,7 @@ using CollisionPlane = Source.Common.Mathematics.CollisionPlane;
 
 namespace Source.Physics;
 
-internal unsafe class PhysicsFluidController : IPhysicsFluidController
+internal class PhysicsFluidController : IPhysicsFluidController
 {
 	PhysicsObject? FluidObject;
 	FluidParams Params;

@@ -506,7 +506,7 @@ public unsafe struct VertexBuilder
 		*(int*)pSpecular = col;
 	}
 
-	internal unsafe void CompressedBoneWeight3fv(ReadOnlySpan<float> boneWeights) {
+	internal void CompressedBoneWeight3fv(ReadOnlySpan<float> boneWeights) {
 		float* pDestWeights = OffsetFloatPointer(Desc.BoneWeight, CurrentVertex, Desc.BoneWeightSize);
 		// No compression yet
 		if (pDestWeights != null) {
@@ -1004,8 +1004,8 @@ public unsafe struct MeshBuilder : IDisposable
 		byte* pDst = VertexBuilder.CurrColor;
 		pDst[0] = r; pDst[1] = g; pDst[2] = b; pDst[3] = a;
 	}
-	public unsafe void Color4ubv(ReadOnlySpan<byte> rgba) => VertexBuilder.Color4ubv(rgba);
-	public unsafe void Color4ubv(in Color rgba) {
+	public void Color4ubv(ReadOnlySpan<byte> rgba) => VertexBuilder.Color4ubv(rgba);
+	public void Color4ubv(in Color rgba) {
 		*(Color*)VertexBuilder.CurrColor = rgba;
 	}
 

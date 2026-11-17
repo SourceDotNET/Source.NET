@@ -126,7 +126,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 	DeviceState DeviceState = DeviceState.OK;
 
-	public unsafe void ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int renderTargetWidth = -1, int renderTargetHeight = -1) {
+	public void ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int renderTargetWidth = -1, int renderTargetHeight = -1) {
 		if (IsDeactivated())
 			return;
 
@@ -1791,7 +1791,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 	Dictionary<uint, Dictionary<ulong, int>> locs = [];
 
-	public unsafe int LocateShaderUniform(ReadOnlySpan<char> name) {
+	public int LocateShaderUniform(ReadOnlySpan<char> name) {
 		if (!activeVertexShader.IsValid()) {
 			Warning("WARNING: Attempted to locate uniform on an invalid vertex shader!\n");
 			return -1;
@@ -2176,7 +2176,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 
 
-	public unsafe ShaderAPITextureHandle_t CreateTexture(
+	public ShaderAPITextureHandle_t CreateTexture(
 		int width,
 		int height,
 		int depth,
@@ -2190,7 +2190,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		CreateTextures(new Span<int>(ref handle), width, height, depth, imageFormat, mipCount, copies, flags, debugName, textureGroup);
 		return handle;
 	}
-	public unsafe void CreateTextures(
+	public void CreateTextures(
 		Span<ShaderAPITextureHandle_t> textureHandles,
 		int width,
 		int height,
@@ -2432,7 +2432,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	readonly Dictionary<ShaderAPITextureHandle_t, InternalTextureInfo> Textures = [];
 	int currentTextureID = 1;
 	public int AllocNewTextureID() => Interlocked.Increment(ref currentTextureID);
-	public unsafe void CreateTextureHandles(Span<int> textureHandles) {
+	public void CreateTextureHandles(Span<int> textureHandles) {
 		int idxCreating = 0;
 		ShaderAPITextureHandle_t hTexture;
 		foreach (var texture in Textures) {
@@ -2528,7 +2528,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public InternalTextureInfo? GetTexture() => Textures.TryGetValue(ModifyTextureHandle, out InternalTextureInfo? info) ? info : null;
 
-	public unsafe void TexImage2D(int mip, int face, ImageFormat dstFormat, int zOffset, int width, int height, ImageFormat srcFormat, bool srcIsTiled, Span<byte> imageData) {
+	public void TexImage2D(int mip, int face, ImageFormat dstFormat, int zOffset, int width, int height, ImageFormat srcFormat, bool srcIsTiled, Span<byte> imageData) {
 		var tex = GetTexture(GetModifyTextureHandle());
 		TextureLoadInfo info = new();
 		info.TextureHandle = GetModifyTextureHandle();

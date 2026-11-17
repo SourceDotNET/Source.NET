@@ -83,7 +83,7 @@ public class ShadowStateGl46 : IShaderShadow
 	}
 
 	string? name;
-	public unsafe ShadowStateGl46(ShaderAPIGl46 shaderAPI, IShaderSystemInternal shaderSystem, ReadOnlySpan<char> name = default) {
+	public ShadowStateGl46(ShaderAPIGl46 shaderAPI, IShaderSystemInternal shaderSystem, ReadOnlySpan<char> name = default) {
 		ShaderAPI = shaderAPI;
 		Shaders = shaderSystem;
 		this.name = name.IsEmpty ? null : new(name);
@@ -118,7 +118,7 @@ public class ShadowStateGl46 : IShaderShadow
 	bool needsBufferUpload = true;
 	internal VertexFormat VertexFormat;
 
-	public unsafe void Dispose() {
+	public void Dispose() {
 		if (!ShaderAPI.IsOwnerThread()) {
 			Warning("NOT IN MAIN THREAD - CANNOT DELETE UBO - GRAPHICS MEMORY LEAK\n");
 			return;
@@ -131,7 +131,7 @@ public class ShadowStateGl46 : IShaderShadow
 	public ShaderRenderStateFlags GetFlags() => Flags;
 	public void SetFlags(ShaderRenderStateFlags flags) => Flags = flags;
 
-	public unsafe void Activate() {
+	public void Activate() {
 		CreateShaderObjects(); // Recreate UBO's, if we were lazy-loaded
 		ReuploadBuffers(); // Reupload UBO's, if needed
 

@@ -198,7 +198,7 @@ public ref partial struct BoneSetup
 		}
 	}
 
-	public unsafe void AccumulatePose(scoped Span<Vector3> pos, scoped Span<Quaternion> q, int sequence, TimeUnit_t cycle, float weight, TimeUnit_t time, IKContext? ikContext) {
+	public void AccumulatePose(scoped Span<Vector3> pos, scoped Span<Quaternion> q, int sequence, TimeUnit_t cycle, float weight, TimeUnit_t time, IKContext? ikContext) {
 		Span<Vector3> pos2 = stackalloc Vector3[Studio.MAXSTUDIOBONES];
 		Span<Quaternion> q2 = stackalloc Quaternion[Studio.MAXSTUDIOBONES];
 

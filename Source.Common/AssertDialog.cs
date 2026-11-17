@@ -110,7 +110,7 @@ public static class AssertDialog
 #if DBGFLAG_HIDE_ASSERTS_FROM_DEBUGGING_STACK
 	[DebuggerHidden]
 #endif
-	public static unsafe bool DoNewAssertDialog(ReadOnlySpan<char> file, int line, ReadOnlySpan<char> expression) {
+	public static bool DoNewAssertDialog(ReadOnlySpan<char> file, int line, ReadOnlySpan<char> expression) {
 		if (AreAssertsDisabled())
 			return false;
 

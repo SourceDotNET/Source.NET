@@ -39,7 +39,7 @@ internal sealed class PhysicsCollisionSet : IPhysicsCollisionSet
 	public bool ShouldCollide(int index0, int index1) => (Bits[index0] & (1u << index1)) != 0;
 }
 
-public unsafe class PhysicsInterface : IPhysics
+public class PhysicsInterface : IPhysics
 {
 	readonly List<IPhysicsEnvironment> Environments = [];
 	readonly Dictionary<uint, PhysicsCollisionSet> CollisionSets = [];

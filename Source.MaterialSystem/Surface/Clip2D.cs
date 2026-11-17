@@ -125,7 +125,7 @@ public static class Clip2D
 	}
 
 	static ScreenClipState clipPolygon = new();
-	public unsafe static int ClipPolygon(in ScissorRectState state, Span<SurfaceVertex> verts, int translateX, int translateY, out Span<SurfaceVertex> clippedVerts) {
+	public static int ClipPolygon(in ScissorRectState state, Span<SurfaceVertex> verts, int translateX, int translateY, out Span<SurfaceVertex> clippedVerts) {
 		clipPolygon.TempVertices.EnsureCount(verts.Length * 4);
 		clipPolygon.ClipVertices[0].EnsureCount(verts.Length * 4);
 		clipPolygon.ClipVertices[1].EnsureCount(verts.Length * 4);

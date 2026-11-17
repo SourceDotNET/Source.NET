@@ -28,7 +28,7 @@ public unsafe class IndexBufferGl46 : IDisposable
 	PersistentBufferRing? ring;
 	bool Written;
 
-	public unsafe void RecomputeIBO() {
+	public void RecomputeIBO() {
 		if (Dynamic) {
 			if (ring == null || BufferSize > lastBufferSize) {
 				lastBufferSize = BufferSize;

@@ -181,7 +181,7 @@ public unsafe class FreeTypeFont : BaseFont
 		FontEffects.ApplyRotaryEffectToTexture(rgbaWide, rgbaTall, rgba, Rotary);
 	}
 
-	private unsafe void DrawBitmap(FT_GlyphSlotRec_* rec, int rgbaWide, int rgbaTall, Span<byte> rgba) {
+	private void DrawBitmap(FT_GlyphSlotRec_* rec, int rgbaWide, int rgbaTall, Span<byte> rgba) {
 		FT_Bitmap_* bitmap = &rec->bitmap;
 		byte* buffer = bitmap->buffer;
 		int bmpWidth = (int)bitmap->width;

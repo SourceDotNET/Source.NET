@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 
 namespace Source.Physics;
 
-internal static unsafe class ConstraintMath
+internal static class ConstraintMath
 {
 	public static readonly Vector3 AxisX = new() { X = 1.0f, Y = 0.0f, Z = 0.0f };
 	public static readonly Vector3 AxisY = new() { X = 0.0f, Y = 1.0f, Z = 0.0f };
@@ -45,7 +45,7 @@ internal static unsafe class ConstraintMath
 	public static float Length(Vector3 v) => BoxToSource.Unitless(v).Length();
 }
 
-internal unsafe class PhysicsConstraint : IPhysicsConstraint
+internal class PhysicsConstraint : IPhysicsConstraint
 {
 	readonly PhysicsEnvironment Environment;
 	PhysicsObject? Reference;
@@ -478,7 +478,7 @@ internal unsafe class PhysicsConstraint : IPhysicsConstraint
 	public void OutputDebugInfo() { }
 }
 
-internal unsafe partial class PhysicsEnvironment
+internal partial class PhysicsEnvironment
 {
 	readonly List<PhysicsConstraint> Constraints = [];
 	readonly List<PhysicsConstraint> Pulleys = [];
@@ -878,7 +878,7 @@ internal class PhysicsConstraintGroup : IPhysicsConstraintGroup
 	public void RemoveConstraint(PhysicsConstraint constraint) => Constraints.Remove(constraint);
 }
 
-internal unsafe class PhysicsSpring : IPhysicsSpring
+internal class PhysicsSpring : IPhysicsSpring
 {
 	PhysicsObject? Start;
 	PhysicsObject? End;

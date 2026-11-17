@@ -235,7 +235,7 @@ public struct BSPLump
 	/// <param name="index"></param>
 	/// <returns></returns>
 	public byte[] ReadBytes(Stream stream) => ReadBytes<byte>(stream)!; // << Never will be null when byte
-	public unsafe T[]? ReadBytes<T>(Stream stream) where T : unmanaged {
+	public T[]? ReadBytes<T>(Stream stream) where T : unmanaged {
 		stream.Seek(FileOffset, SeekOrigin.Begin);
 
 		int sizeofone = Unsafe.SizeOf<T>();

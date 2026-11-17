@@ -1013,7 +1013,7 @@ public sealed class VoxelTree
 		return true;
 	}
 
-	unsafe bool EnumerateElementsAlongRay_ExtrudedRay<IPE>(SpatialPartitionListMask_t listMask,
+	bool EnumerateElementsAlongRay_ExtrudedRay<IPE>(SpatialPartitionListMask_t listMask,
 		in Ray ray, in Vector3 vecInvDelta, in Vector3 vecEnd, scoped ref IPE iterator) where IPE : struct, IPartitionEnumerator, allows ref struct {
 		Vector3 vecMin = ray.Start - ray.Extents;
 		Vector3 vecMax = ray.Start + ray.Extents;

@@ -8,7 +8,7 @@ using System.Numerics;
 
 namespace Source.Physics;
 
-internal unsafe class PhysicsPlayerController : IPhysicsPlayerController
+internal class PhysicsPlayerController : IPhysicsPlayerController
 {
 	const float GroundNormalZ = -0.7f;
 

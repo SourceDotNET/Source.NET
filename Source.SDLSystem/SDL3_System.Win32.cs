@@ -4,7 +4,7 @@ using Microsoft.Win32;
 
 namespace Source.SDLManager;
 
-public unsafe partial class SDL3_System
+public partial class SDL3_System
 {
 #pragma warning disable CA1416 // Validate platform compatibility (WIN32 ifdef catches this instead)
 	static string[] possibleKeys = [@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts", @"SOFTWARE\Microsoft\Windows\CurrentVersion\Fonts"];

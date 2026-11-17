@@ -4,7 +4,7 @@ using System.Buffers;
 
 namespace Source.Common.Networking;
 
-public unsafe class DataFragments
+public class DataFragments
 {
 	public string? Filename;
 	public byte[]? Buffer;
