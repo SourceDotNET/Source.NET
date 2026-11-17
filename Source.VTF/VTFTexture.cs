@@ -1,6 +1,7 @@
 using Source.Bitmap;
 using Source.Common;
 using Source.Common.Bitmap;
+using Source.Common.Mathematics;
 
 using System.Buffers;
 using System.Diagnostics;
@@ -17,7 +18,7 @@ public sealed class VTFTexture : IVTFTexture
 	readonly int[] Version = new int[2];
 	int Width;
 	int Height;
-	int Depth;
+	int Depth = 1;
 	ImageFormat Format;
 
 	int MipCount;
@@ -27,8 +28,8 @@ public sealed class VTFTexture : IVTFTexture
 	int Flags;
 	byte[]? ImageData;
 
-	Vector3 Reflectivity;
-	float BumpScale;
+	Vector3 Reflectivity = new(1.0f, 1.0f, 1.0f);
+	float BumpScale = 1.0f;
 
 	int StartFrame;
 
@@ -37,8 +38,10 @@ public sealed class VTFTexture : IVTFTexture
 	int LowResImageHeight;
 	byte[]? LowResImageData;
 
-	float AlphaThreshold;
-	float AlphaHiFreqThreshold;
+	float AlphaThreshold = -1.0f;
+	float AlphaHiFreqThreshold = -1.0f;
+
+	VtfProcessingOptions Options = new() { Size = (uint)Unsafe.SizeOf<VtfProcessingOptions>() };
 
 	int FinestMipmapLevel;
 	int CoarsestMipmapLevel;
@@ -48,7 +51,52 @@ public sealed class VTFTexture : IVTFTexture
 	float IVTFTexture.BumpScale() => BumpScale;
 
 	public void ComputeAlphaFlags() {
-		throw new NotImplementedException();
+		if (Format != ImageFormat.RGBA8888) {
+			Flags &= ~(int)(TextureFlags.EightBitAlpha | TextureFlags.OneBitAlpha);
+			Options.Flags0 &= ~VtfProcessingFlags.MipAlphaTest;
+			return;
+		}
+
+		Flags &= ~(int)(TextureFlags.EightBitAlpha | TextureFlags.OneBitAlpha);
+
+		if ((Options.Flags0 & VtfProcessingFlags.SetAlphaOneOverMip) != 0) {
+			Flags |= (int)TextureFlags.EightBitAlpha;
+			return;
+		}
+
+		for (int frame = 0; frame < FrameCount; ++frame) {
+			for (int face = 0; face < FaceCount; ++face) {
+				for (int mipLevel = 0; mipLevel < MipCount; ++mipLevel) {
+					bool hasZero = false;
+					bool has255 = false;
+
+					Span<byte> srcBits = GetImageData(frame, face, mipLevel);
+
+					ComputeMipLevelDimensions(mipLevel, out int mipWidth, out int mipHeight, out int mipDepth);
+					int numPixels = mipWidth * mipHeight * mipDepth;
+
+					int src = 0;
+					while (--numPixels >= 0) {
+						if (srcBits[src + 3] == 0) {
+							hasZero = true;
+						}
+						else if (srcBits[src + 3] == 255) {
+							has255 = true;
+						}
+						else {
+							Flags &= ~(int)TextureFlags.OneBitAlpha;
+							Flags |= (int)TextureFlags.EightBitAlpha;
+							return;
+						}
+
+						src += 4;
+					}
+
+					if (hasZero && has255)
+						Flags |= (int)TextureFlags.OneBitAlpha;
+				}
+			}
+		}
 	}
 
 	public int ComputeFaceSize(int startingMipLevel = 0) {
@@ -121,7 +169,32 @@ public sealed class VTFTexture : IVTFTexture
 	}
 
 	public void ComputeReflectivity() {
-		throw new NotImplementedException();
+		if (Format != ImageFormat.RGBA8888) {
+			Reflectivity = new(0.2f, 0.2f, 0.2f);
+			return;
+		}
+
+		int divisor = 0;
+		Reflectivity = new(0.0f, 0.0f, 0.0f);
+		for (int frame = 0; frame < FrameCount; ++frame) {
+			for (int face = 0; face < FaceCount; ++face) {
+				Vector3 faceReflect = default;
+				Span<byte> src = GetImageData(frame, face, 0);
+				int numPixels = Width * Height * Depth;
+
+				for (int i = 0, p = 0; i < numPixels; ++i, p += 4) {
+					faceReflect.X += MathLib.TextureToLinear(src[p + 0]);
+					faceReflect.Y += MathLib.TextureToLinear(src[p + 1]);
+					faceReflect.Z += MathLib.TextureToLinear(src[p + 2]);
+				}
+
+				faceReflect *= 1.0f / (float)numPixels;
+
+				Reflectivity += faceReflect;
+				++divisor;
+			}
+		}
+		Reflectivity *= 1.0f / (float)divisor;
 	}
 
 	public int ComputeTotalSize() {
@@ -141,6 +214,17 @@ public sealed class VTFTexture : IVTFTexture
 		if (ImageData == null)
 			return;
 
+		if (fmt == IVTFTexture.IMAGE_FORMAT_DEFAULT)
+			fmt = ImageFormat.RGBA8888;
+
+		if (normalToDUDV && !(fmt == ImageFormat.UV88 || fmt == ImageFormat.UVWQ8888 || fmt == ImageFormat.UVLX8888)) {
+			Assert(false);
+			return;
+		}
+
+		if (Format == fmt)
+			return;
+
 		nint convertedSize = ComputeTotalSize(fmt);
 		byte[] convertedImage = ArrayPool<byte>.Shared.Rent((int)convertedSize);
 
@@ -154,8 +238,17 @@ public sealed class VTFTexture : IVTFTexture
 					Span<byte> dstData = convertedImage.AsSpan()[(int)GetImageOffset(frame, face, mip, fmt)..];
 					for (int z = 0; z < depth; ++z, srcData = srcData[(int)srcFaceStride..], dstData = dstData[(int)dstFaceStride..]) {
 						if (normalToDUDV) {
-							Error("No\n");
-							return;
+							if (fmt == ImageFormat.UV88)
+								ImageLoader.ConvertNormalMapRGBA8888ToDUDVMapUV88(srcData, width, height, dstData);
+							else if (fmt == ImageFormat.UVWQ8888)
+								ImageLoader.ConvertNormalMapRGBA8888ToDUDVMapUVWQ8888(srcData, width, height, dstData);
+							else if (fmt == ImageFormat.UVLX8888)
+								ImageLoader.ConvertNormalMapRGBA8888ToDUDVMapUVLX8888(srcData, width, height, dstData);
+							else {
+								Assert(false);
+								ArrayPool<byte>.Shared.Return(convertedImage, true);
+								return;
+							}
 						}
 						else {
 							ImageLoader.ConvertImageFormat(srcData, Format, dstData, fmt, width, height);
@@ -163,6 +256,11 @@ public sealed class VTFTexture : IVTFTexture
 					}
 				}
 			}
+		}
+
+		if (!AllocateImageData(convertedSize)) {
+			ArrayPool<byte>.Shared.Return(convertedImage, true);
+			return;
 		}
 
 		memcpy<byte>(ImageData, convertedImage[..(int)convertedSize]);
@@ -183,7 +281,7 @@ public sealed class VTFTexture : IVTFTexture
 			}
 		}
 		else {
-			if ((fmt == ImageFormat.DXT5) || (fmt == ImageFormat.ATI2N) || (fmt == ImageFormat.ATI1N)) {
+			if ((fmt == ImageFormat.DXT1) || (fmt == ImageFormat.ATI2N) || (fmt == ImageFormat.ATI1N)) {
 				Flags &= ~(int)(TextureFlags.OneBitAlpha | TextureFlags.EightBitAlpha);
 			}
 		}
@@ -221,8 +319,192 @@ public sealed class VTFTexture : IVTFTexture
 
 	int IVTFTexture.FrameCount() => FrameCount;
 
-	public void GenerateMipmaps() {
+	public void GenerateSpheremap(LookDir lookDir = LookDir.Z) {
 		throw new NotImplementedException();
+	}
+
+	public void FixCubemapFaceOrientation() {
+		throw new NotImplementedException();
+	}
+
+	public void NormalizeTopMipLevel() {
+		if (!IsNormalMap())
+			return;
+
+		int srcMipLevel = 0;
+		ComputeMipLevelDimensions(srcMipLevel, out int srcWidth, out int srcHeight, out int srcDepth);
+		for (int frame = 0; frame < FrameCount; ++frame) {
+			for (int face = 0; face < FaceCount; ++face) {
+				Span<byte> srcLevel = GetImageData(frame, face, srcMipLevel);
+				ImageLoader.NormalizeNormalMapRGBA8888(srcLevel, srcWidth * srcHeight * srcDepth);
+			}
+		}
+	}
+
+	public void GenerateMipmaps() {
+		ResampleInfo info = new();
+		info.SrcWidth = Width;
+		info.SrcHeight = Height;
+		info.SrcDepth = Depth;
+		info.SrcGamma = 2.2f;
+		info.DestGamma = 2.2f;
+		info.DestDepth = 1;
+
+		bool normalMap = (Flags & (int)TextureFlags.Normal) != 0 || (Options.Flags0 & VtfProcessingFlags.NormalDuDv) != 0;
+		bool alphaTest = (Options.Flags0 & VtfProcessingFlags.MipAlphaTest) != 0;
+		if (alphaTest) {
+			info.Flags |= ResampleFlags.AlphaTest;
+			if (AlphaThreshold >= 0)
+				info.AlphaThreshhold = AlphaThreshold;
+			if (AlphaHiFreqThreshold >= 0)
+				info.AlphaHiFreqThreshhold = AlphaHiFreqThreshold;
+		}
+
+		if ((Options.Flags0 & VtfProcessingFlags.FilterNice) != 0)
+			info.Flags |= ResampleFlags.NiceFilter;
+
+		if ((Flags & (int)TextureFlags.ClampS) != 0)
+			info.Flags |= ResampleFlags.ClampS;
+		if ((Flags & (int)TextureFlags.ClampT) != 0)
+			info.Flags |= ResampleFlags.ClampT;
+		if ((Flags & (int)TextureFlags.ClampU) != 0)
+			info.Flags |= ResampleFlags.ClampU;
+
+		int numMipsClampedLod = 0;
+		Span<byte> lodInfo = GetResourceData(ResourceEntryType.TextureLOD);
+		if (!lodInfo.IsEmpty) {
+			int clampX = 1 << Math.Min(lodInfo[0], lodInfo[2]);
+#if GMOD_DLL
+			int clampY = 1 << Math.Min(lodInfo[0], lodInfo[2]);
+#else
+			int clampY = 1 << Math.Min(lodInfo[1], lodInfo[3]);
+#endif
+
+			while (clampX < Width || clampY < Height) {
+				++numMipsClampedLod;
+				clampX <<= 1;
+				clampY <<= 1;
+			}
+		}
+
+		Span<char> channelNames = ['R', 'G', 'B', 'A'];
+		for (int mipLevel = 1; mipLevel < MipCount; ++mipLevel) {
+			ComputeMipLevelDimensions(mipLevel, out info.DestWidth, out info.DestHeight, out info.DestDepth);
+
+			if ((Options.Flags0 & VtfProcessingFlags.PremultColorOneOverMip) != 0)
+				info.ColorScale[0] = info.ColorScale[1] = info.ColorScale[2] = 1.0f / (float)(1 << mipLevel);
+
+			bool blending = false;
+			for (int ch = 0; ch < 4; ++ch) {
+				int lastNonDecayMip = numMipsClampedLod + Options.NumNotDecayMips[ch];
+				if (lastNonDecayMip > MipCount)
+					lastNonDecayMip = MipCount - 1;
+
+				int numDecayMips = MipCount - lastNonDecayMip - 1;
+				if (numDecayMips < 1)
+					numDecayMips = 1;
+
+				if ((mipLevel == MipCount - 1 || mipLevel > lastNonDecayMip) && ((uint)Options.Flags0 & ((uint)VtfProcessingFlags.DecayR << ch)) != 0) {
+					info.ColorGoal[ch] = Options.DecayGoal[ch];
+
+					if (mipLevel == MipCount - 1) {
+						info.ColorScale[ch] = 0.0f;
+					}
+					else if (((uint)Options.Flags0 & ((uint)VtfProcessingFlags.DecayExpR << ch)) != 0) {
+#if GMOD_DLL
+						info.ColorScale[ch] = (float)Math.Pow((double)Options.DecayExponentBase[ch], (double)(mipLevel - lastNonDecayMip));
+#else
+						info.ColorScale[ch] = MathF.Pow(Options.DecayExponentBase[ch], (float)(mipLevel - lastNonDecayMip));
+#endif
+					}
+					else {
+						info.ColorScale[ch] = 1.0f - (float)(mipLevel - lastNonDecayMip) / (float)numDecayMips;
+					}
+
+					if (!blending) {
+						blending = true;
+						Msg($"Blending mip{mipLevel} {info.DestWidth}x{info.DestHeight} to");
+					}
+
+					Msg($"   {channelNames[ch]}={Options.DecayGoal[ch]} ~{(int)((1.0f - info.ColorScale[ch]) * 100.0f + 0.5f)}%");
+				}
+			}
+			if (blending)
+				Msg("\n");
+
+			if (normalMap) {
+				info.Flags |= ResampleFlags.NormalMap;
+				info.ColorGoal[0] = info.ColorGoal[1] = info.ColorGoal[2] = 127.0f;
+			}
+
+			for (int frame = 0; frame < FrameCount; ++frame) {
+				for (int face = 0; face < FaceCount; ++face) {
+					int srcMipLevel = Math.Max(0, mipLevel - 4);
+					info.Src = GetImageData(frame, face, srcMipLevel);
+					info.Dest = GetImageData(frame, face, mipLevel);
+					ComputeMipLevelDimensions(srcMipLevel, out info.SrcWidth, out info.SrcHeight, out info.SrcDepth);
+
+					if (Format == ImageFormat.RGB323232F)
+						ImageLoader.ResampleRGB323232F(info);
+					else
+						ImageLoader.ResampleRGBA8888(info);
+
+					if (IsNormalMap())
+						ImageLoader.NormalizeNormalMapRGBA8888(info.Dest, info.DestWidth * info.DestHeight * info.DestDepth);
+				}
+			}
+		}
+	}
+
+	public void PutOneOverMipLevelInAlpha() {
+		Assert(Format == ImageFormat.RGBA8888);
+
+		for (int mipLevel = 0; mipLevel < MipCount; ++mipLevel) {
+			ComputeMipLevelDimensions(mipLevel, out int mipWidth, out int mipHeight, out int mipDepth);
+			int size = mipWidth * mipHeight * mipDepth;
+			byte ooMipLevel = (byte)(255.0f * (1.0f / (float)(1 << mipLevel)));
+
+			for (int frame = 0; frame < FrameCount; ++frame) {
+				for (int face = 0; face < FaceCount; ++face) {
+					Span<byte> dstLevel = GetImageData(frame, face, mipLevel);
+					for (int dst = 0; dst < size * 4; dst += 4)
+						dstLevel[dst + 3] = ooMipLevel;
+				}
+			}
+		}
+	}
+
+	public void PostProcess(bool generateSpheremap, LookDir lookDir = LookDir.Z, bool allowFixCubemapOrientation = true) {
+		if (IsCubeMap()) {
+			if (allowFixCubemapOrientation)
+				FixCubemapFaceOrientation();
+
+			if (generateSpheremap)
+				GenerateSpheremap(lookDir);
+		}
+
+		NormalizeTopMipLevel();
+
+		GenerateMipmaps();
+
+		if ((Options.Flags0 & VtfProcessingFlags.SetAlphaOneOverMip) != 0)
+			PutOneOverMipLevelInAlpha();
+
+		ComputeReflectivity();
+
+		ComputeAlphaFlags();
+	}
+
+	public void SetAlphaTestThreshholds(float baseThreshhold, float highFreq) {
+		AlphaThreshold = baseThreshhold;
+		AlphaHiFreqThreshold = highFreq;
+	}
+
+	public void SetPostProcessingSettings(in VtfProcessingOptions options) {
+		Options = default;
+		uint size = Math.Min((uint)Unsafe.SizeOf<VtfProcessingOptions>(), options.Size);
+		Unsafe.CopyBlockUnaligned(ref Unsafe.As<VtfProcessingOptions, byte>(ref Options), ref Unsafe.As<VtfProcessingOptions, byte>(ref Unsafe.AsRef(in options)), size);
+		Options.Size = (uint)Unsafe.SizeOf<VtfProcessingOptions>();
 	}
 
 	public Span<byte> GetResourceData(ResourceEntryType type)
@@ -684,7 +966,7 @@ public sealed class VTFTexture : IVTFTexture
 	}
 
 	private static bool GenericAllocateReusableData(ref byte[]? imageData, nint numRequested) {
-		if (imageData == null || imageData.Length < numRequested)
+		if (imageData == null || imageData.Length < numRequested || (numRequested > 0 && imageData.Length > 16 * numRequested))
 			imageData = new byte[numRequested];
 		return true;
 	}

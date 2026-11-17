@@ -87,6 +87,37 @@ public enum LookDir
 	NegZ
 }
 
+[Flags]
+public enum VtfProcessingFlags : uint
+{
+	DecayR = 0x00000001,
+	DecayG = 0x00000002,
+	DecayB = 0x00000004,
+	DecayA = 0x00000008,
+
+	DecayExpR = 0x00000010,
+	DecayExpG = 0x00000020,
+	DecayExpB = 0x00000040,
+	DecayExpA = 0x00000080,
+
+	NoCompress = 0x00000100,
+	NormalDuDv = 0x00000200,
+	FilterNice = 0x00000400,
+
+	SetAlphaOneOverMip = 0x00001000,
+	PremultColorOneOverMip = 0x00002000,
+	MipAlphaTest = 0x00004000
+}
+
+public struct VtfProcessingOptions
+{
+	public uint Size;
+	public VtfProcessingFlags Flags0;
+	public InlineArray4<byte> DecayGoal;
+	public InlineArray4<byte> NumNotDecayMips;
+	public InlineArray4<float> DecayExponentBase;
+}
+
 public interface IVTFTexture : IDisposable
 {
 	bool Init(int width, int height, int depth, ImageFormat format, int flags, int frameCount, int forceMipCount = -1);
@@ -150,13 +181,20 @@ public interface IVTFTexture : IDisposable
 	Span<byte> LowResImageData();
 
 	void ConvertImageFormat(ImageFormat format, bool normalToDUDV);
+	void GenerateSpheremap(LookDir lookDir = LookDir.Z);
+	void FixCubemapFaceOrientation();
 	void GenerateMipmaps();
+	void PutOneOverMipLevelInAlpha();
 
 	void ComputeReflectivity();
 	void ComputeAlphaFlags();
 	void ConstructLowResImage();
+	void PostProcess(bool generateSpheremap, LookDir lookDir = LookDir.Z, bool allowFixCubemapOrientation = true);
+	void SetAlphaTestThreshholds(float baseThreshhold, float highFreq);
+	void SetPostProcessingSettings(in VtfProcessingOptions options);
 
 	public const int VTF_MAJOR_VERSION = 7;
+	public const ImageFormat IMAGE_FORMAT_DEFAULT = (ImageFormat)(-2);
 	public const int VTF_MINOR_VERSION = 4;
 
 	// Implementation of VTF can add these factory methods.
