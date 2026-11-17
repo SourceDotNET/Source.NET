@@ -47,6 +47,30 @@ public sealed class MaterialVar : IMaterialVar
 		}
 	}
 
+	static bool DeleteUnreferencedTexturesEnabled = false;
+
+	public static void DeleteUnreferencedTextures(bool enable) => DeleteUnreferencedTexturesEnabled = enable;
+
+	public static void Destroy(IMaterialVar? var) => (var as MaterialVar)?.CleanUpData();
+
+	void CleanUpData() {
+		switch (Type) {
+			case MaterialVarType.String:
+				StringVal = "";
+				break;
+
+			case MaterialVarType.Texture:
+				// garymcthack
+				if (TextureValue != null && !ITextureInternal.IsTextureInternalEnvCubemap(TextureValue)) {
+					TextureValue.DecrementReferenceCount();
+					if (DeleteUnreferencedTexturesEnabled)
+						TextureValue.DeleteIfUnreferenced();
+					TextureValue = null;
+				}
+				break;
+		}
+	}
+
 	MatCallQueue? GetCallQueue() => FakeMaterialVar ? null : materials?.GetRenderCallQueue();
 
 	MaterialVar? GetThreadedTempVar() {
@@ -221,6 +245,7 @@ public sealed class MaterialVar : IMaterialVar
 
 		FlushIfCurrentMaterial();
 
+		CleanUpData();
 		VecVal[0] = VecVal[1] = VecVal[2] = VecVal[3] = val;
 		IntVal = (int)val;
 		Type = MaterialVarType.Float;
@@ -245,6 +270,7 @@ public sealed class MaterialVar : IMaterialVar
 
 		FlushIfCurrentMaterial();
 
+		CleanUpData();
 		IntVal = val;
 		VecVal[0] = VecVal[1] = VecVal[2] = VecVal[3] = val;
 		Type = MaterialVarType.Int;
@@ -265,6 +291,7 @@ public sealed class MaterialVar : IMaterialVar
 
 		FlushIfCurrentMaterial();
 
+		CleanUpData();
 		Matrix.Matrix = matrix;
 		Type = MaterialVarType.Matrix;
 		Matrix.IsIdent = matrix.IsIdentity;
@@ -284,16 +311,28 @@ public sealed class MaterialVar : IMaterialVar
 
 		FlushIfCurrentMaterial();
 
+		CleanUpData();
 		StringVal = new(val.SliceNullTerminatedString());
 		Type = MaterialVarType.String;
 		VarChanged();
 	}
 
 	public override void SetTextureValue(ITexture? texture) {
+#if GMOD_DLL
+		if (texture == null) {
+			Warning("CMaterialVar::SetTextureValue is being set to NULL, falling back to error texture!\n");
+			texture = materials?.GetErrorTexture();
+		}
+#endif
+
 		MatCallQueue? callQueue = GetCallQueue();
 		if (callQueue != null) {
 			AllocThreadedTempVar()?.SetTextureValue(texture);
-			callQueue.QueueCall(static s => s.Var.SetTextureValue(s.Val), (Var: this, Val: texture));
+
+			// Matches DecrementReferenceCount in SetTextureValueQueued
+			texture?.IncrementReferenceCount();
+
+			callQueue.QueueCall(static s => s.Var.SetTextureValueQueued(s.Val), (Var: this, Val: texture));
 			return;
 		}
 
@@ -303,9 +342,22 @@ public sealed class MaterialVar : IMaterialVar
 
 		FlushIfCurrentMaterial();
 
+		if (texture != null && !ITextureInternal.IsTextureInternalEnvCubemap(texture))
+			texture.IncrementReferenceCount();
+
+		CleanUpData();
 		Type = MaterialVarType.Texture;
 		TextureValue = texture;
+		IntVal = 0;
+		VecVal = default;
 		VarChanged();
+	}
+
+	void SetTextureValueQueued(ITexture? texture) {
+		SetTextureValue(texture);
+
+		// Matches IncrementReferenceCount in SetTextureValue
+		texture?.DecrementReferenceCount();
 	}
 
 	public override void SetUndefined() {
@@ -321,6 +373,7 @@ public sealed class MaterialVar : IMaterialVar
 
 		FlushIfCurrentMaterial();
 
+		CleanUpData();
 		Type = MaterialVarType.Undefined;
 		VarChanged();
 	}
@@ -342,7 +395,10 @@ public sealed class MaterialVar : IMaterialVar
 
 		FlushIfCurrentMaterial();
 
-		Type = MaterialVarType.Vector;
+		if (Type != MaterialVarType.Vector) {
+			CleanUpData();
+			Type = MaterialVarType.Vector;
+		}
 		Assert(component <= 3);
 
 		if (NumVectorComps < component) {
@@ -371,7 +427,10 @@ public sealed class MaterialVar : IMaterialVar
 
 		FlushIfCurrentMaterial();
 
-		Type = MaterialVarType.Vector;
+		if (Type != MaterialVarType.Vector) {
+			CleanUpData();
+			Type = MaterialVarType.Vector;
+		}
 		Assert(comps <= 4);
 		NumVectorComps = (byte)comps;
 		VecVal = vec;

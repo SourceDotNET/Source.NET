@@ -1204,7 +1204,12 @@ public class Material : IMaterialInternal
 	}
 
 	private void CleanUpShaderParams() {
-		ShaderParams = null;
+		if (ShaderParams != null) {
+			for (int i = 0; i < VarCount; ++i)
+				MaterialVar.Destroy(ShaderParams[i]);
+
+			ShaderParams = null;
+		}
 		VarCount = 0;
 	}
 
@@ -1270,8 +1275,10 @@ public class Material : IMaterialInternal
 	public void DeleteIfUnreferenced() {
 		if (RefCount > 0)
 			return;
-		// todo: this has more, but i'm not sure if its needed?
+		MaterialVar.DeleteUnreferencedTextures(true);
+		Uncache();
 		materials.MaterialDict.RemoveMaterial(this);
+		MaterialVar.DeleteUnreferencedTextures(false);
 	}
 
 	public IMaterialVar? FindVarFast(ReadOnlySpan<char> varName, ref TokenCache token) {
