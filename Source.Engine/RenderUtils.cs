@@ -141,7 +141,7 @@ public class RenderUtils(IMaterialSystem materials)
 		renderContext.PopMatrix();
 	}
 
-	internal void RenderLine(in Vector3 start, in Vector3 end, in Color color, bool zBuffer) {
+	public void RenderLine(in Vector3 start, in Vector3 end, in Color color, bool zBuffer) {
 		InitializeStandardMaterials();
 
 		using MatRenderContextPtr renderContext = new(materials);
@@ -215,7 +215,7 @@ public class RenderUtils(IMaterialSystem materials)
 		mesh.Draw();
 	}
 
-	internal void RenderBox(in Vector3 origin, in Vector3 angles, in Vector3 mins, in Vector3 maxs, in Color color, bool zBuffer, bool insideOut = false) {
+	public void RenderBox(in Vector3 origin, in Vector3 angles, in Vector3 mins, in Vector3 maxs, in Color color, bool zBuffer, bool insideOut = false) {
 		IMaterial pMaterial = zBuffer ? VertexColor : VertexColorIgnoreZ;
 		RenderBox(origin, angles, mins, maxs, color, pMaterial, insideOut);
 	}
@@ -245,7 +245,7 @@ public class RenderUtils(IMaterialSystem materials)
 	IMaterial VertexColor = null!;
 	IMaterial VertexColorIgnoreZ = null!;
 
-	private void RenderBox(Vector3 origin, Vector3 angles, Vector3 mins, Vector3 maxs, Color color, IMaterial pMaterial, bool insideOut) {
+	public void RenderBox(Vector3 origin, Vector3 angles, Vector3 mins, Vector3 maxs, Color color, IMaterial pMaterial, bool insideOut) {
 		InitializeStandardMaterials();
 
 		using MatRenderContextPtr pRenderContext = new(materials);
@@ -342,7 +342,69 @@ public class RenderUtils(IMaterialSystem materials)
 		VertexColorIgnoreZ = materials.CreateMaterial("__utilVertexColorIgnoreZ", pVMTKeyValues);
 	}
 
-	internal void RenderWireframeBox(in Vector3 origin, in Vector3 angles, in Vector3 mins, in Vector3 maxs, in Color color, bool zBuffer) {
+	public void RenderWireframeSphere(in Vector3 center, float radius, int theta, int phi, in Color c, bool zBuffer) {
+		InitializeStandardMaterials();
+
+		++theta;
+
+		int vertices = phi * theta;
+		int indices = (theta - 1) * 4 * (phi - 1);
+
+		using MatRenderContextPtr renderContext = new(materials);
+		renderContext.Bind(zBuffer ? Wireframe : WireframeIgnoreZ);
+
+		MeshBuilder meshBuilder = new();
+		IMesh mesh = renderContext.GetDynamicMesh();
+
+		meshBuilder.Begin(mesh, MaterialPrimitiveType.Lines, vertices, indices);
+
+		byte chRed = c.R;
+		byte chGreen = c.G;
+		byte chBlue = c.B;
+		byte chAlpha = c.A;
+
+		int i, j;
+		for (i = 0; i < phi; ++i) {
+			for (j = 0; j < theta; ++j) {
+				float u = j / (float)(theta - 1);
+				float v = i / (float)(phi - 1);
+				float t = 2.0f * MathF.PI * u;
+				float p = MathF.PI * v;
+
+				(float sinTheta, float cosTheta) = MathF.SinCos(t);
+				(float sinPhi, float cosPhi) = MathF.SinCos(p);
+
+				meshBuilder.Position3f(center.X + (radius * sinPhi * cosTheta),
+					center.Y + (radius * sinPhi * sinTheta),
+					center.Z + (radius * cosPhi));
+				meshBuilder.Color4ub(chRed, chGreen, chBlue, chAlpha);
+				meshBuilder.AdvanceVertex();
+			}
+		}
+
+		for (i = 0; i < phi - 1; ++i) {
+			for (j = 0; j < theta - 1; ++j) {
+				int idx = theta * i + j;
+
+				meshBuilder.Index((ushort)idx);
+				meshBuilder.AdvanceIndex();
+
+				meshBuilder.Index((ushort)(idx + theta));
+				meshBuilder.AdvanceIndex();
+
+				meshBuilder.Index((ushort)idx);
+				meshBuilder.AdvanceIndex();
+
+				meshBuilder.Index((ushort)(idx + 1));
+				meshBuilder.AdvanceIndex();
+			}
+		}
+
+		meshBuilder.End();
+		mesh.Draw();
+	}
+
+	public void RenderWireframeBox(in Vector3 origin, in Vector3 angles, in Vector3 mins, in Vector3 maxs, in Color color, bool zBuffer) {
 		InitializeStandardMaterials();
 
 		using MatRenderContextPtr pRenderContext = new(materials);
@@ -379,7 +441,7 @@ public class RenderUtils(IMaterialSystem materials)
 		pMesh.Draw();
 	}
 
-	internal void RenderSphere(in Vector3 center, float radius, int theta, int phi, in Color c, IMaterial material) {
+	public void RenderSphere(in Vector3 center, float radius, int theta, int phi, in Color c, IMaterial material) {
 		InitializeStandardMaterials();
 
 		using MatRenderContextPtr renderContext = new(materials);
@@ -457,7 +519,7 @@ public class RenderUtils(IMaterialSystem materials)
 		mesh.Draw();
 	}
 
-	internal void RenderSphere(in Vector3 center, float radius, int theta, int phi, in Color c, bool zBuffer) {
+	public void RenderSphere(in Vector3 center, float radius, int theta, int phi, in Color c, bool zBuffer) {
 		IMaterial material = zBuffer ? VertexColor : VertexColorIgnoreZ;
 		Color actual = new(c.R, c.G, c.B, c.A);
 		RenderSphere(center, radius, theta, phi, actual, material);

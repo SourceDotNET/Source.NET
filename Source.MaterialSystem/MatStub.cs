@@ -558,6 +558,7 @@ public class DummyMaterialSystem : IMaterialSystemStub, IShaderUtil, IMatRenderC
 	public MaterialFogMode GetFogMode() => MaterialFogMode.None;
 	public void FogRadial(bool radial) { }
 	public bool GetFogRadial() => false;
+	public float GetFogMaxDensity() => 1.0f;
 	public void FogColor3f(float r, float g, float b) { }
 	public void FogColor3fv(ReadOnlySpan<float> rgb) { }
 	public void FogColor3ub(byte r, byte g, byte b) { }

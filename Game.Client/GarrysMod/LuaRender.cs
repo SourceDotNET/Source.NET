@@ -10,6 +10,7 @@ using Source.Engine;
 using TextureFlags = Source.Common.TextureFlags;
 
 using System.Numerics;
+using Source.Common.Mathematics;
 
 #if MENU_DLL
 namespace Game.MenuSystem.GarrysMod;
@@ -127,7 +128,36 @@ public static partial class LuaRender
 	// todo: DrawQuad
 	// todo: DrawScreenQuad
 	// todo: DrawScreenQuadEx
-	// todo: DrawBeam
+#if CLIENT_DLL
+	[LuaFunction]
+	static int DrawBeam(ILuaInterface lua) {
+		Vector3 start = LuaVector.Get_Vector(1);
+		Vector3 end = LuaVector.Get_Vector(2);
+		float width = (float)lua.CheckNumber(3);
+		float textureStart = (float)lua.CheckNumber(4);
+		float textureEnd = (float)lua.CheckNumber(5);
+		Color color = GetColor(lua.GetObject(6));
+
+		using MatRenderContextPtr renderContext = new(materials);
+		BeamSegDraw beamDraw = new();
+		beamDraw.Start(renderContext.Context, 2, null);
+
+		BeamSeg seg = default;
+		seg.Pos = start;
+		seg.Color = new(color.R / 255.0f, color.G / 255.0f, color.B / 255.0f);
+		seg.Alpha = color.A / 255.0f;
+		seg.TexCoord = textureStart;
+		seg.Width = width;
+		beamDraw.NextSeg(ref seg);
+
+		seg.Pos = end;
+		seg.TexCoord = textureEnd;
+		beamDraw.NextSeg(ref seg);
+
+		beamDraw.End();
+		return 0;
+	}
+#endif
 	// todo: StartBeam
 	// todo: AddBeam
 	// todo: EndBeam
@@ -141,9 +171,34 @@ public static partial class LuaRender
 		LuaVector.Push_Vector(color);
 		return 1;
 	}
+
+	[LuaFunction]
+	static int GetLightColor(ILuaInterface lua) {
+		Vector3 position = LuaVector.Get_Vector(1);
+		LuaVector.Push_Vector(engine.GetLightForPoint(position, false));
+		return 1;
+	}
+
+	[LuaFunction]
+	static int ComputeDynamicLighting(ILuaInterface lua) {
+		Vector3 position = LuaVector.Get_Vector(1);
+		Vector3 normal = LuaVector.Get_Vector(2);
+		engine.ComputeDynamicLighting(position, normal, out Vector3 color);
+		LuaVector.Push_Vector(color);
+		return 1;
+	}
+
+	[LuaFunction]
+	static int ComputeLighting(ILuaInterface lua) {
+		Vector3 position = LuaVector.Get_Vector(1);
+		Vector3? normal = null;
+		if (lua.GetType(2) != LuaType.Nil)
+			normal = LuaVector.Get_Vector(2);
+		engine.ComputeLighting(position, normal, false, out Vector3 color);
+		LuaVector.Push_Vector(color);
+		return 1;
+	}
 #endif
-	// todo: ComputeDynamicLighting
-	// todo: ComputeLighting
 	// todo: GetSurfaceColor
 
 	[LuaFunction]
@@ -169,9 +224,25 @@ public static partial class LuaRender
 
 	[LuaFunction]
 	static int MaxTextureHeight() => HardwareConfig.MaxTextureHeight();
-	// todo: UpdateFullScreenDepthTexture
-	// todo: GetFullScreenDepthTexture
-	// todo: GetResolvedFullFrameDepth
+#if CLIENT_DLL
+	[LuaFunction]
+	static int UpdateFullScreenDepthTexture(ILuaInterface lua) {
+		ViewScene.UpdateFullScreenDepthTexture();
+		return 0;
+	}
+
+	[LuaFunction]
+	static int GetFullScreenDepthTexture(ILuaInterface lua) {
+		LuaTexture.Push(RenderTexture.GetFullFrameDepthTexture());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetResolvedFullFrameDepth(ILuaInterface lua) {
+		LuaTexture.Push(materials.FindTexture("_rt_ResolvedFullFrameDepth", MaterialDefines.TEXTURE_GROUP_RENDER_TARGET, true, 0));
+		return 1;
+	}
+#endif
 	// todo: BindLocalCubemap
 	static readonly Vector3[] SuppressedAmbientLight = [new(1, 1, 1), new(1, 1, 1), new(1, 1, 1), new(1, 1, 1), new(1, 1, 1), new(1, 1, 1)];
 
@@ -222,10 +293,32 @@ public static partial class LuaRender
 		return 0;
 	}
 #endif
-	// todo: UpdateRefractTexture
-	// todo: GetRefractTexture
-	// todo: UpdatePowerOfTwoTexture
-	// todo: GetPowerOfTwoTexture
+#if CLIENT_DLL
+	[LuaFunction]
+	static int UpdateRefractTexture(ILuaInterface lua) {
+		ViewScene.UpdateRefractTexture(false);
+		return 0;
+	}
+
+	[LuaFunction]
+	static int GetRefractTexture(ILuaInterface lua) {
+		LuaTexture.Push(RenderTexture.GetPowerOfTwoFrameBufferTexture());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int UpdatePowerOfTwoTexture(ILuaInterface lua) {
+		ViewScene.UpdateRefractTexture(false);
+		LuaTexture.Push(RenderTexture.GetPowerOfTwoFrameBufferTexture());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetPowerOfTwoTexture(ILuaInterface lua) {
+		LuaTexture.Push(RenderTexture.GetPowerOfTwoFrameBufferTexture());
+		return 1;
+	}
+#endif
 #if !MENU_DLL
 	[LuaFunction("GetRenderTarget")]
 	static int GetCurrentRenderTarget(ILuaInterface lua) {
@@ -345,10 +438,31 @@ public static partial class LuaRender
 		return 1;
 	}
 #endif
-	// todo: GetMorphTex0
-	// todo: GetMorphTex1
-	// todo: GetSmallTex0
-	// todo: GetSmallTex1
+#if CLIENT_DLL
+	[LuaFunction]
+	static int GetMorphTex0(ILuaInterface lua) {
+		LuaTexture.Push(RenderTexture.GetMorphTex0());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetMorphTex1(ILuaInterface lua) {
+		LuaTexture.Push(RenderTexture.GetMorphTex1());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetSmallTex0(ILuaInterface lua) {
+		LuaTexture.Push(RenderTexture.GetSmallBuffer0());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int GetSmallTex1(ILuaInterface lua) {
+		LuaTexture.Push(RenderTexture.GetSmallBuffer1());
+		return 1;
+	}
+#endif
 #if !MENU_DLL
 	[LuaFunction]
 	static int GetSuperFPTex(ILuaInterface lua) {
@@ -366,8 +480,17 @@ public static partial class LuaRender
 	// todo: SetLocalModelLights
 	// todo: ResetModelLighting
 	// todo: SetModelLighting
-	// todo: SetAmbientLight
 #if !MENU_DLL
+	[LuaFunction]
+	static int SetAmbientLight(ILuaInterface lua) {
+		float r = (float)lua.CheckNumber(1);
+		float g = (float)lua.CheckNumber(2);
+		float b = (float)lua.CheckNumber(3);
+		using MatRenderContextPtr renderContext = new(materials);
+		renderContext.SetAmbientLight(r, g, b);
+		return 0;
+	}
+
 	[LuaFunction]
 	static int SetLightingOrigin(ILuaInterface lua) {
 		ref Vector3 origin = ref LuaVector.Get_Vector(1);
@@ -912,8 +1035,22 @@ public static partial class LuaRender
 	}
 #endif
 
-	// todo: GetFogMaxDensity
-	// todo: FogMaxDensity
+#if !MENU_DLL
+	[LuaFunction]
+	static int GetFogMaxDensity(ILuaInterface lua) {
+		using MatRenderContextPtr renderContext = new(materials);
+		lua.PushNumber(renderContext.GetFogMaxDensity());
+		return 1;
+	}
+
+	[LuaFunction]
+	static int FogMaxDensity(ILuaInterface lua) {
+		double maxDensity = lua.CheckNumber(1);
+		using MatRenderContextPtr renderContext = new(materials);
+		renderContext.FogMaxDensity((float)maxDensity);
+		return 0;
+	}
+#endif
 
 	[LuaFunction]
 	static int CullMode(ILuaInterface lua) {
@@ -967,8 +1104,53 @@ public static partial class LuaRender
 	}
 #endif
 
-	// todo: CapturePixels
-	// todo: ReadPixel
+#if !MENU_DLL
+	static byte[]? CapturedPixels;
+	static int CapturedPixelsWidth;
+	static int CapturedPixelsHeight;
+
+	[LuaFunction]
+	static int CapturePixels(ILuaInterface lua) {
+		using MatRenderContextPtr renderContext = new(materials);
+		ITexture? renderTarget = renderContext.GetRenderTarget();
+		if (enginevgui.IsConsoleVisible() && !(renderTarget == null ? ViewRender.RenderingView : renderTarget.IsRenderTarget()))
+			return 0;
+
+		renderContext.GetRenderTargetDimensions(out int width, out int height);
+		if ((uint)width > 65535 || (uint)height > 65535)
+			return 0;
+
+		if (CapturedPixels == null || CapturedPixelsWidth != width || CapturedPixelsHeight != height) {
+			CapturedPixelsWidth = width;
+			CapturedPixelsHeight = height;
+			int size = width * height * 4;
+			if (CapturedPixels == null || CapturedPixels.Length < size)
+				CapturedPixels = new byte[size];
+		}
+
+		renderContext.ReadPixels(0, 0, CapturedPixelsWidth, CapturedPixelsHeight, CapturedPixels, ImageFormat.RGBA8888);
+		return 0;
+	}
+
+	[LuaFunction]
+	static int ReadPixel(ILuaInterface lua) {
+		int x = (int)lua.CheckNumber(1);
+		int y = (int)lua.CheckNumber(2);
+		if ((uint)x < (uint)CapturedPixelsWidth && (uint)y < (uint)CapturedPixelsHeight && CapturedPixels != null) {
+			int offset = (CapturedPixelsWidth * y + x) * 4;
+			lua.PushNumber(CapturedPixels[offset]);
+			lua.PushNumber(CapturedPixels[offset + 1]);
+			lua.PushNumber(CapturedPixels[offset + 2]);
+			lua.PushNumber(CapturedPixels[offset + 3]);
+			return 4;
+		}
+
+		lua.PushNumber(0);
+		lua.PushNumber(0);
+		lua.PushNumber(0);
+		return 3;
+	}
+#endif
 
 	[LuaFunction]
 	static int OverrideDepthEnable(ILuaInterface lua) {
@@ -1073,19 +1255,115 @@ public static partial class LuaRender
 #endif
 	// todo: MaterialOverride
 	// todo: MaterialOverrideByIndex
-	// todo: DrawSphere
-	// todo: DrawWireframeSphere
-	// todo: DrawWireframeBox
-	// todo: DrawBox
-	// todo: DrawLine
+#if CLIENT_DLL
+	[LuaFunction]
+	static int DrawSphere(ILuaInterface lua) {
+		float radius = (float)lua.CheckNumber(2);
+		int longitudeSteps = (int)lua.CheckNumber(3);
+		int latitudeSteps = (int)lua.CheckNumber(4);
+		if (longitudeSteps < 1 || latitudeSteps < 1) {
+			lua.ErrorFromLua("render.DrawSphere: Arguments #3 and/or #4 have invalid value! (must be 0 or above)");
+			return 0;
+		}
+
+		Color color = GetColor(lua.GetObject(5));
+		Vector3 position = LuaVector.Get_Vector(1);
+		renderUtils.RenderSphere(position, radius, longitudeSteps + 1, latitudeSteps, color, CurrentMaterial.Get());
+		return 0;
+	}
+
+	[LuaFunction]
+	static int DrawWireframeSphere(ILuaInterface lua) {
+		float radius = (float)lua.CheckNumber(2);
+		int longitudeSteps = (int)lua.CheckNumber(3);
+		int latitudeSteps = (int)lua.CheckNumber(4);
+		if (longitudeSteps < 1 || latitudeSteps < 1) {
+			lua.ErrorFromLua("render.DrawSphere: Arguments #3 and/or #4 have invalid value! (must be 0 or above)");
+			return 0;
+		}
+
+		Color color = GetColor(lua.GetObject(5));
+		bool writeZ = lua.GetBool(6);
+		Vector3 position = LuaVector.Get_Vector(1);
+		renderUtils.RenderWireframeSphere(position, radius, longitudeSteps, latitudeSteps, color, writeZ);
+		return 0;
+	}
+
+	[LuaFunction]
+	static int DrawWireframeBox(ILuaInterface lua) {
+		Color color = GetColor(lua.GetObject(5));
+		bool writeZ = lua.GetBool(6);
+		Vector3 maxs = LuaVector.Get_Vector(4);
+		Vector3 mins = LuaVector.Get_Vector(3);
+		QAngle angles = LuaAngle.Get_Angle(2);
+		Vector3 position = LuaVector.Get_Vector(1);
+		renderUtils.RenderWireframeBox(position, angles, mins, maxs, color, writeZ);
+		return 0;
+	}
+
+	[LuaFunction]
+	static int DrawBox(ILuaInterface lua) {
+		Color color = GetColor(lua.GetObject(5));
+		Vector3 maxs = LuaVector.Get_Vector(4);
+		Vector3 mins = LuaVector.Get_Vector(3);
+		QAngle angles = LuaAngle.Get_Angle(2);
+		Vector3 position = LuaVector.Get_Vector(1);
+		renderUtils.RenderBox(position, angles, mins, maxs, color, CurrentMaterial.Get(), false);
+		return 0;
+	}
+
+	[LuaFunction]
+	static int DrawLine(ILuaInterface lua) {
+		Color color = GetColor(lua.GetObject(3));
+		bool writeZ = lua.GetBool(4);
+		Vector3 end = LuaVector.Get_Vector(2);
+		Vector3 start = LuaVector.Get_Vector(1);
+		renderUtils.RenderLine(start, end, color, writeZ);
+		return 0;
+	}
+#endif
 	// todo: PushFlashlightMode
 	// todo: PopFlashlightMode
-	// todo: SetShadowDirection
-	// todo: SetShadowColor
-	// todo: SetShadowDistance
-	// todo: SetShadowsDisabled
+#if CLIENT_DLL
+	[LuaFunction]
+	static int SetShadowDirection(ILuaInterface lua) {
+		g_ClientShadowMgr.SetShadowDirection(LuaVector.Get_Vector(1));
+		return 0;
+	}
+
+	[LuaFunction]
+	static int SetShadowColor(ILuaInterface lua) {
+		double b = lua.CheckNumber(3);
+		double g = lua.CheckNumber(2);
+		double r = lua.CheckNumber(1);
+		g_ClientShadowMgr.SetShadowColor((byte)(int)r, (byte)(int)g, (byte)(int)b);
+		return 0;
+	}
+
+	[LuaFunction]
+	static int SetShadowDistance(ILuaInterface lua) {
+		g_ClientShadowMgr.SetShadowDistance((float)lua.CheckNumber(1));
+		return 0;
+	}
+
+	[LuaFunction]
+	static int SetShadowsDisabled(ILuaInterface lua) {
+		g_ClientShadowMgr.SetShadowsDisabled(lua.GetBool(1));
+		return 0;
+	}
+#endif
 	// todo: WorldMaterialOverride
-	// todo: BrushMaterialOverride
+#if !MENU_DLL
+	[LuaFunction]
+	static int BrushMaterialOverride(ILuaInterface lua) {
+		IMaterial? material = null;
+		if (lua.IsType(1, LuaType.Material))
+			material = (IMaterial?)LuaMaterial.LC_IMaterial.Get(1);
+		using MatRenderContextPtr renderContext = new(materials);
+		engine.GMOD_BrushMaterialOverride(material);
+		return 0;
+	}
+#endif
 	// todo: ModelMaterialOverride
 #if !MENU_DLL
 	[LuaFunction]
@@ -1173,7 +1451,17 @@ public static partial class LuaRender
 		renderContext.GMOD_ForceFilterMode(true, FilterMinStack[^1]);
 		return 0;
 	}
-	// todo: RedownloadAllLightmaps
+#if !MENU_DLL
+	[LuaFunction]
+	static int RedownloadAllLightmaps(ILuaInterface lua) {
+		engine.GMOD_R_RedownloadAllLightmaps(lua.GetBool(1));
+		if (lua.GetType(2) == LuaType.Bool && lua.GetBool(2)) {
+			engine.GMOD_R_StudioInitLightingCache();
+			modelrender.RestoreAllStaticPropColorData();
+		}
+		return 0;
+	}
+#endif
 #if !MENU_DLL
 	[LuaFunction]
 	static int SetWriteDepthToDestAlpha(ILuaInterface lua) {

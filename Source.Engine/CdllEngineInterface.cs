@@ -645,12 +645,13 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 		throw new NotImplementedException();
 	}
 
-	public void GMOD_BrushMaterialOverride(IMaterial? matOverride) {
-		throw new NotImplementedException();
-	}
+	public void GMOD_BrushMaterialOverride(IMaterial? matOverride) => BrushBatchRender.BrushMaterialOverride.Init(matOverride);
 
-	public void GMOD_R_RedownloadAllLightmaps(bool unk) {
-		throw new NotImplementedException();
+	public void GMOD_R_RedownloadAllLightmaps(bool deferred) {
+		if (!deferred)
+			Render.RedownloadAllLightmaps();
+		else
+			Render.RebuildLightmaps();
 	}
 
 	public void GMOD_RawClientCmd_Unrestricted(ReadOnlySpan<char> command) {
@@ -673,9 +674,7 @@ public class EngineClient(Cbuf Cbuf, Scr Scr, Con Con, Key Key, IGame game, Host
 		throw new NotImplementedException();
 	}
 
-	public void GMOD_R_StudioInitLightingCache() {
-		throw new NotImplementedException();
-	}
+	public void GMOD_R_StudioInitLightingCache() => Render.R_StudioInitLightingCache();
 
 	public int PrecacheSentenceFile(ReadOnlySpan<char> fileName) {
 		throw new NotImplementedException();

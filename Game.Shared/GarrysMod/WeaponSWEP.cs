@@ -297,6 +297,44 @@ public partial class
 	}
 
 #if CLIENT_DLL
+	static StudioFlags DrawModelFlags;
+	static bool InDrawModel;
+
+	public override int DrawModel(StudioFlags flags) {
+		if (!ShouldDrawInView())
+			return 0;
+
+		C_BasePlayer? localPlayer = C_BasePlayer.GetLocalPlayer();
+		if (localPlayer != null && GetOwner() == localPlayer && !C_BasePlayer.ShouldDrawLocalPlayer())
+			return 0;
+
+		if (InDrawModel)
+			return base.DrawModel(DrawModelFlags);
+
+		DrawModelFlags = flags;
+		UpdateLuaData(true);
+		InDrawModel = true;
+
+		if (!ScriptedEntity.StartFunction((int)((int)flags < 0 ? LUA_POOLEDSTRING.DrawWorldModelTranslucent : LUA_POOLEDSTRING.DrawWorldModel))) {
+			InDrawModel = false;
+			return 1;
+		}
+
+		g_Lua!.PushNumber((int)flags);
+		ScriptedEntity.Call(1, 0);
+		InDrawModel = false;
+		return 1;
+	}
+
+	public override void ViewModelDrawn(BaseViewModel viewmodel, StudioFlags flags) {
+		if (!ScriptedEntity.StartFunction((int)LUA_POOLEDSTRING.ViewModelDrawn))
+			return;
+
+		LuaEntity.Push_Entity(viewmodel);
+		g_Lua!.PushNumber((int)flags);
+		ScriptedEntity.Call(2, 0);
+	}
+
 	public virtual void CreateMoveThink() {
 		UpdateLuaData(true);
 		ScriptedEntity.CallFunction((int)LUA_POOLEDSTRING.Think, false);

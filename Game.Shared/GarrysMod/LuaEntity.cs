@@ -1173,6 +1173,27 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__GetAttachments(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		StudioHdr? studioHdr = animating != null && !ent.IsEFlagSet(EFL.KillMe) && !animating.IsDynamicModelLoading() ? animating.GetModelPtr() : null;
+		lua.CreateTable();
+		if (studioHdr == null)
+			return 1;
+
+		for (int i = 0; i < studioHdr.GetNumAttachments(); i++) {
+			lua.PushNumber(i + 1);
+			lua.CreateTable();
+			lua.PushString(studioHdr.Attachment(i).Name());
+			lua.SetField(-2, "name");
+			lua.PushNumber(i + 1);
+			lua.SetField(-2, "id");
+			lua.SetTable(-3);
+		}
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Entity__GetBodygroup(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		BaseAnimating? animating = ent.GetBaseAnimating();
@@ -1504,6 +1525,19 @@ public static partial class LuaEntity
 		if (animating.Skin != skin)
 			animating.Skin = skin;
 		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetModelBounds(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Model? model = ent.GetModel();
+		if (model == null)
+			return 0;
+
+		modelinfo.GetModelBounds(model, out Vector3 mins, out Vector3 maxs);
+		LuaVector.Push_Vector(mins);
+		LuaVector.Push_Vector(maxs);
+		return 2;
 	}
 
 	[LuaMethod]
@@ -2476,6 +2510,13 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__SetGroundEntity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetGroundEntity(Get_Entity(2, true));
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Entity__GetPoseParameterRange(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		BaseAnimating? animating = ent.GetBaseAnimating();
@@ -3252,6 +3293,32 @@ public static partial class LuaEntity
 		ent.GetBaseAnimating()?.InvalidateBoneCache();
 		return 0;
 	}
+#endif
+
+	[LuaMethod]
+	static int Entity__GetBonePosition(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+
+		int bone = (int)lua.CheckNumber(2);
+		if (bone < 0)
+			return 0;
+
+#if CLIENT_DLL
+		if (animating.IsDynamicModelLoading())
+			return 0;
+#endif
+		StudioHdr? hdr = animating.GetModelPtr();
+		if (hdr == null || bone >= hdr.NumBones())
+			return 0;
+
+		animating.GetBonePosition(bone, out Vector3 origin, out QAngle angles);
+		LuaVector.Push_Vector(origin);
+		LuaAngle.Push_Angle(angles);
+		return 2;
+	}
 
 	[LuaMethod]
 	static int Entity__GetBoneMatrix(ILuaInterface lua) {
@@ -3265,6 +3332,7 @@ public static partial class LuaEntity
 			return 0;
 
 		mdlcache.BeginLock();
+#if CLIENT_DLL
 		if (!animating.IsDynamicModelLoading()) {
 			StudioHdr? hdr = animating.GetModelPtr();
 			if (hdr != null && bone < hdr.NumBones() && (animating.AccumulatedBoneMask & hdr.BoneFlags(bone)) != 0) {
@@ -3275,10 +3343,22 @@ public static partial class LuaEntity
 				return 1;
 			}
 		}
+#else
+		StudioHdr? hdr = animating.GetModelPtr();
+		if (hdr != null && bone < hdr.NumBones()) {
+			animating.GetBoneTransform(bone, out Matrix3x4 boneToWorld);
+			Matrix4x4 matrix = default;
+			matrix.Init(boneToWorld);
+			LuaVMatrix.Push_VMatrix(matrix);
+			mdlcache.EndLock();
+			return 1;
+		}
+#endif
 		mdlcache.EndLock();
 		return 0;
 	}
 
+#if CLIENT_DLL
 	[LuaMethod]
 	static int Entity__SetupBones(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;

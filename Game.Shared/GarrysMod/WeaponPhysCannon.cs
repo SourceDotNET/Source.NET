@@ -779,9 +779,9 @@ public partial class WeaponPhysCannon : BaseHL2MPCombatWeapon
 		return base.DrawModel(flags);
 	}
 
-	public override void ViewModelDrawn(BaseViewModel viewmodelflags) {
+	public override void ViewModelDrawn(BaseViewModel viewmodel, StudioFlags flags) {
 		DrawEffects();
-		base.ViewModelDrawn(viewmodelflags);
+		base.ViewModelDrawn(viewmodel, flags);
 	}
 	public void UpdateElementPosition() {
 		BasePlayer? owner = ToBasePlayer(GetOwner());

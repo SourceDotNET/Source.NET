@@ -1229,6 +1229,7 @@ public interface IMatRenderContext : IRefCounted
 	IMesh? GetDynamicMeshEx(VertexFormat vertexFormat, bool buffered = true, IMesh? vertexOverride = null, IMesh? indexOverride = null, IMaterial? autoBind = null);
 
 	void FogMaxDensity(float maxDensity);
+	float GetFogMaxDensity();
 
 	void FogRadial(bool radial);
 	bool GetFogRadial();
@@ -1534,6 +1535,8 @@ public readonly ref struct MatRenderContextPtr : IDisposable
 	public void FogMaxDensity(float maxDensity) {
 		Context.FogMaxDensity(maxDensity);
 	}
+
+	public float GetFogMaxDensity() => Context.GetFogMaxDensity();
 
 	public void FogMode(MaterialFogMode fogMode) {
 		Context.FogMode(fogMode);

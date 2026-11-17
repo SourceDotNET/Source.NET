@@ -345,7 +345,7 @@ public partial class
 	public virtual BaseCombatWeapon? GetLastWeapon() => this;
 	public virtual bool IsOverridingViewmodel() => false;
 	public virtual int DrawOverriddenViewmodel(BaseViewModel viewmodel, StudioFlags flags) => 0;
-	public virtual void ViewModelDrawn(BaseViewModel viewmodelflags) { }
+	public virtual void ViewModelDrawn(BaseViewModel viewmodel, StudioFlags flags) { }
 	public virtual int UpdateClientData(BasePlayer player) {
 		WeaponState iNewState = player.GetActiveWeapon() == this ? WeaponState.IsActive : WeaponState.IsCarriedByPlayer;
 

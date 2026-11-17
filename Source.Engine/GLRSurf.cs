@@ -1689,6 +1689,8 @@ public class BrushBatchRender
 		return renderT;
 	}
 
+	public static readonly MaterialReference BrushMaterialOverride = new();
+
 	public void DrawOpaqueBrushModel(IClientEntity? baseEntity, Model? model, in Vector3 origin, RenderDepthMode depthMode) {
 		SurfaceHandle_t firstSurfID = model!.Brush.FirstModelSurface;
 
@@ -1739,6 +1741,8 @@ public class BrushBatchRender
 				}
 				else {
 					material = batch.Material;
+					if (BrushMaterialOverride.IsNotNull)
+						material = BrushMaterialOverride.Get();
 
 					ModulateMaterial(material!, oldColor);
 					if (!skipLight)
@@ -1949,6 +1953,8 @@ public class BrushBatchRender
 
 				MeshBuilder meshBuilder = new();
 				IMaterial material = batch.Material!;
+				if (BrushMaterialOverride.IsNotNull)
+					material = BrushMaterialOverride.Get()!;
 
 				ModulateMaterial(material, oldColor);
 
