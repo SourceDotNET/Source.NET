@@ -112,6 +112,18 @@ public class GameClient : BaseClient
 	}
 
 	protected override bool ProcessVoiceData(CLC_VoiceData msg) {
+#if GMOD_DLL
+		if ((uint)(msg.Length - 9) >= 0x3FF8) {
+			Disconnect($"Invalid voice packet length {msg.Length}.");
+			return false;
+		}
+
+		if (!IsActive())
+			return false;
+
+		serverGameClients.GMOD_OnReceivedVoicePacket(Edict);
+#endif
+
 		byte[] voiceDataBuffer = new byte[4096];
 		int bitsRead = (int)msg.DataIn.ReadBitsClamped(voiceDataBuffer, (uint)msg.Length);
 

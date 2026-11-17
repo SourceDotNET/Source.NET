@@ -163,6 +163,7 @@ public interface IServerGameClients
 	void GMOD_ReceiveClientMessage(int userID, Edict player, bf_read msg, int bits);
 	void GMOD_ClientConnected(int userID);
 	void GMOD_SentClientStringTables(int userID);
+	void GMOD_OnReceivedVoicePacket(Edict? player);
 }
 
 public interface IServerGCLobby

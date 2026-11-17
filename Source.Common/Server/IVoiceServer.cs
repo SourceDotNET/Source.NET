@@ -12,4 +12,7 @@ public interface IVoiceServer
 	bool GetClientListening(int receiver, int sender);
 	bool SetClientListening(int receiver, int sender, bool listen);
 	bool SetClientProximity(int receiver, int sender, bool useProximity);
+#if GMOD_DLL
+	bool GetClientProximity(int receiver, int sender);
+#endif
 }
