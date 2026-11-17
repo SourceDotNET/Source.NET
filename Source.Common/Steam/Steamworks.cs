@@ -123,7 +123,21 @@ public interface ISteamRemoteStorage
 	public bool GetQuota(out ulong pnTotalBytes, out ulong puAvailableBytes) => SteamRemoteStorage.GetQuota(out pnTotalBytes, out puAvailableBytes);
 }
 public interface ISteamScreenshots;
-public interface ISteamHTTP;
+public interface ISteamHTTP
+{
+	public HTTPRequestHandle CreateHTTPRequest(EHTTPMethod eHTTPRequestMethod, ReadOnlySpan<char> pchAbsoluteURL) => SteamHTTP.CreateHTTPRequest(eHTTPRequestMethod, new(pchAbsoluteURL));
+	public bool SetHTTPRequestNetworkActivityTimeout(HTTPRequestHandle hRequest, uint unTimeoutSeconds) => SteamHTTP.SetHTTPRequestNetworkActivityTimeout(hRequest, unTimeoutSeconds);
+	public bool SetHTTPRequestHeaderValue(HTTPRequestHandle hRequest, ReadOnlySpan<char> pchHeaderName, ReadOnlySpan<char> pchHeaderValue) => SteamHTTP.SetHTTPRequestHeaderValue(hRequest, new(pchHeaderName), new(pchHeaderValue));
+	public bool SetHTTPRequestGetOrPostParameter(HTTPRequestHandle hRequest, ReadOnlySpan<char> pchParamName, ReadOnlySpan<char> pchParamValue) => SteamHTTP.SetHTTPRequestGetOrPostParameter(hRequest, new(pchParamName), new(pchParamValue));
+	public bool SendHTTPRequest(HTTPRequestHandle hRequest, out SteamAPICall_t pCallHandle) => SteamHTTP.SendHTTPRequest(hRequest, out pCallHandle);
+	public bool GetHTTPResponseHeaderSize(HTTPRequestHandle hRequest, ReadOnlySpan<char> pchHeaderName, out uint unResponseHeaderSize) => SteamHTTP.GetHTTPResponseHeaderSize(hRequest, new(pchHeaderName), out unResponseHeaderSize);
+	public bool GetHTTPResponseHeaderValue(HTTPRequestHandle hRequest, ReadOnlySpan<char> pchHeaderName, byte[] pHeaderValueBuffer, uint unBufferSize) => SteamHTTP.GetHTTPResponseHeaderValue(hRequest, new(pchHeaderName), pHeaderValueBuffer, unBufferSize);
+	public bool GetHTTPResponseBodySize(HTTPRequestHandle hRequest, out uint unBodySize) => SteamHTTP.GetHTTPResponseBodySize(hRequest, out unBodySize);
+	public bool GetHTTPResponseBodyData(HTTPRequestHandle hRequest, byte[] pBodyDataBuffer, uint unBufferSize) => SteamHTTP.GetHTTPResponseBodyData(hRequest, pBodyDataBuffer, unBufferSize);
+	public bool ReleaseHTTPRequest(HTTPRequestHandle hRequest) => SteamHTTP.ReleaseHTTPRequest(hRequest);
+	public bool SetHTTPRequestRawPostBody(HTTPRequestHandle hRequest, ReadOnlySpan<char> pchContentType, byte[] pubBody, uint unBodyLen) => SteamHTTP.SetHTTPRequestRawPostBody(hRequest, new(pchContentType), pubBody, unBodyLen);
+	public bool GetHTTPRequestWasTimedOut(HTTPRequestHandle hRequest, out bool pbWasTimedOut) => SteamHTTP.GetHTTPRequestWasTimedOut(hRequest, out pbWasTimedOut);
+}
 public interface ISteamController;
 public interface ISteamUGC;
 public interface ISteamAppList;
@@ -195,6 +209,21 @@ public class ImplSteamNetworking : ISteamNetworking;
 public class ImplSteamRemoteStorage : ISteamRemoteStorage;
 public class ImplSteamScreenshots : ISteamScreenshots;
 public class ImplSteamHTTP : ISteamHTTP;
+public class ImplSteamGameServerHTTP : ISteamHTTP
+{
+	public HTTPRequestHandle CreateHTTPRequest(EHTTPMethod eHTTPRequestMethod, ReadOnlySpan<char> pchAbsoluteURL) => SteamGameServerHTTP.CreateHTTPRequest(eHTTPRequestMethod, new(pchAbsoluteURL));
+	public bool SetHTTPRequestNetworkActivityTimeout(HTTPRequestHandle hRequest, uint unTimeoutSeconds) => SteamGameServerHTTP.SetHTTPRequestNetworkActivityTimeout(hRequest, unTimeoutSeconds);
+	public bool SetHTTPRequestHeaderValue(HTTPRequestHandle hRequest, ReadOnlySpan<char> pchHeaderName, ReadOnlySpan<char> pchHeaderValue) => SteamGameServerHTTP.SetHTTPRequestHeaderValue(hRequest, new(pchHeaderName), new(pchHeaderValue));
+	public bool SetHTTPRequestGetOrPostParameter(HTTPRequestHandle hRequest, ReadOnlySpan<char> pchParamName, ReadOnlySpan<char> pchParamValue) => SteamGameServerHTTP.SetHTTPRequestGetOrPostParameter(hRequest, new(pchParamName), new(pchParamValue));
+	public bool SendHTTPRequest(HTTPRequestHandle hRequest, out SteamAPICall_t pCallHandle) => SteamGameServerHTTP.SendHTTPRequest(hRequest, out pCallHandle);
+	public bool GetHTTPResponseHeaderSize(HTTPRequestHandle hRequest, ReadOnlySpan<char> pchHeaderName, out uint unResponseHeaderSize) => SteamGameServerHTTP.GetHTTPResponseHeaderSize(hRequest, new(pchHeaderName), out unResponseHeaderSize);
+	public bool GetHTTPResponseHeaderValue(HTTPRequestHandle hRequest, ReadOnlySpan<char> pchHeaderName, byte[] pHeaderValueBuffer, uint unBufferSize) => SteamGameServerHTTP.GetHTTPResponseHeaderValue(hRequest, new(pchHeaderName), pHeaderValueBuffer, unBufferSize);
+	public bool GetHTTPResponseBodySize(HTTPRequestHandle hRequest, out uint unBodySize) => SteamGameServerHTTP.GetHTTPResponseBodySize(hRequest, out unBodySize);
+	public bool GetHTTPResponseBodyData(HTTPRequestHandle hRequest, byte[] pBodyDataBuffer, uint unBufferSize) => SteamGameServerHTTP.GetHTTPResponseBodyData(hRequest, pBodyDataBuffer, unBufferSize);
+	public bool ReleaseHTTPRequest(HTTPRequestHandle hRequest) => SteamGameServerHTTP.ReleaseHTTPRequest(hRequest);
+	public bool SetHTTPRequestRawPostBody(HTTPRequestHandle hRequest, ReadOnlySpan<char> pchContentType, byte[] pubBody, uint unBodyLen) => SteamGameServerHTTP.SetHTTPRequestRawPostBody(hRequest, new(pchContentType), pubBody, unBodyLen);
+	public bool GetHTTPRequestWasTimedOut(HTTPRequestHandle hRequest, out bool pbWasTimedOut) => SteamGameServerHTTP.GetHTTPRequestWasTimedOut(hRequest, out pbWasTimedOut);
+}
 public class ImplSteamController : ISteamController;
 public class ImplSteamUGC : ISteamUGC;
 public class ImplSteamAppList : ISteamAppList;
