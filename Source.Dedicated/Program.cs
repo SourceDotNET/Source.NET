@@ -111,16 +111,13 @@ public static class TextConsole
 
 	[DllImport("kernel32.dll")]
 	static extern bool SetConsoleCtrlHandler(ConsoleCtrlHandler handlerRoutine, bool add);
-
-	[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-	static extern bool SetConsoleTitleW(string title);
-
-	public static void SetTitle(ReadOnlySpan<char> title) => SetConsoleTitleW(new(title));
 #endif
+
+	public static void SetTitle(ReadOnlySpan<char> title) => Console.Title = new(title);
 
 	public static void Init() {
 #if WIN32
-		SetTitle("SOURCE DEDICATED SERVER");
+		SetTitle("SOURCE.NET DEDICATED SERVER");
 #if GMOD_DLL
 		try {
 			Console.OutputEncoding = Encoding.UTF8;
