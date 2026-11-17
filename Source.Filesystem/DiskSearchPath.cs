@@ -15,7 +15,7 @@ public class DiskSearchPath : BaseSearchPath
 		public required string RealPath;
 	}
 	static readonly Dictionary<ulong, CaseInsensitiveCache> cache = [];
-	static string ResolveDiskPath(string path) {
+	internal static string ResolveDiskPath(string path) {
 		ulong hash = path.Hash(invariant: true);
 		if(cache.TryGetValue(hash, out CaseInsensitiveCache? found))
 			return found.RealPath;
@@ -44,7 +44,7 @@ public class DiskSearchPath : BaseSearchPath
 		return path;
 	}
 #else
-	static string ResolveDiskPath(string path) {
+	internal static string ResolveDiskPath(string path) {
 		return path;
 	}
 #endif
@@ -71,7 +71,14 @@ public class DiskSearchPath : BaseSearchPath
 
 	public bool ExistsOnDisk(ReadOnlySpan<char> path) => Path.Exists(GetAbsPath(path));
 	public string GetFullPath(ReadOnlySpan<char> path) => GetAbsPath(path).Replace('\\', '/');
-	public override bool IsDirectory(ReadOnlySpan<char> path) => Directory.Exists(GetAbsPath(path));
+	public override bool IsDirectory(ReadOnlySpan<char> path) {
+		string absPath = GetAbsPath(path);
+#if GMOD_DLL
+		if (Workshop && BaseFileSystem.g_AddonFileSystem.IsDirectory(absPath))
+			return true;
+#endif
+		return Directory.Exists(absPath);
+	}
 
 	public override bool IsFileWritable(ReadOnlySpan<char> path) {
 		var info = new FileInfo(GetAbsPath(path));

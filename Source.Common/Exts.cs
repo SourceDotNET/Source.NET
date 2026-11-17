@@ -298,6 +298,15 @@ public static class StrTools
 				name[i] = separator;
 		}
 	}
+	public static void StripTrailingSlash(Span<char> path) {
+		int len = (int)strlen(path);
+		if (len > 0 && path[len - 1].IsPathSeparator())
+			path[len - 1] = '\0';
+	}
+	public static bool IsAbsolutePath(ReadOnlySpan<char> str) {
+		char first = str.IsEmpty ? '\0' : str[0];
+		return (first != '\0' && str.Length > 1 && str[1] == ':') || first == '/' || first == '\\';
+	}
 
 	public static int StrLen(ReadOnlySpan<char> str) {
 		int i = str.IndexOf('\0');
