@@ -782,7 +782,6 @@ public partial class C_BaseEntity : IClientEntity
 	static readonly DynamicAccessor DA_Origin = FIELD.OF(nameof(Origin));
 	static readonly DynamicAccessor DA_Rotation = FIELD.OF(nameof(Rotation));
 
-	public float Gravity;
 
 	public C_BaseEntity() {
 		GMOD_EHANDLEForModify() = new();
@@ -969,6 +968,8 @@ public partial class C_BaseEntity : IClientEntity
 	public int MapCreatedID;
 	[NetworkVar("m_flFriction")]
 	public float Friction;
+	[NetworkVar("m_flGravity")]
+	public float Gravity;
 	[NetworkVar("m_nSpeed")]
 	public int Speed;
 	[NetworkVar("m_hGroundEntity")]
