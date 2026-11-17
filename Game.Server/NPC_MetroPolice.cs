@@ -21,7 +21,7 @@ using DEFINE = DEFINE<NPC_MetroPolice>;
 public class NPC_MetroPolice : AI_BaseActor
 {
 	[Flags]
-	public enum SF
+	public new enum SF
 	{
 		SimpleVersion = 0x00020000,
 		AlwaysStitch = 0x00080000,

@@ -209,8 +209,9 @@ public static class ModVis
 
 		c = (CM.NumClusters() + 31) / 32;
 
+		Span<byte> mapVis = stackalloc byte[BSPFileCommon.MAX_MAP_CLUSTERS / 8];
 		for (i = 1; i < vis.NumClusters; i++) {
-			Span<byte> mapVis = stackalloc byte[BSPFileCommon.MAX_MAP_CLUSTERS / 8];
+			mapVis.Clear();
 
 			CM.Vis(mapVis, mapVis.Length, vis.VisClusters[i].ViewCluster, CM.DVIS_PVS);
 

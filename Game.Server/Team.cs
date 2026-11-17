@@ -50,9 +50,9 @@ public partial class Team : BaseEntity
 		}
 	}
 
-	internal ReadOnlySpan<char> GetName() {
-		throw new NotImplementedException();
-	}
+	public override int GetTeamNumber() => TeamNum;
+
+	internal ReadOnlySpan<char> GetName() => ((ReadOnlySpan<char>)Teamname).SliceNullTerminatedString();
 
 	public void AddPlayer(BasePlayer player) {
 		Players.Add(player);

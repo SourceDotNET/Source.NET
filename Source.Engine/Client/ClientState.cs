@@ -325,7 +325,7 @@ IModelLoader modelloader, ICommandLine commandLine,
 	}
 
 	GameEventManager? gem;
-	GameEventManager gameEventManager => gem ??= (GameEventManager)Singleton<IGameEventManager2>();
+	new GameEventManager gameEventManager => gem ??= (GameEventManager)Singleton<IGameEventManager2>();
 	protected override bool ProcessGameEventList(SVC_GameEventList msg) {
 		return gameEventManager.ParseEventList(msg);
 	}

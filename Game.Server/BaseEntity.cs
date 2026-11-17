@@ -920,7 +920,7 @@ public partial class BaseEntity : IServerEntity
 
 	public virtual bool CanBeSeenBy(AI_BaseNPC npc) => true;
 
-	public bool IsViewable() {
+	public virtual bool IsViewable() {
 		if (IsEffectActive(EntityEffects.NoDraw))
 			return false;
 
@@ -1427,7 +1427,7 @@ public partial class BaseEntity : IServerEntity
 
 	public Team? GetTeam() => GetGlobalTeam(TeamNum);
 
-	public int GetTeamNumber() => TeamNum;
+	public virtual int GetTeamNumber() => TeamNum;
 
 	IPhysicsObject? PhysicsObject = null!;
 	public virtual void VPhysicsUpdate(IPhysicsObject physics) {

@@ -339,7 +339,7 @@ class EncodeInfo(SendTablePrecalc precalc, object structData, int objectId, bf_w
 
 class PropCullStack : DatatableStack
 {
-	SendTablePrecalc Precalc;
+	new SendTablePrecalc Precalc;
 	int Client;
 	List<SendProxyRecipients>? OldStateProxies;
 	int NumOldStateProxies;

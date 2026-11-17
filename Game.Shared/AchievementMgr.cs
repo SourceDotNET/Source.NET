@@ -844,6 +844,7 @@ public class AchievementMgr : AutoGameSystemPerFrame, IGameEventListener2, IAchi
 	}
 
 	void UpdateStateFromSteam_Internal() {
+		Span<char> progressName = stackalloc char[1024];
 		foreach (BaseAchievement achievement in MapAchievement.Values) {
 			bool ret = Steam3Client().SteamUserStats().GetAchievementAndUnlockTime(achievement.GetName(), out bool achieved, out uint unlockTime);
 
@@ -855,7 +856,7 @@ public class AchievementMgr : AutoGameSystemPerFrame, IGameEventListener2, IAchi
 				DevMsg($"ISteamUserStats::GetAchievement failed for {achievement.GetName()}\n");
 
 			if (achievement.StoreProgressInSteam()) {
-				Span<char> progressName = stackalloc char[1024];
+				progressName.Clear();
 				sprintf(progressName, "%s_STAT").S(achievement.GetStat());
 				ret = Steam3Client().SteamUserStats().GetStat(progressName.SliceNullTerminatedString(), out int value);
 				if (ret) {

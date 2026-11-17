@@ -444,9 +444,9 @@ public class ClientModeShared : GameEventListener, IClientMode
 
 		if (count > 0) {
 			KeyValues keys = new("data");
+			Span<char> name = stackalloc char[256];
+			Span<char> data = stackalloc char[255];
 			for (int i = 0; i < count; i++) {
-				Span<char> name = stackalloc char[256];
-				Span<char> data = stackalloc char[255];
 				msg.ReadString(name);
 				msg.ReadString(data);
 				keys.SetString(name, data);

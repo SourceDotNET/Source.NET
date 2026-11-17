@@ -579,7 +579,7 @@ public partial class HL2MP_Player : HL2_Player
 
 	void CheatImpulseCommands(int impulse) { }
 
-	bool ShouldRunRateLimitedCommand(in TokenizedCommand args) {
+	new bool ShouldRunRateLimitedCommand(in TokenizedCommand args) {
 		throw new NotImplementedException();
 	}
 

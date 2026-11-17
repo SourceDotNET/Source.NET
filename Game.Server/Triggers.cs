@@ -909,7 +909,7 @@ public class TriggerOnce : TriggerMultiple
 public class TriggerLook : TriggerOnce
 {
 	[Flags]
-	public enum SF
+	public new enum SF
 	{
 		FireOnce = 128,
 		UseVelocity = 256,
@@ -1224,7 +1224,7 @@ public class TriggerPush : BaseTrigger
 public class TriggerTeleport : BaseTrigger
 {
 	[Flags]
-	public enum SF
+	public new enum SF
 	{
 		PreserveAngles = 0x20,  // Preserve angles even when a local landmark is not specified
 	}

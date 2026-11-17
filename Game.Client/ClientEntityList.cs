@@ -218,7 +218,7 @@ public class ClientEntityList : BaseEntityList, IClientEntityList
 
 	}
 
-	public BaseHandle InvalidHandle() => new(Constants.INVALID_EHANDLE_INDEX);
+	public new BaseHandle InvalidHandle() => new(Constants.INVALID_EHANDLE_INDEX);
 
 	public IClientThinkable? GetClientThinkableFromHandle(in BaseHandle hEnt) {
 		IClientUnknown? pEnt = GetClientUnknownFromHandle(hEnt);

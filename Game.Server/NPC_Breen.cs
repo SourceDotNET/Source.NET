@@ -13,7 +13,7 @@ namespace Game.Server;
 public class NPC_Breen : AI_BaseActor
 {
 	[Flags]
-	public enum SF
+	public new enum SF
 	{
 		BackgroundTalk = 1 << 16,
 	}

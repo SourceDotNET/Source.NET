@@ -11,6 +11,6 @@ class FuncNavPrerequisite : BaseTrigger
 	int Task;
 	string TaskEntityName;
 	float TaskValue;
-	bool Disabled;
+	new bool Disabled;
 	EHANDLE TaskEntity;
 }

@@ -396,7 +396,6 @@ public partial class BaseAnimating : BaseEntity
 	public float GetModelScale() => ModelScale;
 
 	protected StudioHdr? StudioHdr;
-	public Model? GetModel() => modelinfo.GetModel(GetModelIndex());
 
 	// todo...
 	public StudioHdr? GetModelPtr() {

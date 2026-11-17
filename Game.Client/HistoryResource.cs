@@ -219,6 +219,7 @@ class HudHistoryResource : EditableHudElement, IHudElement
 
 		GetSize(out int wide, out int tall);
 
+		Span<char> text = stackalloc char[16];
 		for (int i = 0; i < PickupHistory.Count; i++) {
 			var item = PickupHistory[i];
 			if (item.Type != null) {
@@ -308,7 +309,7 @@ class HudHistoryResource : EditableHudElement, IHudElement
 				itemAmmoIcon?.DrawSelf((int)(xpos - (itemAmmoIcon.Width() * 1.25f)), ypos, clr);
 
 				if (amount != 0) {
-					Span<char> text = stackalloc char[16];
+					text.Clear();
 					sprintf(text, "%i").I(amount);
 
 					ypos -= (Surface.GetFontTall(NumberFont) - itemIcon.Height()) / 2;

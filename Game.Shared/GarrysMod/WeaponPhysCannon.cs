@@ -4,8 +4,6 @@ using Source;
 #if CLIENT_DLL
 using Game.Client;
 
-using Source;
-
 #endif
 
 using Source.Common;

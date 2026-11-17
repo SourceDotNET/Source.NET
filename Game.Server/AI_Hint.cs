@@ -339,7 +339,7 @@ public class AI_Hint : ServerOnlyEntity
 			return GetLocalAngles().Y;
 	}
 
-	bool IsViewable() {
+	public override bool IsViewable() {
 		if (NodeData.Disabled != 0)
 			return false;
 

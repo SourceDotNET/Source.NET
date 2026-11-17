@@ -45,7 +45,7 @@ public class BaseHudChatLine : RichText
 		SetFont(Font);
 	}
 
-	internal IFont? GetFont() {
+	internal new IFont? GetFont() {
 		return Font;
 	}
 

@@ -503,13 +503,15 @@ public class AddonFileSystem : Addon.FileSystem
 
 	public void MountFloatingAddons() {
 		ReadOnlySpan<char> file = g_FullFileSystem.FindFirstEx("*.gma", "GAME", out ulong findHandle);
+		Span<char> fullPathBuffer = stackalloc char[MAX_PATH];
+		Span<char> relativeBuffer = stackalloc char[MAX_PATH];
 		while (!file.IsEmpty) {
 			string fileName = new(file.SliceNullTerminatedString());
 
-			Span<char> fullPathBuffer = stackalloc char[MAX_PATH];
+			fullPathBuffer.Clear();
 			ReadOnlySpan<char> fullPath = g_FullFileSystem.RelativePathToFullPath(fileName, "GAME", fullPathBuffer);
 
-			Span<char> relativeBuffer = stackalloc char[MAX_PATH];
+			relativeBuffer.Clear();
 			bool converted = !fullPath.IsEmpty && g_FullFileSystem.FullPathToRelativePath(fullPath, relativeBuffer);
 			string relative = converted ? new string(((ReadOnlySpan<char>)relativeBuffer).SliceNullTerminatedString()) : "";
 			if (converted) {

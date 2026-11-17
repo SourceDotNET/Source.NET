@@ -963,13 +963,13 @@ public partial class Render
 		bool fullMatch = false;
 		Decal? decal = MSurf_DecalPointer(surfID);
 		List<Decal> coveredList = [];
+		Span<Vector3> testBasis = stackalloc Vector3[3];
+		Span<float> testWorldScale = stackalloc float[2];
 		while (decal != null) {
 			material = decal.Material;
 
 			if ((decal.Flags & FDecal.Permanent) == 0 &&
 				(decal.Flags & FDecal.PlayerSpray) == 0 && material != null) {
-				Span<Vector3> testBasis = stackalloc Vector3[3];
-				Span<float> testWorldScale = stackalloc float[2];
 				SetupDecalTextureSpaceBasis(decal, ref ModelLoader.MSurf_Plane(ref surf).Normal, material, testBasis, testWorldScale);
 
 				Vector2 decalMin = new(Vector3.Dot(decalInfo.Position - decalExtents[0], testBasis[0]) - decal.Dx + 0.5f, Vector3.Dot(decalInfo.Position - decalExtents[1], testBasis[1]) - decal.Dy + 0.5f);

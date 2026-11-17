@@ -1576,8 +1576,9 @@ public class BrushBatchRender
 	}
 
 	public void ClearRenderHandles() {
+		Span<char> brushModel = stackalloc char[5];
 		for (int brush = 1; brush < host_state.WorldBrush!.NumSubModels; ++brush) {
-			Span<char> brushModel = stackalloc char[5];
+			brushModel.Clear();
 			sprintf(brushModel, $"*{brush}");
 			Model? model = modelloader.GetModelForName(brushModel.SliceNullTerminatedString(), ModelLoaderFlags.Server);
 			model?.Brush.RenderHandle = 0;
