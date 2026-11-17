@@ -542,7 +542,7 @@ public partial class BaseFileSystem : IFileSystem
 			newPath = new(RelativePathToFullPath(path, "GAME", fullPath));
 		}
 		else {
-			newPath = Path.IsPathFullyQualified(path) ? new(path) : Path.GetFullPath(new(path));
+			newPath = new(path);
 			AddSeparatorAndFixPath(ref newPath);
 		}
 
