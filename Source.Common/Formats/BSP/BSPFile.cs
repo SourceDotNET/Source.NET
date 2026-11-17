@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -620,7 +621,7 @@ public struct LightZBuffer
 {
 	const int SHADOW_ZBUF_RES = 8;
 	public InlineArray384<LightShadowZBufferSample> Samples;
-	public unsafe ref LightShadowZBufferSample this[int face, int x, int y] => ref Samples[face * SHADOW_ZBUF_RES * SHADOW_ZBUF_RES + x * SHADOW_ZBUF_RES + y];
+	[UnscopedRef] public ref LightShadowZBufferSample this[int face, int x, int y] => ref Samples[face * SHADOW_ZBUF_RES * SHADOW_ZBUF_RES + x * SHADOW_ZBUF_RES + y];
 
 	public void GetCoords(in Vector3 vecNormalizedDirection, out int nX, out int nY, out int nFace) {
 		int nLargest = 0;
@@ -647,7 +648,7 @@ public struct LightZBuffer
 		nY = (int)MathLib.RemapValClamped(vecNormalizedDirection[nAxis1] * flZ, -1, 1, 0, SHADOW_ZBUF_RES - 1);
 	}
 
-	public ref LightShadowZBufferSample GetSample(in Vector3 vecNormalizedDirection) {
+	[UnscopedRef] public ref LightShadowZBufferSample GetSample(in Vector3 vecNormalizedDirection) {
 		GetCoords(vecNormalizedDirection, out int nX, out int nY, out int nFace);
 		return ref this[nFace, nX, nY];
 	}

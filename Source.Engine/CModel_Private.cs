@@ -710,7 +710,7 @@ public static partial class CM
 		Span<int> leafs = stackalloc int[1024];
 		int i, numleafs;
 
-		LeafNums context;
+		scoped LeafNums context;
 		context.LeafList = leafs;
 		context.LeafTopNode = -1;
 		context.LeafMaxCount = leafs.Length;

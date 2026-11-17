@@ -1737,7 +1737,7 @@ public partial class Host
 
 	internal bool Changelevel(bool loadfromsavedgame, ReadOnlySpan<char> mapname, ReadOnlySpan<char> start) {
 		Span<char> _startspot = stackalloc char[MAX_PATH];
-		Span<char> startspot;
+		scoped Span<char> startspot;
 		Span<char> oldlevel = stackalloc char[MAX_PATH];
 #if !SWDS
 		// SaveRestoreData? saveData = null;
@@ -1804,9 +1804,7 @@ public partial class Host
 			startspot = null;
 		else {
 			strcpy(_startspot, start);
-			unsafe {
-				startspot = _startspot;
-			}
+			startspot = _startspot;
 		}
 
 		Warning("---- Host_Changelevel ----\n");

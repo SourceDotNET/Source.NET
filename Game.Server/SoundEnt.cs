@@ -10,6 +10,7 @@ using Source.Engine;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -110,8 +111,8 @@ public struct WorldSoundInstance
 	public readonly bool DoesSoundExpire() => NoExpirationTime == false;
 	public readonly TimeUnit_t SoundExpirationTime() => NoExpirationTime ? TimeUnit_t.MaxValue : ExpireTime;
 	public void SetSoundOrigin(in Vector3 origin) => Origin = origin;
-	public unsafe ref readonly Vector3 GetSoundOrigin() => ref Origin;
-	public ref readonly Vector3 GetSoundReactOrigin() {
+	[UnscopedRef] public ref readonly Vector3 GetSoundOrigin() => ref Origin;
+	[UnscopedRef] public ref readonly Vector3 GetSoundReactOrigin() {
 		switch (Type) {
 			case SoundInstanceType.BulletImpact:
 			case SoundInstanceType.PhysicsDanger:
