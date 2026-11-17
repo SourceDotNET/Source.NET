@@ -2144,6 +2144,9 @@ public class MatSystemSurface : IMatSystemSurface
 		x = TranslateX;
 		y = TranslateY;
 	}
+
+	public void GMOD_ClearFontCache() => FontTextureCache.Clear();
+	public void GMOD_FreeFontMaterials() => FontTextureCache.GMOD_FreeMaterials();
 #endif
 
 	public void PushFullscreenViewport() {

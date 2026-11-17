@@ -235,6 +235,8 @@ public interface ISurface
 	void DrawGetColor(out Color color);
 	void DrawGetTextColor(out Color color);
 	void DrawGetTranslate(out int x, out int y);
+	void GMOD_ClearFontCache();
+	void GMOD_FreeFontMaterials();
 #endif
 }
 
