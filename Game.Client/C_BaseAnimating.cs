@@ -289,6 +289,24 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	public TimeUnit_t GetPlaybackRate() => PlaybackRate;
 	public void SetPlaybackRate(TimeUnit_t rate) => PlaybackRate = (float)rate; // todo: double?
 	public ref readonly Matrix3x4 GetBone(int bone) => ref BoneAccessor.GetBone(bone);
+
+	public void GetBonePosition(int bone, out Vector3 origin, out QAngle angles) {
+		GetBoneTransform(bone, out Matrix3x4 boneToWorld);
+		MathLib.MatrixAngles(boneToWorld, out angles, out origin);
+	}
+
+	public void GetBoneTransform(int bone, out Matrix3x4 boneToWorld) {
+		Assert(GetModelPtr() != null && bone >= 0 && bone < GetModelPtr()!.NumBones());
+		BoneCache cache = GetBoneCache(null);
+
+		ref Matrix3x4 matrix = ref cache.GetCachedBone(bone);
+		if (Unsafe.IsNullRef(ref matrix)) {
+			boneToWorld = EntityToWorldTransform();
+			return;
+		}
+
+		boneToWorld = matrix;
+	}
 	public ref Matrix3x4 GetBoneForWrite(int bone) => ref BoneAccessor.GetBoneForWrite(bone);
 
 	BoneMergeCache? BoneMergeCache;

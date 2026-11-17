@@ -741,6 +741,37 @@ public static partial class LuaUtil
 		return 1;
 	}
 
+	[LuaFunction]
+	static int TraceEntity(ILuaInterface lua) {
+		if (g_PhysWorldObject == null)
+			return 0;
+
+		LuaObject data = new(1, LuaType.None);
+		if (!data.isTable()) {
+			g_Lua!.TypeError("table", 1);
+			data.UnReference();
+			return 0;
+		}
+
+		Vector3 start = data.GetMemberVector("start", vec3_origin);
+		Vector3 end = data.GetMemberVector("endpos", vec3_origin);
+		Mask mask = (Mask)data.GetMemberUInt("mask", (uint)Mask.Solid);
+
+		TraceFilterLua filter = TraceFilterFromTable(data);
+
+		BaseEntity ent = LuaEntity.Get_Entity(2, false)!;
+		Util.TraceEntity(ent, start, end, mask, ref filter, out Trace tr);
+
+		LuaObject output = new();
+		data.GetMember("output", output);
+		PushTableFromTrace(ref tr, output);
+		output.UnReference();
+
+		filter.Function.UnReference();
+		data.UnReference();
+		return 1;
+	}
+
 	static TraceFilterLua TraceFilterFromTable(LuaObject data) {
 		TraceFilterLua filter = new((CollisionGroup)data.GetMemberInt("collisiongroup", 0));
 		filter.SetIgnoreWorld(data.GetMemberBool("ignoreworld", false));

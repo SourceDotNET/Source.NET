@@ -179,6 +179,18 @@ public static partial class LuaGlobalFunctions
 		return 0;
 	}
 
+#if CLIENT_DLL || GAME_DLL
+	[LuaGlobal]
+	static int ParticleEffectAttach(ILuaInterface lua) {
+		int attachment = (int)lua.GetNumber(4);
+		BaseEntity? ent = LuaEntity.Get_Entity(3, true);
+		int attachType = (int)lua.GetNumber(2);
+		ReadOnlySpan<char> name = lua.GetString(1);
+		// todo: DispatchParticleEffect(name, attachType, ent, attachment, false);
+		return 0;
+	}
+#endif
+
 	[LuaGlobal]
 	static int CompileFile(ILuaInterface lua) {
 		bool showErrors = true;
