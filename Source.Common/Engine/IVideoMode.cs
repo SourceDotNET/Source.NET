@@ -70,4 +70,5 @@ public interface IVideoMode
 	ViewRects GetClientViewRect();
 	bool IsWindowedMode();
 	bool IsBorderlessMode();
+	void TakeSnapshotTGA(ReadOnlySpan<char> filename);
 }

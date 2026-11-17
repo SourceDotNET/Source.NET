@@ -25,6 +25,16 @@ public static class SoundscapeGlobals
 	public static void Soundscape_OnStopAllSounds() => g_SoundscapeSystem.OnStopAllSounds();
 	public static void Soundscape_Update(ref AudioParams audio) => g_SoundscapeSystem.UpdateAudioParams(ref audio);
 	public static ConVar soundscape_fadetime = new("soundscape_fadetime", "3.0", FCvar.Cheat, "Time to crossfade sound effects between soundscapes");
+
+	[ConCommand(helpText: "Flushes the client side soundscapes", flags: FCvar.ServerCanExecute | FCvar.Cheat)]
+	static void cl_soundscape_flush() {
+		g_SoundscapeSystem.GetAudioParams(out AudioParams tmp);
+
+		g_SoundscapeSystem.Shutdown();
+		g_SoundscapeSystem.Init();
+
+		Soundscape_Update(ref tmp);
+	}
 }
 
 public struct LoopingSound
@@ -206,7 +216,7 @@ public class C_SoundscapeSystem : AutoGameSystemPerFrame
 		}
 	}
 
-	public void GetAudioParams(out AudioParams outParams) => throw new NotImplementedException();
+	public void GetAudioParams(out AudioParams outParams) => outParams = Params;
 
 	public int GetCurrentSoundscape() => throw new NotImplementedException();
 

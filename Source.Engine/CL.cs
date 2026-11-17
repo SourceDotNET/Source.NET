@@ -14,6 +14,8 @@ using Source.Common.Networking;
 using Source.Engine.Client;
 using Source.Engine.Server;
 
+using Steamworks;
+
 using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -307,7 +309,7 @@ public partial class CL(IServiceProvider services, Net Net,
 		}
 	}
 
-	[ConCommand(helpText: "Retry connection to last server.")]
+	[ConCommand(helpText: "Retry connection to last server.", flags: FCvar.DontRecord | FCvar.ServerCanExecute | FCvar.ClientCmdCanExecute)]
 	void retry() {
 		Retry();
 	}
@@ -335,8 +337,181 @@ public partial class CL(IServiceProvider services, Net Net,
 		SendVoicePacket(false);
 	}
 
+#if !SWDS
+	static readonly ConVar cl_screenshotname = new("cl_screenshotname", "", 0, "Custom Screenshot name");
+
+	bool cl_takesnapshot;
+	bool cl_takejpeg;
+	int cl_snapshotnum;
+	readonly char[] cl_snapshotname = new char[MAX_OSPATH];
+	readonly char[] cl_snapshot_subdirname = new char[MAX_OSPATH];
+
+	public void TakeScreenshot(ReadOnlySpan<char> name) {
+		cl_takesnapshot = true;
+		cl_takejpeg = false;
+
+		if (!name.IsEmpty
+#if GMOD_DLL
+			&& !name.Contains("..", StringComparison.Ordinal)
+#endif
+			)
+			strcpy(cl_snapshotname, name);
+		else {
+			cl_snapshotname[0] = '\0';
+
+			if (cl_screenshotname.GetString().Length > 0
+#if GMOD_DLL
+				&& !cl_screenshotname.GetString().Contains("..", StringComparison.Ordinal)
+#endif
+				)
+				strcpy(cl_snapshotname, cl_screenshotname.GetString());
+		}
+
+		cl_snapshot_subdirname[0] = '\0';
+	}
+
+	[ConCommand(helpText: "Take a screenshot.", flags: FCvar.ClientCmdCanExecute)]
+	void screenshot(in TokenizedCommand args) {
+		// todo: test script checkpoint, cl_playback_screenshots while a demo plays
+
+		if (args.ArgC() == 2)
+			TakeScreenshot(args[1]);
+		else
+			TakeScreenshot(null);
+	}
+#endif
+
 	internal void TakeSnapshotAndSwap() {
-		Shader.SwapBuffers();
+		bool readPixelsFromFrontBuffer = HardwareConfig.ReadPixelsFromFrontBuffer();
+		if (readPixelsFromFrontBuffer)
+			Shader.SwapBuffers();
+
+#if !SWDS
+		if (cl_takesnapshot) {
+			// todo: materials.AllowThreading
+			Span<char> baseName = stackalloc char[MAX_OSPATH];
+			Span<char> filenameBuffer = stackalloc char[MAX_OSPATH];
+			scoped ReadOnlySpan<char> filename;
+			IClientEntity? world = entitylist.GetClientEntity(0);
+
+			g_pFileSystem.CreateDirHierarchy("screenshots", "DEFAULT_WRITE_PATH");
+
+			if (world != null && world.GetModel() != null)
+				modelloader.GetName(world.GetModel()!).FileBase(baseName);
+			else
+				strcpy(baseName, "Snapshot");
+
+			ReadOnlySpan<char> extension = cl_takejpeg ? ".jpg" : ".tga";
+			ReadOnlySpan<char> subdir = ((ReadOnlySpan<char>)cl_snapshot_subdirname).SliceNullTerminatedString();
+
+			if (!subdir.IsEmpty) {
+				Span<char> directory = stackalloc char[MAX_OSPATH];
+				g_pFileSystem.CreateDirHierarchy(sprintf(directory, "screenshots/%s/%s").S(baseName).S(subdir).ToSpan(), "DEFAULT_WRITE_PATH");
+			}
+
+			if (cl_snapshotname[0] != '\0') {
+				strcpy(baseName, cl_snapshotname);
+				filename = sprintf(filenameBuffer, "screenshots/%s%s").S(baseName).S(extension).ToSpan();
+
+				int number = 0;
+				Span<char> renamedBuffer = stackalloc char[MAX_OSPATH];
+				scoped ReadOnlySpan<char> renamedfile;
+				do
+					renamedfile = sprintf(renamedBuffer, "screenshots/%s_%04d%s").S(baseName).D(number++).S(extension).ToSpan();
+				while (g_pFileSystem.FileExists(renamedfile));
+
+				if (g_pFileSystem.FileExists(filename))
+					g_pFileSystem.RenameFile(filename, renamedfile);
+
+				cl_screenshotname.SetValue("");
+			}
+			else {
+				do {
+					if (!subdir.IsEmpty)
+						filename = sprintf(filenameBuffer, "screenshots/%s/%s/%s%04d%s").S(baseName).S(subdir).S(baseName).D(cl_snapshotnum++).S(extension).ToSpan();
+					else
+						filename = sprintf(filenameBuffer, "screenshots/%s%04d%s").S(baseName).D(cl_snapshotnum++).S(extension).ToSpan();
+				}
+				while (g_pFileSystem.FileExists(filename));
+			}
+
+			// todo: TakeSnapshotJPEG and its upload when cl_takejpeg is set
+			if (!cl_takejpeg)
+				videoMode.TakeSnapshotTGA(filename);
+
+			cl_takesnapshot = false;
+		}
+#endif
+
+		// todo: movie frames
+		if (!readPixelsFromFrontBuffer)
+			Shader.SwapBuffers();
+
+		// todo: save game screenshots, engine tool screenshot
+	}
+
+	[ConCommand(helpText: "Adds a new user info value", flags: FCvar.ClientCmdCanExecute)]
+	void setinfo(in TokenizedCommand args) {
+		if (args.ArgC() != 3) {
+			Msg("Syntax: setinfo <key> <value>\n");
+			return;
+		}
+
+		string name = new(args[1]);
+		string value = new(args[2]);
+
+		if (stricmp(name, "name") == 0)
+			return;
+
+		foreach (char c in name) {
+			if (!char.IsAsciiLetterOrDigit(c) && c != '_') {
+				Msg("Ignoring convar change request for variable '%s', which contains invalid character(s)\n", name);
+				return;
+			}
+		}
+
+		ConCommandBase? command = cvar.FindCommandBase(name);
+		ConVarRef sv_cheats = new("sv_cheats");
+
+		if (command != null) {
+			if (command.IsCommand()) {
+				Msg("Name %s is already registered as console command\n", name);
+				return;
+			}
+
+			if (!command.IsFlagSet(FCvar.UserInfo)) {
+				Msg("Convar %s is already registered but not as user info value\n", name);
+				return;
+			}
+
+			EUniverse universe = Host.GetSteamUniverse();
+			if (universe != EUniverse.k_EUniverseBeta && universe != EUniverse.k_EUniverseDev && command.IsFlagSet(FCvar.DevelopmentOnly))
+				return;
+
+			if (command.IsFlagSet(FCvar.Cheat) && !sv_cheats.GetBool()) {
+				Msg("Convar %s is marked as cheat and cheats are off\n", name);
+				return;
+			}
+		}
+		else {
+			command = new ConVar(name, "", FCvar.UserInfo, "Custom user info value");
+			cvar.SetAssemblyIdentifier(typeof(CL).Assembly);
+			cvar.RegisterConCommand(command);
+		}
+
+		ConVar var = (ConVar)command;
+		if (cl.IsConnected() && var.IsFlagSet(FCvar.NotConnected)) {
+			Msg("Convar %s cannot be changed while you are connected to a server.\n", name);
+			return;
+		}
+
+		var.SetValue(value);
+
+		if (cl.IsConnected()) {
+			NET_SetConVar convar = new();
+			convar.AddCVar(name, value);
+			cl.NetChannel!.SendNetMsg(convar);
+		}
 	}
 
 	public void DumpStringTables() => cl.StringTableContainer?.Dump();

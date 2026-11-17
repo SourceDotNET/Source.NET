@@ -122,7 +122,12 @@ public interface ISteamRemoteStorage
 	public int GetFileSize(ReadOnlySpan<char> pchFile) => SteamRemoteStorage.GetFileSize(new(pchFile));
 	public bool GetQuota(out ulong pnTotalBytes, out ulong puAvailableBytes) => SteamRemoteStorage.GetQuota(out pnTotalBytes, out puAvailableBytes);
 }
-public interface ISteamScreenshots;
+public interface ISteamScreenshots
+{
+	public ScreenshotHandle AddScreenshotToLibrary(ReadOnlySpan<char> pchFilename, ReadOnlySpan<char> pchThumbnailFilename, int nWidth, int nHeight) => SteamScreenshots.AddScreenshotToLibrary(new(pchFilename), pchThumbnailFilename.IsEmpty ? null : new(pchThumbnailFilename), nWidth, nHeight);
+	public bool TagUser(ScreenshotHandle hScreenshot, CSteamID steamID) => SteamScreenshots.TagUser(hScreenshot, steamID);
+	public bool SetLocation(ScreenshotHandle hScreenshot, ReadOnlySpan<char> pchLocation) => SteamScreenshots.SetLocation(hScreenshot, new(pchLocation));
+}
 public interface ISteamHTTP;
 public interface ISteamController;
 public interface ISteamUGC;

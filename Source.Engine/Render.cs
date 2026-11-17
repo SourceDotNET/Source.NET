@@ -310,6 +310,23 @@ public partial class Render(
 		}
 	}
 
+#if !SWDS
+	[ConCommand(helpText: "Usage r_cleardecals <permanent>.", flags: FCvar.ClientCmdCanExecute | FCvar.ServerCanExecute)]
+	void r_cleardecals(in TokenizedCommand args) {
+		if (host_state.WorldModel != null) {
+			bool permanent = false;
+			if (args.ArgC() == 2) {
+				if (stricmp(args[1], "permanent") == 0)
+					permanent = true;
+			}
+
+			DecalTerm(host_state.WorldModel.Brush.Shared, permanent);
+		}
+
+		modelrender.RemoveAllDecalsFromAllModels();
+	}
+#endif
+
 	public void LevelInit() {
 		ConDMsg("Initializing renderer...\n");
 

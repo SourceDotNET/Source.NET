@@ -1,12 +1,17 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
+using Source.Bitmap;
 using Source.Common;
+using Source.Common.Bitmap;
 using Source.Common.Commands;
 using Source.Common.Engine;
 using Source.Common.Filesystem;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.Launcher;
 using Source.Common.MaterialSystem;
+using Source.Common.Utilities;
+
+using Steamworks;
 
 using System.Drawing;
 
@@ -15,6 +20,10 @@ namespace Source.Engine;
 
 public class VideoMode_Common(Sys Sys, IServiceProvider services, IFileSystem fileSystem, IMaterialSystem materials, RenderUtils renderUtils, ICommandLine CommandLine) : IVideoMode
 {
+	static readonly ConVar cl_savescreenshotstosteam = new("cl_savescreenshotstosteam", "0", FCvar.Hidden, "Saves screenshots to the Steam's screenshot library");
+	static readonly ConVar cl_screenshotusertag = new("cl_screenshotusertag", "", FCvar.Hidden, "User to tag in the screenshot");
+	static readonly ConVar cl_screenshotlocation = new("cl_screenshotlocation", "", FCvar.Hidden, "Location to tag the screenshot with");
+
 	public const int MAX_MODE_LIST = 512;
 	const int VIDEO_MODE_DEFAULT = -1;
 	const int VIDEO_MODE_REQUESTED_WINDOW_SIZE = -2;
@@ -282,6 +291,60 @@ public class VideoMode_Common(Sys Sys, IServiceProvider services, IFileSystem fi
 
 	public void SetInitialized(bool initialized) => Initialized = initialized;
 	public bool GetInitialized() => Initialized;
+
+	void AddScreenshotToSteam(ReadOnlySpan<char> filename, int width, int height) {
+#if !SWDS
+		if (cl_savescreenshotstosteam.GetBool()) {
+			if (Steam3Client().SteamScreenshots() != null) {
+				ScreenshotHandle screenshot = Steam3Client().SteamScreenshots().AddScreenshotToLibrary(filename, null, width, height);
+				ApplySteamScreenshotTags(screenshot);
+			}
+		}
+
+		cl_screenshotusertag.SetValue(0);
+		cl_screenshotlocation.SetValue("");
+#endif
+	}
+
+#if !SWDS
+	void ApplySteamScreenshotTags(ScreenshotHandle screenshot) {
+		if (screenshot != ScreenshotHandle.Invalid) {
+			if (cl_screenshotusertag.GetBool()) {
+				if (Steam3Client().SteamUtils() != null) {
+					CSteamID steamID = new(new AccountID_t((uint)cl_screenshotusertag.GetInt()), Steam3Client().SteamUtils().GetConnectedUniverse(), EAccountType.k_EAccountTypeIndividual);
+					Steam3Client().SteamScreenshots().TagUser(screenshot, steamID);
+				}
+			}
+
+			ReadOnlySpan<char> location = cl_screenshotlocation.GetString();
+			if (!location.IsEmpty)
+				Steam3Client().SteamScreenshots().SetLocation(screenshot, location);
+		}
+	}
+#endif
+
+	public virtual void ReadScreenPixels(int x, int y, int w, int h, Span<byte> buffer, ImageFormat format) {
+		int bytes = ImageLoader.GetMemRequired(w, h, 1, format, false);
+		buffer[..bytes].Clear();
+	}
+
+	public void TakeSnapshotTGA(ReadOnlySpan<char> filename) {
+		byte[] image = new byte[GetModeStereoWidth() * 3 * GetModeStereoHeight()];
+
+		ReadScreenPixels(0, 0, GetModeStereoWidth(), GetModeStereoHeight(), image, ImageFormat.RGB888);
+
+		UtlBuffer outBuf = new();
+		if (TGAWriter.WriteToBuffer(image, outBuf, GetModeStereoWidth(), GetModeStereoHeight(), ImageFormat.RGB888, ImageFormat.RGB888)) {
+			if (!fileSystem.WriteFile(filename, "GAME", outBuf.Base().AsSpan(0, outBuf.TellPut())))
+				Warning("Couldn't write bitmap data snapshot to file %s.\n", filename.ToString());
+			else {
+				Span<char> path = stackalloc char[MAX_PATH];
+				ReadOnlySpan<char> localPath = fileSystem.RelativePathToFullPath(filename, null, path);
+				if (!localPath.IsEmpty)
+					AddScreenshotToSteam(localPath, GetModeStereoWidth(), GetModeStereoHeight());
+			}
+		}
+	}
 }
 public class VideoMode_MaterialSystem(Sys Sys, IMaterialSystem materials, IGame game, IServiceProvider services, IFileSystem fileSystem, RenderUtils renderUtils, ICommandLine commandLine, MatSysInterface matSys)
 	: VideoMode_Common(Sys, services, fileSystem, materials, renderUtils, commandLine)
@@ -387,7 +450,18 @@ public class VideoMode_MaterialSystem(Sys Sys, IMaterialSystem materials, IGame 
 
 	}
 
-	void ReadScreenPixels() {
+	public override void ReadScreenPixels(int x, int y, int w, int h, Span<byte> buffer, ImageFormat format) {
+		// todo: g_LostVideoMemory
+		bool readPixelsFromFrontBuffer = HardwareConfig.ReadPixelsFromFrontBuffer();
+		if (readPixelsFromFrontBuffer)
+			Singleton<Shader>().SwapBuffers();
 
+		using MatRenderContextPtr renderContext = new(materials);
+
+		Rectangle rect = new(x, y, w, h);
+		renderContext.ReadPixelsAndStretch(ref rect, ref rect, buffer, format, w * format.SizeInBytes());
+
+		if (readPixelsFromFrontBuffer)
+			Singleton<Shader>().SwapBuffers();
 	}
 }

@@ -3729,7 +3729,20 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public void ReadPixels(ref System.Drawing.Rectangle srcRect, ref System.Drawing.Rectangle dstRect, Span<byte> data, ImageFormat dstFormat, int dstStride) {
-		throw new NotImplementedException("Incomplete port of IShaderAPI");
+		// todo: stretch when the two rectangles differ in size
+		if (srcRect.Width != dstRect.Width || srcRect.Height != dstRect.Height)
+			throw new NotImplementedException("Incomplete port of IShaderAPI");
+
+		int rowBytes = dstRect.Width * dstFormat.SizeInBytes();
+		if (dstStride == rowBytes) {
+			ReadPixels(srcRect.X, srcRect.Y, srcRect.Width, srcRect.Height, data, dstFormat);
+			return;
+		}
+
+		byte[] packed = new byte[rowBytes * dstRect.Height];
+		ReadPixels(srcRect.X, srcRect.Y, srcRect.Width, srcRect.Height, packed, dstFormat);
+		for (int row = 0; row < dstRect.Height; row++)
+			packed.AsSpan(row * rowBytes, rowBytes).CopyTo(data[(row * dstStride)..]);
 	}
 
 	public void ReleaseThreadOwnership() {

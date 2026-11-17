@@ -21,8 +21,6 @@ namespace Game.Client.GarrysMod;
 [NetworkName("CGMOD_Player")]
 public partial class C_GMOD_Player() : C_HL2MP_Player()
 {
-	static ConVar cl_playercolor = new("1.0 0.0 0.0", FCvar.UserInfo | FCvar.Archive | FCvar.ServerCanExecute, "Default Player Model");
-
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 		nameof(GModPlayerFlags),

@@ -51,7 +51,7 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 	readonly ConVar cl_backspeed = new("450", FCvar.Replicated | FCvar.Cheat);
 	readonly ConVar lookspring = new("0", FCvar.Archive);
 	readonly ConVar lookstrafe = new("0", FCvar.Archive);
-	readonly ConVar in_joystick = new("0", FCvar.Archive);
+	readonly ConVar in_joystick = new("joystick", "0", FCvar.Archive);
 	readonly ConVar thirdperson_platformer = new("0", 0, "Player will aim in the direction they are moving.");
 	readonly ConVar thirdperson_screenspace = new("0", 0, "Movement will be relative to the camera, eg: left means screen-left");
 	readonly ConVar sv_noclipduringpause = new("0", FCvar.Replicated | FCvar.Cheat, "If cheats are enabled, then you can noclip with the game paused (for doing screenshots, etc.).");
@@ -86,6 +86,8 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 	KeyButtonState in_score;
 	KeyButtonState in_break;
 	KeyButtonState in_zoom;
+	KeyButtonState in_grenade1;
+	KeyButtonState in_grenade2;
 	KeyButtonState in_attack3;
 	Handle<BaseCombatWeapon> SelectedWeapon = new();
 
@@ -161,36 +163,41 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 		return val;
 	}
 #if GMOD_DLL
-	[ConCommand]
+	const FCvar IN_COMMAND_FLAGS = FCvar.ServerCanExecute;
+#else
+	const FCvar IN_COMMAND_FLAGS = FCvar.None;
+#endif
+#if GMOD_DLL
+	[ConCommand(flags: FCvar.ServerCanExecute)]
 	void noclip() {
 		in_impulse = 154;
 	}
 #endif
-	[ConCommand] void impulse(in TokenizedCommand args) => in_impulse = int.TryParse(args[1], out in_impulse) ? in_impulse : 0;
-	[ConCommand(name: "+moveup")] void IN_UpDown(in TokenizedCommand args) => KeyDown(ref in_up, args[1]);
-	[ConCommand(name: "+movedown")] void IN_DownDown(in TokenizedCommand args) => KeyDown(ref in_down, args[1]);
-	[ConCommand(name: "+left")] void IN_LeftDown(in TokenizedCommand args) => KeyDown(ref in_left, args[1]);
-	[ConCommand(name: "+right")] void IN_RightDown(in TokenizedCommand args) => KeyDown(ref in_right, args[1]);
-	[ConCommand(name: "+forward")] void IN_ForwardDown(in TokenizedCommand args) => KeyDown(ref in_forward, args[1]);
-	[ConCommand(name: "+back")] void IN_BackDown(in TokenizedCommand args) => KeyDown(ref in_back, args[1]);
-	[ConCommand(name: "+lookup")] void IN_LookupDown(in TokenizedCommand args) => KeyDown(ref in_lookup, args[1]);
-	[ConCommand(name: "+lookdown")] void IN_LookdownDown(in TokenizedCommand args) => KeyDown(ref in_lookdown, args[1]);
-	[ConCommand(name: "+strafe")] void IN_StrafeDown(in TokenizedCommand args) => KeyDown(ref in_strafe, args[1]);
-	[ConCommand(name: "+moveleft")] void IN_MoveleftDown(in TokenizedCommand args) => KeyDown(ref in_moveleft, args[1]);
-	[ConCommand(name: "+moveright")] void IN_MoverightDown(in TokenizedCommand args) => KeyDown(ref in_moveright, args[1]);
-	[ConCommand(name: "+speed")] void IN_SpeedDown(in TokenizedCommand args) => KeyDown(ref in_speed, args[1]);
-	[ConCommand(name: "+walk")] void IN_WalkDown(in TokenizedCommand args) => KeyDown(ref in_walk, args[1]);
-	[ConCommand(name: "+attack")] void IN_AttackDown(in TokenizedCommand args) => KeyDown(ref in_attack, args[1]);
-	[ConCommand(name: "+attack2")] void IN_Attack2Down(in TokenizedCommand args) => KeyDown(ref in_attack2, args[1]);
-	[ConCommand(name: "+use")] void IN_UseDown(in TokenizedCommand args) => KeyDown(ref in_use, args[1]);
-	[ConCommand(name: "+jump")] void IN_JumpDown(in TokenizedCommand args) => KeyDown(ref in_jump, args[1]);
-	[ConCommand(name: "+klook")] void IN_KLookDown(in TokenizedCommand args) => KeyDown(ref in_klook, args[1]);
-	[ConCommand(name: "+jlook")] void IN_JLookDown(in TokenizedCommand args) => KeyDown(ref in_jlook, args[1]);
-	[ConCommand(name: "+duck")] void IN_DuckDown(in TokenizedCommand args) => KeyDown(ref in_duck, args[1]);
-	[ConCommand(name: "+reload")] void IN_ReloadDown(in TokenizedCommand args) => KeyDown(ref in_reload, args[1]);
-	[ConCommand(name: "+alt1")] void IN_Alt1Down(in TokenizedCommand args) => KeyDown(ref in_alt1, args[1]);
-	[ConCommand(name: "+alt2")] void IN_Alt2Down(in TokenizedCommand args) => KeyDown(ref in_alt2, args[1]);
-	[ConCommand(name: "+score")]
+	[ConCommand(flags: IN_COMMAND_FLAGS)] void impulse(in TokenizedCommand args) => in_impulse = int.TryParse(args[1], out in_impulse) ? in_impulse : 0;
+	[ConCommand(name: "+moveup", flags: IN_COMMAND_FLAGS)] void IN_UpDown(in TokenizedCommand args) => KeyDown(ref in_up, args[1]);
+	[ConCommand(name: "+movedown", flags: IN_COMMAND_FLAGS)] void IN_DownDown(in TokenizedCommand args) => KeyDown(ref in_down, args[1]);
+	[ConCommand(name: "+left", flags: IN_COMMAND_FLAGS)] void IN_LeftDown(in TokenizedCommand args) => KeyDown(ref in_left, args[1]);
+	[ConCommand(name: "+right", flags: IN_COMMAND_FLAGS)] void IN_RightDown(in TokenizedCommand args) => KeyDown(ref in_right, args[1]);
+	[ConCommand(name: "+forward", flags: IN_COMMAND_FLAGS)] void IN_ForwardDown(in TokenizedCommand args) => KeyDown(ref in_forward, args[1]);
+	[ConCommand(name: "+back", flags: IN_COMMAND_FLAGS)] void IN_BackDown(in TokenizedCommand args) => KeyDown(ref in_back, args[1]);
+	[ConCommand(name: "+lookup", flags: IN_COMMAND_FLAGS)] void IN_LookupDown(in TokenizedCommand args) => KeyDown(ref in_lookup, args[1]);
+	[ConCommand(name: "+lookdown", flags: IN_COMMAND_FLAGS)] void IN_LookdownDown(in TokenizedCommand args) => KeyDown(ref in_lookdown, args[1]);
+	[ConCommand(name: "+strafe", flags: IN_COMMAND_FLAGS)] void IN_StrafeDown(in TokenizedCommand args) => KeyDown(ref in_strafe, args[1]);
+	[ConCommand(name: "+moveleft", flags: IN_COMMAND_FLAGS)] void IN_MoveleftDown(in TokenizedCommand args) => KeyDown(ref in_moveleft, args[1]);
+	[ConCommand(name: "+moveright", flags: IN_COMMAND_FLAGS)] void IN_MoverightDown(in TokenizedCommand args) => KeyDown(ref in_moveright, args[1]);
+	[ConCommand(name: "+speed", flags: IN_COMMAND_FLAGS)] void IN_SpeedDown(in TokenizedCommand args) => KeyDown(ref in_speed, args[1]);
+	[ConCommand(name: "+walk", flags: IN_COMMAND_FLAGS)] void IN_WalkDown(in TokenizedCommand args) => KeyDown(ref in_walk, args[1]);
+	[ConCommand(name: "+attack", flags: IN_COMMAND_FLAGS)] void IN_AttackDown(in TokenizedCommand args) => KeyDown(ref in_attack, args[1]);
+	[ConCommand(name: "+attack2", flags: IN_COMMAND_FLAGS)] void IN_Attack2Down(in TokenizedCommand args) => KeyDown(ref in_attack2, args[1]);
+	[ConCommand(name: "+use", flags: IN_COMMAND_FLAGS)] void IN_UseDown(in TokenizedCommand args) => KeyDown(ref in_use, args[1]);
+	[ConCommand(name: "+jump", flags: IN_COMMAND_FLAGS)] void IN_JumpDown(in TokenizedCommand args) => KeyDown(ref in_jump, args[1]);
+	[ConCommand(name: "+klook", flags: IN_COMMAND_FLAGS)] void IN_KLookDown(in TokenizedCommand args) => KeyDown(ref in_klook, args[1]);
+	[ConCommand(name: "+jlook", flags: IN_COMMAND_FLAGS)] void IN_JLookDown(in TokenizedCommand args) => KeyDown(ref in_jlook, args[1]);
+	[ConCommand(name: "+duck", flags: IN_COMMAND_FLAGS)] void IN_DuckDown(in TokenizedCommand args) => KeyDown(ref in_duck, args[1]);
+	[ConCommand(name: "+reload", flags: IN_COMMAND_FLAGS)] void IN_ReloadDown(in TokenizedCommand args) => KeyDown(ref in_reload, args[1]);
+	[ConCommand(name: "+alt1", flags: IN_COMMAND_FLAGS)] void IN_Alt1Down(in TokenizedCommand args) => KeyDown(ref in_alt1, args[1]);
+	[ConCommand(name: "+alt2", flags: IN_COMMAND_FLAGS)] void IN_Alt2Down(in TokenizedCommand args) => KeyDown(ref in_alt2, args[1]);
+	[ConCommand(name: "+score", flags: IN_COMMAND_FLAGS)]
 	void IN_ScoreDown(in TokenizedCommand args) {
 		KeyDown(ref in_score, args[1]);
 #if GMOD_DLL
@@ -198,39 +205,41 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 #endif
 	}
 #if GMOD_DLL
-	[ConCommand(name: "+showscores")] void IN_ShowScoresDown(in TokenizedCommand args) => IN_ScoreDown(in args);
+	[ConCommand(name: "+showscores", flags: IN_COMMAND_FLAGS)] void IN_ShowScoresDown(in TokenizedCommand args) => IN_ScoreDown(in args);
 #endif
-	[ConCommand(name: "+graph")] void IN_GraphDown(in TokenizedCommand args) => KeyDown(ref in_graph, args[1]);
-	[ConCommand(name: "+break")] void IN_BreakDown(in TokenizedCommand args) => KeyDown(ref in_break, args[1]);
-	[ConCommand(name: "+zoom")] void IN_ZoomDown(in TokenizedCommand args) => KeyDown(ref in_zoom, args[1]);
+	[ConCommand(name: "+graph", flags: IN_COMMAND_FLAGS)] void IN_GraphDown(in TokenizedCommand args) => KeyDown(ref in_graph, args[1]);
+	[ConCommand(name: "+break", flags: IN_COMMAND_FLAGS)] void IN_BreakDown(in TokenizedCommand args) => KeyDown(ref in_break, args[1]);
+	[ConCommand(name: "+zoom", flags: IN_COMMAND_FLAGS)] void IN_ZoomDown(in TokenizedCommand args) => KeyDown(ref in_zoom, args[1]);
+	[ConCommand(name: "+grenade1", flags: IN_COMMAND_FLAGS)] void IN_Grenade1Down(in TokenizedCommand args) => KeyDown(ref in_grenade1, args[1]);
+	[ConCommand(name: "+grenade2", flags: IN_COMMAND_FLAGS)] void IN_Grenade2Down(in TokenizedCommand args) => KeyDown(ref in_grenade2, args[1]);
 	[ConCommand(name: "+attack3")] void IN_Attack3Down(in TokenizedCommand args) => KeyDown(ref in_attack3, args[1]);
 
 
 
-	[ConCommand(name: "-moveup")] void IN_UpUp(in TokenizedCommand args) => KeyUp(ref in_up, args[1]);
-	[ConCommand(name: "-movedown")] void IN_DownUp(in TokenizedCommand args) => KeyUp(ref in_down, args[1]);
-	[ConCommand(name: "-left")] void IN_LeftUp(in TokenizedCommand args) => KeyUp(ref in_left, args[1]);
-	[ConCommand(name: "-right")] void IN_RightUp(in TokenizedCommand args) => KeyUp(ref in_right, args[1]);
-	[ConCommand(name: "-forward")] void IN_ForwardUp(in TokenizedCommand args) => KeyUp(ref in_forward, args[1]);
-	[ConCommand(name: "-back")] void IN_BackUp(in TokenizedCommand args) => KeyUp(ref in_back, args[1]);
-	[ConCommand(name: "-lookup")] void IN_LookupUp(in TokenizedCommand args) => KeyUp(ref in_lookup, args[1]);
-	[ConCommand(name: "-lookdown")] void IN_LookdownUp(in TokenizedCommand args) => KeyUp(ref in_lookdown, args[1]);
-	[ConCommand(name: "-strafe")] void IN_StrafeUp(in TokenizedCommand args) => KeyUp(ref in_strafe, args[1]);
-	[ConCommand(name: "-moveleft")] void IN_MoveleftUp(in TokenizedCommand args) => KeyUp(ref in_moveleft, args[1]);
-	[ConCommand(name: "-moveright")] void IN_MoverightUp(in TokenizedCommand args) => KeyUp(ref in_moveright, args[1]);
-	[ConCommand(name: "-speed")] void IN_SpeedUp(in TokenizedCommand args) => KeyUp(ref in_speed, args[1]);
-	[ConCommand(name: "-walk")] void IN_WalkUp(in TokenizedCommand args) => KeyUp(ref in_walk, args[1]);
-	[ConCommand(name: "-attack")] void IN_AttackUp(in TokenizedCommand args) => KeyUp(ref in_attack, args[1]);
-	[ConCommand(name: "-attack2")] void IN_Attack2Up(in TokenizedCommand args) => KeyUp(ref in_attack2, args[1]);
-	[ConCommand(name: "-use")] void IN_UseUp(in TokenizedCommand args) => KeyUp(ref in_use, args[1]);
-	[ConCommand(name: "-jump")] void IN_JumpUp(in TokenizedCommand args) => KeyUp(ref in_jump, args[1]);
-	[ConCommand(name: "-klook")] void IN_KLookUp(in TokenizedCommand args) => KeyUp(ref in_klook, args[1]);
-	[ConCommand(name: "-jlook")] void IN_JLookUp(in TokenizedCommand args) => KeyUp(ref in_jlook, args[1]);
-	[ConCommand(name: "-duck")] void IN_DuckUp(in TokenizedCommand args) => KeyUp(ref in_duck, args[1]);
-	[ConCommand(name: "-reload")] void IN_ReloadUp(in TokenizedCommand args) => KeyUp(ref in_reload, args[1]);
-	[ConCommand(name: "-alt1")] void IN_Alt1Up(in TokenizedCommand args) => KeyUp(ref in_alt1, args[1]);
-	[ConCommand(name: "-alt2")] void IN_Alt2Up(in TokenizedCommand args) => KeyUp(ref in_alt2, args[1]);
-	[ConCommand(name: "-score")]
+	[ConCommand(name: "-moveup", flags: IN_COMMAND_FLAGS)] void IN_UpUp(in TokenizedCommand args) => KeyUp(ref in_up, args[1]);
+	[ConCommand(name: "-movedown", flags: IN_COMMAND_FLAGS)] void IN_DownUp(in TokenizedCommand args) => KeyUp(ref in_down, args[1]);
+	[ConCommand(name: "-left", flags: IN_COMMAND_FLAGS)] void IN_LeftUp(in TokenizedCommand args) => KeyUp(ref in_left, args[1]);
+	[ConCommand(name: "-right", flags: IN_COMMAND_FLAGS)] void IN_RightUp(in TokenizedCommand args) => KeyUp(ref in_right, args[1]);
+	[ConCommand(name: "-forward", flags: IN_COMMAND_FLAGS)] void IN_ForwardUp(in TokenizedCommand args) => KeyUp(ref in_forward, args[1]);
+	[ConCommand(name: "-back", flags: IN_COMMAND_FLAGS)] void IN_BackUp(in TokenizedCommand args) => KeyUp(ref in_back, args[1]);
+	[ConCommand(name: "-lookup", flags: IN_COMMAND_FLAGS)] void IN_LookupUp(in TokenizedCommand args) => KeyUp(ref in_lookup, args[1]);
+	[ConCommand(name: "-lookdown", flags: IN_COMMAND_FLAGS)] void IN_LookdownUp(in TokenizedCommand args) => KeyUp(ref in_lookdown, args[1]);
+	[ConCommand(name: "-strafe", flags: IN_COMMAND_FLAGS)] void IN_StrafeUp(in TokenizedCommand args) => KeyUp(ref in_strafe, args[1]);
+	[ConCommand(name: "-moveleft", flags: IN_COMMAND_FLAGS)] void IN_MoveleftUp(in TokenizedCommand args) => KeyUp(ref in_moveleft, args[1]);
+	[ConCommand(name: "-moveright", flags: IN_COMMAND_FLAGS)] void IN_MoverightUp(in TokenizedCommand args) => KeyUp(ref in_moveright, args[1]);
+	[ConCommand(name: "-speed", flags: IN_COMMAND_FLAGS)] void IN_SpeedUp(in TokenizedCommand args) => KeyUp(ref in_speed, args[1]);
+	[ConCommand(name: "-walk", flags: IN_COMMAND_FLAGS)] void IN_WalkUp(in TokenizedCommand args) => KeyUp(ref in_walk, args[1]);
+	[ConCommand(name: "-attack", flags: IN_COMMAND_FLAGS)] void IN_AttackUp(in TokenizedCommand args) => KeyUp(ref in_attack, args[1]);
+	[ConCommand(name: "-attack2", flags: IN_COMMAND_FLAGS)] void IN_Attack2Up(in TokenizedCommand args) => KeyUp(ref in_attack2, args[1]);
+	[ConCommand(name: "-use", flags: IN_COMMAND_FLAGS)] void IN_UseUp(in TokenizedCommand args) => KeyUp(ref in_use, args[1]);
+	[ConCommand(name: "-jump", flags: IN_COMMAND_FLAGS)] void IN_JumpUp(in TokenizedCommand args) => KeyUp(ref in_jump, args[1]);
+	[ConCommand(name: "-klook", flags: IN_COMMAND_FLAGS)] void IN_KLookUp(in TokenizedCommand args) => KeyUp(ref in_klook, args[1]);
+	[ConCommand(name: "-jlook", flags: IN_COMMAND_FLAGS)] void IN_JLookUp(in TokenizedCommand args) => KeyUp(ref in_jlook, args[1]);
+	[ConCommand(name: "-duck", flags: IN_COMMAND_FLAGS)] void IN_DuckUp(in TokenizedCommand args) => KeyUp(ref in_duck, args[1]);
+	[ConCommand(name: "-reload", flags: IN_COMMAND_FLAGS)] void IN_ReloadUp(in TokenizedCommand args) => KeyUp(ref in_reload, args[1]);
+	[ConCommand(name: "-alt1", flags: IN_COMMAND_FLAGS)] void IN_Alt1Up(in TokenizedCommand args) => KeyUp(ref in_alt1, args[1]);
+	[ConCommand(name: "-alt2", flags: IN_COMMAND_FLAGS)] void IN_Alt2Up(in TokenizedCommand args) => KeyUp(ref in_alt2, args[1]);
+	[ConCommand(name: "-score", flags: IN_COMMAND_FLAGS)]
 	void IN_ScoreUp(in TokenizedCommand args) {
 		KeyUp(ref in_score, args[1]);
 #if GMOD_DLL
@@ -238,12 +247,24 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 #endif
 	}
 #if GMOD_DLL
-	[ConCommand(name: "-showscores")] void IN_ShowScoresUp(in TokenizedCommand args) => IN_ScoreUp(in args);
+	[ConCommand(name: "-showscores", flags: IN_COMMAND_FLAGS)] void IN_ShowScoresUp(in TokenizedCommand args) => IN_ScoreUp(in args);
 #endif
-	[ConCommand(name: "-graph")] void IN_GraphUp(in TokenizedCommand args) => KeyUp(ref in_graph, args[1]);
-	[ConCommand(name: "-break")] void IN_BreakUp(in TokenizedCommand args) => KeyUp(ref in_break, args[1]);
-	[ConCommand(name: "-zoom")] void IN_ZoomUp(in TokenizedCommand args) => KeyUp(ref in_zoom, args[1]);
+	[ConCommand(name: "-graph", flags: IN_COMMAND_FLAGS)] void IN_GraphUp(in TokenizedCommand args) => KeyUp(ref in_graph, args[1]);
+	[ConCommand(name: "-break", flags: IN_COMMAND_FLAGS)] void IN_BreakUp(in TokenizedCommand args) => KeyUp(ref in_break, args[1]);
+	[ConCommand(name: "-zoom", flags: IN_COMMAND_FLAGS)] void IN_ZoomUp(in TokenizedCommand args) => KeyUp(ref in_zoom, args[1]);
+	[ConCommand(name: "-grenade1", flags: IN_COMMAND_FLAGS)] void IN_Grenade1Up(in TokenizedCommand args) => KeyUp(ref in_grenade1, args[1]);
+	[ConCommand(name: "-grenade2", flags: IN_COMMAND_FLAGS)] void IN_Grenade2Up(in TokenizedCommand args) => KeyUp(ref in_grenade2, args[1]);
 	[ConCommand(name: "-attack3")] void IN_Attack3Up(in TokenizedCommand args) => KeyUp(ref in_attack3, args[1]);
+
+	[ConCommand(flags: IN_COMMAND_FLAGS)]
+	void force_centerview() {
+		engine.GetViewAngles(out QAngle viewangles);
+		viewangles[PITCH] = 0;
+		engine.SetViewAngles(in viewangles);
+	}
+
+	[ConCommand(flags: FCvar.ClientCmdCanExecute)]
+	void joyadvancedupdate() => Joystick_Advanced();
 
 	Hud Hud = null!;
 
@@ -778,6 +799,8 @@ public partial class Input(ISurface Surface, IViewRender view, ThirdPersonManage
 		CalcButtonBits(ref bits, InButtons.Alt2, ClearInputState, ref in_alt2, resetState);
 		CalcButtonBits(ref bits, InButtons.Score, ClearInputState, ref in_score, resetState);
 		CalcButtonBits(ref bits, InButtons.Zoom, ClearInputState, ref in_zoom, resetState);
+		CalcButtonBits(ref bits, InButtons.Grenade1, ClearInputState, ref in_grenade1, resetState);
+		CalcButtonBits(ref bits, InButtons.Grenade2, ClearInputState, ref in_grenade2, resetState);
 		CalcButtonBits(ref bits, InButtons.Attack3, ClearInputState, ref in_attack3, resetState);
 
 		// TODO: duck toggle

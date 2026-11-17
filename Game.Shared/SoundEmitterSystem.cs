@@ -11,6 +11,7 @@ using SharpCompress.Common;
 
 using Source.Common;
 using Source.Common.Audio;
+using Source.Common.Commands;
 using Source.Common.SoundEmitterSystem;
 
 using System;
@@ -347,6 +348,50 @@ public class SoundEmitterSystem : BaseGameSystem
 public static class SoundEmitterSystemGlobals
 {
 	public static readonly SoundEmitterSystem g_SoundEmitterSystem = new();
+
+#if CLIENT_DLL
+	[ConCommand("playgamesound", "Play a sound from the game sounds txt file", FCvar.ClientCmdCanExecute | FCvar.ServerCanExecute, autoCompleteMethod: nameof(GamesoundCompletion))]
+	static void Playgamesound_f(in TokenizedCommand args) {
+		C_BasePlayer? player = C_BasePlayer.GetLocalPlayer();
+		if (player != null) {
+			if (args.ArgC() > 2) {
+				Vector3 position = player.EyePosition();
+				player.GetVectors(out Vector3 forward, out _, out _);
+				position += (float)atof(args[2]) * forward;
+				PASAttenuationFilter filter = new(player);
+				scoped EmitSound_t parms = new();
+				parms.SoundName = args[1];
+				parms.Origin = ref position;
+				parms.Volume = 0.0f;
+				parms.Pitch = 0;
+				g_SoundEmitterSystem.EmitSound(filter, 0, ref parms);
+			}
+			else
+				player.EmitSound(args[1]);
+		}
+		else
+			Msg("Can't play until a game is started.\n");
+	}
+
+	static IEnumerable<string> GamesoundCompletion(string partial) {
+		const string cmdname = "playgamesound";
+		const int COMMAND_COMPLETION_MAXITEMS = 64;
+		string? substring = null;
+		if (partial.Contains(cmdname, StringComparison.Ordinal) && partial.Length > cmdname.Length + 1)
+			substring = partial[(cmdname.Length + 1)..];
+
+		int current = 0;
+		for (int i = soundemitterbase.GetSoundCount() - 1; i >= 0 && current < COMMAND_COMPLETION_MAXITEMS; i--) {
+			if (soundemitterbase.GetSoundName(i).IsEmpty)
+				continue;
+
+			if (substring == null || soundemitterbase.GetSoundName(i).StartsWith(substring, StringComparison.OrdinalIgnoreCase)) {
+				yield return $"{cmdname} {soundemitterbase.GetSoundName(i)}";
+				current++;
+			}
+		}
+	}
+#endif
 }
 
 public partial class

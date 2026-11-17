@@ -204,7 +204,7 @@ public class HardwareConfig : IMaterialSystemHardwareConfig
 	}
 
 	public bool ReadPixelsFromFrontBuffer() {
-		throw new NotImplementedException();
+		return false;
 	}
 
 	public void SetHDREnabled(bool bEnable) {

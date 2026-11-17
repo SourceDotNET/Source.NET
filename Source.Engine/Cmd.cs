@@ -207,7 +207,7 @@ public class Cmd(IEngineAPI provider, IFileSystem fileSystem)
 
 		aliases[new string(s)] = new string(restOfCommandLine);
 	}
-	[ConCommand(helpText: "Echos text to console.")]
+	[ConCommand(helpText: "Echo text to console.", flags: FCvar.ServerCanExecute)]
 	void echo(in TokenizedCommand args) {
 		for (int i = 1, argc = args.ArgC(); i < argc; i++)
 			ConMsg($"{args[i]} ");

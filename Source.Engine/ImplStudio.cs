@@ -281,6 +281,24 @@ public class ModelRender : IModelRender
 		ModelInstances.Remove(modelInstance);
 	}
 
+	public void RemoveAllDecals(ModelInstanceHandle_t handle) {
+		if (!ModelInstances.TryGetValue(handle, out ModelInstance? instance))
+			return;
+
+		if (instance.Model == null)
+			return;
+
+		if (instance.DecalHandle != STUDIORENDER_DECAL_INVALID) {
+			// todo: studiorender.DestroyDecalList(instance.DecalHandle)
+			instance.DecalHandle = STUDIORENDER_DECAL_INVALID;
+		}
+	}
+
+	public void RemoveAllDecalsFromAllModels() {
+		foreach (ModelInstanceHandle_t handle in ModelInstances.Keys)
+			RemoveAllDecals(handle);
+	}
+
 	public ref Matrix4x4 SetupModelState(IClientRenderable renderable) {
 		throw new NotImplementedException(); // todo
 	}

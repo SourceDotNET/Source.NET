@@ -148,9 +148,10 @@ public class ViewRender : IViewRender
 		min = max = 0;
 	}
 
-	public IMaterial? GetScreenOverlayMaterial() {
-		throw new NotImplementedException();
-	}
+	// todo: PerformScreenOverlay draws it
+	readonly MaterialReference ScreenOverlayMaterial = new();
+
+	public IMaterial? GetScreenOverlayMaterial() => ScreenOverlayMaterial.Get();
 
 	public ref ViewSetup GetViewSetup() {
 		return ref CurrentView;
@@ -981,9 +982,7 @@ public class ViewRender : IViewRender
 		CheapWaterStartDistance = cheapWaterStartDistance;
 	}
 
-	public void SetScreenOverlayMaterial(IMaterial? pMaterial) {
-		throw new NotImplementedException();
-	}
+	public void SetScreenOverlayMaterial(IMaterial? pMaterial) => ScreenOverlayMaterial.Init(pMaterial!);
 
 	public bool ShouldDrawBrushModels() => DrawBrushModels == null || DrawBrushModels.GetInt() != 0;
 

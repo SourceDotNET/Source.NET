@@ -65,6 +65,8 @@ public interface IModelRender
 {
 	ModelInstanceHandle_t CreateInstance(IClientRenderable renderable, LightCacheHandle_t? cache = null);
 	void DestroyInstance(ModelInstanceHandle_t modelInstance);
+	void RemoveAllDecals(ModelInstanceHandle_t handle);
+	void RemoveAllDecalsFromAllModels();
 	int DrawModel(StudioFlags flags, IClientRenderable? renderable, ModelInstanceHandle_t instance, int entityIndex, Model? model, in Vector3 origin, in QAngle angles, int skin, int body, int hitboxset, Matrix3x4? modelToWorld = null, Matrix3x4? lightingOffset = null);
 	int DrawModelEx(ref ModelRenderInfo info);
 	int DrawStaticPropArrayFast(Span<StaticPropRenderInfo> props, int count, bool shadowDepth);
