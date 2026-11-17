@@ -704,7 +704,7 @@ public class GarrysMod : IGarrysMod
 			LuaTimer.Cycle();
 			LuaFileLibrary.AsyncCycle();
 #endif
-			// HTTP.Cycle();
+			LuaHTTP.Cycle();
 			// ErrorReporter.RunQueue();
 		}
 		// AutoRefresh.Cycle();
