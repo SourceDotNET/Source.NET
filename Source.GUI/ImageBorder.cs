@@ -11,12 +11,14 @@ public class ImageBorder : Border
 	TextureID TextureID;
 	bool Tiled;
 	string? ImageName;
-	bool PaintFirst;
+	bool ShouldPaintFirst;
 
 	public ImageBorder() {
 		BackgroundType = PaintBackgroundType.Textured;
 		TextureID = Surface.CreateNewTextureID();
 	}
+
+	public override bool PaintFirst() => ShouldPaintFirst;
 
 	public virtual void SetImage(ReadOnlySpan<char> imageName) {
 		if (!imageName.IsEmpty && imageName.Length > 0) {
@@ -81,6 +83,6 @@ public class ImageBorder : Border
 		ReadOnlySpan<char> imageName = inResourceData.GetString("image", "");
 		SetImage(imageName);
 
-		PaintFirst = inResourceData.GetInt("paintfirst", 1) != 0;
+		ShouldPaintFirst = inResourceData.GetInt("paintfirst", 1) != 0;
 	}
 }

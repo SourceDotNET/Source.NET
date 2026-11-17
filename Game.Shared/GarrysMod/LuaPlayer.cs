@@ -219,7 +219,9 @@ public static partial class LuaPlayer
 			gmodPlayer.NetworkStateChanged();
 #endif
 		gmodPlayer.PlayerClass = classID;
+#pragma warning disable SRCLUA004
 		return 1;
+#pragma warning restore SRCLUA004
 	}
 
 	[LuaMethod]

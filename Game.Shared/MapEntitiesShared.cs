@@ -168,7 +168,7 @@ public static class MapEntity
 		int len = 0;
 		newToken[0] = 0;
 
-		if (data == default || data.IsEmpty)
+		if (data.IsEmpty)
 			return null;
 
 		if (s_BuildReverseMap) {

@@ -262,12 +262,7 @@ public class GlobalEntityList : BaseEntityList
 		if (list != null)
 			list = NextEntInfo(list);
 
-		while (list != null) {
-			return (BaseEntity?)list.Entity;
-			list = NextEntInfo(list); //??
-		}
-
-		return null;
+		return list != null ? (BaseEntity?)list.Entity : null;
 	}
 
 	public T? NextEntByClass<T>(T? start) where T : BaseEntity {

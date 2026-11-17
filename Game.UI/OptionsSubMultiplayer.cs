@@ -93,8 +93,9 @@ public class OptionsSubMultiplayer : PropertyPage
 
 		ReadOnlySpan<char> fn = g_pFileSystem.FindFirstEx(directory.SliceNullTerminatedString(), null, out FileFindHandle_t fh);
 		int i = 0, initialItem = 0;
+		Span<char> filename = stackalloc char[512];
 		while (!fn.IsEmpty) {
-			Span<char> filename = stackalloc char[512];
+			filename.Clear();
 			sprintf(filename, "materials/vgui/logos/%s").S(fn);
 			if (strlen(filename) >= 4) {
 				filename[(int)strlen(filename) - 4] = '\0';

@@ -31,7 +31,7 @@ public class CommandBuffer
 
 	TokenizedCommand currentCommand;
 
-	public unsafe bool DequeueNextCommand() {
+	public bool DequeueNextCommand() {
 		currentCommand.Reset();
 		Dbg.Assert(isProcessingCommands);
 		if (Commands.Count == 0)
@@ -66,7 +66,7 @@ public class CommandBuffer
 
 	public ref TokenizedCommand GetCommand() => ref currentCommand;
 
-	public unsafe bool AddText(ReadOnlySpan<char> text, long tickDelay = 0) {
+	public bool AddText(ReadOnlySpan<char> text, long tickDelay = 0) {
 		long tick = currentTick + tickDelay;
 
 		ReadOnlySpan<char> currentCommand = text.SliceNullTerminatedString();
@@ -94,7 +94,7 @@ public class CommandBuffer
 		return true;
 	}
 
-	unsafe void Compact() {
+	void Compact() {
 		argBufferSize = 0;
 		Span<char> tempBuffer = stackalloc char[ARGS_BUFFER_LENGTH];
 		Span<char> writeBuffer = argsBuffer.AsSpan();

@@ -372,6 +372,7 @@ public class Sentence
 	void ParseWords(UtlBuffer buf) {
 		Span<char> token = stackalloc char[4096];
 		Span<char> word = stackalloc char[256];
+		Span<char> phonemename = stackalloc char[256];
 
 		while (true) {
 			buf.GetString(token);
@@ -407,7 +408,6 @@ public class Sentence
 				// Parse phoneme
 				int code = AToI(token);
 				buf.GetString(token);
-				Span<char> phonemename = stackalloc char[256];
 				strcpy(phonemename, token.SliceNullTerminatedString());
 				buf.GetString(token);
 				start = StrToF(token);
@@ -429,16 +429,16 @@ public class Sentence
 
 	void ParseEmphasis(UtlBuffer buf) {
 		Span<char> token = stackalloc char[4096];
+		Span<char> t = stackalloc char[256];
+		Span<char> value = stackalloc char[256];
 		while (true) {
 			buf.GetString(token);
 			if (token[0] == '}')
 				break;
 
-			Span<char> t = stackalloc char[256];
 			strcpy(t, token.SliceNullTerminatedString());
 			buf.GetString(token);
 
-			Span<char> value = stackalloc char[256];
 			strcpy(value, token.SliceNullTerminatedString());
 
 			EmphasisSample sample = default;
@@ -455,6 +455,8 @@ public class Sentence
 	// This is obsolete, so it doesn't do anything with the data which is parsed.
 	void ParseCloseCaption(UtlBuffer buf) {
 		Span<char> token = stackalloc char[4096];
+		Span<char> cc_type = stackalloc char[32];
+		Span<byte> cc_stream = stackalloc byte[4096];
 		while (true) {
 			// Format is
 			// language_name
@@ -478,8 +480,6 @@ public class Sentence
 				if (stricmp(token.SliceNullTerminatedString(), "PHRASE") != 0)
 					break;
 
-				Span<char> cc_type = stackalloc char[32];
-				Span<byte> cc_stream = stackalloc byte[4096];
 				int cc_length;
 
 				buf.GetString(token);
@@ -511,14 +511,14 @@ public class Sentence
 
 	void ParseOptions(UtlBuffer buf) {
 		Span<char> token = stackalloc char[4096];
+		Span<char> key = stackalloc char[256];
+		Span<char> value = stackalloc char[256];
 		while (true) {
 			buf.GetString(token);
 			if (token[0] == '\0' || token[0] == '}')
 				break;
 
-			Span<char> key = stackalloc char[256];
 			strcpy(key, token.SliceNullTerminatedString());
-			Span<char> value = stackalloc char[256];
 			buf.GetString(token);
 			strcpy(value, token.SliceNullTerminatedString());
 
@@ -531,6 +531,7 @@ public class Sentence
 
 	void ParseDataVersionOnePointZero(UtlBuffer buf) {
 		Span<char> token = stackalloc char[4096];
+		Span<char> section = stackalloc char[256];
 
 		while (true) {
 			buf.GetString(token);
@@ -541,7 +542,6 @@ public class Sentence
 			if (token[0] == '}')
 				break;
 
-			Span<char> section = stackalloc char[256];
 			strcpy(section, token.SliceNullTerminatedString());
 
 			buf.GetString(token);

@@ -6,6 +6,7 @@ using Source.Common.Utilities;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Emit;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -440,9 +441,9 @@ public struct SoundParametersInternal : IEquatable<SoundParametersInternal>
 
 	public readonly SoundEntityChannel GetChannel() => Channel;
 
-	public unsafe ref readonly VolumeInterval GetVolume() => ref Volume;
-	public unsafe ref readonly PitchInterval GetPitch() => ref Pitch;
-	public unsafe ref readonly SoundLevelInterval GetSoundLevel() => ref SoundLevel;
+	[UnscopedRef] public ref readonly VolumeInterval GetVolume() => ref Volume;
+	[UnscopedRef] public ref readonly PitchInterval GetPitch() => ref Pitch;
+	[UnscopedRef] public ref readonly SoundLevelInterval GetSoundLevel() => ref SoundLevel;
 	public int GetDelayMsec() => DelayMsec;
 	public bool OnlyPlayToOwner() => bPlayToOwnerOnly;
 	public bool HadMissingWaveFiles() => bHadMissingWaveFiles;

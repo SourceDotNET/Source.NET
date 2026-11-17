@@ -2992,8 +2992,6 @@ public class StudioHeader
 			studioTextures = new MStudioTexture[NumTextures];
 
 		return studioTextures[i] ??= new(Data[(TextureIndex + (MStudioTexture.SIZE_OF_ONE * i))..]);
-
-		return Studio.ProduceArrayIdx(this, ref studioTextures, NumTextures, TextureIndex, i, MStudioTexture.SIZE_OF_ONE, Data, MStudioTexture.FACTORY);
 	}
 
 	public int NumCDTextures;

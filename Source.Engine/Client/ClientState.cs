@@ -314,7 +314,7 @@ IModelLoader modelloader, ICommandLine commandLine,
 	public override void SetServerTickCount(int tick) => ClockDriftMgr.ServerTick = tick;
 	public override void ConnectionClosing(ReadOnlySpan<char> reason) {
 		if (SignOnState > SignOnState.None) {
-			if (reason != null && reason.Length > 0 && reason[0] == '#')
+			if (!reason.IsEmpty && reason[0] == '#')
 				Common.ExplainDisconnection(true, reason);
 			else
 				Common.ExplainDisconnection(true, $"Disconnect: {reason}.\n");
@@ -325,7 +325,7 @@ IModelLoader modelloader, ICommandLine commandLine,
 	}
 
 	GameEventManager? gem;
-	GameEventManager gameEventManager => gem ??= (GameEventManager)Singleton<IGameEventManager2>();
+	new GameEventManager gameEventManager => gem ??= (GameEventManager)Singleton<IGameEventManager2>();
 	protected override bool ProcessGameEventList(SVC_GameEventList msg) {
 		return gameEventManager.ParseEventList(msg);
 	}
@@ -1309,7 +1309,7 @@ IModelLoader modelloader, ICommandLine commandLine,
 
 		g_ClientDLL?.HudVidInit();
 
-		// gHostSpawnCount = m_nServerCount;
+		Host.gHostSpawnCount = ServerCount;
 #if !SWDS
 		((VideoMode_Common)videoMode).MarkClientViewRectDirty();
 #endif

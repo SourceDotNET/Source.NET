@@ -580,7 +580,7 @@ public class NetChannel : INetChannelInfo, INetChannel
 			Console.WriteLine();
 	}
 
-	public unsafe void RemoveHeadInWaitingList(int list) {
+	public void RemoveHeadInWaitingList(int list) {
 		DataFragments data = WaitingList[list][0];
 		data.Return();
 
@@ -589,7 +589,7 @@ public class NetChannel : INetChannelInfo, INetChannel
 		WaitingList[list].Remove(data);
 	}
 
-	public unsafe void CheckWaitingList(int list) {
+	public void CheckWaitingList(int list) {
 		if (WaitingList[list].Count == 0 || OutSequenceAck <= 0)
 			return;
 
@@ -715,7 +715,7 @@ public class NetChannel : INetChannelInfo, INetChannel
 		MessageHandler.PacketEnd();
 	}
 
-	public unsafe bool CheckReceivingList(FragmentStream list) {
+	public bool CheckReceivingList(FragmentStream list) {
 		DataFragments data = ReceiveList[(int)list];
 
 		if (data.Buffer == null)
@@ -1018,7 +1018,7 @@ public class NetChannel : INetChannelInfo, INetChannel
 		return null;
 	}
 
-	public unsafe void UpdateSubchannels() {
+	public void UpdateSubchannels() {
 		// first check if there is a free subchannel
 		SubChannel? freeSubChan = GetFreeSubChannel();
 
@@ -1321,7 +1321,7 @@ public class NetChannel : INetChannelInfo, INetChannel
 
 	static ConVar net_minroutable = new("16", 0, "Forces larger payloads.");
 	static ConVar net_maxroutable = new("1260", FCvar.Archive | FCvar.UserInfo, "Requested max packet size before packets are 'split'.", MIN_USER_MAXROUTABLE_SIZE, MAX_USER_MAXROUTABLE_SIZE);
-	private unsafe byte[] sendbuf = new byte[MAX_MESSAGE];
+	private byte[] sendbuf = new byte[MAX_MESSAGE];
 	private bf_write send = new();
 	public unsafe int SendDatagram(bf_write? datagram) {
 		if (Socket == NetSocketType.Client) {
@@ -1474,7 +1474,7 @@ public class NetChannel : INetChannelInfo, INetChannel
 
 	public int GetMaxRoutablePayloadSize() => MaxRoutablePayloadSize;
 
-	public unsafe bool CreateFragmentsFromBuffer(bf_write buffer, FragmentStream stream) {
+	public bool CreateFragmentsFromBuffer(bf_write buffer, FragmentStream stream) {
 		bf_write bfwrite = new();
 		DataFragments? data = null;
 

@@ -94,7 +94,7 @@ public unsafe class MeshGl46 : IMesh
 		throw new NotImplementedException();
 	}
 
-	public virtual unsafe void Draw(int firstIndex = -1, int indexCount = 0) {
+	public virtual void Draw(int firstIndex = -1, int indexCount = 0) {
 		Assert(VertexBuffer != null);
 		if (VertexBuffer == null)
 			return;
@@ -131,7 +131,7 @@ public unsafe class MeshGl46 : IMesh
 		}
 	}
 
-	private unsafe void DrawInternal(PrimList* primList, int lists) {
+	private void DrawInternal(PrimList* primList, int lists) {
 		HandleLateCreation();
 
 		int i;
@@ -369,7 +369,7 @@ public unsafe class MeshGl46 : IMesh
 		VertexFormat = fmt;
 	}
 
-	public virtual unsafe void RenderPass() {
+	public virtual void RenderPass() {
 		HandleLateCreation();
 		Assert(Type != MaterialPrimitiveType.Heterogenous);
 

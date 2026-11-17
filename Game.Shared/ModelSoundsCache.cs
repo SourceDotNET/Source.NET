@@ -53,6 +53,7 @@ public class ModelSoundsCache() : IBaseCacheInfo
 
 		Animation.VerifySequenceIndex(hdr);
 
+		Span<char> soundname = stackalloc char[256];
 		for (int iSeq = 0; iSeq < hdr.GetNumSeq(); iSeq++) {
 			MStudioSeqDesc seq = hdr.Seqdesc(iSeq);
 
@@ -73,7 +74,7 @@ public class ModelSoundsCache() : IBaseCacheInfo
 						break;
 					case CL_EVENT_FOOTSTEP_LEFT:
 					case CL_EVENT_FOOTSTEP_RIGHT: {
-							Span<char> soundname = stackalloc char[256];
+							soundname.Clear();
 							ReadOnlySpan<char> options = Encoding.ASCII.GetString(((ReadOnlySpan<byte>)ev.Options()).SliceNullTerminatedString());
 							if (options.IsEmpty)
 								options = "NPC_CombineS";

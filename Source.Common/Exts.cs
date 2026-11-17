@@ -858,7 +858,7 @@ public static class ClassUtils
 	}
 
 	// Some methods for reading binary data into arrays/value references
-	public static unsafe bool ReadNothing(this BinaryReader reader, int howMany) {
+	public static bool ReadNothing(this BinaryReader reader, int howMany) {
 		while (howMany > 0) {
 			if (reader.PeekChar() == -1)
 				return false;
@@ -867,9 +867,9 @@ public static class ClassUtils
 		}
 		return true;
 	}
-	public static unsafe int ReadASCIIStringInto(this BinaryReader reader, Span<char> into)
+	public static int ReadASCIIStringInto(this BinaryReader reader, Span<char> into)
 		=> ReadASCIIStringInto(reader, into, into.Length);
-	public static unsafe int ReadASCIIStringInto(this BinaryReader reader, Span<char> into, int maxLength) {
+	public static int ReadASCIIStringInto(this BinaryReader reader, Span<char> into, int maxLength) {
 		Span<byte> asciiBlock = stackalloc byte[maxLength];
 		reader.Read(asciiBlock);
 		return Encoding.ASCII.GetChars(asciiBlock, into);
@@ -1006,7 +1006,7 @@ public static class UnmanagedUtils
 			list.Add(new());
 	}
 
-	public static unsafe ulong Hash(this ReadOnlySpan<char> str, bool invariant = true) {
+	public static ulong Hash(this ReadOnlySpan<char> str, bool invariant = true) {
 		// This might be a breaking change 12/21/2025
 		// But this should have been done from the start as a major consumer of potentially-not-null-terminated-strings
 		str = str.SliceNullTerminatedString();
@@ -1044,7 +1044,7 @@ public static class UnmanagedUtils
 		}
 	}
 
-	public static unsafe ulong Hash<T>(this Span<T> target) where T : unmanaged {
+	public static ulong Hash<T>(this Span<T> target) where T : unmanaged {
 		if (target.IsEmpty) return 0;
 		ReadOnlySpan<byte> data = MemoryMarshal.Cast<T, byte>(target);
 		return XXH64.DigestOf(data);
@@ -1191,7 +1191,7 @@ public static class UnmanagedUtils
 
 		return true;
 	}
-	public static unsafe ulong Hash(this string target, bool invariant = true) => Hash((ReadOnlySpan<char>)target, invariant);
+	public static ulong Hash(this string target, bool invariant = true) => Hash((ReadOnlySpan<char>)target, invariant);
 	public static char Nibble(this char c) {
 		if ((c >= '0') && (c <= '9'))
 			return (char)(c - '0');
@@ -1808,12 +1808,12 @@ public ref struct SpanBinaryWriter
 	public double ReadDouble() => ReadBytes(sizeof(double)).Cast<byte, double>()[0];
 	*/
 
-	public unsafe void Write<T>(in T value) where T : unmanaged {
+	public void Write<T>(in T value) where T : unmanaged {
 		ReadOnlySpan<byte> bytes = new ReadOnlySpan<T>(in value).Cast<T, byte>();
 		bytes.CopyTo(contents[ptr..]);
 		ptr += bytes.Length;
 	}
-	public unsafe void Write<T>(Span<T> value) where T : unmanaged {
+	public void Write<T>(Span<T> value) where T : unmanaged {
 		for (int i = 0; i < value.Length; i++)
 			Write(in value[i]);
 	}

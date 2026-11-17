@@ -90,7 +90,7 @@ public partial class C_Team : C_BaseEntity
 	public void RemoveAllPlayers() => Players.Clear();
 	public override void PreDataUpdate(DataUpdateType updateType) => base.PreDataUpdate(updateType);
 	public C_BasePlayer? GetPlayer(int idx) => (C_BasePlayer?)cl_entitylist.GetEnt(Players[idx]);
-	public int GetTeamNumber() => TeamNum;
+	public override int GetTeamNumber() => TeamNum;
 	public ReadOnlySpan<char> Get_Name() => ((Span<char>)Teamname).SliceNullTerminatedString();
 	public int Get_Score() => Score;
 	public int Get_Deaths() => Deaths;

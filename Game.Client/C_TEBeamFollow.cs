@@ -12,7 +12,7 @@ public partial class C_TEBeamFollow : C_BaseBeam
 	];
 
 	[NetworkVar("m_iEntIndex")]
-	public int EntIndex;
+	public new int EntIndex;
 }
 
 public static partial class TempEnts

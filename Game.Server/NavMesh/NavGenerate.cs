@@ -229,7 +229,7 @@ class Subdivider(int depth)
 		split += area.GetCorner(NavCornerType.NorthWest).X;
 		split = NavMesh.Instance!.SnapToGrid(split);
 
-		if (area.SplitEdit(false, split, out NavArea alpha, out NavArea beta)) {
+		if (area.SplitEdit(false, split, out NavArea? alpha, out NavArea? beta)) {
 			SubdivideX(alpha, canDivideX, canDivideY, depth);
 			SubdivideX(beta, canDivideX, canDivideY, depth);
 		}
@@ -250,7 +250,7 @@ class Subdivider(int depth)
 		split += area.GetCorner(NavCornerType.NorthWest).Y;
 		split = NavMesh.Instance!.SnapToGrid(split);
 
-		if (area.SplitEdit(true, split, out NavArea alpha, out NavArea beta)) {
+		if (area.SplitEdit(true, split, out NavArea? alpha, out NavArea? beta)) {
 			SubdivideY(alpha, canDivideX, canDivideY, depth - 1);
 			SubdivideY(beta, canDivideX, canDivideY, depth - 1);
 		}
@@ -730,7 +730,7 @@ public partial class NavMesh
 			Math.Abs(split - area.GetCorner(NavCornerType.SouthEast).X) < epsilon)
 			return;
 
-		if (area.SplitEdit(false, split, out NavArea alpha, out NavArea beta)) {
+		if (area.SplitEdit(false, split, out NavArea? alpha, out NavArea? beta)) {
 			SplitX(alpha);
 			SplitX(beta);
 		}
@@ -750,7 +750,7 @@ public partial class NavMesh
 			Math.Abs(split - area.GetCorner(NavCornerType.SouthEast).Y) < epsilon)
 			return;
 
-		if (area.SplitEdit(true, split, out NavArea alpha, out NavArea beta)) {
+		if (area.SplitEdit(true, split, out NavArea? alpha, out NavArea? beta)) {
 			SplitY(alpha);
 			SplitY(beta);
 		}
@@ -1004,10 +1004,10 @@ public partial class NavMesh
 
 			NavNode? node;
 			for (node = area.Node[(int)NavCornerType.NorthWest]; node != area.Node[(int)NavCornerType.NorthEast]; node = node.GetConnectedNode(NavDirType.East)) {
-				NavNode? adj = node.GetConnectedNode(NavDirType.North);
+				NavNode? adj = node!.GetConnectedNode(NavDirType.North);
 
 				if (adj != null && adj.GetArea() != null && adj.GetConnectedNode(NavDirType.South) == node) {
-					area.ConnectTo(adj.GetArea(), NavDirType.North);
+					area.ConnectTo(adj.GetArea()!, NavDirType.North);
 				}
 				else {
 					NavArea? downArea = FindJumpDownArea(node.GetPosition(), NavDirType.North);
@@ -1017,9 +1017,9 @@ public partial class NavMesh
 			}
 
 			for (node = area.Node[(int)NavCornerType.NorthWest]; node != area.Node[(int)NavCornerType.SouthWest]; node = node.GetConnectedNode(NavDirType.South)) {
-				NavNode? adj = node.GetConnectedNode(NavDirType.West);
+				NavNode? adj = node!.GetConnectedNode(NavDirType.West);
 				if (adj != null && adj.GetArea() != null && adj.GetConnectedNode(NavDirType.East) == node)
-					area.ConnectTo(adj.GetArea(), NavDirType.West);
+					area.ConnectTo(adj.GetArea()!, NavDirType.West);
 				else {
 					NavArea? downArea = FindJumpDownArea(node.GetPosition(), NavDirType.West);
 					if (downArea != null && downArea != area)
@@ -1032,12 +1032,12 @@ public partial class NavMesh
 				node = node.GetConnectedNode(NavDirType.North);
 
 			if (node != null) {
-				NavNode? end = area.Node[(int)NavCornerType.SouthEast].GetConnectedNode(NavDirType.North);
+				NavNode? end = area.Node[(int)NavCornerType.SouthEast]!.GetConnectedNode(NavDirType.North);
 				for (; node != null && node != end; node = node.GetConnectedNode(NavDirType.East)) {
 					NavNode? adj = node.GetConnectedNode(NavDirType.South);
 
 					if (adj != null && adj.GetArea() != null && adj.GetConnectedNode(NavDirType.North) == node)
-						area.ConnectTo(adj.GetArea(), NavDirType.South);
+						area.ConnectTo(adj.GetArea()!, NavDirType.South);
 					else {
 						NavArea? downArea = FindJumpDownArea(node.GetPosition(), NavDirType.South);
 						if (downArea != null && downArea != area)
@@ -1047,7 +1047,7 @@ public partial class NavMesh
 			}
 
 			for (node = area.Node[(int)NavCornerType.SouthWest]; node != area.Node[(int)NavCornerType.SouthEast]; node = node.GetConnectedNode(NavDirType.East)) {
-				if (node.GetArea() != null)
+				if (node!.GetArea() != null)
 					continue;
 
 				NavNode? adj = node.GetConnectedNode(NavDirType.South);
@@ -1067,12 +1067,12 @@ public partial class NavMesh
 				node = node.GetConnectedNode(NavDirType.West);
 
 			if (node != null) {
-				NavNode? end = area.Node[(int)NavCornerType.SouthEast].GetConnectedNode(NavDirType.West);
+				NavNode? end = area.Node[(int)NavCornerType.SouthEast]!.GetConnectedNode(NavDirType.West);
 				for (; node != null && node != end; node = node.GetConnectedNode(NavDirType.South)) {
 					NavNode? adj = node.GetConnectedNode(NavDirType.East);
 
 					if (adj != null && adj.GetArea() != null && adj.GetConnectedNode(NavDirType.West) == node) {
-						area.ConnectTo(adj.GetArea(), NavDirType.East);
+						area.ConnectTo(adj.GetArea()!, NavDirType.East);
 					}
 					else {
 						NavArea? downArea = FindJumpDownArea(node.GetPosition(), NavDirType.East);
@@ -1254,8 +1254,8 @@ public partial class NavMesh
 					area.ComputePortal(adjArea, (NavDirType)dir, ref pos, out _);
 					adjArea.GetClosestPointOnArea(ref pos, out Vector3 adjPos);
 
-					NavNode node = area.FindClosestNode(pos, (NavDirType)dir);
-					NavNode adjNode = adjArea.FindClosestNode(adjPos, OppositeDirection((NavDirType)dir));
+					NavNode node = area.FindClosestNode(pos, (NavDirType)dir)!;
+					NavNode adjNode = adjArea.FindClosestNode(adjPos, OppositeDirection((NavDirType)dir))!;
 					pos = node.GetPosition();
 					adjPos = adjNode.GetPosition();
 

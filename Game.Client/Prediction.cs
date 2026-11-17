@@ -228,6 +228,7 @@ public class Prediction : IPrediction
 			// Transfer intermediate data from other predictables
 			int c = predictables.GetPredictableCount();
 			int i;
+			Span<char> szBuf = stackalloc char[32];
 			for (i = 0; i < c; i++) {
 				C_BaseEntity? ent = predictables.GetPredictable(i);
 				if (ent == null)
@@ -238,7 +239,7 @@ public class Prediction : IPrediction
 						PreviousAckHadErrors = true;
 
 				if (showlist != 0) {
-					Span<char> sz = stackalloc char[32];
+					Span<char> sz = szBuf;
 					if (ent.EntIndex() == -1)
 						sz = sprintf(sz, "handle %u").U((uint)ent.GetClientHandle().Index);
 					else

@@ -554,7 +554,7 @@ public unsafe class bf_read : BitBuffer
 		return !Overflowed;
 	}
 
-	public unsafe bool ReadInto<T>(out T output) where T : unmanaged {
+	public bool ReadInto<T>(out T output) where T : unmanaged {
 		output = default;
 		Span<byte> data = stackalloc byte[sizeof(T)];
 		if (!ReadBytes(data))

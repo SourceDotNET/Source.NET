@@ -533,10 +533,8 @@ public sealed class VoxelHash
 				else
 					voxelMin[iAxis] += nStep[iAxis];
 
-				unsafe {
-					if (!EnumerateElementsAlongRay_ExtrudedRaySlice(listMask, ref iterator, intersectSweptBox, voxelMin, voxelMax, iAxis, nStep))
-						return false;
-				}
+				if (!EnumerateElementsAlongRay_ExtrudedRaySlice(listMask, ref iterator, intersectSweptBox, voxelMin, voxelMax, iAxis, nStep))
+					return false;
 			}
 		}
 		return true;
@@ -544,7 +542,7 @@ public sealed class VoxelHash
 
 	public bool EnumerateElementsAlongRay_ExtrudedRaySlice<IPE>(SpatialPartitionListMask_t listMask,
 		 scoped ref IPE iterator, in IntersectSweptBox intersectSweptBox,
-		Span<int> voxelMin, Span<int> voxelMax, int iAxis, Span<int> pStep) where IPE : struct, IPartitionEnumerator, allows ref struct {
+		scoped Span<int> voxelMin, scoped Span<int> voxelMax, int iAxis, scoped Span<int> pStep) where IPE : struct, IPartitionEnumerator, allows ref struct {
 		Span<int> mins = stackalloc int[3] { voxelMin[0], voxelMin[1], voxelMin[2] };
 		Span<int> maxs = stackalloc int[3] { voxelMax[0], voxelMax[1], voxelMax[2] };
 
@@ -1015,7 +1013,7 @@ public sealed class VoxelTree
 		return true;
 	}
 
-	unsafe bool EnumerateElementsAlongRay_ExtrudedRay<IPE>(SpatialPartitionListMask_t listMask,
+	bool EnumerateElementsAlongRay_ExtrudedRay<IPE>(SpatialPartitionListMask_t listMask,
 		in Ray ray, in Vector3 vecInvDelta, in Vector3 vecEnd, scoped ref IPE iterator) where IPE : struct, IPartitionEnumerator, allows ref struct {
 		Vector3 vecMin = ray.Start - ray.Extents;
 		Vector3 vecMax = ray.Start + ray.Extents;

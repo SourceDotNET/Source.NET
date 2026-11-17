@@ -66,9 +66,9 @@ public unsafe class bf_write : BitBuffer
 		StartWriting(data, bytes, 0, bits);
 	}
 
-	public unsafe void StartWriting(byte[]? inData, nuint bytes, int startBit = 0, int bits = -1)
+	public void StartWriting(byte[]? inData, nuint bytes, int startBit = 0, int bits = -1)
 		=> StartWriting(inData, (int)bytes, startBit, bits);
-	public unsafe void StartWriting(byte[]? inData, int bytes, int startBit = 0, int bits = -1) {
+	public void StartWriting(byte[]? inData, int bytes, int startBit = 0, int bits = -1) {
 		// Ensure d-word alignment
 		Debug.Assert(bytes % 4 == 0);
 
@@ -670,7 +670,7 @@ public unsafe class bf_write : BitBuffer
 		}
 	}
 
-	public unsafe void WriteUBitLong(uint curData, int numbits, bool checkRange = true) {
+	public void WriteUBitLong(uint curData, int numbits, bool checkRange = true) {
 #if NEW_BITBUFFER
 		// Bounds checking..
 		if (curBit + numbits > dataBits) {

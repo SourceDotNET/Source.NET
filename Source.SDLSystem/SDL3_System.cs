@@ -27,7 +27,7 @@ public unsafe partial class SDL3_System(ICommandLine commandLine) : ISystem
 		return 0;
 	}
 
-	public unsafe nuint GetClipboardText(nint offset, Span<char> buf) {
+	public nuint GetClipboardText(nint offset, Span<char> buf) {
 		if (!SDL3.SDL_HasClipboardText())
 			return 0;
 
@@ -120,7 +120,7 @@ public unsafe partial class SDL3_System(ICommandLine commandLine) : ISystem
 		throw new NotImplementedException();
 	}
 
-	public unsafe void SetClipboardText(ReadOnlySpan<char> text) {
+	public void SetClipboardText(ReadOnlySpan<char> text) {
 		if (text.IsEmpty)
 			SDL3.SDL_SetClipboardText("");
 

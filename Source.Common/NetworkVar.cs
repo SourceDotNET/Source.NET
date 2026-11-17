@@ -34,7 +34,7 @@ public struct NetworkArray<Type>(int count) where Type : unmanaged
 		return ref Value[i];
 	}
 
-	public readonly unsafe void Set(int i, in Type val) {
+	public readonly void Set(int i, in Type val) {
 		Assert(i >= 0 && i < count);
 		if (memcmp(in Value[i], in val) != 0) {
 			NetworkStateChanged(i);

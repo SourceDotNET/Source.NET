@@ -105,7 +105,7 @@ class PageTab : Button
 		base.OnThink();
 	}
 
-	public bool IsDroppable(List<KeyValues> msglist) {
+	public override bool IsDroppable(List<KeyValues> msglist) {
 		AttemptingDrop = true;
 
 		if (GetParent() == null)
@@ -932,7 +932,7 @@ public class PropertySheet : EditablePanel
 		// todo
 	}
 
-	public bool IsDroppable(List<KeyValues> msglist) {
+	public override bool IsDroppable(List<KeyValues> msglist) {
 		if (!DraggableTabs)
 			return false;
 

@@ -256,7 +256,7 @@ public class Net
 		return netchan != null;
 	}
 
-	public unsafe void ProcessSocket(NetSocketType sock, IConnectionlessPacketHandler handler) {
+	public void ProcessSocket(NetSocketType sock, IConnectionlessPacketHandler handler) {
 		NetPacket? packet;
 		lock (NetChannels) {
 			int numChannels = NetChannels.Count;
@@ -533,7 +533,7 @@ public class Net
 	}
 
 	private ArrayPool<byte> DecompressionPool = ArrayPool<byte>.Create();
-	public unsafe uint GetDecompressedBufferSize(Span<byte> compressedbuf) {
+	public uint GetDecompressedBufferSize(Span<byte> compressedbuf) {
 		if (compressedbuf.IsEmpty)
 			return 0;
 
@@ -636,7 +636,7 @@ public class Net
 		return newdata;
 	}
 
-	public unsafe NetPacket? GetPacket(NetSocketType sock, byte[] scratch) {
+	public NetPacket? GetPacket(NetSocketType sock, byte[] scratch) {
 		DiscardStaleSplitPackets(sock);
 		NetPacket packet = NetPackets[(int)sock];
 
@@ -976,7 +976,7 @@ public class Net
 		ConfigLoopbackBuffers(false);
 	}
 
-	public unsafe int SendPacket(NetChannel chan, NetSocketType sock, NetAddress? to, byte[]? data, int length, bf_write? voicePayload = null, bool useCompression = false) {
+	public int SendPacket(NetChannel chan, NetSocketType sock, NetAddress? to, byte[]? data, int length, bf_write? voicePayload = null, bool useCompression = false) {
 		int ret = -1;
 
 		if (data == null)
@@ -1050,12 +1050,12 @@ public class Net
 		return ret;
 	}
 
-	public unsafe int SendTo(bool verbose, Socket s, byte[] buf, int len, NetAddress to, int gameDataLength) {
+	public int SendTo(bool verbose, Socket s, byte[] buf, int len, NetAddress to, int gameDataLength) {
 		int send = SendToImpl(s, buf, len, to, gameDataLength);
 		return send;
 	}
 
-	private unsafe int SendToImpl(Socket s, Span<byte> buf, int len, NetAddress to, int gameDataLength) {
+	private int SendToImpl(Socket s, Span<byte> buf, int len, NetAddress to, int gameDataLength) {
 		return s.SendTo(buf.Slice(0, len), 0, to);
 	}
 
@@ -1139,7 +1139,7 @@ public class Net
 	}
 
 
-	public unsafe void SendLoopPacket(NetSocketType sock, int length, byte[] data, NetAddress? to) {
+	public void SendLoopPacket(NetSocketType sock, int length, byte[] data, NetAddress? to) {
 		if (length > MAX_PAYLOAD) {
 			DevMsg("NET_SendLoopPacket:  packet too big (%i).\n", length);
 			return;

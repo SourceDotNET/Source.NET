@@ -75,7 +75,7 @@ public class FontTextureRegen : ITextureRegenerator
 		}
 	}
 
-	internal unsafe void UpdateBackingBits(Rectangle subRect, Span<byte> bits, Rectangle uploadRect, ImageFormat format) {
+	internal void UpdateBackingBits(Rectangle subRect, Span<byte> bits, Rectangle uploadRect, ImageFormat format) {
 		nint size = ImageLoader.GetMemRequired(Width, Height, 1, Format, false);
 
 		if (TextureBits == null) {

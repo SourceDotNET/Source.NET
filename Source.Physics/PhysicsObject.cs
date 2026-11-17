@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 
 namespace Source.Physics;
 
-internal unsafe class PhysicsObject : IPhysicsObject
+internal class PhysicsObject : IPhysicsObject
 {
 	static ulong NextUniqueId = 1;
 

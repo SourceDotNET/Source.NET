@@ -1191,7 +1191,9 @@ public static partial class LuaSteamworks
 		if (id == 0)
 			return 0;
 		SteamRemoteStorage.SetUserPublishedFileAction(new PublishedFileId_t(id), EWorkshopFileAction.k_EWorkshopFileActionPlayed);
+#pragma warning disable SRCLUA004
 		return 1;
+#pragma warning restore SRCLUA004
 	}
 
 	[LuaFunction]
@@ -1200,7 +1202,9 @@ public static partial class LuaSteamworks
 		if (id == 0)
 			return 0;
 		SteamRemoteStorage.SetUserPublishedFileAction(new PublishedFileId_t(id), EWorkshopFileAction.k_EWorkshopFileActionCompleted);
+#pragma warning disable SRCLUA004
 		return 1;
+#pragma warning restore SRCLUA004
 	}
 #endif
 

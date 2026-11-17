@@ -37,7 +37,7 @@ public enum CitizenExpressionType
 public class NPC_Citizen : NPC_PlayerCompanion
 {
 	[Flags]
-	public enum SF
+	public new enum SF
 	{
 		Follow = 1 << 16,
 		Medic = 1 << 17,

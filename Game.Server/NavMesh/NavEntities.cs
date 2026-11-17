@@ -1,5 +1,6 @@
 using Game.Shared;
 using Source.Common;
+using Source.Common.Engine;
 
 using System.Numerics;
 
@@ -42,11 +43,24 @@ public partial class FuncNavObstruction : BaseEntity, INavAvoidanceObstacle
 
 	public bool Disabled;
 
-	int DrawDebugTextOverlays() {
-		throw new NotImplementedException();
+	public override int DrawDebugTextOverlays() {
+		int offset = base.DrawDebugTextOverlays();
+
+		if ((DebugOverlays & DebugOverlayBits.Text) != 0) {
+			if (CanObstructNavAreas())
+				EntityText(offset++, "Obstructing nav", (float)IVDebugOverlay.NDEBUG_PERSIST_TILL_NEXT_SERVER);
+			else
+				EntityText(offset++, "Not obstructing nav", (float)IVDebugOverlay.NDEBUG_PERSIST_TILL_NEXT_SERVER);
+		}
+
+		return offset;
 	}
 
-	void UpdateOnRemove() { }
+	public override void UpdateOnRemove() {
+		NavMesh.Instance!.UnregisterAvoidanceObstacle(this);
+
+		base.UpdateOnRemove();
+	}
 
 	public override void Spawn() {
 		SetMoveType(Source.MoveType.None);

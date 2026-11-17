@@ -2365,9 +2365,6 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	public virtual void ForceDropOfCarriedPhysObjects(BaseEntity? ground) { }
 
-	private Action? FnThink;
-	internal void Think() => FnThink?.Invoke();
-	// todo: thinking about thinking... lots of thinking
 
 	public Activity GetActivity() { return Activity.ACT_IDLE; } // TODO
 

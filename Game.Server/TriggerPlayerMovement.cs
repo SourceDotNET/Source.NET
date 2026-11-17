@@ -14,7 +14,7 @@ public partial class TriggerPlayerMovement : BaseTrigger
 	];
 
 	[Flags]
-	public enum SF
+	public new enum SF
 	{
 		MoveAutoDisable = 0x80,      // disable auto movement
 		AutoDuck = 0x800,    // Duck automatically

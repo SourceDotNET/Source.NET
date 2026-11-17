@@ -396,7 +396,6 @@ public partial class BaseAnimating : BaseEntity
 	public float GetModelScale() => ModelScale;
 
 	protected StudioHdr? StudioHdr;
-	public Model? GetModel() => modelinfo.GetModel(GetModelIndex());
 
 	// todo...
 	public StudioHdr? GetModelPtr() {
@@ -555,11 +554,9 @@ public partial class BaseAnimating : BaseEntity
 			pcache.UpdateBones(bonetoworld, studioHdr.NumBones(), gpGlobals.CurTime);
 		}
 		else {
-			BoneCacheParams parms = new();
+			scoped BoneCacheParams parms = new();
 			parms.StudioHdr = studioHdr;
-			unsafe {
-				parms.BoneToWorld = bonetoworld;
-			}
+			parms.BoneToWorld = bonetoworld;
 			parms.CurTime = gpGlobals.CurTime;
 			parms.BoneMask = boneMask;
 

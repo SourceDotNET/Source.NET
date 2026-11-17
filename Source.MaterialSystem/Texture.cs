@@ -863,7 +863,7 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 		return ComputeMipSkipCount(GetName(), DimsMapping, ignorePicmip, vtfTexture, Flags, DesiredDimensionLimit, ref StreamingMips, out CachedFileLodSettings, out DimsActual, out DimsAllocated, out stripFlags);
 	}
 
-	private unsafe int ComputeMipSkipCount(ReadOnlySpan<char> readOnlySpan, TexDimensions mappingDims, bool ignorePicmip, IVTFTexture? vtfTexture, uint flags, ushort desiredDimensionLimit, ref ushort streamingMips, out TextureLODControlSettings cachedFileLodSettings, out TexDimensions dimsActual, out TexDimensions dimsAllocated, out uint outStripFlags) {
+	private int ComputeMipSkipCount(ReadOnlySpan<char> readOnlySpan, TexDimensions mappingDims, bool ignorePicmip, IVTFTexture? vtfTexture, uint flags, ushort desiredDimensionLimit, ref ushort streamingMips, out TextureLODControlSettings cachedFileLodSettings, out TexDimensions dimsActual, out TexDimensions dimsAllocated, out uint outStripFlags) {
 		TexDimensions actualDims = mappingDims, allocatedDims = new();
 
 		bool bTextureMigration = (Flags & (uint)TextureFlags.Streamable) != 0;

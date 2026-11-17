@@ -1,7 +1,5 @@
 ﻿using Game.Shared;
 
-using Game.Shared;
-
 using Source;
 using Source.Common;
 

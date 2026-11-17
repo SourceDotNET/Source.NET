@@ -44,7 +44,7 @@ public class g_blurx : BaseVSShader
 		}
 		public static implicit operator int(ShaderParam param) => param.Index;
 		public ReadOnlySpan<char> GetName() => Info.Name;
-		public ShaderParamType GetType() => Info.Type;
+		public new ShaderParamType GetType() => Info.Type;
 		public ReadOnlySpan<char> GetDefaultValue() => Info.DefaultValue;
 		public ShaderParamFlags GetFlags() => Info.Flags;
 		public ReadOnlySpan<char> GetHelp() => Info.Help;

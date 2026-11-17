@@ -544,7 +544,7 @@ public class GameServer : BaseServer
 		else
 			ConDMsg($"Spawn Server: {mapName}\n");
 
-		Host.SpawnCount = ++SpawnCount;
+		Host.gHostSpawnCount = ++SpawnCount;
 
 		Host.deathmatch.SetValue(IsMultiplayer() ? 1 : 0);
 		if (Host.coop.GetInt() != 0)

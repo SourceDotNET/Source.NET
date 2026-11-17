@@ -94,7 +94,7 @@ public ref struct PrintF
 	public static implicit operator Span<char>(PrintF self) => self.input;
 	public static implicit operator int(PrintF self) => self.input.Length;
 
-	public unsafe PrintF D(int i) {
+	public PrintF D(int i) {
 		WriteAnyLiterals();
 		reader.ReadVariable(out char t, out int varIdx);
 		Span<char> buffer = stackalloc char[11];
@@ -107,7 +107,7 @@ public ref struct PrintF
 		return this;
 	}
 
-	public unsafe PrintF F(float i) {
+	public PrintF F(float i) {
 		WriteAnyLiterals();
 		reader.ReadVariable(out char t, out int varIdx);
 		Span<char> buffer = stackalloc char[11];
@@ -120,7 +120,7 @@ public ref struct PrintF
 		return this;
 	}
 
-	public unsafe PrintF U(uint i) {
+	public PrintF U(uint i) {
 		WriteAnyLiterals();
 		reader.ReadVariable(out char t, out int varIdx);
 		Span<char> buffer = stackalloc char[11];
@@ -132,7 +132,7 @@ public ref struct PrintF
 		WriteAnyLiterals();
 		return this;
 	}
-	public unsafe PrintF D(long i) {
+	public PrintF D(long i) {
 		WriteAnyLiterals();
 		reader.ReadVariable(out char t, out int varIdx);
 		Span<char> buffer = stackalloc char[19];

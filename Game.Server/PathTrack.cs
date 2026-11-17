@@ -92,7 +92,7 @@ public class PathTrack : PointEntity
 			Link();
 	}
 
-	void Link() {
+	new void Link() {
 		BaseEntity? target;
 
 		if (!string.IsNullOrEmpty(Target)) {
@@ -187,7 +187,7 @@ public class PathTrack : PointEntity
 		return path;
 	}
 
-	public static PathTrack? Instance(Edict ent) {
+	public static new PathTrack? Instance(Edict ent) {
 		BaseEntity? entity = BaseEntity.Instance(ent);
 		if (FClassnameIs(entity, "path_track"))
 			return (PathTrack?)entity;

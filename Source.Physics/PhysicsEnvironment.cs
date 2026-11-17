@@ -21,7 +21,7 @@ internal static class PhysicsEnvironmentGlobals
 	internal static IPhysicsObjectPairHash CreateObjectPairHash() => new ObjectPairHash();
 }
 
-internal unsafe partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomFilterHandler, IPreSolveHandler
+internal partial class PhysicsEnvironment : IPhysicsEnvironment, ICustomFilterHandler, IPreSolveHandler
 {
 	static readonly ConVar vbox_substeps = new("vbox_substeps", "16", 0, "Solver substeps per physics step.", 1.0, 1024.0);
 	static readonly ConVar vbox_contact_hertz = new("vbox_contact_hertz", "240", 0, "Contact stiffness in Hz. Lower is softer/smushier.", 1.0, 480.0);

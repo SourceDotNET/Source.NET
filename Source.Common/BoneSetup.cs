@@ -177,7 +177,7 @@ public ref partial struct BoneSetup
 	}
 
 	public void InitPose(Span<Vector3> pos, Span<Quaternion> q) => InitPose(studioHdr, pos, q, boneMask);
-	public void InitPose(StudioHdr studioHdr, Span<Vector3> pos, Span<Quaternion> q, int boneMask) {
+	public void InitPose(StudioHdr studioHdr, scoped Span<Vector3> pos, scoped Span<Quaternion> q, int boneMask) {
 		if (studioHdr.LinearBones() == null) {
 			for (int i = 0; i < studioHdr.NumBones(); i++) {
 				if ((studioHdr.BoneFlags(i) & boneMask) != 0) {
@@ -198,7 +198,7 @@ public ref partial struct BoneSetup
 		}
 	}
 
-	public unsafe void AccumulatePose(Span<Vector3> pos, Span<Quaternion> q, int sequence, TimeUnit_t cycle, float weight, TimeUnit_t time, IKContext? ikContext) {
+	public void AccumulatePose(scoped Span<Vector3> pos, scoped Span<Quaternion> q, int sequence, TimeUnit_t cycle, float weight, TimeUnit_t time, IKContext? ikContext) {
 		Span<Vector3> pos2 = stackalloc Vector3[Studio.MAXSTUDIOBONES];
 		Span<Quaternion> q2 = stackalloc Quaternion[Studio.MAXSTUDIOBONES];
 
@@ -1151,7 +1151,7 @@ public ref partial struct BoneSetup
 		}
 	}
 
-	private void AddLocalLayers(Span<Vector3> pos, Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, double weight, double time, IKContext? ikContext) {
+	private void AddLocalLayers(scoped Span<Vector3> pos, scoped Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, double weight, double time, IKContext? ikContext) {
 		if ((seqdesc.Flags & StudioAnimSeqFlags.Local) == 0)
 			return;
 
@@ -1368,7 +1368,7 @@ public ref partial struct BoneSetup
 		boneComputed.MarkBone(bone);
 	}
 
-	private void AddSequenceLayers(Span<Vector3> pos, Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, float weight, double time, IKContext? ikContext) {
+	private void AddSequenceLayers(scoped Span<Vector3> pos, scoped Span<Quaternion> q, MStudioSeqDesc seqdesc, int sequence, double cycle, float weight, double time, IKContext? ikContext) {
 		for (int i = 0; i < seqdesc.NumAutoLayers; i++) {
 			MStudioAutoLayer pLayer = seqdesc.Autolayer(i);
 

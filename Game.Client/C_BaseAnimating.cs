@@ -1640,8 +1640,8 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	public bool IsModelScaled() => ModelScale > 1.0f + FLT_EPSILON || ModelScale < 1.0f - FLT_EPSILON;
 	public float GetModelScale() => ModelScale;
 
-	public int GetBody() => Body;
-	public int GetSkin() => Skin;
+	public override int GetBody() => Body;
+	public override int GetSkin() => Skin;
 
 	public int InternalDrawModel(StudioFlags flags) {
 		var model = GetModel();
@@ -1768,7 +1768,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		return BoneSetup.Studio_BoneIndexByName(GetModelPtr(), name);
 	}
 
-	public int LookupAttachment(ReadOnlySpan<char> attachmentName) {
+	public override int LookupAttachment(ReadOnlySpan<char> attachmentName) {
 		StudioHdr? hdr = GetModelPtr();
 		if (hdr == null)
 			return -1;

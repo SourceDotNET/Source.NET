@@ -581,7 +581,7 @@ public partial class BaseFileSystem : IFileSystem
 		public bool Win(bool v) => v;
 	}
 
-	public unsafe bool RenameFile(ReadOnlySpan<char> oldPath, ReadOnlySpan<char> newPath, ReadOnlySpan<char> pathID) {
+	public bool RenameFile(ReadOnlySpan<char> oldPath, ReadOnlySpan<char> newPath, ReadOnlySpan<char> pathID) {
 		return FirstToThePost(oldPath, pathID, new RenameFile_Op(newPath), false, out _);
 	}
 

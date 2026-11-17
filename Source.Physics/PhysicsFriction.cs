@@ -7,7 +7,7 @@ using System.Numerics;
 
 namespace Source.Physics;
 
-internal unsafe class PhysicsFrictionSnapshot : IPhysicsFrictionSnapshot
+internal class PhysicsFrictionSnapshot : IPhysicsFrictionSnapshot
 {
 	struct Entry
 	{

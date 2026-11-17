@@ -43,7 +43,7 @@ public class BaseViewport : EditablePanel, IViewPort
 	readonly Hud HUD = Singleton<Hud>();
 	readonly IEngineVGui EngineVGui = Singleton<IEngineVGui>();
 	bool Initialized;
-	bool HasParent;
+	new bool HasParent;
 	InlineArray2<int> OldSize;
 
 	public override void OnScreenSizeChanged(int oldWide, int oldTall) {

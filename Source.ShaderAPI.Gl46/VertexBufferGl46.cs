@@ -278,9 +278,9 @@ public unsafe class VertexBufferGl46 : IDisposable
 		return NextLockOffset() + (numVertices * VertexSize) <= BufferSize;
 	}
 
-	unsafe static nint dummyData = (nint)NativeMemory.AlignedAlloc(512, 16);
+	static nint dummyData = (nint)NativeMemory.AlignedAlloc(512, 16);
 
-	public static unsafe void ComputeVertexDescription(byte* vertexMemory, VertexFormat vertexFormat, ref VertexDesc desc) {
+	public static void ComputeVertexDescription(byte* vertexMemory, VertexFormat vertexFormat, ref VertexDesc desc) {
 		desc.NumBoneWeights = vertexFormat.GetBoneWeightsSize();
 		fixed (VertexDesc* descPtr = &desc) {
 			nint offset = 0;

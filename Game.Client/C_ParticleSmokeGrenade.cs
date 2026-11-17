@@ -15,7 +15,7 @@ public partial class C_ParticleSmokeGrenade : C_BaseParticleEntity
 	];
 
 	[NetworkVar("m_flSpawnTime")]
-	public float SpawnTime;
+	public new float SpawnTime;
 	[NetworkVar("m_FadeStartTime")]
 	public float FadeStartTime;
 	[NetworkVar("m_FadeEndTime")]

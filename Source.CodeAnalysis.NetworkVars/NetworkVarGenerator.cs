@@ -134,8 +134,22 @@ namespace Source.CodeAnalysis.NetworkVars
 					.Where(m => m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword) || m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.ProtectedKeyword) || m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.InternalKeyword) || m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PrivateKeyword) || m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NewKeyword))
 					.Select(m => m.Text)),
 				RefReadonly = prop.ReturnsByRefReadonly,
-				BaseHasFields = BaseHasNetworkVarFields(containingType.BaseType)
+				BaseHasFields = BaseHasNetworkVarFields(containingType.BaseType),
+				ForModifyHidesBase = BaseHasForModify(containingType.BaseType, prop.Name)
 			};
+		}
+
+		private static bool BaseHasForModify(INamedTypeSymbol? type, string name) {
+			string forModify = name + "ForModify";
+			for (INamedTypeSymbol? t = type; t != null; t = t.BaseType) {
+				if (t.GetMembers(forModify).Length > 0)
+					return true;
+				foreach (IPropertySymbol property in t.GetMembers(name).OfType<IPropertySymbol>()) {
+					if (property.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == AttributeMetadataName))
+						return true;
+				}
+			}
+			return false;
 		}
 
 		private static bool BaseHasNetworkVarFields(INamedTypeSymbol? type) {
@@ -215,12 +229,13 @@ namespace Source.CodeAnalysis.NetworkVars
 
 				sb.Append(indent).Append("private ").Append(t).Append(' ').Append(backing).AppendLine(";");
 				string accessibility = p.Accessibility.Length == 0 ? "" : p.Accessibility + " ";
+				string forModify = p.ForModifyHidesBase ? "public new ref " : "public ref ";
 				if (p.RefReadonly) {
 					sb.Append(indent).Append(accessibility).Append("partial ref readonly ").Append(t).Append(' ').Append(name).Append(" { get => ref ").Append(backing).AppendLine("; }");
 					if (p.IsClient)
-						sb.Append(indent).Append("public ref ").Append(t).Append(' ').Append(name).Append("ForModify() => ref ").Append(backing).AppendLine(";");
+						sb.Append(indent).Append(forModify).Append(t).Append(' ').Append(name).Append("ForModify() => ref ").Append(backing).AppendLine(";");
 					else {
-						sb.Append(indent).Append("public ref ").Append(t).Append(' ').Append(name).AppendLine("ForModify() {");
+						sb.Append(indent).Append(forModify).Append(t).Append(' ').Append(name).AppendLine("ForModify() {");
 						sb.Append(indent).Append("\tNetworkStateChanged(NetworkVarFields.").Append(name).AppendLine(");");
 						sb.Append(indent).Append("\treturn ref ").Append(backing).AppendLine(";");
 						sb.Append(indent).AppendLine("}");
@@ -233,7 +248,7 @@ namespace Source.CodeAnalysis.NetworkVars
 				if (p.IsClient) {
 					sb.Append(indent).Append("\tset => ").Append(backing).AppendLine(" = value;");
 					sb.Append(indent).AppendLine("}");
-					sb.Append(indent).Append("public ref ").Append(t).Append(' ').Append(name).Append("ForModify() => ref ").Append(backing).AppendLine(";");
+					sb.Append(indent).Append(forModify).Append(t).Append(' ').Append(name).Append("ForModify() => ref ").Append(backing).AppendLine(";");
 					sb.AppendLine();
 					continue;
 				}
@@ -250,7 +265,7 @@ namespace Source.CodeAnalysis.NetworkVars
 				sb.Append(indent).AppendLine("\t\t}");
 				sb.Append(indent).AppendLine("\t}");
 				sb.Append(indent).AppendLine("}");
-				sb.Append(indent).Append("public ref ").Append(t).Append(' ').Append(name).AppendLine("ForModify() {");
+				sb.Append(indent).Append(forModify).Append(t).Append(' ').Append(name).AppendLine("ForModify() {");
 				sb.Append(indent).Append("\tNetworkStateChanged(NetworkVarFields.").Append(name).AppendLine(");");
 				sb.Append(indent).Append("\treturn ref ").Append(backing).AppendLine(";");
 				sb.Append(indent).AppendLine("}");
@@ -325,6 +340,7 @@ namespace Source.CodeAnalysis.NetworkVars
 			public string Accessibility { get; set; } = "";
 			public bool RefReadonly { get; set; }
 			public bool BaseHasFields { get; set; }
+			public bool ForModifyHidesBase { get; set; }
 			public Location Location { get; }
 		}
 	}

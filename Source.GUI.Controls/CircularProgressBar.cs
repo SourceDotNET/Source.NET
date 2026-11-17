@@ -18,7 +18,7 @@ class CircularProgressBar : ProgressBar
 		CounterClockwise
 	}
 
-	int ProgressDirection;
+	new int ProgressDirection;
 	int StartSegment;
 	bool ReverseProgress;
 

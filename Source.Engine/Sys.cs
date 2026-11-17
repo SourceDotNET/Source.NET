@@ -136,7 +136,7 @@ public class Sys(Host host, ICommandLine CommandLine)
 
 		Span<char> buffer = stackalloc char[256];
 		int bufferIdx = 0;
-		unsafe void writeTxt(ReadOnlySpan<char> sub, in Color color) {
+		void writeTxt(ReadOnlySpan<char> sub, in Color color) {
 #if DBGFLAG_WRITE_TO_STDOUT
 			Console.Write(sub.Pastel(color));
 #endif

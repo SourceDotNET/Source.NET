@@ -4,6 +4,7 @@ using static Game.Server.NavMesh.NavColors;
 namespace Game.Server.NavMesh;
 
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 using Game.Server.NextBot;
@@ -668,7 +669,7 @@ public partial class NavArea : NavAreaCriticalData
 		}
 	}
 
-	public bool SplitEdit(bool splitAlongX, float splitEdge, out NavArea? outAlpha, out NavArea? outBeta) {
+	public bool SplitEdit(bool splitAlongX, float splitEdge, [NotNullWhen(true)] out NavArea? outAlpha, [NotNullWhen(true)] out NavArea? outBeta) {
 		outAlpha = null;
 		outBeta = null;
 

@@ -206,7 +206,7 @@ public record struct Matrix3x4
 			return new(Unsafe.AsPointer(ref Unsafe.Add(ref M00, (row * 4))), 4);
 		}
 	}
-	public unsafe float this[int row, int col] {
+	public float this[int row, int col] {
 		get {
 			if (row < 0 || row >= 3) throw new ArgumentOutOfRangeException(nameof(row));
 			if (col < 0 || col >= 4) throw new ArgumentOutOfRangeException(nameof(col));
@@ -988,16 +988,16 @@ public static class MathLib
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static unsafe uint SubInt(in fltx4 a, int idx) {
+	public static uint SubInt(in fltx4 a, int idx) {
 		return a.AsUInt32().GetElement(idx);
 	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static unsafe uint SubInt(in Vector3 a, int idx) {
+	public static uint SubInt(in Vector3 a, int idx) {
 		float val = a[idx];
 		return Unsafe.As<float, uint>(ref val);
 	}
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static unsafe uint SubInt(in Vector4 a, int idx) {
+	public static uint SubInt(in Vector4 a, int idx) {
 		float val = a[idx];
 		return Unsafe.As<float, uint>(ref val);
 	}
@@ -4141,6 +4141,6 @@ public static class VectorFieldExts
 	public static Span<float> Base(this ref QAngle a) => MemoryMarshal.CreateSpan(ref Unsafe.As<QAngle, float>(ref a), 3);
 
 
-	public static unsafe ReadOnlySpan<float> ReadOnlyBase(this in Vector3 v) => MemoryMarshal.CreateReadOnlySpan(ref Unsafe.As<Vector3, float>(ref Unsafe.AsRef<Vector3>(in v)), 3);
-	public static unsafe ReadOnlySpan<float> ReadOnlyBase(this in QAngle a) => MemoryMarshal.CreateReadOnlySpan(ref Unsafe.As<QAngle, float>(ref Unsafe.AsRef<QAngle>(in a)), 3);
+	public static ReadOnlySpan<float> ReadOnlyBase(this in Vector3 v) => MemoryMarshal.CreateReadOnlySpan(ref Unsafe.As<Vector3, float>(ref Unsafe.AsRef<Vector3>(in v)), 3);
+	public static ReadOnlySpan<float> ReadOnlyBase(this in QAngle a) => MemoryMarshal.CreateReadOnlySpan(ref Unsafe.As<QAngle, float>(ref Unsafe.AsRef<QAngle>(in a)), 3);
 }

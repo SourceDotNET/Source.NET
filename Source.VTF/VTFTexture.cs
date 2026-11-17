@@ -980,7 +980,7 @@ public sealed class VTFTexture : IVTFTexture
 	}
 
 	private static readonly sbyte[] VTF0 = [86, 84, 70, 0]; // VTF\0
-	private unsafe bool ReadHeader(Stream stream, out VTFFileHeader header) {
+	private bool ReadHeader(Stream stream, out VTFFileHeader header) {
 		using BinaryReader reader = new(stream, Encoding.ASCII, true);
 		header = new();
 

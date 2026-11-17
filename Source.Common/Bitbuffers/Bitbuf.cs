@@ -5,7 +5,7 @@ namespace Source.Common.Bitbuffers;
 
 using int_ptr = nint;
 
-public abstract unsafe class BitHelpers
+public abstract class BitHelpers
 {
 	private static readonly uint[] bitStringEndMasks = new uint[]
 	{

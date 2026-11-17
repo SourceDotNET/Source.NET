@@ -835,7 +835,7 @@ public partial class NavMesh
 			AvoidanceObstacles.Add(obstruction);
 	}
 
-	void UnregisterAvoidanceObstacle(INavAvoidanceObstacle obstruction) => AvoidanceObstacles.Remove(obstruction);
+	public void UnregisterAvoidanceObstacle(INavAvoidanceObstacle obstruction) => AvoidanceObstacles.Remove(obstruction);
 
 	public List<INavAvoidanceObstacle> GetObstructions() => AvoidanceObstacles;
 

@@ -67,7 +67,7 @@ public class HTML : Panel
 
 		internal void GetText(Span<char> txt) => FindBar.GetText(txt);
 
-		internal void SetText(ReadOnlySpan<char> v) => FindBar.SetText(v);
+		internal new void SetText(ReadOnlySpan<char> v) => FindBar.SetText(v);
 
 		internal void HideCountLabel() => FindCountLabel.SetVisible(false);
 
@@ -179,7 +179,7 @@ public class HTML : Panel
 	BrowserCallback<HTML_JSAlert_t> JSAlert;
 	BrowserCallback<HTML_JSConfirm_t> JSConfirm;
 	BrowserCallback<HTML_CanGoBackAndForward_t> CanGoBackForward;
-	BrowserCallback<HTML_SetCursor_t> SetCursor;
+	new BrowserCallback<HTML_SetCursor_t> SetCursor;
 	BrowserCallback<HTML_StatusText_t> StatusText;
 	BrowserCallback<HTML_ShowToolTip_t> ShowTooltip;
 	BrowserCallback<HTML_UpdateToolTip_t> UpdateTooltip;

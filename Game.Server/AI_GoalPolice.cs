@@ -109,7 +109,7 @@ public class AI_PoliceGoal : BaseEntity
 	public void InputDisableKnockOut(InputData data) => OverrideKnockOut = false;
 
 	public float Radius;
-	public EHANDLE Target = new();
+	public new EHANDLE Target = new();
 	public string? TargetName;
 	public bool OverrideKnockOut;
 

@@ -1007,7 +1007,7 @@ public partial class C_BaseEntity : IClientEntity
 
 
 
-	public int GetTeamNumber() => TeamNum;
+	public virtual int GetTeamNumber() => TeamNum;
 
 	public ref readonly Vector3 WorldAlignMins() {
 		Assert(!CollisionProp().IsBoundsDefinedInEntitySpace());

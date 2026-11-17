@@ -1576,8 +1576,9 @@ public class BrushBatchRender
 	}
 
 	public void ClearRenderHandles() {
+		Span<char> brushModel = stackalloc char[5];
 		for (int brush = 1; brush < host_state.WorldBrush!.NumSubModels; ++brush) {
-			Span<char> brushModel = stackalloc char[5];
+			brushModel.Clear();
 			sprintf(brushModel, $"*{brush}");
 			Model? model = modelloader.GetModelForName(brushModel.SliceNullTerminatedString(), ModelLoaderFlags.Server);
 			model?.Brush.RenderHandle = 0;
@@ -2121,29 +2122,25 @@ public class EngineBSPTree : ISpatialQuery
 		if (host_state.WorldModel == null)
 			return false;
 
-		unsafe {
-			EnumLeafBoxInfo<T> info = default;
-			info.BoxCenter = (mins + maxs) * 0.5f;
-			info.BoxHalfDiagonal = maxs - info.BoxCenter;
-			info.Iterator = ref pEnum;
-			info.Context = context;
-			info.BoxMax = maxs;
-			info.BoxMin = mins;
-			return EnumerateLeafInBox_R(host_state.WorldBrush!.Nodes![0], ref info);
-		}
+		scoped EnumLeafBoxInfo<T> info = default;
+		info.BoxCenter = (mins + maxs) * 0.5f;
+		info.BoxHalfDiagonal = maxs - info.BoxCenter;
+		info.Iterator = ref pEnum;
+		info.Context = context;
+		info.BoxMax = maxs;
+		info.BoxMin = mins;
+		return EnumerateLeafInBox_R(host_state.WorldBrush!.Nodes![0], ref info);
 	}
 
 	public bool EnumerateLeavesInSphere<T>(in Vector3 center, float radius, ref T pEnum, nint context) where T : ISpatialLeafEnumerator {
-		EnumLeafSphereInfo<T> info = default;
-		unsafe {
-			info.Center = center;
-			info.Radius = radius;
-			info.Iterator = ref pEnum;
-			info.Context = context;
-			info.BoxCenter = center;
-			info.BoxHalfDiagonal = new(radius, radius, radius);
-			return EnumerateLeafInSphere_R(host_state.WorldBrush!.Nodes![0], ref info, ENUM_SPHERE_TEST_ALL);
-		}
+		scoped EnumLeafSphereInfo<T> info = default;
+		info.Center = center;
+		info.Radius = radius;
+		info.Iterator = ref pEnum;
+		info.Context = context;
+		info.BoxCenter = center;
+		info.BoxHalfDiagonal = new(radius, radius, radius);
+		return EnumerateLeafInSphere_R(host_state.WorldBrush!.Nodes![0], ref info, ENUM_SPHERE_TEST_ALL);
 	}
 
 	public bool EnumerateLeavesAlongRay<T>(in Ray ray, ref T pEnum, nint context) where T : ISpatialLeafEnumerator {

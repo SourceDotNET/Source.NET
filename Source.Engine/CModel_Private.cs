@@ -388,7 +388,7 @@ public static partial class CM
 		return traceInfo;
 	}
 
-	internal static unsafe int BoxLeafnums(ref LeafNums context, in Vector3 center, in Vector3 extents, int nodenum) {
+	internal static int BoxLeafnums(ref LeafNums context, in Vector3 center, in Vector3 extents, int nodenum) {
 		int leafCount = 0;
 		const int NODELIST_MAX = 1024;
 		Span<int> nodeList = stackalloc int[NODELIST_MAX];
@@ -455,7 +455,7 @@ public static partial class CM
 		return MathLib.IsAllZeros(sep3);
 	}
 
-	internal static unsafe void TestBoxInBrush(TraceInfo traceInfo, in CollisionBrush brush) {
+	internal static void TestBoxInBrush(TraceInfo traceInfo, in CollisionBrush brush) {
 		if (brush.IsBox()) {
 			ref CollisionBoxBrush box = ref traceInfo.BSPData!.MapBoxBrushes.AsSpan()[brush.GetBox()];
 			if (!IsTraceBoxIntersectingBoxBrush(traceInfo, ref box))
@@ -511,7 +511,7 @@ public static partial class CM
 		trace.FractionLeftSolid = 1.0f;
 		trace.Contents = brush.Contents;
 	}
-	internal static unsafe void TestInLeaf(TraceInfo traceInfo, int ndxLeaf) {
+	internal static void TestInLeaf(TraceInfo traceInfo, int ndxLeaf) {
 		ref CollisionLeaf leaf = ref traceInfo.BSPData.MapLeafs.AsSpan()[ndxLeaf];
 
 		// trace ray/box sweep against all brushes in this leaf
@@ -706,11 +706,11 @@ public static partial class CM
 		}
 	}
 
-	internal static unsafe void UnsweptBoxTrace(TraceInfo traceInfo, in Ray ray, int headnode, Mask brushmask) {
+	internal static void UnsweptBoxTrace(TraceInfo traceInfo, in Ray ray, int headnode, Mask brushmask) {
 		Span<int> leafs = stackalloc int[1024];
 		int i, numleafs;
 
-		LeafNums context;
+		scoped LeafNums context;
 		context.LeafList = leafs;
 		context.LeafTopNode = -1;
 		context.LeafMaxCount = leafs.Length;

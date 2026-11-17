@@ -280,7 +280,7 @@ public class SplitPacketEntry
 	public double LastActiveTime;
 }
 
-public unsafe class NetScratchBuffer
+public class NetScratchBuffer
 {
 	public readonly byte[] Data = ArrayPool<byte>.Shared.Rent(MAX_MESSAGE);
 	public int Length => Data.Length;
@@ -322,7 +322,7 @@ public abstract class NetMessage : INetMessage
 	}
 }
 
-public unsafe class NetPacket
+public class NetPacket
 {
 	public NetAddress From;
 	public byte[]? Data;

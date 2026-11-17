@@ -132,7 +132,7 @@ public partial class Host
 		soundServices.SetSoundFrametime(dt, FrameTime);
 	}
 
-	int gHostSpawnCount;
+	internal int gHostSpawnCount;
 
 	public int GetServerCount() {
 		if (cl.SignOnState >= SignOnState.New)
@@ -919,7 +919,7 @@ public partial class Host
 	void pause(in TokenizedCommand args, CommandSource source, int clientSlot) {
 #if !SWDS
 		if (!sv.IsDedicated()) {
-			if (cl.LevelFileName == null || cl.LevelFileName.Length == 0)
+			if (cl.LevelFileName.IsEmpty)
 				return;
 		}
 #endif
@@ -940,7 +940,7 @@ public partial class Host
 	[ConCommand("setpause", "Set the pause state of the server.")]
 	void setpause(in TokenizedCommand args, CommandSource source, int clientSlot) {
 #if !SWDS
-		if (cl.LevelFileName == null || cl.LevelFileName.Length == 0)
+		if (cl.LevelFileName.IsEmpty)
 			return;
 #endif
 
@@ -955,7 +955,7 @@ public partial class Host
 	[ConCommand("unpause", "Unpause the game.")]
 	void unpause(in TokenizedCommand args, CommandSource source, int clientSlot) {
 #if !SWDS
-		if (cl.LevelFileName == null || cl.LevelFileName.Length == 0)
+		if (cl.LevelFileName.IsEmpty)
 			return;
 #endif
 
@@ -1603,7 +1603,6 @@ public partial class Host
 	static readonly ConVar cvarNext = new("next", "0", FCvar.Cheat, "Set to 1 to advance to next frame ( when singlestep == 1 )");
 
 	int ShouldRun_CurrentTick;
-	internal int SpawnCount;
 
 	public bool ShouldRun() {
 		if (singlestep.GetInt() == 0)
@@ -1737,7 +1736,7 @@ public partial class Host
 
 	internal bool Changelevel(bool loadfromsavedgame, ReadOnlySpan<char> mapname, ReadOnlySpan<char> start) {
 		Span<char> _startspot = stackalloc char[MAX_PATH];
-		Span<char> startspot;
+		scoped Span<char> startspot;
 		Span<char> oldlevel = stackalloc char[MAX_PATH];
 #if !SWDS
 		// SaveRestoreData? saveData = null;
@@ -1804,9 +1803,7 @@ public partial class Host
 			startspot = null;
 		else {
 			strcpy(_startspot, start);
-			unsafe {
-				startspot = _startspot;
-			}
+			startspot = _startspot;
 		}
 
 		Warning("---- Host_Changelevel ----\n");

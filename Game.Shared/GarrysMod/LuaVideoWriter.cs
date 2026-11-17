@@ -70,7 +70,9 @@ public static partial class LuaVideoWriter
 		}
 
 		writer.RecordSound = lua.GetBool(2);
+#pragma warning disable SRCLUA004
 		return 1;
+#pragma warning restore SRCLUA004
 	}
 }
 #endif

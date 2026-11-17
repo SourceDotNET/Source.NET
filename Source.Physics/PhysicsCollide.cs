@@ -12,7 +12,7 @@ using System.Runtime.InteropServices;
 
 namespace Source.Physics;
 
-internal sealed unsafe class BoxPhysConvex : PhysConvex
+internal sealed class BoxPhysConvex : PhysConvex
 {
 	public HullData Hull;
 	public HullData SimHull;
@@ -120,7 +120,7 @@ internal sealed unsafe class BoxPhysConvex : PhysConvex
 	}
 }
 
-internal sealed unsafe class BoxPhysCollide : PhysCollide
+internal sealed class BoxPhysCollide : PhysCollide
 {
 	public readonly List<BoxPhysConvex> Convexes = [];
 	public MeshData Mesh;
