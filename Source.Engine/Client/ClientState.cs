@@ -314,7 +314,7 @@ IModelLoader modelloader, ICommandLine commandLine,
 	public override void SetServerTickCount(int tick) => ClockDriftMgr.ServerTick = tick;
 	public override void ConnectionClosing(ReadOnlySpan<char> reason) {
 		if (SignOnState > SignOnState.None) {
-			if (reason != null && reason.Length > 0 && reason[0] == '#')
+			if (!reason.IsEmpty && reason[0] == '#')
 				Common.ExplainDisconnection(true, reason);
 			else
 				Common.ExplainDisconnection(true, $"Disconnect: {reason}.\n");

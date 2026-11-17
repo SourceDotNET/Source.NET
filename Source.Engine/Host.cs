@@ -919,7 +919,7 @@ public partial class Host
 	void pause(in TokenizedCommand args, CommandSource source, int clientSlot) {
 #if !SWDS
 		if (!sv.IsDedicated()) {
-			if (cl.LevelFileName == null || cl.LevelFileName.Length == 0)
+			if (cl.LevelFileName.IsEmpty)
 				return;
 		}
 #endif
@@ -940,7 +940,7 @@ public partial class Host
 	[ConCommand("setpause", "Set the pause state of the server.")]
 	void setpause(in TokenizedCommand args, CommandSource source, int clientSlot) {
 #if !SWDS
-		if (cl.LevelFileName == null || cl.LevelFileName.Length == 0)
+		if (cl.LevelFileName.IsEmpty)
 			return;
 #endif
 
@@ -955,7 +955,7 @@ public partial class Host
 	[ConCommand("unpause", "Unpause the game.")]
 	void unpause(in TokenizedCommand args, CommandSource source, int clientSlot) {
 #if !SWDS
-		if (cl.LevelFileName == null || cl.LevelFileName.Length == 0)
+		if (cl.LevelFileName.IsEmpty)
 			return;
 #endif
 
