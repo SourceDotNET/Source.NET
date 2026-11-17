@@ -1019,7 +1019,6 @@ public partial class BaseEntity : IServerEntity
 	}
 
 	EHANDLE Parent;
-	public float Gravity;
 	public void SetPredictionEligible(bool canpredict) { } // nothing in game code
 	public ref readonly Vector3 GetLocalOrigin() => ref __nv_Origin;
 	public ref readonly QAngle GetLocalAngles() => ref __nv_Rotation;
@@ -2020,6 +2019,8 @@ public partial class BaseEntity : IServerEntity
 	public partial Vector3 ViewOffset { get; set; }
 	[NetworkVar("m_flFriction")]
 	public partial float Friction { get; set; }
+	[NetworkVar("m_flGravity")]
+	public partial float Gravity { get; set; }
 
 	public byte OldRenderMode;
 	public Vector3 AbsOrigin;

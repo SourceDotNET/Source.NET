@@ -95,8 +95,6 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 	public EHANDLE Hands = new();
 	[NetworkVar("m_iMaxArmor")]
 	public int MaxArmor;
-	[NetworkVar("m_flGravity")]
-	public new float Gravity;
 	[NetworkVar("m_bSprintEnabled")]
 	public bool SprintEnabled;
 
