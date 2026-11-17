@@ -92,8 +92,10 @@ class HudWeaponSelection : BaseHudWeaponSelection, IHudElement
 #endif
 
 	public override void OnWeaponPickup(BaseCombatWeapon weapon) {
+#if !GMOD_DLL
 		HudHistoryResource? hr = gHUD.FindElement("CHudHistoryResource") as HudHistoryResource;
 		hr?.AddToHistory(weapon);
+#endif
 	}
 
 	public override void OnThink() {
