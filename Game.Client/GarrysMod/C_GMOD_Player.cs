@@ -96,7 +96,7 @@ public partial class C_GMOD_Player() : C_HL2MP_Player()
 	[NetworkVar("m_iMaxArmor")]
 	public int MaxArmor;
 	[NetworkVar("m_flGravity")]
-	public float Gravity;
+	public new float Gravity;
 	[NetworkVar("m_bSprintEnabled")]
 	public bool SprintEnabled;
 

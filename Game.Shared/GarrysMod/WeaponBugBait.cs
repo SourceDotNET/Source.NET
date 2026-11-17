@@ -37,7 +37,7 @@ public partial class WeaponBugBait : BaseHL2MPCombatWeapon
 	];
 
 	[NetworkVar("m_bRedraw")]
-	public partial bool Redraw { get; set; }
+	public new partial bool Redraw { get; set; }
 	[NetworkVar("m_bDrawBackFinished")]
 	public partial bool DrawbackFinished { get; set; }
 }

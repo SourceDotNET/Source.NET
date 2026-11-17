@@ -39,7 +39,7 @@ public partial class WeaponFrag : BaseHL2MPCombatWeapon
 	];
 
 	[NetworkVar("m_bRedraw")]
-	public partial bool Redraw { get; set; }
+	public new partial bool Redraw { get; set; }
 	[NetworkVar("m_fDrawbackFinished")]
 	public partial bool DrawbackFinished { get; set; }
 	[NetworkVar("m_AttackPaused")]

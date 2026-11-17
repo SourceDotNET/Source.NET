@@ -179,7 +179,7 @@ public class HTML : Panel
 	BrowserCallback<HTML_JSAlert_t> JSAlert;
 	BrowserCallback<HTML_JSConfirm_t> JSConfirm;
 	BrowserCallback<HTML_CanGoBackAndForward_t> CanGoBackForward;
-	BrowserCallback<HTML_SetCursor_t> SetCursor;
+	new BrowserCallback<HTML_SetCursor_t> SetCursor;
 	BrowserCallback<HTML_StatusText_t> StatusText;
 	BrowserCallback<HTML_ShowToolTip_t> ShowTooltip;
 	BrowserCallback<HTML_UpdateToolTip_t> UpdateTooltip;

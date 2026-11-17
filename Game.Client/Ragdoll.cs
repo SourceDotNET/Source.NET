@@ -208,9 +208,10 @@ public static class ClientRagdollGlobals
 		ClientRagdoll ragdoll = new();
 		ragdoll.Init(ent, studiohdr, forceVector, forceBone, deltaBones0, deltaBones1, currentBonePosition, dt, fixedConstraints);
 
-		if (!ragdoll.IsValid())
+		if (!ragdoll.IsValid()) {
 			Msg($"Bad ragdoll for {studiohdr.Name()}");
-		return null;
+			return null;
+		}
 
 		return ragdoll;
 	}

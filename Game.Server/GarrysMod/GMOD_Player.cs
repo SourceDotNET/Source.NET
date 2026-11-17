@@ -302,7 +302,7 @@ public partial class GMOD_Player : HL2MP_Player
 	[NetworkVar("m_iMaxArmor")]
 	public partial int MaxArmor { get; set; }
 	[NetworkVar("m_flGravity")]
-	public partial float Gravity { get; set; }
+	public new partial float Gravity { get; set; }
 	[NetworkVar("m_bSprintEnabled")]
 	public partial bool SprintEnabled { get; set; }
 
