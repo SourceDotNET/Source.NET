@@ -45,7 +45,7 @@ public class HudBattery : HudNumericDisplay, IHudElement
 		Reset();
 	}
 
-	public void Reset() {
+	public override void Reset() {
 		ReadOnlySpan<char> tempString = Localize.Find("#Valve_Hud_SUIT");
 
 		if (!tempString.IsEmpty)

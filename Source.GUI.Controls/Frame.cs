@@ -542,7 +542,7 @@ public class Frame : EditablePanel
 		Surface.SetMinimized(this, false);
 	}
 
-	public virtual void DoModal() {
+	public override void DoModal() {
 		MoveToCenterOfScreen();
 		InvalidateLayout();
 		Activate();

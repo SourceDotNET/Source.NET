@@ -67,7 +67,7 @@ public class HTML : Panel
 
 		internal void GetText(Span<char> txt) => FindBar.GetText(txt);
 
-		internal void SetText(ReadOnlySpan<char> v) => FindBar.SetText(v);
+		internal new void SetText(ReadOnlySpan<char> v) => FindBar.SetText(v);
 
 		internal void HideCountLabel() => FindCountLabel.SetVisible(false);
 

@@ -36,7 +36,7 @@ public class HudSuitPower : EditableHudElement, IHudElement
 		((IHudElement)this).SetHiddenBits(HideHudBits.Health | HideHudBits.NeedSuit | HideHudBits.PlayerDead);
 	}
 
-	public void Init() {
+	public override void Init() {
 		SuitPower = SUIT_POWER_INIT;
 		SuitPowerLow = -1;
 		ActiveSuitDevices = 0;

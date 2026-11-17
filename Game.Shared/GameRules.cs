@@ -118,7 +118,7 @@ public abstract class
 		new Vector3(0, 0, 14)           //VEC_DEAD_VIEWHEIGHT (DeadViewHeight)
 	);
 
-	public virtual ReadOnlySpan<char> Name() => "GameRules";
+	public override ReadOnlySpan<char> Name() => "GameRules";
 
 	public abstract bool Damage_IsTimeBased(DamageType dmgType);       // Damage types that are time-based.
 	public abstract bool Damage_ShouldGibCorpse(DamageType dmgType);   // Damage types that gib the corpse.

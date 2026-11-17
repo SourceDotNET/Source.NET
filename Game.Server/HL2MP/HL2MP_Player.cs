@@ -606,9 +606,7 @@ public partial class HL2MP_Player : HL2_Player
 
 	void CreateRagdollEntity() { }
 
-	int FlashlightIsOn() {
-		throw new NotImplementedException();
-	}
+	public override bool FlashlightIsOn() => IsEffectActive(EntityEffects.DimLight);
 
 	void FlashlightTurnOn() { }
 
@@ -752,7 +750,7 @@ public partial class HL2MP_Player : HL2_Player
 
 	void State_PreThink_ACTIVE() { }
 
-	bool CanHearAndReadChatFrom(BasePlayer player) => player != null;
+	public override bool CanHearAndReadChatFrom(BasePlayer player) => player != null;
 }
 
 [LinkEntityToClass("hl2mp_ragdoll")]

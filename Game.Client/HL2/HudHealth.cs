@@ -36,7 +36,7 @@ public class HudHealth : HudNumericDisplay, IHudElement
 	public void VidInit() {
 		Reset();
 	}
-	public void Reset() {
+	public override void Reset() {
 		Health = -1;
 #if !GMOD_DLL
 		BitsDamage = 0;

@@ -271,7 +271,7 @@ public class TreeNode : Panel
 		ExpandableWithoutChildren = false;
 	}
 
-	public void SetText(ReadOnlySpan<char> text) => Text.SetText(text);
+	public new void SetText(ReadOnlySpan<char> text) => Text.SetText(text);
 
 	public void SetLabelEditingAllowed(bool state) {
 		Assert(TreeView.IsLabelEditingAllowed());

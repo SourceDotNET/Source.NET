@@ -323,9 +323,7 @@ public partial class HL2_Player : BaseMultiplayerPlayer
 		throw new NotImplementedException();
 	}
 
-	int FlashlightIsOn() {
-		throw new NotImplementedException();
-	}
+	public override bool FlashlightIsOn() => IsEffectActive(EntityEffects.DimLight);
 
 	void FlashlightTurnOn() { }
 

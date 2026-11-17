@@ -244,8 +244,14 @@ public class SoundEnt : PointEntity
 
 	}
 
-	public virtual void OnRestore() {
-		// todo
+	public override void OnRestore() {
+		base.OnRestore();
+
+		if (g_pSoundEnt != null) {
+			Assert(g_pSoundEnt != this);
+			Util.Remove(g_pSoundEnt);
+		}
+		g_pSoundEnt = this;
 	}
 	public override void Precache() {
 		// todo

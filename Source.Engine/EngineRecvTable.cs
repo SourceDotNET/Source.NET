@@ -267,8 +267,7 @@ public class ClientDatatableStack : DatatableStack
 		return val;
 	}
 
-	// TODO: Review why this wasn't overridden. There may have been a good reason for it, I forget. But it's giving compiler warnings.
-	private object? CallPropProxy(SendNode curChild, int prop, object instance) {
+	public override object? CallPropProxy(SendNode curChild, int prop, object instance) {
 		RecvProp recvProp = Decoder.GetDatatableProp(prop);
 
 		object? val = null;
