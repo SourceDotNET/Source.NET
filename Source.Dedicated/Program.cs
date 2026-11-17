@@ -106,11 +106,21 @@ public class DedicatedExports(IDedicatedServerAPI engine) : IDedicatedExports
 public static class TextConsole
 {
 #if WIN32
-	delegate bool ConsoleCtrlHandler(uint ctrlType);
-	static readonly ConsoleCtrlHandler ConsoleHandlerRoutine = static _ => true;
+	static PosixSignalRegistration[]? ConsoleHandlers;
 
-	[DllImport("kernel32.dll")]
-	static extern bool SetConsoleCtrlHandler(ConsoleCtrlHandler handlerRoutine, bool add);
+	static bool AttachConsoleHandler() {
+		try {
+			ConsoleHandlers = [
+				PosixSignalRegistration.Create(PosixSignal.SIGINT, static context => context.Cancel = true),
+				PosixSignalRegistration.Create(PosixSignal.SIGQUIT, static context => context.Cancel = true),
+				PosixSignalRegistration.Create(PosixSignal.SIGTERM, static context => context.Cancel = true)
+			];
+			return true;
+		}
+		catch (System.ComponentModel.Win32Exception) {
+			return false;
+		}
+	}
 #endif
 
 	public static void SetTitle(ReadOnlySpan<char> title) => Console.Title = new(title);
@@ -125,8 +135,8 @@ public static class TextConsole
 		catch (IOException) {
 		}
 #endif
-		if (!SetConsoleCtrlHandler(ConsoleHandlerRoutine, true))
-			Console.Write("WARNING! TextConsole::Init: Could not attach console hook.\n");
+		if (!AttachConsoleHandler())
+			Console.Write("WARNING! TextConsole.Init: Could not attach console hook.\n");
 #else
 		Msg("\n");
 #endif
