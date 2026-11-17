@@ -118,6 +118,7 @@ public partial class Host
 	}
 
 	const TimeUnit_t MAX_FRAMETIME = 0.1;
+	const TimeUnit_t MIN_FRAMETIME = 0.001;
 
 	void AccumulateTime(TimeUnit_t dt) {
 		RealTime += dt;
@@ -128,6 +129,11 @@ public partial class Host
 			FrameTime *= fullscale;
 			FrameTimeUnbounded = FrameTime;
 			FrameTime = Math.Min(FrameTime, MAX_FRAMETIME * fullscale);
+		}
+		else {
+			FrameTimeUnbounded = FrameTime;
+			FrameTime = Math.Min(FrameTime, MAX_FRAMETIME);
+			FrameTime = Math.Max(FrameTime, MIN_FRAMETIME);
 		}
 
 		soundServices.SetSoundFrametime(dt, FrameTime);

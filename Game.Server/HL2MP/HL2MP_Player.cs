@@ -190,7 +190,9 @@ public partial class HL2MP_Player : HL2_Player
 		NextModelChangeTime = 0;
 		NextTeamChangeTime = 0;
 
+#if !GMOD_DLL
 		PickDefaultSpawnTeam();
+#endif
 
 		base.Spawn();
 
@@ -198,11 +200,15 @@ public partial class HL2MP_Player : HL2_Player
 			pl.DeadFlag = false;
 			// RemoveSolidFlags(SolidFlags.NotSolid);
 			RemoveEffects(EntityEffects.NoDraw);
+#if !GMOD_DLL
 			GiveDefaultItems();
+#endif
 		}
 
+#if !GMOD_DLL
 		SetNumAnimOverlays(3);
 		ResetAnimation();
+#endif
 
 		RenderFX = (byte)Source.RenderMode.Normal;
 
