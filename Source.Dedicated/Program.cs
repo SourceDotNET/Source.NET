@@ -35,7 +35,7 @@ namespace Source.Dedicated;
 public class DedicatedExports(IDedicatedServerAPI engine) : IDedicatedExports
 {
 	readonly UserConsoleInput consoleUserInput = new();
-#if GMOD_DLL
+#if POSIX
 	int processCount;
 #endif
 #if WIN32
@@ -54,7 +54,7 @@ public class DedicatedExports(IDedicatedServerAPI engine) : IDedicatedExports
 		consoleUserInput.OnEnter += ConsoleUserInput_OnEnter;
 		bool done = false;
 		while (!done) {
-#if GMOD_DLL
+#if POSIX
 			if (!DoRunVGUIFrame() && ++processCount > 3) {
 				processCount = 0;
 				ProcessConsoleInput();
