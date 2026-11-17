@@ -428,7 +428,18 @@ public partial class SV(IServiceProvider services, Cbuf Cbuf, ED ED, Host Host, 
 		// gameEventManager.WriteEventList(&gameevents);
 		gameevents.WriteToBuffer(sv.Signon);
 	}
-	public bool HasPlayers() => sv.GetClientCount() > 0;
+	public bool HasPlayers() {
+#if GMOD_DLL
+		for (int i = 0; i < sv.GetClientCount(); i++) {
+			if (sv.Client(i).IsConnected())
+				return true;
+		}
+
+		return false;
+#else
+		return sv.GetClientCount() > 0;
+#endif
+	}
 
 	public bool IsSimulating() {
 		if (sv.IsPaused())
@@ -459,7 +470,11 @@ public partial class SV(IServiceProvider services, Cbuf Cbuf, ED ED, Host Host, 
 		sv.RunFrame();
 
 		bool simulated = false;
+#if GMOD_DLL
+		if (HasPlayers() || sv.sv_hibernate_think.GetBool()) {
+#else
 		if (HasPlayers()) {
+#endif
 			bool serverCanSimulate = true; // TODO: Restoring
 
 			if (serverCanSimulate && (isSimulating || sendDuringPause)) {
@@ -503,7 +518,33 @@ public partial class SV(IServiceProvider services, Cbuf Cbuf, ED ED, Host Host, 
 		ServerGameDLL?.PreClientUpdate(isSimulating);
 	}
 
+	public static readonly ConVar sv_shutdown_timeout_minutes = new("sv_shutdown_timeout_minutes", "360", FCvar.Replicated, "If sv_shutdown is pending, wait at most N minutes for server to drain before forcing shutdown.");
+	public static readonly ConVar sv_memlimit = new("sv_memlimit", "0", FCvar.Cheat, "If set, whenever the server is empty, if the total memory used by the server is greater than this # of megabytes, the server will exit.");
+
+	public bool ExitWhenEmpty;
 	public double TimeForceShutdown;
+
+	[ConCommand(helpText: "Sets the server to shutdown next time it's empty")]
+	void sv_shutdown() {
+		ExitWhenEmpty = true;
+		Warning("sv_shutdown command received.\n");
+
+		double timeCurrent = Platform.Time;
+		if (sv.IsHibernating()) {
+			Warning("Server is hibernating. Shutting down right now\n");
+			TimeForceShutdown = timeCurrent + 5.0;
+			HostState.Shutdown();
+		}
+		else {
+			if (TimeForceShutdown == 0.0 && sv_shutdown_timeout_minutes.GetInt() > 0)
+				TimeForceShutdown = timeCurrent + sv_shutdown_timeout_minutes.GetInt() * 60.0;
+
+			if (TimeForceShutdown > 0.0)
+				Warning($"Server will shut down in {(int)(TimeForceShutdown - timeCurrent)} seconds, or when it becomes empty.\n");
+			else
+				Warning("Server will shut down when it becomes empty.\n");
+		}
+	}
 
 	public static ServerClass? FindServerClass(ReadOnlySpan<char> name) {
 		ServerClass? cur = serverGameDLL.GetAllServerClasses();
@@ -531,13 +572,6 @@ public partial class SV(IServiceProvider services, Cbuf Cbuf, ED ED, Host Host, 
 
 	private void Think(bool isSimulating) {
 		sv.UpdateHibernationState();
-
-		if (TimeForceShutdown > 0.0) {
-			if (TimeForceShutdown < Platform.Time) {
-				Warning("Server shutting down because sv_shutdown was requested and timeout has expired.\n");
-				HostState.Shutdown();
-			}
-		}
 
 		serverGlobalVariables.TickCount = sv.TickCount;
 		serverGlobalVariables.CurTime = sv.GetTime();

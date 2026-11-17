@@ -5,6 +5,7 @@ using Source.Common.Engine;
 using Source.Common.Filesystem;
 using Source.Common.Formats.BSP;
 using Source.Common.Networking;
+using Source.Common.Server;
 using Source.Common.Utilities;
 
 using System.Runtime.InteropServices;
@@ -21,7 +22,7 @@ public class GameServer : BaseServer
 {
 #if GMOD_DLL
 	readonly ConVar sv_startup_time = new("sv_startup_time", "0", 0, "Sets the starting CurTime of the server (in seconds). This is used for finding issues on a server that has been running for a long time. You don't need to change this.");
-	readonly ConVar sv_hibernate_think = new("sv_hibernate_think", "0", 0, "Forces the server to think even when hibernating");
+	internal readonly ConVar sv_hibernate_think = new("sv_hibernate_think", "0", 0, "Forces the server to think even when hibernating");
 	readonly ConVar sv_hibernate_drop_bots = new("sv_hibernate_drop_bots", "1", 0, "Kicks bots when the server enters hibernation");
 #endif
 	protected readonly ED ED = Singleton<ED>();
@@ -385,7 +386,23 @@ public class GameServer : BaseServer
 
 	public bool IsHibernating() => Hibernating;
 	public void UpdateHibernationState() {
-		// todo
+		if (!IsDedicated() || State == ServerState.Dead)
+			return;
+
+		bool haveAnyClients = false;
+
+		for (int i = 0; i < Clients.Count; i++) {
+			BaseClient client = Clients[i];
+			if (client.IsConnected() && (client.IsSplitScreenUser() || !client.IsFakeClient())) {
+				haveAnyClients = true;
+				break;
+			}
+		}
+
+		IServerGCLobby? lobby = serverGameDLL.GetServerGCLobby();
+		bool hibernateFromGCServer = lobby == null || lobby.ShouldHibernate();
+
+		SetHibernating(hibernateFromGCServer && !haveAnyClients);
 	}
 
 
@@ -397,7 +414,52 @@ public class GameServer : BaseServer
 	public GameClient Client(int i) => (GameClient)Clients[i];
 
 	private void SetHibernating(bool hibernating) {
-		// todo
+		if (Hibernating == hibernating)
+			return;
+
+		Hibernating = hibernating;
+
+		if (Hibernating) {
+#if GMOD_DLL
+			if (sv_hibernate_drop_bots.GetBool())
+#endif
+			{
+				for (int i = 0; i < Clients.Count; i++) {
+					BaseClient client = Clients[i];
+					if (client.IsFakeClient() && client.IsConnected() && !client.IsSplitScreenUser() && !client.IsHLTV())
+						client.Disconnect("Punting bot, server is hibernating");
+				}
+			}
+
+			SetPaused(false);
+
+			bool exit = false;
+			if (SV.ExitWhenEmpty) {
+				exit = true;
+				Warning("Server shutting down because sv_shutdown was requested and a server is empty.\n");
+			}
+			else if (SV.TimeForceShutdown > 0.0 && Platform.Time > SV.TimeForceShutdown) {
+				exit = true;
+				Warning("Server shutting down because sv_shutdown was requested and timeout has expired.\n");
+			}
+			else {
+				int memlimit = SV.sv_memlimit.GetInt();
+				if (memlimit != 0) {
+					ulong usage = Platform.ApproximateProcessMemoryUsage();
+					if (usage > (ulong)memlimit << 20) {
+						Warning($"Server shutting down because of using {usage >> 20}MB with an sv_memory_limit of {memlimit}MB\n");
+						exit = true;
+					}
+				}
+			}
+
+			if (exit)
+				Singleton<IHostState>().Shutdown();
+		}
+
+		serverGameDLL.SetServerHibernation(Hibernating);
+
+		Steam3Server().SendUpdatedServerDetails();
 	}
 
 	internal void InitMaxClients() {

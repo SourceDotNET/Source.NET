@@ -102,6 +102,8 @@ public interface IServerGameDLL
 
 	void SetServerHibernation(bool bHibernating);
 
+	IServerGCLobby? GetServerGCLobby();
+
 	// Return override string to show in the server browser
 	// "map" column, or NULL to just use the default value
 	// (the map name)
@@ -161,4 +163,12 @@ public interface IServerGameClients
 	void GMOD_ReceiveClientMessage(int userID, Edict player, bf_read msg, int bits);
 	void GMOD_ClientConnected(int userID);
 	void GMOD_SentClientStringTables(int userID);
+}
+
+public interface IServerGCLobby
+{
+	bool HasLobby();
+	bool SteamIDAllowedToConnect(in CSteamID steamId);
+	void UpdateServerDetails();
+	bool ShouldHibernate();
 }
