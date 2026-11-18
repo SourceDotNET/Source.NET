@@ -270,6 +270,7 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	public static readonly new DataMap DataDesc = new(typeof(BasePlayer), BaseCombatCharacter.DataDesc, [
 		DEFINE<BasePlayer>.INPUTFUNC(FieldType.Integer, "SetHealth", nameof(InputSetHealth), (INPUTFUNCPTR)((self, data) => ((BasePlayer)self).InputSetHealth(data))),
+		DEFINE<BasePlayer>.INPUTFUNC(FieldType.String, "SetFogController", nameof(InputSetFogController), (INPUTFUNCPTR)((self, data) => ((BasePlayer)self).InputSetFogController(data))),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
@@ -293,6 +294,18 @@ public partial class BasePlayer : BaseCombatCharacter
 			TakeDamage(new TakeDamageInfo(this, this, delta, DamageType.Generic));
 			ArmorValue = armor;
 		}
+	}
+
+	// Set the fog controller data per player.
+	public void InputSetFogController(InputData inputdata) {
+		// Find the fog controller with the given name.
+		if (gEntList.FindEntityByName(null, inputdata.Value.String()) is FogController fogController)
+			Local.PlayerFogForModify().Ctrl.Set(fogController);
+	}
+
+	public void InitFogController() {
+		// Setup with the default master controller.
+		Local.PlayerFogForModify().Ctrl.Set(FogSystem.s_FogSystem.GetMasterFogController());
 	}
 
 	static InlineArray1024<char> InfoBuffer;
@@ -1112,7 +1125,7 @@ public partial class BasePlayer : BaseCombatCharacter
 
 		IncrementInterpolationFrame();
 
-		// InitFogController();
+		InitFogController();
 
 		DmgTake = 0;
 		DmgSave = 0;

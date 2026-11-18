@@ -333,6 +333,7 @@ public class ServerGameDLL(IFileSystem filesystem, ICommandLine CommandLine) : I
 		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(LagCompensationGlobals).TypeHandle);
 		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(Templates).TypeHandle);
 		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(PointTemplatePrecacher).TypeHandle);
+		System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(FogSystem).TypeHandle);
 
 #if GMOD_DLL
 		if (CommandLine.FindParm("-noaddons") == 0)
