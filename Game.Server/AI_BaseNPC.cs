@@ -6606,7 +6606,216 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 	}
 
-	public virtual void GatherAttackConditions(BaseEntity target, float dist) => throw new NotImplementedException();
+	public virtual void GatherAttackConditions(BaseEntity target, float dist) {
+		Vector3 vecLOS = target.GetAbsOrigin() - GetAbsOrigin();
+		vecLOS.Z = 0;
+		vecLOS = Vector3.Normalize(vecLOS);
+
+		Vector3 bodyDir = BodyDirection2D();
+		float dot = Vector3.Dot(vecLOS, bodyDir);
+
+		Capability capability = CapabilitiesGet();
+
+		ClearAttackConditions();
+		Vector3 targetPos = target.EyePosition();
+		bool weaponHasLOS = CurrentWeaponLOSCondition(targetPos, true);
+
+		if (!weaponHasLOS) {
+			ClearAttackConditions();
+			targetPos = target.BodyTarget(GetAbsOrigin(), true);
+			weaponHasLOS = CurrentWeaponLOSCondition(targetPos, true);
+		}
+		else
+			SetCondition((int)SCOND_t.COND_WEAPON_HAS_LOS);
+
+		BaseCombatWeapon? weapon = GetActiveWeapon();
+		bool weaponIsReady = weapon != null && !IsWeaponStateChanging();
+		int condition;
+
+		if ((capability & Capability.WeaponRangeAttack1) != 0 && weaponIsReady) {
+			condition = (int)weapon!.WeaponRangeAttack1Condition(dot, dist);
+
+			if (condition == (int)SCOND_t.COND_NOT_FACING_ATTACK && FInAimCone(targetPos))
+				DevMsg("Warning: COND_NOT_FACING_ATTACK set but FInAimCone is true\n");
+
+			if (condition != (int)SCOND_t.COND_CAN_RANGE_ATTACK1 || weaponHasLOS)
+				SetCondition(condition);
+		}
+		else if ((capability & Capability.InnateRangeAttack1) != 0) {
+			condition = RangeAttack1Conditions(dot, dist);
+			if (condition != (int)SCOND_t.COND_CAN_RANGE_ATTACK1 || weaponHasLOS)
+				SetCondition(condition);
+		}
+
+		if ((capability & Capability.WeaponRangeAttack2) != 0 && weaponIsReady && (weapon!.CapabilitiesGet() & Capability.WeaponRangeAttack2) != 0) {
+			condition = (int)weapon.WeaponRangeAttack2Condition(dot, dist);
+			if (condition != (int)SCOND_t.COND_CAN_RANGE_ATTACK2 || weaponHasLOS)
+				SetCondition(condition);
+		}
+		else if ((capability & Capability.InnateRangeAttack2) != 0) {
+			condition = RangeAttack2Conditions(dot, dist);
+			if (condition != (int)SCOND_t.COND_CAN_RANGE_ATTACK2 || weaponHasLOS)
+				SetCondition(condition);
+		}
+
+		if ((capability & Capability.WeaponMeleeAttack1) != 0 && weaponIsReady)
+			SetCondition((int)weapon!.WeaponMeleeAttack1Condition(dot, dist));
+		else if ((capability & Capability.InnateMeleeAttack1) != 0)
+			SetCondition(MeleeAttack1Conditions(dot, dist));
+
+		if ((capability & Capability.WeaponMeleeAttack2) != 0 && weaponIsReady)
+			SetCondition((int)weapon!.WeaponMeleeAttack2Condition(dot, dist));
+		else if ((capability & Capability.InnateMeleeAttack2) != 0)
+			SetCondition(MeleeAttack2Conditions(dot, dist));
+
+		if (HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK2) ||
+			HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK1) ||
+			HasCondition((int)SCOND_t.COND_CAN_MELEE_ATTACK2) ||
+			HasCondition((int)SCOND_t.COND_CAN_MELEE_ATTACK1)) {
+			ClearCondition((int)SCOND_t.COND_TOO_CLOSE_TO_ATTACK);
+			ClearCondition((int)SCOND_t.COND_TOO_FAR_TO_ATTACK);
+			ClearCondition((int)SCOND_t.COND_WEAPON_BLOCKED_BY_FRIEND);
+		}
+	}
+
+	public virtual int RangeAttack1Conditions(float dot, float dist) {
+		if (dist < 64)
+			return (int)SCOND_t.COND_TOO_CLOSE_TO_ATTACK;
+		else if (dist > 784)
+			return (int)SCOND_t.COND_TOO_FAR_TO_ATTACK;
+		else if (dot < 0.5)
+			return (int)SCOND_t.COND_NOT_FACING_ATTACK;
+
+		return (int)SCOND_t.COND_CAN_RANGE_ATTACK1;
+	}
+
+	public virtual int RangeAttack2Conditions(float dot, float dist) {
+		if (dist < 64)
+			return (int)SCOND_t.COND_TOO_CLOSE_TO_ATTACK;
+		else if (dist > 512)
+			return (int)SCOND_t.COND_TOO_FAR_TO_ATTACK;
+		else if (dot < 0.5)
+			return (int)SCOND_t.COND_NOT_FACING_ATTACK;
+
+		return (int)SCOND_t.COND_CAN_RANGE_ATTACK2;
+	}
+
+	public virtual int MeleeAttack1Conditions(float dot, float dist) {
+		if (dist > 64)
+			return (int)SCOND_t.COND_TOO_FAR_TO_ATTACK;
+		else if (dot < 0.7)
+			return 0;
+		else if (GetEnemy() == null)
+			return 0;
+
+		if ((GetEnemy()!.GetFlags() & EntityFlags.OnGround) != 0)
+			return (int)SCOND_t.COND_CAN_MELEE_ATTACK1;
+
+		return 0;
+	}
+
+	public virtual int MeleeAttack2Conditions(float dot, float dist) {
+		if (dist > 64)
+			return (int)SCOND_t.COND_TOO_FAR_TO_ATTACK;
+		else if (dot < 0.7)
+			return 0;
+
+		return (int)SCOND_t.COND_CAN_MELEE_ATTACK2;
+	}
+
+	public bool IsWeaponStateChanging() => DesiredWeaponState == DesiredWeaponState.Changing || DesiredWeaponState == DesiredWeaponState.ChangingDestroy;
+
+	public virtual bool CurrentWeaponLOSCondition(in Vector3 targetPos, bool setConditions) => WeaponLOSCondition(GetAbsOrigin(), targetPos, setConditions);
+
+	public virtual bool WeaponLOSCondition(in Vector3 ownerPos, in Vector3 targetPos, bool setConditions) {
+		bool haveLOS = true;
+
+		if (GetActiveWeapon() != null)
+			haveLOS = GetActiveWeapon()!.WeaponLOSCondition(ownerPos, targetPos, setConditions);
+		else if ((CapabilitiesGet() & Capability.InnateRangeAttack1) != 0)
+			haveLOS = InnateWeaponLOSCondition(ownerPos, targetPos, setConditions);
+		else {
+			if (setConditions)
+				SetCondition((int)SCOND_t.COND_NO_WEAPON);
+			haveLOS = false;
+		}
+
+		if ((CapabilitiesGet() & (Capability.NoHitPlayer | Capability.NoHitSquadmates)) != 0) {
+			float spread = 0.92f;
+			if (GetActiveWeapon() != null) {
+				Vector3 vSpread = GetAttackSpread(GetActiveWeapon());
+				if (vSpread.X > VECTOR_CONE_15DEGREES.X)
+					spread = MathF.Cos(MathF.Asin(vSpread.X));
+				else
+					spread = 0.99145f;
+			}
+
+			if ((CapabilitiesGet() & Capability.NoHitPlayer) != 0) {
+				if (PlayerInSpread(ownerPos, targetPos, spread, 8 * 12)) {
+					if (setConditions)
+						SetCondition((int)SCOND_t.COND_WEAPON_PLAYER_IN_SPREAD);
+					haveLOS = false;
+				}
+			}
+
+			if (haveLOS) {
+				if ((CapabilitiesGet() & Capability.NoHitSquadmates) != 0 && Squad != null && GetEnemy() != null) {
+					if (IsSquadmateInSpread(ownerPos, targetPos, spread, 8 * 12)) {
+						SetCondition((int)SCOND_t.COND_WEAPON_BLOCKED_BY_FRIEND);
+						haveLOS = false;
+					}
+				}
+			}
+		}
+
+		return haveLOS;
+	}
+
+	public virtual bool InnateWeaponLOSCondition(in Vector3 ownerPos, in Vector3 targetPos, bool setConditions) {
+		Vector3 barrelPos = ownerPos + GetViewOffset();
+		Util.TraceLine(barrelPos, targetPos, Mask.Shot, this, Source.CollisionGroup.None, out Trace tr);
+
+		if (tr.Fraction == 1.0f)
+			return true;
+
+		BaseEntity? hitEntity = tr.Ent;
+
+		if (GetEnemy() != null) {
+			BaseCombatCharacter? ccEnemy = GetEnemy()!.MyCombatCharacterPointer();
+			if (ccEnemy != null && ccEnemy.IsInAVehicle()) {
+				BaseEntity? vehicleEnt = ccEnemy.GetVehicleEntity();
+				if (hitEntity == vehicleEnt || hitEntity?.GetOwnerEntity() == vehicleEnt)
+					return true;
+			}
+		}
+
+		if (hitEntity == GetEnemy())
+			return true;
+		else if (hitEntity != null && hitEntity.MyCombatCharacterPointer() != null) {
+			if (IRelationType(hitEntity) == Disposition.HT)
+				return true;
+			else if (setConditions)
+				SetCondition((int)SCOND_t.COND_WEAPON_BLOCKED_BY_FRIEND);
+		}
+		else if (setConditions) {
+			SetCondition((int)SCOND_t.COND_WEAPON_SIGHT_OCCLUDED);
+			SetEnemyOccluder(tr.Ent);
+		}
+
+		return false;
+	}
+
+	public bool PlayerInSpread(in Vector3 sourcePos, in Vector3 targetPos, float spread, float maxDistOffCenter, bool ignoreHatedPlayers = true) {
+		for (int i = 1; i <= gpGlobals.MaxClients; i++) {
+			BasePlayer? player = Util.PlayerByIndex(i);
+
+			if (player != null && (!ignoreHatedPlayers || IRelationType(player) != Disposition.HT)) {
+				if (PointInSpread(player, sourcePos, targetPos, player.WorldSpaceCenter(), spread, maxDistOffCenter))
+					return true;
+			}
+		}
+		return false;
+	}
 
 	public virtual bool FCanCheckAttacks() {
 		if (GetNavType() == Navigation.Climb || GetNavType() == Navigation.Jump)

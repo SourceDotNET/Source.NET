@@ -67,6 +67,41 @@ public class SimTimer : SimpleSimTimer
 	]);
 }
 
+public class RandSimTimer : SimpleSimTimer
+{
+	public RandSimTimer(float minInterval = 0.0f, float maxInterval = 0.0f, bool startExpired = true) {
+		Set(minInterval, maxInterval, startExpired);
+	}
+
+	public void Set(float minInterval, float maxInterval = 0.0f, bool startExpired = true) {
+		MinInterval = minInterval;
+		MaxInterval = maxInterval;
+
+		if (startExpired)
+			Next = -1;
+		else
+			Reset();
+	}
+
+	public void Reset() {
+		if (MaxInterval == 0)
+			Next = gpGlobals.CurTime + MinInterval;
+		else
+			Next = gpGlobals.CurTime + RandomFloat(MinInterval, MaxInterval);
+	}
+
+	public float GetMinInterval() => MinInterval;
+	public float GetMaxInterval() => MaxInterval;
+
+	float MinInterval;
+	float MaxInterval;
+
+	public static readonly new DataMap DataDesc = new(typeof(RandSimTimer), SimpleSimTimer.DataDesc, [
+		DEFINE<RandSimTimer>.FIELD(nameof(MinInterval), FieldType.Float),
+		DEFINE<RandSimTimer>.FIELD(nameof(MaxInterval), FieldType.Float),
+	]);
+}
+
 public class StopwatchBase : SimpleSimTimer
 {
 	public StopwatchBase() {

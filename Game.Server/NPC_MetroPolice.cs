@@ -39,6 +39,7 @@ public class NPC_MetroPolice : AI_BaseActor
 	const float METROPOLICE_SQUAD_STITCH_MAX_INTERVAL = 1.2f;
 
 	const float RECENT_DAMAGE_INTERVAL = 3.0f;
+	const float RECENT_DAMAGE_THRESHOLD = 0.2f;
 
 	const int METROPOLICE_MAX_WARNINGS = 3;
 
@@ -223,6 +224,9 @@ public class NPC_MetroPolice : AI_BaseActor
 
 	int RecentDamage;
 	TimeUnit_t RecentDamageTime;
+
+	SquadSlot LastShootSlot = SquadSlot.None;
+	readonly RandSimTimer TimeYieldShootSlot = new();
 
 	public NPC_MetroPolice() => LoadSchedules();
 
@@ -900,6 +904,8 @@ public class NPC_MetroPolice : AI_BaseActor
 				weapon.AddEffects(EntityEffects.NoDraw);
 		}
 
+		TimeYieldShootSlot.Set(2, 6);
+
 		GetEnemies().SetFreeKnowledgeDuration(6.0f);
 
 		ShouldActivateBaton = false;
@@ -1389,7 +1395,191 @@ public class NPC_MetroPolice : AI_BaseActor
 		return base.OnObstructionPreSteer(ref moveGoal, distClear, ref result);
 	}
 
-	int SelectCombatSchedule() => throw new NotImplementedException();
+	void AnnounceEnemyType(BaseEntity? enemy) {
+		if (enemy == null || Squad == null)
+			return;
+
+		if (!PlayerIsCriminal())
+			return;
+
+		if (HasSpawnFlags(SF.ArrestEnemy))
+			return;
+
+		if (Squad.IsLeader(this) || (Squad.GetLeader() != null && Squad.GetLeader()!.GetEnemy() != GetEnemy())) {
+			string sentenceName = "METROPOLICE_MONST";
+			switch (enemy.Classify()) {
+				case Class_T.Player:
+					sentenceName = enemy is BasePlayer player && player.IsInAVehicle() ? "METROPOLICE_MONST_PLAYER_VEHICLE" : "METROPOLICE_MONST_PLAYER";
+					break;
+
+				case Class_T.PlayerAlly:
+				case Class_T.CitizenRebel:
+				case Class_T.CitizenPassive:
+				case Class_T.Vortigaunt:
+					sentenceName = "METROPOLICE_MONST_CITIZENS";
+					break;
+
+				case Class_T.PlayerAllyVital:
+					sentenceName = "METROPOLICE_MONST_CHARACTER";
+					break;
+
+				case Class_T.Antlion:
+					sentenceName = "METROPOLICE_MONST_BUGS";
+					break;
+
+				case Class_T.Zombie:
+					sentenceName = "METROPOLICE_MONST_ZOMBIES";
+					break;
+
+				case Class_T.Headcrab:
+				case Class_T.Barnacle:
+					sentenceName = "METROPOLICE_MONST_PARASITES";
+					break;
+			}
+
+			Sentences.Speak(sentenceName, SentencePriority.High);
+		}
+		else {
+			if (Squad.GetLeader() != null && FOkToMakeSound(SentencePriority.Medium))
+				JustMadeSound(SentencePriority.Medium);
+		}
+	}
+
+	int SelectRangeAttackSchedule() {
+		if (HasSpawnFlags(SF.AlwaysStitch)) {
+			int sched = SelectMoveToLedgeSchedule();
+			if (sched != SCHED_NONE)
+				return sched;
+		}
+
+		if (TryToEnterPistolSlot(SquadSlot.Attack1) || TryToEnterPistolSlot(SquadSlot.Attack2))
+			return SCHED_RANGE_ATTACK1;
+
+		LastShootSlot = SquadSlot.None;
+
+		if (CanDeployManhack() && OccupyStrategySlot(SQUAD_SLOT_POLICE_DEPLOY_MANHACK))
+			return SCHED_METROPOLICE_DEPLOY_MANHACK;
+
+		return SCHED_METROPOLICE_ADVANCE;
+	}
+
+	int SelectScheduleArrestEnemy() {
+		if (!HasSpawnFlags(SF.ArrestEnemy) || !IsInSquad())
+			return SCHED_NONE;
+
+		if (!HasCondition((int)SCOND_t.COND_SEE_ENEMY))
+			return SCHED_NONE;
+
+		if (!WeaponDrawn)
+			return SCHED_METROPOLICE_DRAW_PISTOL;
+
+		if (OccupyStrategySlot(SQUAD_SLOT_POLICE_ARREST_ENEMY))
+			return SCHED_METROPOLICE_WARN_AND_ARREST_ENEMY;
+
+		return SCHED_METROPOLICE_ARREST_ENEMY;
+	}
+
+	int SelectScheduleNewEnemy() {
+		int sched = SelectScheduleArrestEnemy();
+		if (sched != SCHED_NONE)
+			return sched;
+
+		if (HasCondition((int)SCOND_t.COND_NEW_ENEMY)) {
+			NextLedgeCheckTime = gpGlobals.CurTime;
+
+			if (CanDeployManhack() && OccupyStrategySlot(SQUAD_SLOT_POLICE_DEPLOY_MANHACK))
+				return SCHED_METROPOLICE_DEPLOY_MANHACK;
+		}
+
+		if (!WeaponDrawn)
+			return SCHED_METROPOLICE_DRAW_PISTOL;
+
+		if (HasBaton() && BatonActive() == false && IsCurSchedule(SCHED_METROPOLICE_ACTIVATE_BATON) == false) {
+			SetTarget(GetEnemy());
+			SetBatonState(true);
+			BatonDebounceTime = gpGlobals.CurTime + random.RandomFloat(2.5f, 4.0f);
+			return SCHED_METROPOLICE_ACTIVATE_BATON;
+		}
+
+		return SCHED_NONE;
+	}
+
+	int SelectScheduleNoDirectEnemy() {
+		if (CanDeployManhack() && OccupyStrategySlot(SQUAD_SLOT_POLICE_DEPLOY_MANHACK))
+			return SCHED_METROPOLICE_DEPLOY_MANHACK;
+
+		if (BlockingProp.Get() != null && HasBaton()) {
+			SetTarget(BlockingProp.Get());
+			BlockingProp.Set(null);
+			return SCHED_METROPOLICE_SMASH_PROP;
+		}
+
+		return SCHED_METROPOLICE_CHASE_ENEMY;
+	}
+
+	int SelectCombatSchedule() {
+		if (HasCondition((int)SCOND_t.COND_NEW_ENEMY))
+			AnnounceEnemyType(GetEnemy());
+
+		int result = SelectScheduleNewEnemy();
+		if (result != SCHED_NONE)
+			return result;
+
+		if (!WeaponDrawn)
+			return SCHED_METROPOLICE_DRAW_PISTOL;
+
+		if (!HasBaton() && ((float)RecentDamage / (float)GetMaxHealth()) > RECENT_DAMAGE_THRESHOLD) {
+			RecentDamage = 0;
+			RecentDamageTime = 0;
+			Sentences.Speak("METROPOLICE_COVER_HEAVY_DAMAGE", SentencePriority.Medium, SentenceCriteria.Normal);
+
+			return SCHED_TAKE_COVER_FROM_ENEMY;
+		}
+
+		if (HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK1)) {
+			if (!GetShotRegulator().IsInRestInterval())
+				return SelectRangeAttackSchedule();
+			else
+				return SCHED_METROPOLICE_ADVANCE;
+		}
+
+		if (HasCondition((int)SCOND_t.COND_CAN_MELEE_ATTACK1)) {
+			if (BatonSwingTimer.Expired()) {
+				ChasePlayerTime = 0;
+				BatonSwingTimer.Set(1.0f, 1.75f);
+				return SCHED_MELEE_ATTACK1;
+			}
+			else
+				return SCHED_COMBAT_FACE;
+		}
+
+		if (HasCondition((int)SCOND_t.COND_TOO_CLOSE_TO_ATTACK))
+			return SCHED_BACK_AWAY_FROM_ENEMY;
+
+		if (HasCondition((int)SCOND_t.COND_LOW_PRIMARY_AMMO) || HasCondition((int)SCOND_t.COND_NO_PRIMARY_AMMO)) {
+			AnnounceOutOfAmmo();
+			return SCHED_HIDE_AND_RELOAD;
+		}
+
+		if (HasCondition((int)SCOND_t.COND_WEAPON_SIGHT_OCCLUDED) && !HasBaton()) {
+			BaseEntity? blocker = GetEnemyOccluder();
+			if (blocker != null && blocker.GetHealth() > 0 && OccupyStrategySlotRange(SQUAD_SLOT_POLICE_ATTACK_OCCLUDER1, SQUAD_SLOT_POLICE_ATTACK_OCCLUDER2)) {
+				Sentences.Speak("METROPOLICE_SHOOT_COVER");
+				return SCHED_SHOOT_ENEMY_COVER;
+			}
+		}
+
+		if (HasCondition((int)SCOND_t.COND_ENEMY_OCCLUDED)) {
+			if (GetEnemy() != null && (GetEnemy()!.GetFlags() & EntityFlags.NoTarget) == 0)
+				return SCHED_ESTABLISH_LINE_OF_FIRE;
+		}
+
+		result = SelectScheduleNoDirectEnemy();
+		if (result != SCHED_NONE)
+			return result;
+
+		return SCHED_NONE;
+	}
 
 	int SelectAirboatCombatSchedule() => throw new NotImplementedException();
 
@@ -1399,7 +1589,17 @@ public class NPC_MetroPolice : AI_BaseActor
 
 	bool ShouldAttemptToStitch() => throw new NotImplementedException();
 
-	bool TryToEnterPistolSlot(SquadSlot squadSlot) => throw new NotImplementedException();
+	bool TryToEnterPistolSlot(SquadSlot squadSlot) {
+		if ((LastShootSlot != squadSlot || !TimeYieldShootSlot.Expired()) && OccupyStrategySlot(squadSlot)) {
+			if (LastShootSlot != squadSlot) {
+				TimeYieldShootSlot.Reset();
+				LastShootSlot = squadSlot;
+			}
+			return true;
+		}
+
+		return false;
+	}
 
 	bool IsEnemyInAnAirboat() {
 		if (GetEnemy() == null || !GetEnemy()!.IsPlayer())

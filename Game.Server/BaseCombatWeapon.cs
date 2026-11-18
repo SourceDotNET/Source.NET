@@ -197,6 +197,48 @@ public partial class BaseCombatWeapon : BaseAnimating
 
 	public virtual void Operator_ForceNPCFire(BaseCombatCharacter op, bool secondary) { }
 
+	public virtual bool WeaponLOSCondition(in Vector3 ownerPos, in Vector3 targetPos, bool setConditions) {
+		AI_BaseNPC npcOwner = GetOwner()!.MyNPCPointer()!;
+
+		Vector3 relativeShootPosition = npcOwner.Weapon_ShootPosition() - npcOwner.GetAbsOrigin();
+		Vector3 barrelPos = ownerPos + relativeShootPosition;
+
+		WeaponLOSFilter traceFilter = new(GetOwner(), npcOwner.GetEnemy(), Source.CollisionGroup.BreakableGlass);
+		Util.TraceLine(barrelPos, targetPos, Mask.Shot, ref traceFilter, out Trace tr);
+
+		if (tr.Fraction == 1.0f)
+			return true;
+
+		BaseEntity? hitEnt = tr.Ent;
+
+		BasePlayer? enemyPlayer = ToBasePlayer(npcOwner.GetEnemy());
+		if (enemyPlayer != null && enemyPlayer.IsInAVehicle()) {
+			BaseEntity? vehicleEnt = enemyPlayer.GetVehicle()!.GetVehicleEnt();
+			if (hitEnt == vehicleEnt || hitEnt?.GetOwnerEntity() == vehicleEnt)
+				return true;
+		}
+
+		if (hitEnt == npcOwner.GetEnemy())
+			return true;
+
+		IServerVehicle? vehicle = hitEnt?.GetServerVehicle();
+		BaseCombatCharacter? bcc = vehicle != null ? vehicle.GetPassenger() : ToBaseCombatCharacter(hitEnt);
+
+		if (bcc != null) {
+			if (npcOwner.IRelationType(bcc) == Disposition.HT)
+				return true;
+
+			if (setConditions)
+				npcOwner.SetCondition((int)SCOND_t.COND_WEAPON_BLOCKED_BY_FRIEND);
+		}
+		else if (setConditions) {
+			npcOwner.SetCondition((int)SCOND_t.COND_WEAPON_SIGHT_OCCLUDED);
+			npcOwner.SetEnemyOccluder(hitEnt);
+		}
+
+		return false;
+	}
+
 	public virtual SCOND_t WeaponRangeAttack1Condition(float dot, float dist) {
 		if (UsesPrimaryAmmo() && !HasPrimaryAmmo())
 			return SCOND_t.COND_NO_PRIMARY_AMMO;
@@ -313,4 +355,29 @@ public partial class BaseCombatWeapon : BaseAnimating
 	}
 
 	public override bool IsBaseCombatWeapon() => true;
+}
+
+public struct WeaponLOSFilter : ITraceFilter
+{
+	TraceFilterSkipTwoEntities SkipTwo;
+	readonly BaseEntity? Vehicle;
+
+	public WeaponLOSFilter(IHandleEntity? handleEntity, IHandleEntity? handleEntity2, CollisionGroup collisionGroup) {
+		SkipTwo = new(handleEntity, handleEntity2, collisionGroup);
+		Vehicle = (handleEntity as BaseEntity)?.MyCombatCharacterPointer()?.GetVehicleEntity();
+	}
+
+	public bool ShouldHitEntity(IHandleEntity handleEntity, Contents contentsMask) {
+		BaseEntity? entity = EntityFromEntityHandle(handleEntity);
+
+		if (entity != null && entity.GetCollisionGroup() == CollisionGroup.Weapon)
+			return false;
+
+		if (Vehicle != null && entity == Vehicle)
+			return false;
+
+		// todo: let the trace pass through breakable glass once func_breakable materials are ported
+
+		return SkipTwo.ShouldHitEntity(handleEntity, contentsMask);
+	}
 }
