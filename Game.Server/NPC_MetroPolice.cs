@@ -1517,7 +1517,7 @@ public class NPC_MetroPolice : AI_BaseActor
 		return SCHED_METROPOLICE_CHASE_ENEMY;
 	}
 
-	int SelectCombatSchedule() {
+	new int SelectCombatSchedule() {
 		if (HasCondition((int)SCOND_t.COND_NEW_ENEMY))
 			AnnounceEnemyType(GetEnemy());
 

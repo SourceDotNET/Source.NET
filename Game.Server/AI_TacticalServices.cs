@@ -56,7 +56,7 @@ public class AI_TacticalServices : AI_Component
 
 		int numNodes = Network!.NumNodes();
 		PriorityQueue<int, float> list = new();
-		bool[] wasVisited = new bool[numNodes];
+		Span<bool> wasVisited = stackalloc bool[numNodes];
 
 		list.Enqueue(myNode, 0);
 		wasVisited[myNode] = true;

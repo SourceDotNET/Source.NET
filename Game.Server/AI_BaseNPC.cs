@@ -4365,7 +4365,7 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		AI_TraceLOS(threat, position, this, out Trace tr, ref filter);
 
 		if (tr.Fraction != 1.0f && hl2_episodic.GetBool()) {
-			if (tr.Ent != null && tr.Ent.Classname == Classname)
+			if (tr.Ent is BaseEntity hitEntity && hitEntity.Classname == Classname)
 				return false;
 		}
 
@@ -6196,7 +6196,7 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 
 	public virtual bool UseAttackSquadSlots() => false;
 
-	public virtual int SelectCombatSchedule() {
+	public int SelectCombatSchedule() {
 		if (ForcedInteractionPartner.Get() != null)
 			return SelectInteractionSchedule();
 
@@ -6763,7 +6763,7 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 	}
 
-	public virtual void GatherAttackConditions(BaseEntity target, float dist) {
+	public void GatherAttackConditions(BaseEntity target, float dist) {
 		Vector3 vecLOS = target.GetAbsOrigin() - GetAbsOrigin();
 		vecLOS.Z = 0;
 		vecLOS = Vector3.Normalize(vecLOS);
@@ -6962,7 +6962,7 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return false;
 	}
 
-	public bool PlayerInSpread(in Vector3 sourcePos, in Vector3 targetPos, float spread, float maxDistOffCenter, bool ignoreHatedPlayers = true) {
+	public virtual bool PlayerInSpread(in Vector3 sourcePos, in Vector3 targetPos, float spread, float maxDistOffCenter, bool ignoreHatedPlayers = true) {
 		for (int i = 1; i <= gpGlobals.MaxClients; i++) {
 			BasePlayer? player = Util.PlayerByIndex(i);
 
