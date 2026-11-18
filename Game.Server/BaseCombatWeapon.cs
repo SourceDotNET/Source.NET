@@ -206,8 +206,12 @@ public partial class BaseCombatWeapon : BaseAnimating
 		WeaponLOSFilter traceFilter = new(GetOwner(), npcOwner.GetEnemy(), Source.CollisionGroup.BreakableGlass);
 		Util.TraceLine(barrelPos, targetPos, Mask.Shot, ref traceFilter, out Trace tr);
 
-		if (tr.Fraction == 1.0f)
+		if (tr.Fraction == 1.0f) {
+			if (ai_debug_shoot_positions.GetBool())
+				DebugOverlay.Line(barrelPos, targetPos, 0, 255, 0, false, 1.0f);
+
 			return true;
+		}
 
 		BaseEntity? hitEnt = tr.Ent;
 
@@ -218,8 +222,12 @@ public partial class BaseCombatWeapon : BaseAnimating
 				return true;
 		}
 
-		if (hitEnt == npcOwner.GetEnemy())
+		if (hitEnt == npcOwner.GetEnemy()) {
+			if (ai_debug_shoot_positions.GetBool())
+				DebugOverlay.Line(barrelPos, targetPos, 0, 255, 0, false, 1.0f);
+
 			return true;
+		}
 
 		IServerVehicle? vehicle = hitEnt?.GetServerVehicle();
 		BaseCombatCharacter? bcc = vehicle != null ? vehicle.GetPassenger() : ToBaseCombatCharacter(hitEnt);
@@ -234,6 +242,9 @@ public partial class BaseCombatWeapon : BaseAnimating
 		else if (setConditions) {
 			npcOwner.SetCondition((int)SCOND_t.COND_WEAPON_SIGHT_OCCLUDED);
 			npcOwner.SetEnemyOccluder(hitEnt);
+
+			if (ai_debug_shoot_positions.GetBool())
+				DebugOverlay.Line(tr.StartPos, tr.EndPos, 255, 0, 0, false, 1.0f);
 		}
 
 		return false;
