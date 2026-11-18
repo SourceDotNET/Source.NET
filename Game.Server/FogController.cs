@@ -62,6 +62,7 @@ public partial class FogController : BaseEntity
 		DEFINE.INPUTFUNC(FieldType.Color32, "SetColorSecondary", nameof(InputSetColorSecondary), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetColorSecondary(data))),
 		DEFINE.INPUTFUNC(FieldType.Integer, "SetFarZ", nameof(InputSetFarZ), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetFarZ(data))),
 		DEFINE.INPUTFUNC(FieldType.String, "SetAngles", nameof(InputSetAngles), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetAngles(data))),
+		DEFINE.INPUTFUNC(FieldType.Boolean, "SetRadial", nameof(InputSetRadial), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetRadial(data))),
 
 		DEFINE.INPUTFUNC(FieldType.Color32, "SetColorLerpTo", nameof(InputSetColorLerpTo), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetColorLerpTo(data))),
 		DEFINE.INPUTFUNC(FieldType.Color32, "SetColorSecondaryLerpTo", nameof(InputSetColorSecondaryLerpTo), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetColorSecondaryLerpTo(data))),
@@ -80,6 +81,7 @@ public partial class FogController : BaseEntity
 		DEFINE.KEYFIELD("Fog.MaxDensity", FieldType.Float, "fogmaxdensity"),
 		DEFINE.KEYFIELD("Fog.FarZ", FieldType.Float, "farz"),
 		DEFINE.KEYFIELD("Fog.Duration", FieldType.Float, "foglerptime"),
+		DEFINE.KEYFIELD("Fog.Radial", FieldType.Boolean, "fogradial"),
 
 		DEFINE.THINKFUNC(nameof(SetLerpValues)),
 
@@ -150,6 +152,8 @@ public partial class FogController : BaseEntity
 		MathLib.AngleVectors(GetAbsAngles(), out fog.DirPrimary);
 		fog.DirPrimary *= -1.0f;
 	}
+
+	public void InputSetRadial(InputData inputdata) => FogForModify().Radial = inputdata.Value.Bool();
 
 	public override int DrawDebugTextOverlays() {
 		int textOffset = base.DrawDebugTextOverlays();
@@ -241,6 +245,10 @@ public class FogSystem(ReadOnlySpan<char> name) : AutoGameSystem(name)
 		do {
 			fogController = (FogController?)gEntList.FindEntityByClassname(fogController, "env_fog_controller");
 			if (fogController != null) {
+				// If this is an official map then force on radial fog.
+				if (g_pGameRules.IsOfficialMap())
+					fogController.FogForModify().Radial = true;
+
 				if (MasterController == null)
 					MasterController = fogController;
 				else {

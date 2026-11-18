@@ -796,5 +796,9 @@ public abstract class
 	public virtual bool IsHolidayActive(int holiday) { return false; }
 
 	public virtual bool IsManualMapChangeOkay(out ReadOnlySpan<char> reason) { reason = default; return true; }
+
+#if GAME_DLL
+	public virtual bool IsOfficialMap() => false;
+#endif
 }
 #endif
