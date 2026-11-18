@@ -8,13 +8,28 @@ public delegate void OnEnterFn(ReadOnlySpan<char> text);
 
 public class UserConsoleInput
 {
-	readonly char[] consoleText = new char[2048];
+	// note: 256 by default in GMod, raised to the longest command the command buffer accepts
+	const int MAX_CONSOLE_TEXTLEN = 512;
+	const int MAX_BUFFER_LINES = 30;
+
+	readonly Lock consoleLock = new();
+
+	readonly char[] consoleText = new char[MAX_CONSOLE_TEXTLEN];
 	int consoleTextLen;
 	int cursorPosition;
+
+	readonly char[] savedConsoleText = new char[MAX_CONSOLE_TEXTLEN];
+	int savedConsoleTextLen;
+
+	readonly string?[] lineBuffer = new string?[MAX_BUFFER_LINES];
+	int inputLine;
+	int browseLine;
+	int totalLines;
 
 	public event OnEnterFn? OnEnter;
 
 	public void RunFrame() {
+		using Lock.Scope scope = consoleLock.EnterScope();
 		while (!Console.IsInputRedirected && Console.KeyAvailable) {
 			var key = Console.ReadKey(true);
 			switch (key.Key) {
@@ -50,12 +65,87 @@ public class UserConsoleInput
 		}
 	}
 
-	private void ReceiveUpArrow() {
+	public void Print(ReadOnlySpan<char> msg) {
+		using Lock.Scope scope = consoleLock.EnterScope();
+		for (int len = consoleTextLen; len > 0; len--)
+			Console.Out.Write("\b \b");
 
+		PrintRaw(msg);
+
+		if (consoleTextLen > 0)
+			Console.Out.Write(consoleText, 0, consoleTextLen);
+	}
+
+	static void PrintRaw(ReadOnlySpan<char> msg) {
+#if WIN32
+		if (msg.Contains('\a')) {
+			char[] temp = new char[msg.Length];
+			msg.Replace(temp, '\a', '.');
+			Console.Out.Write(temp);
+			return;
+		}
+#endif
+		Console.Out.Write(msg);
+	}
+
+	string GetBufferedLine(int line) => (uint)line < MAX_BUFFER_LINES ? lineBuffer[line] ?? "" : "";
+
+	void ShowBufferedLine() {
+		string line = GetBufferedLine(browseLine);
+		Console.Out.Write(line);
+		line.CopyTo(consoleText);
+		consoleTextLen = line.Length;
+	}
+
+	private void ReceiveUpArrow() {
+		int lastCommandInHistory = inputLine + 1;
+		if (lastCommandInHistory > totalLines)
+			lastCommandInHistory = 0;
+
+		if (browseLine == lastCommandInHistory)
+			return;
+
+		if (browseLine == inputLine) {
+			if (consoleTextLen > 0)
+				consoleText.AsSpan(0, consoleTextLen).CopyTo(savedConsoleText);
+
+			savedConsoleTextLen = consoleTextLen;
+		}
+
+		browseLine--;
+		if (browseLine < 0)
+			browseLine = totalLines - 1;
+
+		while (consoleTextLen-- > 0)
+			Console.Out.Write("\b \b");
+
+		ShowBufferedLine();
+		cursorPosition = consoleTextLen;
 	}
 
 	private void ReceiveDownArrow() {
+		if (browseLine == inputLine)
+			return;
 
+		browseLine++;
+		if (browseLine > totalLines)
+			browseLine = 0;
+
+		while (consoleTextLen-- > 0)
+			Console.Out.Write("\b \b");
+
+		if (browseLine == inputLine) {
+			if (savedConsoleTextLen > 0) {
+				savedConsoleText.AsSpan(0, savedConsoleTextLen).CopyTo(consoleText);
+				Console.Out.Write(consoleText, 0, savedConsoleTextLen);
+			}
+
+			consoleTextLen = savedConsoleTextLen;
+		}
+		else
+			ShowBufferedLine();
+
+		cursorPosition = consoleTextLen;
 	}
 
 	private void ReceiveLeftArrow() {
@@ -95,6 +185,8 @@ public class UserConsoleInput
 			Console.Write('\b');
 			count--;
 		}
+
+		browseLine = inputLine;
 	}
 
 	private ReadOnlySpan<char> ReceiveNewLine() {
@@ -104,7 +196,21 @@ public class UserConsoleInput
 			len = consoleTextLen;
 			consoleTextLen = 0;
 			cursorPosition = 0;
-			return consoleText.AsSpan()[..len];
+
+			ReadOnlySpan<char> text = consoleText.AsSpan(0, len);
+			if (inputLine == 0 || !text.SequenceEqual(GetBufferedLine(inputLine - 1))) {
+				lineBuffer[inputLine] = new(text);
+				inputLine++;
+
+				if (inputLine > totalLines)
+					totalLines = inputLine;
+
+				if (inputLine >= MAX_BUFFER_LINES)
+					inputLine = 0;
+			}
+
+			browseLine = inputLine;
+			return text;
 		}
 		else
 			return null;
@@ -123,7 +229,7 @@ public class UserConsoleInput
 
 		consoleText[cursorPosition] = ch;
 
-		Console.Write(new string(new ReadOnlySpan<char>(consoleText))[cursorPosition..(cursorPosition + (consoleTextLen - cursorPosition + 1))]);
+		Console.Out.Write(consoleText, cursorPosition, consoleTextLen - cursorPosition + 1);
 		consoleTextLen++;
 		cursorPosition++;
 		count = consoleTextLen;
@@ -131,5 +237,7 @@ public class UserConsoleInput
 			Console.Write('\b');
 			count--;
 		}
+
+		browseLine = inputLine;
 	}
 }

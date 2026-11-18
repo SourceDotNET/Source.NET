@@ -714,6 +714,9 @@ public abstract class BaseServer : IServer
 		State = ServerState.Dead;
 
 		// Only drop clients if we have not cleared out entity data prior to this.
+#if GMOD_DLL
+		if (!KeepPlayers)
+#endif
 		for (int i = Clients.Count - 1; i >= 0; i--) {
 			BaseClient cl = Clients[i];
 			if (cl.IsConnected())
@@ -1530,6 +1533,9 @@ public abstract class BaseServer : IServer
 	public InlineArray64<char> MapFilename;   // map filename, may bear no resemblance to map name
 	public InlineArray64<char> Skyname;       // skybox name
 	public InlineArray32<char> Password;        // server password
+#if GMOD_DLL
+	public bool KeepPlayers;
+#endif
 
 	public MD5Value WorldmapMD5;     // For detecting that client has a hacked local copy of map, the client will be dropped if this occurs.
 

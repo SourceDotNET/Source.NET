@@ -27,11 +27,20 @@ using Source.StudioRender;
 
 using Steamworks;
 
+using System.Runtime.InteropServices;
+using System.Text;
+
 namespace Source.Dedicated;
 
 public class DedicatedExports(IDedicatedServerAPI engine) : IDedicatedExports
 {
 	readonly UserConsoleInput consoleUserInput = new();
+#if POSIX
+	int processCount;
+#endif
+#if WIN32
+	double lastStatusUpdate;
+#endif
 
 	public void RunServer() {
 		// Run 2 engine frames first to get the engine to load its resources.
@@ -45,8 +54,15 @@ public class DedicatedExports(IDedicatedServerAPI engine) : IDedicatedExports
 		consoleUserInput.OnEnter += ConsoleUserInput_OnEnter;
 		bool done = false;
 		while (!done) {
+#if POSIX
+			if (!DoRunVGUIFrame() && ++processCount > 3) {
+				processCount = 0;
+				ProcessConsoleInput();
+			}
+#else
 			if (!DoRunVGUIFrame())
 				ProcessConsoleInput();
+#endif
 
 			if (!engine.RunFrame())
 				done = true;
@@ -65,7 +81,17 @@ public class DedicatedExports(IDedicatedServerAPI engine) : IDedicatedExports
 	}
 
 	private void UpdateStatus(bool force) {
+#if WIN32
+		double now = Platform.Time;
+		if (!force && now - lastStatusUpdate < 0.5)
+			return;
 
+		lastStatusUpdate = now;
+
+		Span<char> hostname = stackalloc char[128];
+		engine.UpdateHostname(hostname);
+		TextConsole.SetTitle(hostname.SliceNullTerminatedString());
+#endif
 	}
 
 	private bool DoRunVGUIFrame(bool finished = false) {
@@ -73,7 +99,48 @@ public class DedicatedExports(IDedicatedServerAPI engine) : IDedicatedExports
 	}
 
 	public void Sys_Printf(ReadOnlySpan<char> text) {
-		Console.Write(text);
+		consoleUserInput.Print(text);
+	}
+}
+
+public static class TextConsole
+{
+#if WIN32
+	static PosixSignalRegistration[]? ConsoleHandlers;
+
+	static bool AttachConsoleHandler() {
+		try {
+			ConsoleHandlers = [
+				PosixSignalRegistration.Create(PosixSignal.SIGINT, static context => context.Cancel = true),
+				PosixSignalRegistration.Create(PosixSignal.SIGQUIT, static context => context.Cancel = true),
+				PosixSignalRegistration.Create(PosixSignal.SIGTERM, static context => context.Cancel = true)
+			];
+			return true;
+		}
+		catch (System.ComponentModel.Win32Exception) {
+			return false;
+		}
+	}
+#endif
+
+	public static void SetTitle(ReadOnlySpan<char> title) => Console.Title = new(title);
+
+	public static void Init() {
+#if WIN32
+		SetTitle("SOURCE.NET DEDICATED SERVER");
+#if GMOD_DLL
+		try {
+			Console.OutputEncoding = Encoding.UTF8;
+		}
+		catch (IOException) {
+		}
+#endif
+		if (!AttachConsoleHandler())
+			Console.Write("WARNING! TextConsole.Init: Could not attach console hook.\n");
+#else
+		Msg("\n");
+#endif
+		Msg("Console initialized.\n");
 	}
 }
 
@@ -93,6 +160,8 @@ public class Bootloader : IDisposable
 		isTextMode = commandLine.CheckParm("-textmode");
 	}
 	public void Boot() {
+		TextConsole.Init();
+
 		engineAPI = new EngineBuilder(commandLine)
 			// These assemblies have no reference to them, so they must be manually loaded.
 			.WithAssembly("Source.VTF")

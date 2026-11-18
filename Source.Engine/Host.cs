@@ -287,7 +287,6 @@ public partial class Host
 			// else
 			// updatedynamicmodels
 
-#if !SWDS
 			if (!sv.IsDedicated()) {
 				ClientDLL.Update();
 			}
@@ -298,7 +297,6 @@ public partial class Host
 			FrameCount++;
 			Time = TickCount * host_state.IntervalPerTick + cl.TickRemainder;
 			PostFrameRate(FrameTime);
-#endif
 		}
 	}
 	public static void DefaultMapFileName(ReadOnlySpan<char> fullMapName, Span<char> diskName) {
@@ -309,7 +307,19 @@ public partial class Host
 	private void PostFrameRate(TimeUnit_t frameTime) {
 		frameTime = Math.Clamp(frameTime, 0.0001, 1.0);
 		TimeUnit_t fps = 1.0 / frameTime;
-		FramesPerSecond = fps * FPS_AVG_FRAC + (1.0 - FPS_AVG_FRAC) * fps;
+		FramesPerSecond = FramesPerSecond * FPS_AVG_FRAC + (1.0 - FPS_AVG_FRAC) * fps;
+	}
+
+	public void GetHostInfo(out float fps, out int active, out int maxPlayers, Span<char> map) {
+		int clients = sv.GetNumClients();
+
+		fps = (float)FramesPerSecond;
+		active = clients;
+
+		if (!map.IsEmpty)
+			strcpy(map, sv.GetMapName());
+
+		maxPlayers = sv.GetMaxClients();
 	}
 
 	private void UpdateMapList() {
@@ -1450,11 +1460,22 @@ public partial class Host
 			// EngineVGui.ConfirmQuit();
 			return;
 		}
-
-		// TODO: game events.
-		HostState.Shutdown();
 #endif
+
+		IGameEvent? ev = g_GameEventManager.CreateEvent("host_quit");
+		if (ev != null)
+			g_GameEventManager.FireEventClientSide(ev);
+
+#if GMOD_DLL
+		if (args.FindArg("keep_players") != null)
+			sv.KeepPlayers = true;
+#endif
+
+		HostState.Shutdown();
 	}
+
+	[ConCommand("exit", "Exit the engine.")]
+	void exit(in TokenizedCommand args) => quit(in args);
 
 	readonly ConVar voice_recordtofile = new("voice_recordtofile", "0", 0, "Record mic data and decompressed voice data into 'voice_micdata.wav' and 'voice_decompressed.wav'");
 	readonly ConVar voice_inputfromfile;

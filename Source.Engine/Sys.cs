@@ -138,7 +138,10 @@ public class Sys(Host host, ICommandLine CommandLine)
 		int bufferIdx = 0;
 		void writeTxt(ReadOnlySpan<char> sub, in Color color) {
 #if DBGFLAG_WRITE_TO_STDOUT
-			Console.Write(sub.Pastel(color));
+			if (dedicated != null)
+				dedicated.Sys_Printf(sub.Pastel(color));
+			else
+				Console.Write(sub.Pastel(color));
 #endif
 			if (routeInGame) {
 				host.Con?.ColorPrintf(in color, sub);

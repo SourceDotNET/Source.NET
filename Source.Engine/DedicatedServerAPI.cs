@@ -29,6 +29,8 @@ public class DedicatedServerAPI(Cbuf Cbuf, IGame game, IServiceProvider services
 
 	Mod? dedicatedServer = null;
 	IEngine eng = null!;
+	Host? host;
+	Host Host => host ??= services.GetRequiredService<Host>();
 
 	public bool ModInit(in StartupInfo info) {
 		ConVar.Register();
@@ -76,10 +78,11 @@ public class DedicatedServerAPI(Cbuf Cbuf, IGame game, IServiceProvider services
 	}
 
 	public void UpdateStatus(out float fps, out int active, out int maxPlayers, Span<char> map) {
-		throw new NotImplementedException();
+		Host.GetHostInfo(out fps, out active, out maxPlayers, map);
 	}
 
 	public void UpdateHostname(Span<char> hostname) {
-		throw new NotImplementedException();
+		if (!hostname.IsEmpty)
+			strcpy(hostname, sv.GetName());
 	}
 }
