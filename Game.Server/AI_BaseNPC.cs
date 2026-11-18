@@ -6192,7 +6192,113 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return SCHED_ALERT_STAND;
 	}
 
-	public virtual int SelectCombatSchedule() => throw new NotImplementedException();
+	public virtual void FearSound() { }
+
+	public virtual bool UseAttackSquadSlots() => false;
+
+	public virtual int SelectCombatSchedule() {
+		if (ForcedInteractionPartner.Get() != null)
+			return SelectInteractionSchedule();
+
+		int sched = SelectFlinchSchedule();
+		if (sched != SCHED_NONE)
+			return sched;
+
+		if (HasCondition((int)SCOND_t.COND_NEW_ENEMY) && gpGlobals.CurTime - GetEnemies().FirstTimeSeen(GetEnemy()) < 2.0)
+			return SCHED_WAKE_ANGRY;
+
+		if (HasCondition((int)SCOND_t.COND_ENEMY_DEAD)) {
+			SetEnemy(null);
+
+			if (ChooseEnemy()) {
+				ClearCondition((int)SCOND_t.COND_ENEMY_DEAD);
+				return SelectSchedule();
+			}
+
+			SetState(NPCState.Alert);
+			return SelectSchedule();
+		}
+
+		if (IRelationType(GetEnemy()) == Disposition.FR) {
+			if (HasCondition((int)SCOND_t.COND_SEE_ENEMY) ||
+				HasCondition((int)SCOND_t.COND_LIGHT_DAMAGE) ||
+				HasCondition((int)SCOND_t.COND_HEAVY_DAMAGE)) {
+				FearSound();
+				return SCHED_RUN_FROM_ENEMY;
+			}
+
+			AI_EnemyInfo? memory = GetEnemies().Find(GetEnemy());
+			if ((memory != null && memory.Unforgettable) || (GetEnemyLastTimeSeen() > (gpGlobals.CurTime - 5.0))) {
+				if (FInAimCone(GetEnemy()!.EyePosition()))
+					return SCHED_COMBAT_STAND;
+
+				return SCHED_FEAR_FACE;
+			}
+		}
+
+		if (HasCondition((int)SCOND_t.COND_LOW_PRIMARY_AMMO) || HasCondition((int)SCOND_t.COND_NO_PRIMARY_AMMO))
+			return SCHED_HIDE_AND_RELOAD;
+
+		if (!HasCondition((int)SCOND_t.COND_SEE_ENEMY)) {
+			if (!HasCondition((int)SCOND_t.COND_ENEMY_OCCLUDED))
+				return SCHED_COMBAT_FACE;
+
+			if (GetActiveWeapon() != null || (CapabilitiesGet() & (Capability.InnateRangeAttack1 | Capability.InnateRangeAttack2)) != 0)
+				return SCHED_ESTABLISH_LINE_OF_FIRE;
+			else if ((CapabilitiesGet() & (Capability.InnateMeleeAttack1 | Capability.InnateMeleeAttack2)) != 0)
+				return SCHED_CHASE_ENEMY;
+			else
+				return SCHED_TAKE_COVER_FROM_ENEMY;
+		}
+
+		if (HasCondition((int)SCOND_t.COND_TOO_CLOSE_TO_ATTACK))
+			return SCHED_BACK_AWAY_FROM_ENEMY;
+
+		if (HasCondition((int)SCOND_t.COND_WEAPON_PLAYER_IN_SPREAD) ||
+			HasCondition((int)SCOND_t.COND_WEAPON_BLOCKED_BY_FRIEND) ||
+			HasCondition((int)SCOND_t.COND_WEAPON_SIGHT_OCCLUDED)) {
+			return SCHED_ESTABLISH_LINE_OF_FIRE;
+		}
+
+		if (GetShotRegulator().IsInRestInterval()) {
+			if (HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK1))
+				return SCHED_COMBAT_FACE;
+		}
+
+		if (HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK1)) {
+			if (!UseAttackSquadSlots() || OccupyStrategySlotRange(SquadSlot.Attack1, SquadSlot.Attack2))
+				return SCHED_RANGE_ATTACK1;
+			return SCHED_COMBAT_FACE;
+		}
+
+		if (HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK2))
+			return SCHED_RANGE_ATTACK2;
+
+		if (HasCondition((int)SCOND_t.COND_CAN_MELEE_ATTACK1))
+			return SCHED_MELEE_ATTACK1;
+
+		if (HasCondition((int)SCOND_t.COND_CAN_MELEE_ATTACK2))
+			return SCHED_MELEE_ATTACK2;
+
+		if (HasCondition((int)SCOND_t.COND_NOT_FACING_ATTACK))
+			return SCHED_COMBAT_FACE;
+
+		if (!HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK1) && !HasCondition((int)SCOND_t.COND_CAN_MELEE_ATTACK1)) {
+			if (GetActiveWeapon() != null)
+				return SCHED_MOVE_TO_WEAPON_RANGE;
+
+			if (HasCondition((int)SCOND_t.COND_TOO_FAR_TO_ATTACK) && (CapabilitiesGet() & (Capability.InnateRangeAttack1 | Capability.InnateRangeAttack2)) != 0)
+				return SCHED_MOVE_TO_WEAPON_RANGE;
+
+			if ((CapabilitiesGet() & (Capability.InnateMeleeAttack1 | Capability.InnateMeleeAttack2)) != 0)
+				return SCHED_CHASE_ENEMY;
+			else
+				return SCHED_TAKE_COVER_FROM_ENEMY;
+		}
+
+		DevWarning(2, "No suitable combat schedule!\n");
+		return SCHED_FAIL;
+	}
 
 	public virtual int SelectDeadSchedule() {
 		if (BecomeRagdollOnClient(vec3_origin)) {
