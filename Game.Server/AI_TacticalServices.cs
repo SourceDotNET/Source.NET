@@ -31,6 +31,7 @@ public class AI_TacticalServices : AI_Component
 	}
 
 	static int SearchRandomizer;
+	static readonly PriorityQueue<int, float> NodeList = new();
 
 	public int FindCoverNode(in Vector3 threatPos, in Vector3 threatEyePos, float minDist, float maxDist)
 		=> FindCoverNode(GetLocalOrigin(), threatPos, threatEyePos, minDist, maxDist);
@@ -55,7 +56,8 @@ public class AI_TacticalServices : AI_Component
 			minDist = 0.5f * maxDist;
 
 		int numNodes = Network!.NumNodes();
-		PriorityQueue<int, float> list = new();
+		PriorityQueue<int, float> list = NodeList;
+		list.Clear();
 		Span<bool> wasVisited = stackalloc bool[numNodes];
 
 		list.Enqueue(myNode, 0);
