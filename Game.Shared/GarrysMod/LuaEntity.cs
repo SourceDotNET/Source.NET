@@ -97,6 +97,13 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__MuzzleFlash(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.GetBaseAnimating()?.DoMuzzleFlash();
+		return 0;
+	}
+
+	[LuaMethod]
 	static int Entity__Remove(ILuaInterface lua) {
 		if (LuaEnts.IsRendering()) {
 			lua.ErrorNoHalt("Entity:Remove cannot be called while rendering\n");

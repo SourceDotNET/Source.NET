@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Source;
 
 #if CLIENT_DLL || GAME_DLL
@@ -602,6 +603,24 @@ public static partial class LuaPlayer
 	}
 
 	[LuaMethod]
+	static int Player__LagCompensation(ILuaInterface lua) {
+#if GAME_DLL
+		BasePlayer player = Get_Player(1, false)!;
+		bool start = lua.GetBool(2);
+
+		// Only meaningful while a user command is being processed (predicted hooks)
+		if (Unsafe.IsNullRef(ref player.GetCurrentUserCommand()))
+			return 0;
+
+		if (start)
+			lagcompensation.StartLagCompensation(player);
+		else
+			lagcompensation.FinishLagCompensation(player);
+#endif
+		return 0;
+	}
+
+	[LuaMethod]
 	static int Player__GetInfoNum(ILuaInterface lua) {
 		if (!LuaConVar.IsAllowedToGetConvarInfo(lua.GetString(2)))
 			return 0;
@@ -628,6 +647,13 @@ public static partial class LuaPlayer
 	static int Player__RemoveAllAmmo(ILuaInterface lua) {
 		BasePlayer player = Get_Player(1, false)!;
 		player.RemoveAllAmmo();
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__StripWeapons(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		player.RemoveAllWeapons();
 		return 0;
 	}
 
