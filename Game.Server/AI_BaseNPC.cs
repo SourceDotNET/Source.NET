@@ -145,6 +145,15 @@ public static class AI_BaseNPCGlobals
 		Util.TraceLine(absStart, absEnd, Mask.BlockLOSAndNPCs, ref traceFilter, out tr);
 	}
 
+	public static void AI_TraceLOS<IF>(in Vector3 absStart, in Vector3 absEnd, BaseEntity? looker, out Trace tr, scoped ref IF filter) where IF : struct, ITraceFilter {
+		if (ai_LOS_mode.GetBool()) {
+			Util.TraceLine(absStart, absEnd, Mask.BlockLOS, looker, CollisionGroup.None, out tr);
+			return;
+		}
+
+		Util.TraceLine(absStart, absEnd, Mask.BlockLOSAndNPCs, ref filter, out tr);
+	}
+
 	public static bool AI_DoLoadSchedules(Func<bool> baseLoad, Action initCustomSchedules, ref AI_SchedLoadStatus loadStatus) {
 		baseLoad();
 
@@ -4337,7 +4346,49 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return true;
 	}
 
-	public virtual bool IsCoverPosition(in Vector3 threat, in Vector3 position) => throw new NotImplementedException();
+	public virtual bool IsCoverPosition(in Vector3 threat, in Vector3 position) {
+		BaseEntity? passEntity = null;
+
+		BaseEntity? enemy = GetEnemy();
+		if (enemy != null) {
+			bool threatPosIsEnemy = (threat - enemy.EyePosition()).LengthSquared() < 0.1f;
+			if (threatPosIsEnemy) {
+				BaseCombatCharacter? ccEnemy = enemy.MyCombatCharacterPointer();
+				if (ccEnemy != null && ccEnemy.IsInAVehicle())
+					passEntity = ccEnemy.GetVehicleEntity();
+
+				passEntity ??= enemy;
+			}
+		}
+
+		TraceFilterLOS filter = new(passEntity, Source.CollisionGroup.None, this);
+		AI_TraceLOS(threat, position, this, out Trace tr, ref filter);
+
+		if (tr.Fraction != 1.0f && hl2_episodic.GetBool()) {
+			if (tr.Ent != null && tr.Ent.Classname == Classname)
+				return false;
+		}
+
+		return tr.Fraction != 1.0f;
+	}
+
+	public virtual bool IsValidCover(in Vector3 coverLocation, AI_Hint? hint) {
+		string? hintGroup = GetHintGroup();
+		if (!string.IsNullOrEmpty(hintGroup)) {
+			if (hint == null || hint.GetGroup() != hintGroup)
+				return false;
+		}
+
+		Vector3 startPos = coverLocation;
+		startPos.Z -= GetHullMins().Z;
+		Vector3 endPos = startPos;
+		endPos.Z += 0.01f;
+		Util.TraceEntity(this, coverLocation, endPos, Mask.NPCSolid, out Trace tr);
+		if (tr.StartSolid)
+			return false;
+
+		return true;
+	}
 
 	public bool ShouldMoveWait() => MoveWaitFinished > gpGlobals.CurTime;
 
@@ -8070,7 +8121,25 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public AI_Hint? GetHintNode() => HintNode.Get();
 
 	public virtual Activity GetReloadActivity(AI_Hint? hint) => throw new NotImplementedException();
-	public virtual Activity GetCoverActivity(AI_Hint? hint) => throw new NotImplementedException();
+	public virtual Activity GetCoverActivity(AI_Hint? hint) {
+		Activity coverActivity = Activity.ACT_INVALID;
+
+		if (hint != null) {
+			switch (hint.HintType()) {
+				case Hint.TacticalCoverMed:
+					coverActivity = Activity.ACT_COVER_MED;
+					break;
+				case Hint.TacticalCoverLow:
+					coverActivity = Activity.ACT_COVER_LOW;
+					break;
+			}
+		}
+
+		if (coverActivity == Activity.ACT_INVALID)
+			coverActivity = Activity.ACT_COVER;
+
+		return coverActivity;
+	}
 
 	static readonly List<Activity> sUniqueActivities = [];
 
