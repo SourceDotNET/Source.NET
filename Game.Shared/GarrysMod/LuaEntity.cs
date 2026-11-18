@@ -1056,7 +1056,8 @@ public static partial class LuaEntity
 
 	[LuaMethod]
 	static int Entity__IsNPC(ILuaInterface lua) {
-		lua.PushBool(false);
+		BaseEntity? ent = Get_Entity(1, true);
+		lua.PushBool(ent != null && ent.IsNPC());
 		return 1;
 	}
 
