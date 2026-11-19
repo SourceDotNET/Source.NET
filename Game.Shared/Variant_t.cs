@@ -205,8 +205,8 @@ public struct Variant_t
 
 					case FT.Vector:
 						Vector3 tmpVec = vec3_origin;
-						if (0 == new ScanF(StrVal, "[%f %f %f]").Read(out tmpVec.X).Read(out tmpVec.Y).Read(out tmpVec.Z).ReadArguments)
-							new ScanF(StrVal, "%f %f %f").Read(out tmpVec.X).Read(out tmpVec.Y).Read(out tmpVec.Z);
+						if (0 == new ScanF(StrVal, "[%f %f %f]").ReadOrKeep(ref tmpVec.X).ReadOrKeep(ref tmpVec.Y).ReadOrKeep(ref tmpVec.Z).ReadArguments)
+							new ScanF(StrVal, "%f %f %f").ReadOrKeep(ref tmpVec.X).ReadOrKeep(ref tmpVec.Y).ReadOrKeep(ref tmpVec.Z);
 						SetVector3D(tmpVec);
 						return true;
 
@@ -216,7 +216,7 @@ public struct Variant_t
 						int blue = 0;
 						int alpha = 255;
 
-						new ScanF(StrVal, "%d %d %d %d").Read(out red).Read(out green).Read(out blue).Read(out alpha);
+						new ScanF(StrVal, "%d %d %d %d").ReadOrKeep(ref red).ReadOrKeep(ref green).ReadOrKeep(ref blue).ReadOrKeep(ref alpha);
 						SetColor32((byte)red, (byte)green, (byte)blue, (byte)alpha);
 						return true;
 

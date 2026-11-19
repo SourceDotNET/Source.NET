@@ -5,7 +5,6 @@ namespace Source.Common.Tests;
 public class CFormattingTests
 {
 	static string Format(string format, params object?[] args) {
-		CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
 		CFormatReader reader = new(format);
 		Span<char> piece = stackalloc char[16];
 		string result = "";
@@ -118,7 +117,6 @@ public class CFormattingTests
 
 	[Fact]
 	public void FluentPrintF() {
-		CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
 		Span<char> buffer = stackalloc char[64];
 		Assert.Equal("5:07", CFormatting.sprintf(buffer, "%d:%.2d").D(5).D(7).ToSpan());
 		Assert.Equal("1.500 0.5", CFormatting.sprintf(buffer, "%.3f %g").F(1.5f).G(0.5).ToSpan());
@@ -133,7 +131,6 @@ public class CFormattingTests
 
 	[Fact]
 	public void ScanFReadsNumbers() {
-		CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
 		Assert.Equal(3, new ScanF("[1.5 2.5 3.5]", "[%f %f %f]").Read(out float x).Read(out float y).Read(out float z).ReadArguments);
 		Assert.Equal((1.5f, 2.5f, 3.5f), (x, y, z));
 		Assert.Equal(0, new ScanF("1 2 3", "[%f %f %f]").Read(out x).Read(out y).Read(out z).ReadArguments);
@@ -146,13 +143,24 @@ public class CFormattingTests
 	}
 
 	[Fact]
-	public void ScanFLeavesUnreadValuesAlone() {
+	public void ScanFReadOrKeepLeavesUnreadValuesAlone() {
 		int red = 1, green = 2, blue = 3, alpha = 255;
-		Assert.Equal(3, new ScanF("10 20 30", "%d %d %d %d").Read(out red).Read(out green).Read(out blue).Read(out alpha).ReadArguments);
+		Assert.Equal(3, new ScanF("10 20 30", "%d %d %d %d").ReadOrKeep(ref red).ReadOrKeep(ref green).ReadOrKeep(ref blue).ReadOrKeep(ref alpha).ReadArguments);
 		Assert.Equal((10, 20, 30, 255), (red, green, blue, alpha));
-		Assert.Equal(-1, new ScanF("", "%d").Read(out red).ReadArguments);
-		Assert.Equal(0, new ScanF("abc", "%d").Read(out red).ReadArguments);
+		Assert.Equal(-1, new ScanF("", "%d").ReadOrKeep(ref red).ReadArguments);
+		Assert.Equal(0, new ScanF("abc", "%d").ReadOrKeep(ref red).ReadArguments);
 		Assert.Equal(10, red);
+		float scale = 0.5f;
+		Assert.Equal(0, new ScanF("x", "%f").ReadOrKeep(ref scale).ReadArguments);
+		Assert.Equal(0.5f, scale);
+	}
+
+	[Fact]
+	public void ScanFReadZeroesUnreadValues() {
+		Assert.Equal(3, new ScanF("10 20 30", "%d %d %d %d").Read(out int red).Read(out int green).Read(out int blue).Read(out int alpha).ReadArguments);
+		Assert.Equal((10, 20, 30, 0), (red, green, blue, alpha));
+		Assert.Equal(0, new ScanF("abc", "%f").Read(out float scale).ReadArguments);
+		Assert.Equal(0f, scale);
 	}
 
 	[Fact]
@@ -161,6 +169,22 @@ public class CFormattingTests
 		scan.Read(out int a).Read(out int b).Read(out int c).Read(out int d);
 		Assert.Equal(4, scan.ReadArguments);
 		Assert.Equal((1, 2, 3, 4), (a, b, c, d));
+	}
+
+	[Fact]
+	public void IgnoresTheCurrentCulture() {
+		CultureInfo previous = CultureInfo.CurrentCulture;
+		try {
+			CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
+			Assert.Equal("1.500000 2.5 1.0e+00 3.14", Format("%f %g %.1e %s", 1.5, 2.5f, 1.0, 3.14));
+			Span<char> buffer = stackalloc char[16];
+			Assert.Equal("1.500 0.5", CFormatting.sprintf(buffer, "%.3f %g").F(1.5f).G(0.5).ToSpan());
+			Assert.Equal(2, new ScanF("1.5 2.5", "%f %f").Read(out float x).Read(out float y).ReadArguments);
+			Assert.Equal((1.5f, 2.5f), (x, y));
+		}
+		finally {
+			CultureInfo.CurrentCulture = previous;
+		}
 	}
 
 	[Fact]

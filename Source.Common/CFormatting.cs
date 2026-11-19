@@ -359,7 +359,18 @@ public ref struct ScanF
 
 	[UnscopedRef]
 	public ref ScanF Read(out int i) {
-		Unsafe.SkipInit(out i);
+		i = 0;
+		return ref ReadOrKeep(ref i);
+	}
+
+	[UnscopedRef]
+	public ref ScanF Read(out float i) {
+		i = 0;
+		return ref ReadOrKeep(ref i);
+	}
+
+	[UnscopedRef]
+	public ref ScanF ReadOrKeep(ref int i) {
 		if (NextConversion(out CFormatSpec spec)) {
 			if (!CFormatUtils.IsIntegerConversion(spec.Type))
 				throw new NotImplementedException();
@@ -374,8 +385,7 @@ public ref struct ScanF
 	}
 
 	[UnscopedRef]
-	public ref ScanF Read(out float i) {
-		Unsafe.SkipInit(out i);
+	public ref ScanF ReadOrKeep(ref float i) {
 		if (NextConversion(out CFormatSpec spec)) {
 			if (!CFormatUtils.IsFloatConversion(spec.Type))
 				throw new NotImplementedException();
