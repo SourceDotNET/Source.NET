@@ -41,12 +41,16 @@ public static class LocalTransfer
 		Span<ushort> propIndices = stackalloc ushort[Edict.MAX_CHANGE_OFFSETS * 3];
 
 		// This code tries to only copy fields expressly marked as "changed" (by having the field accessors added to the changed-fields list)
+		int changeOffsets = -1;
 		if (edict.GetChangeInfoSerialNumber() == g_SharedChangeInfo.SerialNumber && !newlyCreated && !justEnteredPVS && dt_UsePartialChangeEnts.GetInt() != 0) {
-			SendTablePrecalc precalc = sendTable.Precalc!;
-
-			int changeOffsets = MapPropFieldsToIndices(edict, precalc, changeInfo, propIndices);
+			changeOffsets = MapPropFieldsToIndices(edict, sendTable.Precalc!, changeInfo, propIndices);
 			if (changeOffsets == 0)
 				return;
+		}
+
+		// -1 when the changed props don't fit in the list (embedded structs map to several props), copy everything then.
+		if (changeOffsets > 0) {
+			SendTablePrecalc precalc = sendTable.Precalc!;
 
 			AddToPartialChangeEntsList(Array.IndexOf(sv.Edicts, edict) /* TODO: Need fast way to do this! */, true);
 			FastSortList(propIndices, changeOffsets);
@@ -165,6 +169,31 @@ public static class LocalTransfer
 			return;
 
 		precalc.PropAccessorToIndexMap[fieldAccessor] = (ushort)prop;
+
+		AddEmbeddedFieldToMap(precalc, prop, fieldAccessor);
+	}
+
+	// Props inside of an embedded struct (or array) are keyed by their full path, ie. "Fog.Start", but changing the struct
+	// through its ForModify accessor only reports the root field "Fog". Map the root to the props it contains.
+	static void AddEmbeddedFieldToMap(SendTablePrecalc precalc, int prop, IFieldAccessor fieldAccessor) {
+		if (fieldAccessor is not DynamicAccessor accessor)
+			return;
+
+		string? fieldKey = accessor.FieldKey;
+		if (fieldKey == null)
+			return;
+
+		int expressionStart = fieldKey.LastIndexOf('|') + 1;
+		int rootEnd = fieldKey.AsSpan(expressionStart).IndexOfAny('.', '[');
+		if (rootEnd <= 0)
+			return;
+
+		int rootKeyId = FieldKeyRegistry.GetId(fieldKey[..(expressionStart + rootEnd)]);
+		if (!precalc.EmbeddedFieldToIndices.TryGetValue(rootKeyId, out List<ushort>? indices))
+			precalc.EmbeddedFieldToIndices[rootKeyId] = indices = [];
+
+		if (!indices.Contains((ushort)prop))
+			indices.Add((ushort)prop);
 	}
 
 	public static void BuildPropOffsetToIndexMap(SendTablePrecalc precalc, StandardSendProxies sendProxies) {
@@ -208,6 +237,17 @@ public static class LocalTransfer
 				continue;
 
 			if (!precalc.PropAccessorToIndexMap.TryGetValue(field, out ushort propIndex)) {
+				// An embedded struct was changed through its ForModify accessor, copy every prop inside of it.
+				if (field is DynamicAccessor accessor && accessor.FieldIndex == -1 && precalc.EmbeddedFieldToIndices.TryGetValue(accessor.FieldKeyId, out List<ushort>? embeddedIndices)) {
+					if (iOut + embeddedIndices.Count > outIndices.Length)
+						return -1;
+
+					for (int j = 0; j < embeddedIndices.Count; j++)
+						outIndices[iOut++] = (ushort)(embeddedIndices[j] & ~PROP_INDEX_VECTOR_ELEM_MARKER);
+
+					continue;
+				}
+
 				// Note: this SHOULD be fine
 				// If we can't find a field here, then there isn't a SendProp associated with the CNetworkVar that triggered the change
 				// so the change doesn't matter
