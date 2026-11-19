@@ -91,6 +91,8 @@ public class SkyCamera : LogicalEntity
 			SkyboxData.Fog.End = strtof(value, out _);
 		else if (FStrEq(keyName, "fogmaxdensity"))
 			SkyboxData.Fog.MaxDensity = strtof(value, out _);
+		else if (FStrEq(keyName, "fogradial"))
+			SkyboxData.Fog.Radial = atoi(value) != 0;
 		else
 			return base.KeyValue(keyName, value);
 
@@ -125,5 +127,9 @@ public class SkyCamera : LogicalEntity
 			}
 		}
 #endif
+
+		// matches the behavior of fog controller
+		if (g_pGameRules.IsOfficialMap())
+			SkyboxData.Fog.Radial = true;
 	}
 }
