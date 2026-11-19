@@ -2231,7 +2231,7 @@ public static partial class LuaEntity
 		TypeDescription? td = null;
 		for (DataMap? map = ent.GetDataDescMap(); map != null && td == null; map = map.BaseMap) {
 			foreach (TypeDescription field in map.DataDesc) {
-				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(ReallyUglyHack(name), field.FieldName) == 0))) {
 					td = field;
 					break;
 				}
@@ -2240,7 +2240,7 @@ public static partial class LuaEntity
 #if CLIENT_DLL
 		for (DataMap? map = ent.GetPredDescMap(); map != null && td == null; map = map.BaseMap) {
 			foreach (TypeDescription field in map.DataDesc) {
-				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(ReallyUglyHack(name), field.FieldName) == 0))) {
 					td = field;
 					break;
 				}
@@ -2461,6 +2461,18 @@ public static partial class LuaEntity
 		}
 	}
 
+	// FIXME FIXME FIXME
+	// datadesc stores c# names rn..
+	static ReadOnlySpan<char> ReallyUglyHack(ReadOnlySpan<char> name) {
+		if (name.Length < 3 || name[0] != 'm' || name[1] != '_')
+			return name;
+		name = name[2..];
+		int i = 0;
+		while (i < name.Length && char.IsLower(name[i]))
+			i++;
+		return i == name.Length ? name : name[i..];
+	}
+
 	[LuaMethod]
 	static int Entity__GetInternalVariable(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
@@ -2469,7 +2481,7 @@ public static partial class LuaEntity
 		TypeDescription? td = null;
 		for (DataMap? map = ent.GetDataDescMap(); map != null && td == null; map = map.BaseMap) {
 			foreach (TypeDescription field in map.DataDesc) {
-				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(ReallyUglyHack(name), field.FieldName) == 0))) {
 					td = field;
 					break;
 				}
@@ -2478,7 +2490,7 @@ public static partial class LuaEntity
 #if CLIENT_DLL
 		for (DataMap? map = ent.GetPredDescMap(); map != null && td == null; map = map.BaseMap) {
 			foreach (TypeDescription field in map.DataDesc) {
-				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(ReallyUglyHack(name), field.FieldName) == 0))) {
 					td = field;
 					break;
 				}

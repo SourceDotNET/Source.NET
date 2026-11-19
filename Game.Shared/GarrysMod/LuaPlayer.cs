@@ -894,6 +894,15 @@ public static partial class LuaPlayer
 		}
 		return 0;
 	}
+
+	[LuaMethod]
+	static int Player__PrintMessage(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		ReadOnlySpan<char> msg = lua.CheckString(3);
+		HudPrint type = (HudPrint)(int)lua.CheckNumber(2);
+		Util.ClientPrint(player, type, msg);
+		return 0;
+	}
 #endif
 
 	[LuaMethod]
