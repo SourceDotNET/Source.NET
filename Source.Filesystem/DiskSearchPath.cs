@@ -187,7 +187,8 @@ public class DiskSearchPath : BaseSearchPath
 		if (!info.Exists)
 			return BaseFileSystem.g_AddonFileSystem.GetFileSize(absPath) >= 0 ? DateTime.UnixEpoch.AddSeconds(1) : DateTime.UnixEpoch;
 
-		(parent as BaseFileSystem)?.LogAccessToFile("filetime", absPath, "");
+		if (parent is BaseFileSystem fs && fs.LogFuncs.Count != 0)
+			fs.LogAccessToFile("filetime", absPath, "");
 		return info.LastWriteTimeUtc;
 	}
 

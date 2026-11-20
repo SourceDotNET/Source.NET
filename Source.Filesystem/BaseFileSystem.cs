@@ -722,7 +722,7 @@ public partial class BaseFileSystem : IFileSystem
 	FileSystemWarningFunc? WarningFunc;
 
 	int OpenedFiles;
-	readonly List<FileSystemLoggingFunc> LogFuncs = [];
+	internal readonly List<FileSystemLoggingFunc> LogFuncs = [];
 
 	public void SetWarningFunc(FileSystemWarningFunc? warning) => WarningFunc = warning;
 
