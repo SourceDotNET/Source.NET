@@ -83,7 +83,18 @@ public class Steam3ClientImpl : IDisposable
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public ISteamParentalSettings SteamParentalSettings() => HasSteamClient() ? __SteamParentalSettings : null!;
 	[MethodImpl(MethodImplOptions.AggressiveInlining)] public ISteamInput SteamInput() => HasSteamClient() ? __SteamInput : null!;
 
+	bool Active;
+
 	public void Dispose() { }
+
+	public void Activate() {
+		if (Active)
+			return;
+
+		Active = true;
+		if (SteamAPI.InitEx(out string errMsg) != ESteamAPIInitResult.k_ESteamAPIInitResult_OK)
+			Sys.Error($"Failed to initialize Steamworks API.\n\n{errMsg}\n\nMake sure Steam is running and is up to date!");
+	}
 
 	public void RunFrame() {
 		SteamAPI.RunCallbacks();
