@@ -31,9 +31,11 @@ public class Cmd(IEngineAPI provider, IFileSystem fileSystem)
 	public CommandSource Source;
 	public int ClientSlot;
 
+	static int InvalidExecutionMarkerCount;
+
 	private void HandleExecutionMarker(ReadOnlySpan<char> command, ReadOnlySpan<char> markerCodeS) {
-		char cCommand = command[0];
-		int markerCode = (int.TryParse(markerCodeS, out int i) ? i : -1);
+		char cCommand = command.IsEmpty ? '\0' : command[0];
+		int markerCode = atoi(markerCodeS);
 
 		if (Cbuf.FindAndRemoveExecutionMarker(markerCode)) {
 			if (cCommand == (char)CmdExecutionMarker.EnableServerCanExecute) ++filterCommandsByServerCanExecute;
@@ -42,7 +44,8 @@ public class Cmd(IEngineAPI provider, IFileSystem fileSystem)
 			else if (cCommand == (char)CmdExecutionMarker.DisableClientCmdCanExecute) --filterCommandsByClientCmdCanExecute;
 		}
 		else {
-			Dbg.Warning("Invalid execution marker code.\n");
+			if (++InvalidExecutionMarkerCount < 3)
+				Dbg.Warning("Invalid execution marker code.\n");
 		}
 	}
 
@@ -125,10 +128,12 @@ public class Cmd(IEngineAPI provider, IFileSystem fileSystem)
 		if (cv.IsCommand(command))
 			return commandBase;
 
-		if (source == CommandSource.Command && cl.IsConnected())
+		if (source == CommandSource.Command && cl.IsConnected()) {
 			ForwardToServer(command);
+			return null;
+		}
 
-		Dbg.Msg($"Unknown command \"{command[0]}\"\n");
+		Dbg.Msg("Unknown command \"%s\"\n", command[0].ToString());
 		return null;
 	}
 
@@ -148,12 +153,16 @@ public class Cmd(IEngineAPI provider, IFileSystem fileSystem)
 		conCommand.Dispatch(in command, Source, ClientSlot);
 	}
 
+	readonly HashSet<string> ExtraClientCmdCanExecuteCvars = new(StringComparer.OrdinalIgnoreCase);
+
+	public void AddClientCmdCanExecuteVar(string name) => ExtraClientCmdCanExecuteCvars.Add(name);
+
 	public bool ShouldPreventClientCommand(ConCommandBase? cmd) {
-		if (filterCommandsByClientCmdCanExecute > 0 && cmd != null && cmd.IsFlagSet(FCvar.ClientCmdCanExecute)) {
+		if (filterCommandsByClientCmdCanExecute > 0 && cmd != null && !cmd.IsFlagSet(FCvar.ClientCmdCanExecute) && !ExtraClientCmdCanExecuteCvars.Contains(cmd.GetName())) {
 			// If this command is in the game DLL, don't mention it because we're going to forward this
 			// request to the server and let the server handle it.
 			if (!cmd.IsFlagSet(FCvar.GameDLL))
-				Dbg.Warning($"FCvar.ServerCanExecute prevented server running command: {cmd.GetName()}\n");
+				Dbg.Warning("FCVAR_CLIENTCMD_CAN_EXECUTE prevented running command: %s\n", cmd.GetName());
 
 			return true;
 		}
@@ -166,13 +175,12 @@ public class Cmd(IEngineAPI provider, IFileSystem fileSystem)
 
 	public bool ShouldPreventServerCommand(ConCommandBase? cmd) {
 		if (!Host.IsSinglePlayerGame()) {
-			// todo: make this work.
 			if (filterCommandsByServerCanExecute > 0) {
 				if (cmd == null)
 					return false;
 
 				if (!cmd.IsFlagSet(FCvar.ServerCanExecute)) {
-					Dbg.Warning($"FCvar.ServerCanExecute prevented server running command: {cmd.GetName()}\n");
+					Dbg.Warning("FCVAR_SERVER_CAN_EXECUTE prevented server running command: %s\n", cmd.GetName());
 					return true;
 				}
 			}

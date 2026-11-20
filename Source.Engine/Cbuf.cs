@@ -3,12 +3,15 @@ using CommunityToolkit.HighPerformance;
 using Microsoft.Extensions.DependencyInjection;
 
 using Source.Common.Commands;
+using Source.Engine.Server;
+
+using System.Diagnostics;
 
 namespace Source.Engine;
 
 public class CommandBuffer
 {
-	public const int ARGS_BUFFER_LENGTH = 2 << 13;
+	public const int ARGS_BUFFER_LENGTH = 8192;
 
 	public class Command
 	{
@@ -37,17 +40,19 @@ public class CommandBuffer
 		if (Commands.Count == 0)
 			return false;
 
-		LinkedListNode<Command>? command = Commands.First;
-		if (command == null)
+		LinkedListNode<Command>? head = Commands.First;
+		if (head == null)
 			return false;
 
-		Command cmd = command.Value;
+		Command cmd = head.Value;
+		if (cmd.Tick > lastTickToProcess)
+			return false;
 
 		currentTick = cmd.Tick;
 		if (cmd.BufferSize > 0)
 			currentCommand.Tokenize(argsBuffer.AsSpan()[cmd.FirstArgS..(cmd.FirstArgS + cmd.BufferSize)]);
 
-		Commands.Remove(cmd);
+		Commands.Remove(head);
 		nextCommand = Commands.First;
 		return true;
 	}
@@ -66,12 +71,14 @@ public class CommandBuffer
 
 	public ref TokenizedCommand GetCommand() => ref currentCommand;
 
-	public bool AddText(ReadOnlySpan<char> text, long tickDelay = 0) {
+	public bool AddText(ReadOnlySpan<char> text, int tickDelay = 0) {
+		Dbg.Assert(tickDelay >= 0);
+
 		long tick = currentTick + tickDelay;
 
 		ReadOnlySpan<char> currentCommand = text.SliceNullTerminatedString();
 
-		Span<char> argV0 = stackalloc char[1024];
+		Span<char> argV0Stack = stackalloc char[1024];
 		int len = currentCommand.Length;
 		int offsetToNextCommand = 0;
 		for (; len > 0; len -= offsetToNextCommand, currentCommand = currentCommand[(offsetToNextCommand)..]) {
@@ -79,13 +86,17 @@ public class CommandBuffer
 			if (commandLength <= 0)
 				continue;
 
+			Span<char> argV0 = commandLength + 1 <= argV0Stack.Length ? argV0Stack[..(commandLength + 1)] : new char[commandLength + 1];
 			StringReader reader = new StringReader(new(currentCommand[..commandLength]));
-			ParseArgV0(reader, argV0[..commandLength], out ReadOnlySpan<char> argS);
-			// We had this, but it seems unnecessary now due to the SliceNullTerminatedString call, and it breaks
-			// single-letter commands (which don't really exist anyway, but its still a bug)
-			//if (argV0[0] == '\0') continue;
+			ParseArgV0(reader, argV0, out ReadOnlySpan<char> argS);
+			if (argV0[0] == '\0')
+				continue;
 
-			// wait command later
+			if (stricmp(argV0, "wait") == 0 && IsWaitEnabled()) {
+				long delay = !argS.IsEmpty ? atoi(argS) : waitDelayTicks;
+				tick += delay;
+				continue;
+			}
 
 			if (!InsertCommand(currentCommand[..commandLength], tick))
 				return false;
@@ -94,23 +105,28 @@ public class CommandBuffer
 		return true;
 	}
 
+#if GMOD_DLL
+	public bool AddRawText(ReadOnlySpan<char> text, int tickDelay = 0) {
+		return InsertCommand(text.SliceNullTerminatedString(), currentTick + tickDelay);
+	}
+#endif
+
 	void Compact() {
 		argBufferSize = 0;
 		Span<char> tempBuffer = stackalloc char[ARGS_BUFFER_LENGTH];
-		Span<char> writeBuffer = argsBuffer.AsSpan();
 		foreach (Command command in Commands) {
-			writeBuffer[command.FirstArgS..].CopyTo(tempBuffer[argBufferSize..]);
+			argsBuffer.AsSpan(command.FirstArgS, command.BufferSize).CopyTo(tempBuffer[argBufferSize..]);
 			command.FirstArgS = argBufferSize;
 			argBufferSize += command.BufferSize;
 		}
 
-		tempBuffer[..argBufferSize].CopyTo(writeBuffer);
+		tempBuffer[..argBufferSize].CopyTo(argsBuffer);
 	}
 
 	private unsafe bool InsertCommand(ReadOnlySpan<char> argS, long tick) {
 		int commandSize = argS.Length;
 
-		if (commandSize > TokenizedCommand.MaxCommandLength) {
+		if (commandSize >= TokenizedCommand.MaxCommandLength) {
 			Dbg.Warning($"WARNING: Command too long... ignoring!\n{argS}\n");
 			return false;
 		}
@@ -147,7 +163,7 @@ public class CommandBuffer
 		if (nextCommand == null)
 			Commands.AddLast(command);
 		else
-			Commands.AddAfter(nextCommand, command);
+			Commands.AddBefore(nextCommand, command);
 	}
 
 	private void InsertCommandAtAppropriateTime(Command command) {
@@ -166,11 +182,18 @@ public class CommandBuffer
 		argV0[0] = '\0';
 		argS = null;
 
-		int size = buf.ParseToken(TokenizedCommand.DefaultBreakSet, argV0);
-		if (size <= 0)
+		if (!buf.IsValid())
 			return false;
 
-		int argsLen = buf.TellMaxPut();
+		int size = buf.ParseToken(TokenizedCommand.DefaultBreakSet, argV0);
+		if (size <= 0 || argV0.Length == size) {
+			argV0[0] = '\0';
+			return false;
+		}
+
+		argV0[size] = '\0';
+
+		int argsLen = buf.TellMaxPut() - buf.TellGet();
 		argS = (argsLen > 0) ? buf.PeekToEnd() : null;
 		return true;
 	}
@@ -209,6 +232,9 @@ public class CommandBuffer
 	}
 
 	public void BeginProcessingCommands(int deltaTicks) {
+		if (deltaTicks == 0)
+			return;
+
 		Dbg.Assert(!isProcessingCommands);
 		isProcessingCommands = true;
 		lastTickToProcess = currentTick + deltaTicks - 1;
@@ -216,17 +242,34 @@ public class CommandBuffer
 	}
 
 	public void EndProcessingCommands() {
+		Dbg.Assert(isProcessingCommands);
 		isProcessingCommands = false;
 		currentTick = lastTickToProcess + 1;
 		nextCommand = null;
 
-		// todo; better error handling here.
+		LinkedListNode<Command>? i = Commands.First;
+		if (i == null) {
+			argBufferSize = 0;
+			return;
+		}
+
+		while (i != null) {
+			if (i.Value.Tick >= currentTick)
+				break;
+
+			LinkedListNode<Command>? next = i.Next; // note: GMod loops forever here
+			Dbg.Msg("Warning: Skipping command %s\n", new string(argsBuffer, i.Value.FirstArgS, i.Value.BufferSize - 1));
+			Commands.Remove(i);
+			i = next;
+		}
+
+		Compact();
 	}
 
 	public bool IsProcessingCommands() => isProcessingCommands;
 
 	public LinkedListNode<Command>? GetNextCommandHandle() {
-		return nextCommand;
+		return Commands.First;
 	}
 
 	public int GetArgumentBufferSize() {
@@ -236,9 +279,16 @@ public class CommandBuffer
 		return maxArgBufferLength;
 	}
 
+	public void SetWaitDelayTime(int tickDelay) {
+		Dbg.Assert(tickDelay >= 0);
+		waitDelayTicks = tickDelay;
+	}
+
 	public void SetWaitEnabled(bool wait) {
 		waitEnabled = wait;
 	}
+
+	public bool IsWaitEnabled() => waitEnabled;
 }
 
 public class Cbuf(IServiceProvider provider)
@@ -246,9 +296,14 @@ public class Cbuf(IServiceProvider provider)
 	public readonly CommandBuffer Buffer = new();
 
 	Cmd Cmd;
+	Host Host;
+
+	static bool WarnedOutsideMainThread;
 
 	public void Init() {
 		Cmd = provider.GetRequiredService<Cmd>();
+		Host = provider.GetRequiredService<Host>();
+		Buffer.SetWaitDelayTime(1);
 	}
 	public void Shutdown() { }
 
@@ -259,9 +314,18 @@ public class Cbuf(IServiceProvider provider)
 	public void AddText(ReadOnlySpan<char> text) {
 		lock (Buffer) {
 			if (!Buffer.AddText(text))
-				Dbg.ConMsg("CBuf.AddText: buffer overflow;\n");
+				Dbg.ConMsg("Cbuf_AddText: buffer overflow\n");
 		}
 	}
+
+#if GMOD_DLL
+	public void AddRawText(ReadOnlySpan<char> text) {
+		lock (Buffer) {
+			if (!Buffer.AddRawText(text))
+				Dbg.ConWarning("Cbuf_AddRawText: buffer overflow\n");
+		}
+	}
+#endif
 
 	public void InsertText(ReadOnlySpan<char> text) {
 		lock (Buffer) {
@@ -271,7 +335,22 @@ public class Cbuf(IServiceProvider provider)
 	}
 
 	public void Execute() {
+		if (!ThreadInMainThread()) {
+			Dbg.Warning("Executing command outside main loop thread\n");
+			if (!WarnedOutsideMainThread) {
+				WarnedOutsideMainThread = true;
+				if (Debugger.IsAttached)
+					Debugger.Break();
+			}
+		}
+
 		lock (Buffer) {
+			if (Buffer.IsProcessingCommands())
+				return;
+
+			if (BaseServer.sv_allow_wait_command.GetBool() != Buffer.IsWaitEnabled())
+				Buffer.SetWaitEnabled(BaseServer.sv_allow_wait_command.GetBool());
+
 			Buffer.BeginProcessingCommands(1);
 			while (Buffer.DequeueNextCommand()) {
 				ExecuteCommand(ref Buffer.GetCommand(), CommandSource.Command);
@@ -289,35 +368,30 @@ public class Cbuf(IServiceProvider provider)
 	}
 	public bool AddTextWithMarkers(CmdExecutionMarker markerLeft, ReadOnlySpan<char> text, CmdExecutionMarker markerRight) {
 		if (!HasRoomForExecutionMarkers(2)) {
-			Dbg.ConMsg("Cbuf.AddTextWithMarkers: execution marker overflow\n");
+			Dbg.ConMsg("Cbuf_AddTextWithMarkers: execution marker overflow\n");
 			return false;
 		}
 
 		int markerCodeLeft = CreateExecutionMarker();
 		int markerCodeRight = CreateExecutionMarker();
 
-		Span<char> strMarkerLeft = stackalloc char[512];
-		Span<char> strMarkerRight = stackalloc char[512];
+		string strMarkerLeft = $";{CMDSTR_ADD_EXECUTION_MARKER} {(char)markerLeft} {markerCodeLeft};";
+		string strMarkerRight = $";{CMDSTR_ADD_EXECUTION_MARKER} {(char)markerRight} {markerCodeRight};";
 
-		$"{CMDSTR_ADD_EXECUTION_MARKER} {markerLeft} {markerCodeLeft}".CopyTo(strMarkerLeft);
-		$"{CMDSTR_ADD_EXECUTION_MARKER} {markerRight} {markerCodeRight}".CopyTo(strMarkerRight);
-
-		int strLeftLen = System.MemoryExtensions.IndexOf(strMarkerLeft, '\0');
-		int strRightLen = System.MemoryExtensions.IndexOf(strMarkerRight, '\0');
-		int textToBeAddedLen = strLeftLen + strRightLen + text.Length + 3;
+		int textToBeAddedLen = strMarkerLeft.Length + strMarkerRight.Length + (int)strlen(text) + 3;
 
 		lock (Buffer) {
 			if (Buffer.GetArgumentBufferSize() + textToBeAddedLen + 1 > Buffer.GetMaxArgumentBufferSize()) {
 				FindAndRemoveExecutionMarker(markerCodeLeft);
 				FindAndRemoveExecutionMarker(markerCodeRight);
 
-				Dbg.ConMsg("Cbuf.AddTextWithMarkers: buffer overflow\n");
+				Dbg.ConWarning("Cbuf_AddTextWithMarkers: buffer overflow\n");
 				return false;
 			}
 
-			bool success = AddExecutionMarker(markerLeft, strMarkerLeft[..strLeftLen]) && Buffer.AddText(text) && AddExecutionMarker(markerRight, strMarkerRight[..strRightLen]);
+			bool success = AddExecutionMarker(markerLeft, strMarkerLeft) && Buffer.AddText(text) && AddExecutionMarker(markerRight, strMarkerRight);
 			if (!success)
-				Dbg.ConMsg("Cbuf.AddTextWithMarkers: buffer overflow\n");
+				Host.Error("Cbuf_AddTextWithMarkers: buffer overflow\n");
 
 			return true;
 		}
@@ -337,9 +411,8 @@ public class Cbuf(IServiceProvider provider)
 	public bool FindAndRemoveExecutionMarker(int code) => ExecutionMarkers.Remove(code);
 
 	public int CreateExecutionMarker() {
-		if (ExecutionMarkers.Count >= MAX_EXECUTION_MARKERS) {
-			// todo
-		}
+		if (ExecutionMarkers.Count >= MAX_EXECUTION_MARKERS)
+			Host.Error("CreateExecutionMarker called, but the max has already been reached.");
 
 		int randomNumber;
 		while (true) {
