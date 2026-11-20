@@ -584,7 +584,6 @@ public class SendTablePrecalc
 	public readonly FastLocalTransferInfo FastLocalTransfer = new();
 	public int DataTableProxies;
 	public readonly Dictionary<IFieldAccessor, ushort> PropAccessorToIndexMap = [];
-	public readonly Dictionary<int, List<ushort>> EmbeddedFieldToIndices = [];
 }
 
 public class ClientSendProp

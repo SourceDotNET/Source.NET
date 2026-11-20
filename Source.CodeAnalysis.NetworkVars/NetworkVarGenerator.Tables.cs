@@ -424,8 +424,10 @@ namespace Source.CodeAnalysis.NetworkVars
 					ITypeSymbol memberType = member is IFieldSymbol pf ? pf.Type : ((IPropertySymbol)member).Type;
 					if (SettingValue(entry.Settings, "Embedded") is bool embedded && embedded) {
 						FieldAccessorModel? embeddedAccessor = BuildScalar(compilation, member.ContainingType, member.Name, null, new AccessFailure());
-						if (embeddedAccessor != null)
+						if (embeddedAccessor != null) {
+							embeddedAccessor.PredictionOnly = true;
 							accessors.Add(embeddedAccessor);
+						}
 						predicted.Add(PredictionDescription("Embedded", member, "1", "global::Source.Common.FieldTypeDescFlags.Save", Display(memberType) + ".PredMap", "0"));
 						entries.Add("E");
 						embeddedMaps.Add(memberType.ToDisplayString() + ".PredMap");
@@ -443,8 +445,10 @@ namespace Source.CodeAnalysis.NetworkVars
 
 					INamedTypeSymbol declaring = member.ContainingType;
 					FieldAccessorModel? predAccessor = BuildScalar(compilation, declaring, member.Name, null, new AccessFailure());
-					if (predAccessor != null)
+					if (predAccessor != null) {
+						predAccessor.PredictionOnly = true;
 						accessors.Add(predAccessor);
+					}
 
 					bool hasFlags = entry.Settings.Values.ContainsKey("Flags");
 					object? tolerance = SettingValue(entry.Settings, "Tolerance");
