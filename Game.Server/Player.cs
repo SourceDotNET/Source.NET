@@ -2370,6 +2370,39 @@ public partial class BasePlayer : BaseCombatCharacter
 
 	internal int GetUserID() => engine.GetPlayerUserId(Edict());
 
+#if GMOD_DLL
+	static readonly ConVar sv_maxvoicepacketsperframe = new("sv_maxvoicepacketsperframe", "48", 0, "How many voice packets the server will accept from a single client per frame/tick, before the client is kicked. 0 to disable. Higher values will make the server more vulnerable to DoS attacks.");
+
+	public double LastVoicePacketTime;
+	ushort VoicePacketsThisFrame;
+	public bool Kicked;
+
+	public void OnVoicePacketReceived() {
+		double curTime = gpGlobals.CurTime;
+		ushort packets;
+		if (LastVoicePacketTime == curTime)
+			packets = (ushort)(VoicePacketsThisFrame + 1);
+		else {
+			packets = 1;
+			VoicePacketsThisFrame = 0;
+		}
+
+		LastVoicePacketTime = curTime;
+		VoicePacketsThisFrame = packets;
+
+		int maxPackets = sv_maxvoicepacketsperframe.GetInt();
+		if (maxPackets <= 0)
+			return;
+
+		if ((VoicePacketsThisFrame > 65000 || maxPackets < VoicePacketsThisFrame) && !Kicked) {
+			Span<char> cmd = stackalloc char[600];
+			sprintf(cmd, "kickid %d \"Too many voice packets (%i) in a single frame!\"\n").D(engine.GetPlayerUserId(Edict())).I(VoicePacketsThisFrame);
+			engine.ServerCommand(cmd.SliceNullTerminatedString());
+			Kicked = true;
+		}
+	}
+#endif
+
 	public bool GetSteamID(out Steamworks.CSteamID id) {
 		Steamworks.CSteamID? steamID = engine.GetClientSteamID(Edict());
 		id = steamID ?? default;

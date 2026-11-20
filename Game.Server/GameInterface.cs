@@ -912,6 +912,8 @@ public class ServerGameClients : IServerGameClients
 
 	public void GMOD_SentClientStringTables(int userID) => Game.Server.GarrysMod.GModDataPack.DataPack().SendFileRequestRequest(userID);
 
+	public void GMOD_OnReceivedVoicePacket(Edict? player) => GetVoiceGameMgr().OnReceivedVoicePacket(BaseEntity.Instance(player));
+
 	public void GMOD_ReceiveClientMessage(int userID, Edict player, bf_read msg, int bits) {
 		int type = msg.ReadByte();
 		if (bits <= 7 || type > 5) {

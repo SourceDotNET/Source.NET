@@ -47,4 +47,16 @@ public class VoiceServer : IVoiceServer
 
 		return true;
 	}
+
+#if GMOD_DLL
+	public bool GetClientProximity(int receiver, int sender) {
+		--receiver;
+		--sender;
+
+		if (receiver < 0 || receiver >= sv.GetClientCount() || sender < 0 || sender >= sv.GetClientCount())
+			return false;
+
+		return sv.Client(sender).VoiceProximity.Get(receiver) != 0;
+	}
+#endif
 }

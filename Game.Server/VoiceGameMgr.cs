@@ -42,7 +42,11 @@ public static class VoiceGameMgrGlobals
 
 	// Set game rules to allow all clients to talk to each other.
 	// Muted players still can't talk to each other.
+#if GMOD_DLL
+	public static readonly ConVar sv_alltalk = new("sv_alltalk", "0", FCvar.Notify, "Players can hear all other players, no team restrictions");
+#else
 	public static readonly ConVar sv_alltalk = new("sv_alltalk", "0", FCvar.Notify | FCvar.Replicated, "Players can hear all other players, no team restrictions");
+#endif
 
 	public static readonly VoiceGameMgr g_VoiceGameMgr = new();
 
@@ -67,9 +71,15 @@ public static class VoiceGameMgrGlobals
 // VoiceGameMgr manages which clients can hear which other clients.
 public class VoiceGameMgr
 {
+#if GMOD_DLL
+	double LastVoicePacketTime;
+#endif
 	IVoiceGameMgrHelper? Helper;
 	int MaxPlayers;
 	double UpdateInterval;                     // How long since the last update.
+#if GMOD_DLL
+	double FullUpdateInterval;
+#endif
 	int ProximityDistance;
 
 	public VoiceGameMgr() {
@@ -94,17 +104,67 @@ public class VoiceGameMgr
 	// If gameplay mode is teamplay, then only players on the same team can hear each other.
 	// Player masks are always applied.
 	public void Update(double frametime) {
+#if GMOD_DLL
+		UpdateInterval += frametime;
+		FullUpdateInterval += frametime;
+		if (UpdateInterval < UPDATE_INTERVAL)
+			return;
+
+		if (gpGlobals.CurTime - LastVoicePacketTime > UPDATE_INTERVAL && UpdateInterval < 5.0)
+			return;
+
+		if (UpdateInterval > 3.0 || FullUpdateInterval > 5.0) {
+			FullUpdateInterval = 0;
+			UpdatePlayers(true, null);
+		}
+		else
+			UpdatePlayers(false, null);
+#else
 		// Only update periodically.
 		UpdateInterval += frametime;
 		if (UpdateInterval < UPDATE_INTERVAL)
 			return;
 
 		UpdateMasks();
+#endif
 	}
 
+#if GMOD_DLL
+	public void OnReceivedVoicePacket(BaseEntity? entity) {
+		if (entity == null || !entity.IsPlayer())
+			return;
+
+		BasePlayer player = (BasePlayer)entity;
+		bool startedTalking = gpGlobals.CurTime - player.LastVoicePacketTime > UPDATE_INTERVAL;
+		player.OnVoicePacketReceived();
+		LastVoicePacketTime = gpGlobals.CurTime;
+
+		if (startedTalking)
+			UpdatePlayers(false, player);
+	}
+
+	void UpdatePlayers(bool full, BasePlayer? talker) {
+		UpdateInterval = 0;
+
+		for (int iClient = 0; iClient < MaxPlayers; iClient++) {
+			BaseEntity? ent = Util.PlayerByIndex(iClient + 1);
+			if (ent != null && ent.IsPlayer())
+				UpdatePlayer((BasePlayer)ent, full, talker);
+		}
+	}
+#endif
+
 	// Called when a new client connects (unsquelches its entity for everyone).
-	public void ClientConnected(Edict edict) {
-		int index = edict.EdictIndex - 1;
+	public void ClientConnected(Edict? edict) {
+#if GMOD_DLL
+		if (edict == null)
+			return;
+#endif
+		int index = edict!.EdictIndex - 1;
+#if GMOD_DLL
+		if ((uint)index >= VOICE_MAX_PLAYERS)
+			return;
+#endif
 
 		// Clear out everything we use for deltas on this guy.
 		g_bWantModEnable.Set(index, true);
@@ -164,6 +224,74 @@ public class VoiceGameMgr
 		return g_BanMasks[listener - 1].IsBitSet(talker - 1);
 	}
 
+#if GMOD_DLL
+	void UpdatePlayer(BasePlayer player, bool full, BasePlayer? talker) {
+		int playerIndex = player.EntIndex();
+		int iClient = playerIndex - 1;
+
+		SingleUserRecipientFilter user = new(player);
+
+		// Request the state of their "VModEnable" cvar
+		if (g_bWantModEnable.IsBitSet(iClient)) {
+			UserMessageBegin(user, "RequestState");
+			MessageEnd();
+			// Only send it once
+			g_bWantModEnable.Set(iClient, false);
+		}
+
+		PlayerBitSet gameRulesMask = default;
+		PlayerBitSet proximityMask = default;
+		if (g_PlayerModEnable.IsBitSet(iClient)) {
+			bool proximity = false;
+
+			// Build a mask of who they can hear based on the game rules
+			for (int iOtherClient = 0; iOtherClient < MaxPlayers; iOtherClient++) {
+				BaseEntity? otherEnt = Util.PlayerByIndex(iOtherClient + 1);
+				if (otherEnt == null || !otherEnt.IsPlayer())
+					continue;
+
+				BasePlayer other = (BasePlayer)otherEnt;
+				bool canHear;
+				if (full || other == talker || gpGlobals.CurTime - other.LastVoicePacketTime < 1.0)
+					canHear = Helper!.CanPlayerHearPlayer(player, other, ref proximity);
+				else {
+					canHear = g_pVoiceServer.GetClientListening(playerIndex, iOtherClient + 1);
+					proximity = g_pVoiceServer.GetClientProximity(playerIndex, iOtherClient + 1);
+				}
+
+				if (canHear) {
+					gameRulesMask.Set(iOtherClient, true);
+					proximityMask.Set(iOtherClient, proximity);
+				}
+			}
+		}
+
+		// If this is different from what the client has, send an update
+		if (gameRulesMask != g_SentGameRulesMasks[iClient] ||
+			g_BanMasks[iClient] != g_SentBanMasks[iClient]) {
+			g_SentGameRulesMasks[iClient] = gameRulesMask;
+			g_SentBanMasks[iClient] = g_BanMasks[iClient];
+
+			UserMessageBegin(user, "VoiceMask");
+			int dw;
+			for (dw = 0; dw < VOICE_MAX_PLAYERS_DW; dw++) {
+				MessageWriteLong((int)gameRulesMask.GetWord(dw));
+				MessageWriteLong((int)g_BanMasks[iClient].GetWord(dw));
+			}
+			MessageWriteByte(g_PlayerModEnable.IsBitSet(iClient) ? 1 : 0);
+			MessageEnd();
+		}
+
+		// Tell the engine.
+		for (int iOtherClient = 0; iOtherClient < MaxPlayers; iOtherClient++) {
+			bool canHear = gameRulesMask.IsBitSet(iOtherClient) && !g_BanMasks[iClient].IsBitSet(iOtherClient);
+			g_pVoiceServer.SetClientListening(playerIndex, iOtherClient + 1, canHear);
+
+			if (canHear)
+				g_pVoiceServer.SetClientProximity(playerIndex, iOtherClient + 1, proximityMask.IsBitSet(iOtherClient));
+		}
+	}
+#else
 	// Force it to update the client masks.
 	void UpdateMasks() {
 		UpdateInterval = 0;
@@ -228,4 +356,5 @@ public class VoiceGameMgr
 			}
 		}
 	}
+#endif
 }
