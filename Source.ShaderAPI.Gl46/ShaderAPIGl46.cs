@@ -260,6 +260,8 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 		uboClipPlanes = glCreateBuffer();
 		glObjectLabel(GL_BUFFER, uboClipPlanes, "ShaderAPI User Clip Planes UBO");
 		glNamedBufferData(uboClipPlanes, sizeof(Vector4) * Gl46.HardwareConfig.MAXUSERCLIPPLANES, null, GL_DYNAMIC_DRAW);
+		for (int i = 0; i < Gl46.HardwareConfig.MAXUSERCLIPPLANES; i++)
+			UploadNoClipPlane(i);
 		UniformBufferBindings.Bind(UniformBufferBindingLocation.UserClipPlanes, uboClipPlanes);
 	}
 
@@ -3473,8 +3475,16 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 			else {
 				UserClipPlaneEnabled &= ~(1 << index);
 				glDisable(GL_CLIP_DISTANCE0 + index);
+				UploadNoClipPlane(index);
 			}
 		}
+	}
+
+	private unsafe void UploadNoClipPlane(int index) {
+		Vector4 noClip = new(0, 0, 0, 1);
+		glNamedBufferSubData(uboClipPlanes, index * sizeof(Vector4), sizeof(Vector4), &noClip);
+		UserClipPlaneProj[index] = noClip;
+		UserClipPlaneChanged |= 1 << index;
 	}
 
 	public void EnableFastClip(bool enable) {
