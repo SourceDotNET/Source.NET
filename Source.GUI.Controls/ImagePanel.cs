@@ -173,8 +173,9 @@ public class ImagePanel : Panel
 
 		ReadOnlySpan<char> fillColor = resourceData.GetString("fillcolor", "");
 		if (fillColor.Length > 0) {
+			int r = 0, g = 0, b = 0, a = 255;
 			FillColorName = new(fillColor);
-			if (new ScanF(fillColor, "%d %d %d %d").Read(out int r).Read(out int g).Read(out int b).Read(out int a).ReadArguments >= 3)
+			if (new ScanF(fillColor, "%d %d %d %d").ReadOrKeep(ref r).ReadOrKeep(ref g).ReadOrKeep(ref b).ReadOrKeep(ref a).ReadArguments >= 3)
 				FillColor = new(r, g, b, a);
 			else
 				FillColor = GetScheme()!.GetColor(fillColor, new(0, 0, 0, 0));
@@ -182,8 +183,9 @@ public class ImagePanel : Panel
 
 		ReadOnlySpan<char> drawColor = resourceData.GetString("drawcolor", "");
 		if (drawColor.Length > 0) {
+			int r = 255, g = 255, b = 255, a = 255;
 			DrawColorName = new(drawColor);
-			if (new ScanF(drawColor, "%d %d %d %d").Read(out int r).Read(out int g).Read(out int b).Read(out int a).ReadArguments >= 3)
+			if (new ScanF(drawColor, "%d %d %d %d").ReadOrKeep(ref r).ReadOrKeep(ref g).ReadOrKeep(ref b).ReadOrKeep(ref a).ReadArguments >= 3)
 				DrawColor = new(r, g, b, a);
 			else
 				DrawColor = GetScheme()!.GetColor(drawColor, new(255, 255, 255, 255));

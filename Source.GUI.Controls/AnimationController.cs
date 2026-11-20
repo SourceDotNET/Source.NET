@@ -900,7 +900,7 @@ public class AnimationController : Panel, IAnimationController
 						SetupPosition(ref cmdAnimate, ref cmdAnimate.Target.A, token, screenTall);
 					}
 					else {
-						var scanf = new ScanF(token, "%f %f %f %f").Read(out cmdAnimate.Target.A).Read(out cmdAnimate.Target.B).Read(out cmdAnimate.Target.C).Read(out cmdAnimate.Target.D);
+						var scanf = new ScanF(token, "%f %f %f %f").ReadOrKeep(ref cmdAnimate.Target.A).ReadOrKeep(ref cmdAnimate.Target.B).ReadOrKeep(ref cmdAnimate.Target.C).ReadOrKeep(ref cmdAnimate.Target.D);
 						if (0 == scanf.ReadArguments) {
 							Color default_invisible_black = new(0, 0, 0, 0);
 							Color col = scheme.GetColor(token, default_invisible_black);

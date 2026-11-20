@@ -67,7 +67,7 @@ public class Border : IBorder
 		ReadOnlySpan<char> insetString = inResourceData.GetString("inset", "0 0 0 0");
 
 		GetInset(out int left, out int top, out int right, out int bottom);
-		new ScanF(insetString, "%d %d %d %d").Read(out left).Read(out top).Read(out right).Read(out bottom);
+		new ScanF(insetString, "%d %d %d %d").ReadOrKeep(ref left).ReadOrKeep(ref top).ReadOrKeep(ref right).ReadOrKeep(ref bottom);
 		SetInset(left, top, right, bottom);
 
 		// get the border information from the scheme
