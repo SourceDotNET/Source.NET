@@ -21,6 +21,7 @@ public partial class FogController : BaseEntity
 	const int FOG_CONTROLLER_COLORSECONDARY_LERP = 2;
 	const int FOG_CONTROLLER_START_LERP = 4;
 	const int FOG_CONTROLLER_END_LERP = 8;
+	const int FOG_CONTROLLER_MAXDENSITY_LERP = 16;
 
 	[NetworkVar("m_fog")]
 	public partial ref readonly FogParams Fog { get; }
@@ -62,17 +63,22 @@ public partial class FogController : BaseEntity
 		DEFINE.INPUTFUNC(FieldType.Color32, "SetColorSecondary", nameof(InputSetColorSecondary), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetColorSecondary(data))),
 		DEFINE.INPUTFUNC(FieldType.Integer, "SetFarZ", nameof(InputSetFarZ), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetFarZ(data))),
 		DEFINE.INPUTFUNC(FieldType.String, "SetAngles", nameof(InputSetAngles), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetAngles(data))),
+		DEFINE.INPUTFUNC(FieldType.Color32, "SetColorHDR", nameof(InputSetColorHDR), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetColorHDR(data))),
+		DEFINE.INPUTFUNC(FieldType.Color32, "SetColorSecondaryHDR", nameof(InputSetColorSecondaryHDR), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetColorSecondaryHDR(data))),
 		DEFINE.INPUTFUNC(FieldType.Boolean, "SetRadial", nameof(InputSetRadial), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetRadial(data))),
 
 		DEFINE.INPUTFUNC(FieldType.Color32, "SetColorLerpTo", nameof(InputSetColorLerpTo), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetColorLerpTo(data))),
 		DEFINE.INPUTFUNC(FieldType.Color32, "SetColorSecondaryLerpTo", nameof(InputSetColorSecondaryLerpTo), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetColorSecondaryLerpTo(data))),
 		DEFINE.INPUTFUNC(FieldType.Float, "SetStartDistLerpTo", nameof(InputSetStartDistLerpTo), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetStartDistLerpTo(data))),
 		DEFINE.INPUTFUNC(FieldType.Float, "SetEndDistLerpTo", nameof(InputSetEndDistLerpTo), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetEndDistLerpTo(data))),
+		DEFINE.INPUTFUNC(FieldType.Float, "SetMaxDensityLerpTo", nameof(InputSetMaxDensityLerpTo), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputSetMaxDensityLerpTo(data))),
 		DEFINE.INPUTFUNC(FieldType.Void, "StartFogTransition", nameof(InputStartFogTransition), (INPUTFUNCPTR)((self, data) => ((FogController)self).InputStartFogTransition(data))),
 
 		DEFINE.KEYFIELD(nameof(UseAngles), FieldType.Boolean, "use_angles"),
 		DEFINE.KEYFIELD("Fog.ColorPrimary", FieldType.Color32, "fogcolor"),
 		DEFINE.KEYFIELD("Fog.ColorSecondary", FieldType.Color32, "fogcolor2"),
+		DEFINE.KEYFIELD("Fog.ColorPrimaryHDR", FieldType.Color32, "fogcolor_hdr"),
+		DEFINE.KEYFIELD("Fog.ColorSecondaryHDR", FieldType.Color32, "fogcolor2_hdr"),
 		DEFINE.KEYFIELD("Fog.DirPrimary", FieldType.Vector, "fogdir"),
 		DEFINE.KEYFIELD("Fog.Enable", FieldType.Boolean, "fogenable"),
 		DEFINE.KEYFIELD("Fog.Blend", FieldType.Boolean, "fogblend"),
@@ -82,6 +88,7 @@ public partial class FogController : BaseEntity
 		DEFINE.KEYFIELD("Fog.FarZ", FieldType.Float, "farz"),
 		DEFINE.KEYFIELD("Fog.Duration", FieldType.Float, "foglerptime"),
 		DEFINE.KEYFIELD("Fog.Radial", FieldType.Boolean, "fogradial"),
+		DEFINE.KEYFIELD("Fog.HDRColorScale", FieldType.Float, "HDRColorScale"),
 
 		DEFINE.THINKFUNC(nameof(SetLerpValues)),
 
@@ -92,13 +99,22 @@ public partial class FogController : BaseEntity
 		DEFINE.FIELD("Fog.ColorSecondaryLerpTo", FieldType.Color32),
 		DEFINE.FIELD("Fog.StartLerpTo", FieldType.Float),
 		DEFINE.FIELD("Fog.EndLerpTo", FieldType.Float),
+		DEFINE.FIELD("Fog.MaxDensityLerpTo", FieldType.Float),
 	]);
 	public override DataMap? GetDataDescMap() => DataDesc;
 
 	public FogController() {
 		// Make sure that old maps without fog fields don't get wacked out fog values.
-		FogForModify().Enable = false;
-		FogForModify().MaxDensity = 1.0f;
+		ref FogParams fog = ref FogForModify();
+		fog.Enable = false;
+		fog.MaxDensity = 1.0f;
+		fog.HDRColorScale = 1.0f;
+		fog.MaxDensityLerpTo = -1.0f;
+	}
+
+	static int AbsTrunc(float value) {
+		int i = (int)value;
+		return i < 0 ? -i : i;
 	}
 
 	public override void Spawn() {
@@ -107,6 +123,13 @@ public partial class FogController : BaseEntity
 		ref FogParams fog = ref FogForModify();
 		fog.ColorPrimaryLerpTo = fog.ColorPrimary;
 		fog.ColorSecondaryLerpTo = fog.ColorSecondary;
+
+		if (fog.MaxDensity > 0.95 && fog.Enable) {
+			if ((fog.FarZ < 250.0f && fog.FarZ > 0.0f) || (AbsTrunc(fog.End - fog.Start) <= 4 && (AbsTrunc(fog.Start) <= 49 || AbsTrunc(fog.End) <= 49))) {
+				Warning("Deleting env_fog_controller because it has silly values for Start/End/FarZ.\n");
+				Util.Remove(this);
+			}
+		}
 	}
 
 	public override void Activate() {
@@ -139,7 +162,19 @@ public partial class FogController : BaseEntity
 
 	public void InputSetColorSecondary(InputData inputdata) => FogForModify().ColorSecondary = inputdata.Value.Color32();
 
-	public void InputSetFarZ(InputData inputdata) => FogForModify().FarZ = inputdata.Value.Int();
+	public void InputSetFarZ(InputData inputdata) {
+		int farZ = inputdata.Value.Int();
+		if ((uint)(farZ - 1) <= 248) {
+			Warning($"Ignoring SetFarZ on fog controller: Silly value {farZ} given!\n");
+			return;
+		}
+
+		FogForModify().FarZ = farZ;
+	}
+
+	public void InputSetColorHDR(InputData inputdata) => FogForModify().ColorPrimaryHDR = inputdata.Value.Color32();
+
+	public void InputSetColorSecondaryHDR(InputData inputdata) => FogForModify().ColorSecondaryHDR = inputdata.Value.Color32();
 
 	public void InputSetAngles(InputData inputdata) {
 		Span<float> anglesBase = stackalloc float[3];
@@ -199,6 +234,11 @@ public partial class FogController : BaseEntity
 		FogForModify().EndLerpTo = inputdata.Value.Float();
 	}
 
+	public void InputSetMaxDensityLerpTo(InputData inputdata) {
+		ChangedVariables |= FOG_CONTROLLER_MAXDENSITY_LERP;
+		FogForModify().MaxDensityLerpTo = inputdata.Value.Float();
+	}
+
 	public void InputStartFogTransition(InputData inputdata) {
 		SetThink(SetLerpValues);
 
@@ -222,41 +262,32 @@ public partial class FogController : BaseEntity
 		if ((ChangedVariables & FOG_CONTROLLER_END_LERP) != 0)
 			fog.End = fog.EndLerpTo;
 
+		if ((ChangedVariables & FOG_CONTROLLER_MAXDENSITY_LERP) != 0)
+			fog.MaxDensity = fog.MaxDensityLerpTo;
+
 		ChangedVariables = 0;
 		fog.LerpTime = gpGlobals.CurTime;
 	}
 }
 
-public class FogSystem(ReadOnlySpan<char> name) : AutoGameSystem(name)
+public class FogSystem(ReadOnlySpan<char> name) : AutoGameSystem(name), IGameEventListener2
 {
 	public static readonly FogSystem s_FogSystem = new("FogSystem");
 
-	FogController? MasterController;
+	Handle<FogController> MasterController = new();
 
 	// Clear out the fog controller.
 	public override void LevelInitPreEntity() {
-		MasterController = null;
+		MasterController = new();
+		gameeventmanager?.AddListener(this, "round_start", true);
 	}
 
 	// On level load find the master fog controller.  If no controller is
 	// set as Master, use the first fog controller found.
-	public override void LevelInitPostEntity() {
-		FogController? fogController = null;
-		do {
-			fogController = (FogController?)gEntList.FindEntityByClassname(fogController, "env_fog_controller");
-			if (fogController != null) {
-				// If this is an official map then force on radial fog.
-				if (g_pGameRules.IsOfficialMap())
-					fogController.FogForModify().Radial = true;
+	public void FireGameEvent(IGameEvent ev) => InitMasterController();
 
-				if (MasterController == null)
-					MasterController = fogController;
-				else {
-					if (fogController.IsMaster())
-						MasterController = fogController;
-				}
-			}
-		} while (fogController != null);
+	public override void LevelInitPostEntity() {
+		InitMasterController();
 
 		// HACK: Singleplayer games don't get a call to CBasePlayer::Spawn on level transitions.
 		// CBasePlayer::Activate is called before this is called so that's too soon to set up the fog controller.
@@ -269,5 +300,18 @@ public class FogSystem(ReadOnlySpan<char> name) : AutoGameSystem(name)
 		}
 	}
 
-	public FogController? GetMasterFogController() => MasterController;
+	void InitMasterController() {
+		FogController? fogController = null;
+		while ((fogController = (FogController?)gEntList.FindEntityByClassname(fogController, "env_fog_controller")) != null) {
+			if (fogController.IsEFlagSet(EFL.KillMe))
+				continue;
+
+			if (MasterController.Get() == null || fogController.IsMaster())
+				MasterController.Set(fogController);
+		}
+	}
+
+	public void SetMasterController(FogController? master) => MasterController.Set(master);
+
+	public FogController? GetMasterFogController() => MasterController.Get();
 }

@@ -51,6 +51,8 @@ public class SkyCamera : LogicalEntity
 		Next = ClassList;
 		ClassList = this;
 		SkyboxData.Fog.MaxDensity = 1.0f;
+		SkyboxData.Fog.HDRColorScale = 1.0f;
+		SkyboxData.Fog.MaxDensityLerpTo = -1.0f;
 	}
 
 	public override void UpdateOnRemove() {
@@ -85,6 +87,10 @@ public class SkyCamera : LogicalEntity
 			Util.StringToColor32(out SkyboxData.Fog.ColorPrimary, value);
 		else if (FStrEq(keyName, "fogcolor2"))
 			Util.StringToColor32(out SkyboxData.Fog.ColorSecondary, value);
+		else if (FStrEq(keyName, "fogcolor_hdr"))
+			Util.StringToColor32(out SkyboxData.Fog.ColorPrimaryHDR, value);
+		else if (FStrEq(keyName, "fogcolor2_hdr"))
+			Util.StringToColor32(out SkyboxData.Fog.ColorSecondaryHDR, value);
 		else if (FStrEq(keyName, "fogstart"))
 			SkyboxData.Fog.Start = strtof(value, out _);
 		else if (FStrEq(keyName, "fogend"))
@@ -93,6 +99,8 @@ public class SkyCamera : LogicalEntity
 			SkyboxData.Fog.MaxDensity = strtof(value, out _);
 		else if (FStrEq(keyName, "fogradial"))
 			SkyboxData.Fog.Radial = atoi(value) != 0;
+		else if (FStrEq(keyName, "HDRColorScale"))
+			SkyboxData.Fog.HDRColorScale = strtof(value, out _);
 		else
 			return base.KeyValue(keyName, value);
 
@@ -127,9 +135,5 @@ public class SkyCamera : LogicalEntity
 			}
 		}
 #endif
-
-		// matches the behavior of fog controller
-		if (g_pGameRules.IsOfficialMap())
-			SkyboxData.Fog.Radial = true;
 	}
 }
