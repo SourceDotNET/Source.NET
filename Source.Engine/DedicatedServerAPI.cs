@@ -38,6 +38,8 @@ public class DedicatedServerAPI(Cbuf Cbuf, IGame game, IServiceProvider services
 		eng ??= services.GetRequiredService<IEngine>();
 		eng.SetQuitting(IEngine.Quit.NotQuitting);
 
+		g_pFileSystem.SetWarningFunc(Warning);
+
 		host_parms.BaseDir = info.BaseDirectory;
 		host_parms.Mod = GetModDirFromPath(info.InitialMod);
 		host_parms.Game = info.InitialGame;

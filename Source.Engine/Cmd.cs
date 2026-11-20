@@ -322,8 +322,18 @@ public class Cmd(IEngineAPI provider, IFileSystem fileSystem)
 				}
 			}
 
-			using var execFile = fileSystem.Open(file, FileOpenOptions.Read, pathID);
-			using StreamReader reader = new StreamReader(execFile!.Stream);
+			byte[] buf;
+			using (IFileHandle? execFile = fileSystem.Open(file, FileOpenOptions.Read, pathID)) {
+				if (execFile == null) {
+					Dbg.ConMsg($"exec: couldn't exec {args[1]}\n");
+					return;
+				}
+
+				buf = new byte[execFile.Stream.Length];
+				execFile.Stream.ReadExactly(buf);
+			}
+
+			using StreamReader reader = new StreamReader(new MemoryStream(buf, false));
 			Dbg.ConDMsg($"execing {file}\n");
 			LinkedListNode<CommandBuffer.Command>? hCommand = Cbuf.Buffer.GetNextCommandHandle();
 			// check to make sure we're not going to overflow later

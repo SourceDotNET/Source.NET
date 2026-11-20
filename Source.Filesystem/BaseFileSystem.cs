@@ -3,6 +3,8 @@
 
 using CommunityToolkit.HighPerformance;
 
+using Source.Common;
+using Source.Common.Commands;
 using Source.Common.Filesystem;
 using Source.Common.Formats.BSP;
 using Source.Common.Formats.Keyvalues;
@@ -12,6 +14,7 @@ using Source.Filesystem;
 using Source.Filesystem.GarrysMod;
 
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -86,7 +89,7 @@ public partial class BaseFileSystem : IFileSystem
 
 		using IFileHandle? file = Open(path, FileOpenOptions.Read | FileOpenOptions.Binary, "GAME");
 		if (file == null) {
-			Warning("Couldn't open BSP for embedded pack file\n");
+			Warning(FileWarningLevel.Warning, $"Couldn't open bsp {newPath} for embedded pack file check\n");
 			return;
 		}
 
@@ -101,7 +104,7 @@ public partial class BaseFileSystem : IFileSystem
 
 		ZipPackFileSearchPath zip = new(this, new(newPath), file.Stream, in pakfile);
 		if (!zip.IsValid()) {
-			Warning("ZipPackFileSearchPath not valid\n");
+			Dbg.Warning("ZipPackFileSearchPath not valid\n");
 			return;
 		}
 
@@ -410,14 +413,14 @@ public partial class BaseFileSystem : IFileSystem
 		return FirstToThePost(name, id, new IsDirectory_Op(), false, out _);
 	}
 
-	static void ParsePathID(scoped ref ReadOnlySpan<char> fileName, scoped ref ReadOnlySpan<char> pathID, Span<char> tempPathID) {
+	void ParsePathID(scoped ref ReadOnlySpan<char> fileName, scoped ref ReadOnlySpan<char> pathID, Span<char> tempPathID) {
 		tempPathID[0] = '\0';
 
 		if (fileName.Length < 2 || fileName[0] != '/' || fileName[1] != '/')
 			return;
 
 		if (!pathID.IsEmpty)
-			Warning($"FS: Specified two path IDs ({fileName}, {pathID}).\n");
+			Warning(FileWarningLevel.Warning, $"FS: Specified two path IDs ({fileName}, {pathID}).\n");
 
 		int read = 2;
 		int written = 0;
@@ -665,7 +668,7 @@ public partial class BaseFileSystem : IFileSystem
 			if (searchPath != null)
 				return searchPath.GetPathString();
 
-			Warning("Requested non-existent write path %s!\n", new string(pathID));
+			Warning(FileWarningLevel.Warning, $"Requested non-existent write path {pathID}!\n");
 		}
 
 		searchPath = FindWritePath(filename, "DEFAULT_WRITE_PATH");
@@ -711,6 +714,92 @@ public partial class BaseFileSystem : IFileSystem
 			return new string(ISearchPath.Concat(path, fileName, concatBuffer));
 		}
 		return null;
+	}
+
+	static readonly ConVar fs_warning_mode = new("fs_warning_mode", "0", 0, "0:Off, 1:Warn main thread, 2:Warn other threads");
+
+	FileWarningLevel WarningLevel = FileWarningLevel.ReportUnclosed;
+	FileSystemWarningFunc? WarningFunc;
+
+	int OpenedFiles;
+	internal readonly List<FileSystemLoggingFunc> LogFuncs = [];
+
+	public void SetWarningFunc(FileSystemWarningFunc? warning) => WarningFunc = warning;
+
+	public void SetWarningLevel(FileWarningLevel level) => WarningLevel = level;
+
+	internal void Warning(FileWarningLevel level, ReadOnlySpan<char> text) {
+		if (level > WarningLevel)
+			return;
+
+		if ((fs_warning_mode.GetInt() == 1 && !ThreadInMainThread()) || (fs_warning_mode.GetInt() == 2 && ThreadInMainThread()))
+			return;
+
+		string warningText = new(text.Length > 4095 ? text[..4095] : text);
+
+		Console.Write(warningText);
+
+		WarningFunc?.Invoke("%s", [warningText]);
+	}
+
+	static string TraceThreadTag() => ThreadInMainThread() ? "" : "[a]";
+	static string TraceTime() => Platform.Time.ToString("F3", CultureInfo.InvariantCulture);
+#if WIN32
+	static string TracePointer(object file) => RuntimeHelpers.GetHashCode(file).ToString("X16", CultureInfo.InvariantCulture);
+#else
+	static string TracePointer(object file) => "0x" + RuntimeHelpers.GetHashCode(file).ToString("x", CultureInfo.InvariantCulture);
+#endif
+
+	internal void LogAccessToFile(ReadOnlySpan<char> accesstype, ReadOnlySpan<char> fullpath, ReadOnlySpan<char> options) {
+		lock (LogFuncs) {
+			if (WarningLevel >= FileWarningLevel.ReportAllAccesses && !fullpath.Contains("console.log", StringComparison.OrdinalIgnoreCase))
+				Warning(FileWarningLevel.ReportAllAccesses, $"---FS{TraceThreadTag()}:  {accesstype} {fullpath} ({TraceTime()})\n");
+
+			for (int i = 0; i < LogFuncs.Count; ++i)
+				LogFuncs[i](fullpath, options);
+		}
+	}
+
+	internal void Trace_FOpen(string filename, ReadOnlySpan<char> options) {
+		Interlocked.Increment(ref OpenedFiles);
+
+		LogAccessToFile("open", filename, options);
+	}
+
+	internal void Trace_FClose(object file, string name) {
+		if (WarningLevel >= FileWarningLevel.ReportAllAccesses && !name.Contains("console.log", StringComparison.OrdinalIgnoreCase))
+			Warning(FileWarningLevel.ReportAllAccesses, $"---FS{TraceThreadTag()}:  close {name} {TracePointer(file)} {OpenedFiles} ({TraceTime()})\n");
+
+		Interlocked.Decrement(ref OpenedFiles);
+	}
+
+	internal void Trace_FRead(int size, object file, string name) {
+		if (WarningLevel < FileWarningLevel.ReportAllAccessesRead)
+			return;
+
+		Warning(FileWarningLevel.ReportAllAccessesRead, $"---FS{TraceThreadTag()}:  read {name} {size} {TracePointer(file)} ({TraceTime()})\n");
+	}
+
+	internal void Trace_FWrite(int size, object file, string name) {
+		if (WarningLevel < FileWarningLevel.ReportAllAccessesReadWrite)
+			return;
+
+		Warning(FileWarningLevel.ReportAllAccessesReadWrite, $"---FS{TraceThreadTag()}:  write {name} {size} {TracePointer(file)}\n");
+	}
+
+	public void PrintOpenedFiles() {
+	}
+
+	public void AddLoggingFunc(FileSystemLoggingFunc logFunc) {
+		lock (LogFuncs) {
+			Assert(!LogFuncs.Contains(logFunc));
+			LogFuncs.Add(logFunc);
+		}
+	}
+
+	public void RemoveLoggingFunc(FileSystemLoggingFunc logFunc) {
+		lock (LogFuncs)
+			LogFuncs.Remove(logFunc);
 	}
 
 	public void PrintSearchPaths() {
@@ -959,7 +1048,7 @@ public partial class BaseFileSystem : IFileSystem
 
 		public void Close() {
 			if (Locked == 0) {
-				Warning("Tried to unlock a file handle that was already unlocked!!!\n");
+				Dbg.Warning("Tried to unlock a file handle that was already unlocked!!!\n");
 				Assert(false);
 				return;
 			}

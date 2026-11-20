@@ -75,6 +75,20 @@ public enum FSAsyncFlags
 /// </summary>
 public delegate void FSAsyncCallbackFunc(in FileAsyncRequest request, int bytesRead, FSAsyncStatus err);
 public delegate byte[] FSAllocFunc(string fileName, int bytes);
+public delegate void FileSystemLoggingFunc(ReadOnlySpan<char> fileName, ReadOnlySpan<char> accessType);
+public delegate void FileSystemWarningFunc(ReadOnlySpan<char> fmt, ReadOnlySpan<object?> args);
+
+public enum FileWarningLevel
+{
+	Warning = -1,
+	Quiet = 0,
+	ReportUnclosed,
+	ReportUsage,
+	ReportAllAccesses,
+	ReportAllAccessesRead,
+	ReportAllAccessesReadWrite,
+	ReportAllAccessesAsync,
+}
 
 /// <summary>
 /// Description of an async request
@@ -300,7 +314,12 @@ public interface IFileSystem : IBaseFileSystem
 	bool WriteFile(ReadOnlySpan<char> fileName, ReadOnlySpan<char> pathID, ReadOnlySpan<byte> buf);
 	void MarkAllCRCsUnverified();
 	ReadOnlySpan<char> WhereIsFile(ReadOnlySpan<char> relativePath, ReadOnlySpan<char> pathID = default);
+	void PrintOpenedFiles();
 	void PrintSearchPaths();
+	void SetWarningFunc(FileSystemWarningFunc? warning);
+	void SetWarningLevel(FileWarningLevel level);
+	void AddLoggingFunc(FileSystemLoggingFunc logFunc);
+	void RemoveLoggingFunc(FileSystemLoggingFunc logFunc);
 
 	/// <summary>
 	/// FileNameHandle_t's are case-insensitive and slash-insensitive.
