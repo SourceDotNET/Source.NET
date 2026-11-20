@@ -712,13 +712,32 @@ public class C_SoundscapeSystem : AutoGameSystemPerFrame
 		}
 	}
 
-	void TouchPlayLooping(KeyValues? ambient) => throw new NotImplementedException();
+	void TouchPlayLooping(KeyValues? ambient) {
+		for (KeyValues? key = ambient?.GetFirstSubKey(); key != null; key = key.GetNextKey()) {
+			if (stricmp(key.Name, "wave") == 0)
+				TouchSoundFile(key.GetString());
+		}
+	}
 
-	void TouchPlayRandom(KeyValues? playRandom) => throw new NotImplementedException();
+	void TouchPlayRandom(KeyValues? playRandom) {
+		for (KeyValues? key = playRandom?.GetFirstSubKey(); key != null; key = key.GetNextKey()) {
+			if (stricmp(key.Name, "rndwave") == 0) {
+				for (KeyValues? waves = key.GetFirstSubKey(); waves != null; waves = waves.GetNextKey())
+					TouchSoundFile(waves.GetString());
+			}
+		}
+	}
 
-	void TouchWaveFiles(KeyValues? soundScape) => throw new NotImplementedException();
+	void TouchWaveFiles(KeyValues? soundScape) {
+		for (KeyValues? key = soundScape?.GetFirstSubKey(); key != null; key = key.GetNextKey()) {
+			if (stricmp(key.Name, "playlooping") == 0)
+				TouchPlayLooping(key);
+			else if (stricmp(key.Name, "playrandom") == 0)
+				TouchPlayRandom(key);
+		}
+	}
 
-	void TouchSoundFile(ReadOnlySpan<char> wavefile) => throw new NotImplementedException();
+	void TouchSoundFile(ReadOnlySpan<char> wavefile) => filesystem.GetFileTime($"sound/{SoundCharsUtils.SkipSoundChars(wavefile)}", "GAME");
 
 	void TouchSoundFiles() {
 		if (commandLine.FindParm("-makereslists") == 0)

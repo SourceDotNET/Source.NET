@@ -172,7 +172,7 @@ public partial class BaseFileSystem
 			}
 
 			if (request.Offset + bytesToRead > fileSize)
-				Warning($"Failed to read {bytesToRead} bytes @ {request.Offset} (end offst = {request.Offset + bytesToRead}) from \"{request.FileName}\" - file only has {fileSize} bytes\n");
+				Dbg.Warning($"Failed to read {bytesToRead} bytes @ {request.Offset} (end offst = {request.Offset + bytesToRead}) from \"{request.FileName}\" - file only has {fileSize} bytes\n");
 
 			if (request.Offset > 0)
 				stream.Seek(request.Offset, SeekOrigin.Begin);
@@ -193,7 +193,9 @@ public partial class BaseFileSystem
 			DoAsyncCallback(request, dest, Math.Min(bytesRead, bytesToRead), result);
 		}
 
-		// todo: fs_log async
+		if (WarningLevel >= FileWarningLevel.ReportAllAccessesAsync)
+			LogAccessToFile("async", request.FileName, "");
+
 		return result;
 	}
 

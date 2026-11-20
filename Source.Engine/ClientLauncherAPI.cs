@@ -85,11 +85,16 @@ public class ClientLauncherAPI(IGame game, IServiceProvider services, Common COM
 
 
 	public void SetStartupInfo(in StartupInfo info) {
-		startupInfo = info;
+		g_pFileSystem.SetWarningFunc(Warning);
+
+    startupInfo = info;
 		Sys.TextMode = info.TextMode;
+		host_parms.BaseDir = info.BaseDirectory;
+    
 #if !SWDS
 		Steam3Client().Activate();
 #endif
+
 		COM.InitFilesystem(info.InitialMod);
 	}
 

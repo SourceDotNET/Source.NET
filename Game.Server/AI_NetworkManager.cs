@@ -127,13 +127,19 @@ public class AI_NetworkManager : PointEntity
 
 		string nrpFilename = $"maps/graphs/{gpGlobals.MapName}.ain";
 
-		using IFileHandle? handle = filesystem.Open(nrpFilename, FileOpenOptions.Read | FileOpenOptions.Binary, "GAME");
-		if (handle == null) {
-			DevWarning(2, $"Couldn't read {nrpFilename}!\n");
-			return;
+		byte[] buf;
+		using (IFileHandle? handle = filesystem.Open(nrpFilename, FileOpenOptions.Read | FileOpenOptions.Binary, "GAME")) {
+			if (handle == null) {
+				DevWarning(2, $"Couldn't read {nrpFilename}!\n");
+				return;
+			}
+
+			buf = new byte[handle.Stream.Length];
+			handle.Stream.ReadExactly(buf);
 		}
 
-		LoadNetworkGraph(handle.Stream, nrpFilename, gpGlobals.MapVersion);
+		using MemoryStream stream = new(buf, false);
+		LoadNetworkGraph(stream, nrpFilename, gpGlobals.MapVersion);
 	}
 
 	public void LoadNetworkGraph(Stream stream, ReadOnlySpan<char> nrpFilename, int currentMapVersion) {
