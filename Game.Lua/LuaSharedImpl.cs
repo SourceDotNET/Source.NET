@@ -133,9 +133,9 @@ public class LuaSharedImpl : ILuaShared
 		if (handle == null)
 			return null;
 
-		using MemoryStream buffer = new();
-		handle.Stream.CopyTo(buffer);
-		return buffer.ToArray();
+		byte[] data = new byte[handle.Stream.Length];
+		handle.Stream.ReadExactly(data);
+		return data;
 	}
 
 	LuaFile? LoadFile_FromDataTable(ReadOnlySpan<char> path, ReadOnlySpan<char> pathId, bool unk) {

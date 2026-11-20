@@ -102,6 +102,13 @@ public class KeyValues : IEnumerable<KeyValues>
 		// Clear();
 		if (stream == null) return false;
 
+		if (stream.CanSeek) {
+			byte[] data = new byte[stream.Length - stream.Position];
+			stream.ReadExactly(data);
+			stream.Dispose();
+			stream = new MemoryStream(data, false);
+		}
+
 		// Size the buffer to the stream when we can, so the text is decoded in one piece.
 		int bufferSize = stream.CanSeek ? (int)Math.Clamp(stream.Length - stream.Position, 1024, 1 << 20) : 1024;
 		using StreamReader streamReader = new(stream, System.Text.Encoding.UTF8, true, bufferSize);
