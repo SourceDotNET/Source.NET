@@ -773,7 +773,19 @@ public partial class BaseFileSystem : IFileSystem
 		Interlocked.Decrement(ref OpenedFiles);
 	}
 
-	// todo: Trace_FRead and Trace_FWrite spew for FILESYSTEM_WARNING_REPORTALLACCESSES_READ and READWRITE, it needs read and write hooks on the file stream first
+	internal void Trace_FRead(int size, object file, string name) {
+		if (WarningLevel < FileWarningLevel.ReportAllAccessesRead)
+			return;
+
+		Warning(FileWarningLevel.ReportAllAccessesRead, $"---FS{TraceThreadTag()}:  read {name} {size} {TracePointer(file)} ({TraceTime()})\n");
+	}
+
+	internal void Trace_FWrite(int size, object file, string name) {
+		if (WarningLevel < FileWarningLevel.ReportAllAccessesReadWrite)
+			return;
+
+		Warning(FileWarningLevel.ReportAllAccessesReadWrite, $"---FS{TraceThreadTag()}:  write {name} {size} {TracePointer(file)}\n");
+	}
 
 	public void PrintOpenedFiles() {
 	}
