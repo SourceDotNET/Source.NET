@@ -87,7 +87,9 @@ public class ClientLauncherAPI(IGame game, IServiceProvider services, Common COM
 	public void SetStartupInfo(in StartupInfo info) {
 		startupInfo = info;
 		Sys.TextMode = info.TextMode;
+#if !SWDS
 		Steam3Client().Activate();
+#endif
 		COM.InitFilesystem(info.InitialMod);
 	}
 
