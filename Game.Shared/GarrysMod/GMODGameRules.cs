@@ -822,6 +822,129 @@ public partial class
 		BaseCombatCharacter.SetDefaultRelationship(Class_T.HackedRollermine, Class_T.PlayerAllyVital, Disposition.LI, 0);
 		BaseCombatCharacter.SetDefaultRelationship(Class_T.HackedRollermine, Class_T.HackedRollermine, Disposition.LI, 0);
 	}
+
+	public static bool CleaningUpMap;
+
+	static readonly string[] PreserveEnts = [
+		"ai_network",
+		"ai_hint",
+		"env_sun",
+		"env_wind",
+		"env_fog_controller",
+		"infodecal",
+		"info_projecteddecal",
+		"info_node",
+		"info_node_hint",
+		"info_hint",
+		"info_node_air",
+		"info_node_air_hint",
+		"info_node_climb",
+		"info_node_air",
+		"info_map_parameters",
+		"info_ladder",
+		"player",
+		"path_corner",
+		"scene_manager",
+		"shadow_control",
+		"sky_camera",
+		"soundent",
+		"viewmodel",
+		"predicted_viewmodel",
+		"worldspawn",
+		"point_devshot_camera",
+		"physgun_beam",
+		"player_manager",
+		"gmod_gamerules",
+		"trigger_soundscape",
+		"env_soundscape",
+		"env_soundscape_proxy",
+		"env_soundscape_triggerable",
+		"env_sound",
+		"env_skypaint",
+		"gmod_hands",
+	];
+
+	static bool IsPreservedClass(ReadOnlySpan<char> className) {
+		foreach (string name in PreserveEnts) {
+			if (stricmp(name, className) == 0)
+				return true;
+		}
+		return false;
+	}
+
+	static bool CleanupFilterContains(ILuaObject? filters, ReadOnlySpan<char> className) {
+		if (filters == null || !filters.isTable())
+			return false;
+
+		ILuaInterface lua = g_Lua!;
+		filters.Push();
+		lua.PushNil();
+		while (lua.Next(-2)) {
+			if (lua.GetString(-1) is string value && className.SequenceEqual(value)) {
+				lua.Pop(3);
+				return true;
+			}
+			lua.Pop(1);
+		}
+		lua.Pop(1);
+		return false;
+	}
+
+	sealed class GMODMapEntityFilter(ILuaObject? filters) : IMapEntityFilter
+	{
+		int Iterator;
+
+		public bool ShouldCreateEntity(ReadOnlySpan<char> className) {
+			if (!IsPreservedClass(className) && !CleanupFilterContains(filters, className))
+				return true;
+
+			if (Iterator < g_MapEntityRefs.Count)
+				Iterator++;
+			return false;
+		}
+
+		public BaseEntity? CreateNextEntity(ReadOnlySpan<char> className) {
+			if (Iterator >= g_MapEntityRefs.Count)
+				return null;
+
+			MapEntityRef entRef = g_MapEntityRefs[Iterator++];
+			if (entRef.Edict != -1 && engine.PEntityOfEntIndex(entRef.Edict) == null)
+				return CreateEntityByName(className, entRef.Edict);
+			return CreateEntityByName(className);
+		}
+	}
+
+	public void CleanUpMap(ILuaObject? filters) {
+		BaseEntity? ent = gEntList.FirstEnt();
+		AI_DynamicLink.gm_bInitialized = false;
+		// todo: AI_DynamicLink.PurgeDynamicLinks();
+		// todo: AI_DynamicLink.ResetStates();
+
+		CleaningUpMap = true;
+		while (ent != null) {
+			if (ent is BaseCombatWeapon weapon) {
+				BaseEntity? owner = weapon.GetOwner();
+				if ((owner == null || !owner.IsPlayer()) && !ent.IsEFlagSet(EFL.KeepOnRecreateEntities))
+					Util.Remove(ent);
+			}
+			else {
+				ReadOnlySpan<char> className = ent.GetClassname();
+				if (!IsPreservedClass(className) && !ent.IsEFlagSet(EFL.KeepOnRecreateEntities) && !LuaEnts.IsProtectedEntity(ent) && !CleanupFilterContains(filters, className))
+					Util.Remove(ent);
+			}
+			ent = gEntList.NextEnt(ent);
+		}
+		CleaningUpMap = false;
+
+		gEntList.CleanupDeleteList();
+		g_EventQueue.Clear();
+		engine.AllowImmediateEdictReuse();
+
+		MapEntity_ParseAllEntities(engine.GetMapEntitiesString(), new GMODMapEntityFilter(filters), true);
+
+		AI_DynamicLink.InitDynamicLinks();
+		// todo: unidentified reset call that follows InitDynamicLinks
+	}
 #endif
 }
 #endif
