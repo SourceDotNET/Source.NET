@@ -533,8 +533,8 @@ public sealed class C_INIT_CreateWithinSphere : ParticleOperatorInstance
 		HasDistanceBiasAbs = DistanceBiasAbs.X != 0.0f || DistanceBiasAbs.Y != 0.0f || DistanceBiasAbs.Z != 0.0f;
 	}
 
-	int PickControlPoint(ParticleCollection particles, List<int>? validCPs) {
-		if (validCPs == null || validCPs.Count == 0)
+	int PickControlPoint(ParticleCollection particles, ReadOnlySpan<int> validCPs) {
+		if (validCPs.IsEmpty)
 			return ControlPointNumber;
 
 		float growth = 1.0f;
@@ -542,7 +542,7 @@ public sealed class C_INIT_CreateWithinSphere : ParticleOperatorInstance
 			growth = Math.Min(particles.CurTime, EndCPGrowthTime) / EndCPGrowthTime;
 
 		if (growth >= 1.0f)
-			return validCPs[(int)(validCPs.Count * particles.RandomFloat(0.0f, 1.0f))];
+			return validCPs[(int)(validCPs.Length * particles.RandomFloat(0.0f, 1.0f))];
 
 		int highest = particles.GetHighestControlPoint();
 		int low = ControlPointNumber;
@@ -556,7 +556,7 @@ public sealed class C_INIT_CreateWithinSphere : ParticleOperatorInstance
 			return validCPs[found];
 
 		particles.RandomQueryCount = query + 2;
-		return validCPs[(int)(validCPs.Count * particles.RandomFloat(query + 1, 0.0f, 1.0f))];
+		return validCPs[(int)(validCPs.Length * particles.RandomFloat(query + 1, 0.0f, 1.0f))];
 	}
 
 	public override void InitNewParticlesScalar(ParticleCollection particles, int firstParticle, int numParticles, int attributeWriteMask, Span<byte> context) {
@@ -564,14 +564,15 @@ public sealed class C_INIT_CreateWithinSphere : ParticleOperatorInstance
 		if (ScaleCP >= 0)
 			scale = particles.ControlPoints[ScaleCP].Position;
 
-		List<int>? validCPs = null;
+		Span<int> validCPBuffer = stackalloc int[MAX_PARTICLE_CONTROL_POINTS];
+		int validCPCount = 0;
 		if (UseHighestEndCP) {
-			validCPs = [];
 			for (int i = ControlPointNumber; i <= particles.GetHighestControlPoint(); i++) {
 				if (particles.ControlPoints[i].Position != ParticleInitUtil.Vec3Invalid)
-					validCPs.Add(i);
+					validCPBuffer[validCPCount++] = i;
 			}
 		}
+		ReadOnlySpan<int> validCPs = validCPBuffer[..validCPCount];
 
 		for (int p = firstParticle; p < firstParticle + numParticles; p++) {
 			float time = Math.Max(particles.GetFloatAttributeValue(PARTICLE_ATTRIBUTE_CREATION_TIME, p), particles.CurTime - particles.Dt);

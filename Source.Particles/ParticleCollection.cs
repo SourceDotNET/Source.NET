@@ -70,7 +70,7 @@ public class ParticleCollection
 	public Color LocalLighting = new(255, 255, 255, 255);
 
 	public readonly ParticleControlPoint[] ControlPoints = new ParticleControlPoint[MAX_PARTICLE_CONTROL_POINTS];
-	public readonly ModelHitBoxesInfo[] ControlPointHitBoxes = new ModelHitBoxesInfo[MAX_PARTICLE_CONTROL_POINTS];
+	public readonly ModelHitBoxesInfo?[] ControlPointHitBoxes = new ModelHitBoxesInfo?[MAX_PARTICLE_CONTROL_POINTS];
 
 	public byte[]? OperatorContextData;
 	public ParticleCollection? Next;
@@ -135,7 +135,6 @@ public class ParticleCollection
 			cp.UpVector = new(0, 0, 1);
 			cp.RightVector = new(1, 0, 0);
 			cp.Density = 1.0f;
-			ControlPointHitBoxes[i] = new();
 		}
 		Array.Fill(InitialAttributeOffsets, -1);
 	}
@@ -263,7 +262,9 @@ public class ParticleCollection
 		OperatorContextData = null;
 		Sheet = null;
 		Array.Clear(CollisionCacheData);
-		foreach (ModelHitBoxesInfo info in ControlPointHitBoxes) {
+		foreach (ModelHitBoxesInfo? info in ControlPointHitBoxes) {
+			if (info == null)
+				continue;
 			info.HitBoxes = null;
 			info.PrevBoxes = null;
 		}
@@ -1343,7 +1344,7 @@ public class ParticleCollection
 	}
 
 	public void UpdateHitBoxInfo(int controlPointNumber, string? hitboxSetName = null) {
-		ModelHitBoxesInfo info = ControlPointHitBoxes[controlPointNumber];
+		ModelHitBoxesInfo info = ControlPointHitBoxes[controlPointNumber] ??= new();
 		if (CurTime == info.LastUpdateTime)
 			return;
 

@@ -5,6 +5,8 @@ using Source.Common.Formats.Keyvalues;
 using Source.Common.MaterialSystem;
 using Source.Common.Mathematics;
 
+using System.Runtime.InteropServices;
+
 using DM = Datamodel.Datamodel;
 
 using static Source.Particles.ParticleConstants;
@@ -295,8 +297,8 @@ public sealed class ParticleSystemMgr
 
 	const uint VTF_RSRC_SHEET = 0x10;
 
-	static bool DidAddSimulationOperators;
-	static bool DidAddRenderingOperators;
+	bool DidAddSimulationOperators;
+	bool DidAddRenderingOperators;
 
 	public void AddBuiltinSimulationOperators() {
 		if (DidAddSimulationOperators)
@@ -343,15 +345,17 @@ public sealed class ParticleSystemMgr
 		public int VertCount;
 	}
 
-	sealed class RenderCacheBatch
+	struct RenderCacheBatch
 	{
-		public readonly List<BatchStep> Steps = [];
+		public int FirstStep;
+		public int StepCount;
 		public int VertCount;
 		public int IndexCount;
 	}
 
 	readonly List<RenderCacheEntry> RenderCache = [];
 	readonly List<RenderCacheBatch> Batches = [];
+	readonly List<BatchStep> BatchSteps = [];
 
 	public void ResetRenderCache() {
 		foreach (RenderCacheEntry entry in RenderCache)
@@ -389,12 +393,12 @@ public sealed class ParticleSystemMgr
 
 	void BuildBatchList(RenderCacheEntry cache, IMatRenderContext renderContext) {
 		Batches.Clear();
+		BatchSteps.Clear();
 
 		int maxVertices = renderContext.GetMaxVerticesToRender(cache.Material);
 		int maxIndices = renderContext.GetMaxIndicesToRender();
 
-		RenderCacheBatch batch = new();
-		Batches.Add(batch);
+		RenderCacheBatch batch = default;
 
 		foreach (ParticleCollection particles in cache.Collections) {
 			int rendererCount = particles.GetRendererCount();
@@ -412,29 +416,29 @@ public sealed class ParticleSystemMgr
 					if (count < 1) {
 						if (batch.VertCount == 0)
 							break;
-						batch = new();
 						Batches.Add(batch);
+						batch = new() { FirstStep = BatchSteps.Count };
 						if (firstParticle >= particles.ActiveParticles)
 							break;
 						continue;
 					}
 
-					batch.Steps.Add(new() {
+					BatchSteps.Add(new() {
 						Particles = particles,
 						RendererIndex = i,
 						FirstParticle = stepFirst,
 						ParticleCount = count,
 						VertCount = vertCount
 					});
+					batch.StepCount++;
 					batch.VertCount += vertCount;
 					batch.IndexCount += indexCount;
 				}
 			}
 		}
 
-		RenderCacheBatch last = Batches[^1];
-		if (last.VertCount <= 0 || last.IndexCount <= 0)
-			Batches.RemoveAt(Batches.Count - 1);
+		if (batch.VertCount > 0 && batch.IndexCount > 0)
+			Batches.Add(batch);
 	}
 
 	public void DrawRenderCache(bool shadowDepth) {
@@ -465,7 +469,7 @@ public sealed class ParticleSystemMgr
 				meshBuilder.Begin(mesh, MaterialPrimitiveType.Triangles, batch.VertCount, batch.IndexCount);
 
 				int vertexOffset = 0;
-				foreach (BatchStep step in batch.Steps) {
+				foreach (ref readonly BatchStep step in CollectionsMarshal.AsSpan(BatchSteps).Slice(batch.FirstStep, batch.StepCount)) {
 					ParticleOperatorInstance renderer = step.Particles.GetRenderer(step.RendererIndex)!;
 					renderer.RenderUnsorted(step.Particles, step.Particles.GetRendererContext(step.RendererIndex), renderContext.Context, ref meshBuilder, vertexOffset, step.FirstParticle, step.ParticleCount);
 					vertexOffset += step.VertCount;

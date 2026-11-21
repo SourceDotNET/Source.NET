@@ -61,14 +61,15 @@ public sealed class ParticleSystemQuery : IParticleSystemQuery
 
 	public bool MovePointInsideControllingObject(ParticleCollection particles, object? obj, ref Vector3 pnt) {
 #if CLIENT_DLL
-		if (obj is not C_BaseEntity entity)
+		C_BaseEntity? entity = obj switch {
+			StrongBox<EHANDLE> handle => handle.Value.Get(),
+			C_BaseEntity ent => ent,
+			_ => null
+		};
+		if (entity == null)
 			return true;
 
-		Ray ray = default;
-		ray.Init(pnt, pnt);
-		Trace tr = default;
-		enginetrace.ClipRayToEntity(in ray, Mask.All, entity, ref tr);
-		return tr.StartSolid;
+		return IsPointInsideEntity(pnt, entity);
 #else
 		return true;
 #endif
@@ -437,8 +438,9 @@ public sealed class ParticleSystemQuery : IParticleSystemQuery
 		draw.PlaybackRate = animationRate;
 
 		if (studioHeader != null) {
-			Span<Matrix3x4> boneToWorld = new Matrix3x4[studioHeader.NumBones];
-			draw.SetUpBones(drawMatrix, studioHeader.NumBones, boneToWorld);
+			int numBones = Math.Min(studioHeader.NumBones, Studio.MAXSTUDIOBONES);
+			Span<Matrix3x4> boneToWorld = stackalloc Matrix3x4[numBones];
+			draw.SetUpBones(drawMatrix, numBones, boneToWorld);
 			draw.Draw(drawMatrix, boneToWorld, StudioRenderFlags.DrawNoShadows);
 		}
 
@@ -460,6 +462,17 @@ struct ParticleModelDraw()
 	public float Time;
 
 	static readonly float[] FlexControls = new float[Studio.MAXSTUDIOFLEXCTRL * 4];
+	static readonly Dictionary<MDLHandle_t, StudioHdr> StudioHdrs = [];
+
+	static StudioHdr GetStudioHdr(MDLHandle_t handle) {
+		StudioHeader? header = mdlcache.GetStudioHdr(handle);
+		if (!StudioHdrs.TryGetValue(handle, out StudioHdr? studioHdr) || studioHdr.GetRenderHdr() != header) {
+			studioHdr = new();
+			studioHdr.Init(header, mdlcache);
+			StudioHdrs[handle] = studioHdr;
+		}
+		return studioHdr;
+	}
 
 	public void SetMDL(MDLHandle_t handle) {
 		UnreferenceMDL();
@@ -489,8 +502,7 @@ struct ParticleModelDraw()
 	}
 
 	public readonly void SetUpBones(in Matrix3x4 rootToWorld, int maxBoneCount, Span<Matrix3x4> boneToWorld) {
-		StudioHdr studioHdr = new();
-		studioHdr.Init(mdlcache.GetStudioHdr(Handle), mdlcache);
+		StudioHdr studioHdr = GetStudioHdr(Handle);
 
 		Span<float> poseParameter = stackalloc float[Studio.MAXSTUDIOPOSEPARAM];
 		int poseCount = studioHdr.GetNumPoseParameters();
@@ -547,8 +559,7 @@ struct ParticleModelDraw()
 
 		Span<float> flexWeights = default;
 		if (info.StudioHdr.NumFlexDesc != 0) {
-			StudioHdr studioHdr = new();
-			studioHdr.Init(info.StudioHdr, mdlcache);
+			StudioHdr studioHdr = GetStudioHdr(Handle);
 			studiorender.LockFlexWeights(info.StudioHdr.NumFlexDesc, out flexWeights);
 			studioHdr.RunFlexRules(FlexControls, flexWeights);
 			studiorender.UnlockFlexWeights();

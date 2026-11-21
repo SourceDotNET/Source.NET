@@ -33,7 +33,8 @@ public class CNewParticleEffect : ParticleCollection, IClientUnknown, IClientRen
 
 	Vector3 SortOrigin;
 	EHANDLE Owner = new();
-	readonly StrongBox<EHANDLE>[] ControlPointOwners = new StrongBox<EHANDLE>[MAX_PARTICLE_CONTROL_POINTS];
+	readonly StrongBox<EHANDLE>?[] ControlPointOwners = new StrongBox<EHANDLE>?[MAX_PARTICLE_CONTROL_POINTS];
+	static readonly EHANDLE NoControlPointOwner = new();
 
 	Vector3 LastMin;
 	Vector3 LastMax;
@@ -46,16 +47,12 @@ public class CNewParticleEffect : ParticleCollection, IClientUnknown, IClientRen
 	ClientRenderHandle_t RenderHandle_ = INVALID_CLIENT_RENDER_HANDLE;
 
 	public CNewParticleEffect(C_BaseEntity? owner, ParticleSystemDefinition? effect) {
-		for (int i = 0; i < MAX_PARTICLE_CONTROL_POINTS; i++)
-			ControlPointOwners[i] = new(new EHANDLE());
 		Owner.Set(owner);
 		Init(g_pParticleSystemMgr, effect);
 		Construct();
 	}
 
 	public CNewParticleEffect(C_BaseEntity? owner, string? effectName) {
-		for (int i = 0; i < MAX_PARTICLE_CONTROL_POINTS; i++)
-			ControlPointOwners[i] = new(new EHANDLE());
 		Owner.Set(owner);
 		Init(g_pParticleSystemMgr, effectName);
 		Construct();
@@ -165,7 +162,12 @@ public class CNewParticleEffect : ParticleCollection, IClientUnknown, IClientRen
 	public bool ShouldSimulate() => ShouldSimulate_;
 	public void SetShouldSimulate(bool sim) => ShouldSimulate_ = sim;
 
-	public ref readonly EHANDLE GetControlPointEntity(int whichPoint) => ref ControlPointOwners[whichPoint].Value;
+	public ref readonly EHANDLE GetControlPointEntity(int whichPoint) {
+		StrongBox<EHANDLE>? owner = ControlPointOwners[whichPoint];
+		if (owner == null)
+			return ref NoControlPointOwner;
+		return ref owner.Value;
+	}
 
 	public void SetControlPointEntity(int whichPoint, C_BaseEntity? entity) {
 		if ((uint)whichPoint >= MAX_PARTICLE_CONTROL_POINTS) {
@@ -174,8 +176,9 @@ public class CNewParticleEffect : ParticleCollection, IClientUnknown, IClientRen
 		}
 
 		if (entity != null) {
-			SetControlPointObject(whichPoint, ControlPointOwners[whichPoint]);
-			ControlPointOwners[whichPoint].Value.Set(entity);
+			StrongBox<EHANDLE> owner = ControlPointOwners[whichPoint] ??= new(new EHANDLE());
+			SetControlPointObject(whichPoint, owner);
+			owner.Value.Set(entity);
 		}
 		else
 			SetControlPointObject(whichPoint, null);
