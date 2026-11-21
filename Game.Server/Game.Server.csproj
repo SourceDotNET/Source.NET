@@ -7,6 +7,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Source.Engine\Source.Engine.csproj" />
+		<ProjectReference Include="..\Source.Particles\Source.Particles.csproj" />
 		<ProjectReference Include="..\Source.CodeAnalysis.NetworkVars\Source.CodeAnalysis.NetworkVars.csproj"
 		                  OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 		<ProjectReference Include="..\Source.CodeAnalysis.Lua\Source.CodeAnalysis.Lua.csproj"

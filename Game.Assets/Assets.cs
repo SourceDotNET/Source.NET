@@ -33,6 +33,7 @@ static class AssetUtils
 			new("platform", "platform", IsDirectory: true),
 			new("sdn/maps", "garrysmod/maps", IsDirectory: true),
 			new("sdn/materials", "garrysmod/materials", IsDirectory: true),
+			new("sdn/particles", "garrysmod/particles", IsDirectory: true),
 			new("sdn/resource", "garrysmod/resource", IsDirectory: true),
 			new("sdn/scenes", "garrysmod/scenes", IsDirectory: true),
 			#if GMOD_DLL
