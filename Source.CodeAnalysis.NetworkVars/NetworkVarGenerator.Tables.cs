@@ -436,7 +436,7 @@ namespace Source.CodeAnalysis.NetworkVars
 
 					ContainerKind predContainer = GetContainer(compilation, memberType, out ITypeSymbol? predElement, out int predLength);
 					bool predArray = (predContainer == ContainerKind.InlineArray || predContainer == ContainerKind.NetworkArray)
-						&& predElement != null && predElement.SpecialType != SpecialType.System_Char && predLength > 0;
+						&& predElement != null && (predElement.SpecialType != SpecialType.System_Char || SettingEnum(entry.Settings, "Type") == "StringCharacter") && predLength > 0;
 					string? fieldType = SettingEnum(entry.Settings, "Type") ?? InferFieldType(predArray ? predElement! : memberType);
 					if (fieldType == null) {
 						diagnostics.Add(new TableDiagnostic(UnsupportedPredicted, entry.Location, entry.Path, memberType.ToDisplayString()));
@@ -465,7 +465,7 @@ namespace Source.CodeAnalysis.NetworkVars
 					ResolvedPath? path = Resolve(compilation, declaring, member.Name, new AccessFailure());
 					if (IsNoOpFieldType(entryType))
 						entries.Add("N");
-					else if (predArray && path != null && PredictionElementType(entryType) != null)
+					else if (predArray && path != null && PredictionElementType(entryType) != null && predElement!.SpecialType != SpecialType.System_String)
 						entries.Add("F|" + entryType + "|S|" + Display(declaring) + "|" + member.Name + "|\0|" + Display(path.Type)
 							+ (predContainer == ContainerKind.NetworkArray ? "|1|" + Display(predElement!) : "|0|"));
 					else if (path == null || PredictionElementType(entryType) == null || GetContainer(compilation, path.Type, out _, out _) != ContainerKind.None)
@@ -888,6 +888,7 @@ namespace Source.CodeAnalysis.NetworkVars
 				case SpecialType.System_Int32: case SpecialType.System_UInt32: return "Integer";
 				case SpecialType.System_Single: return "Float";
 				case SpecialType.System_Double: return "Double";
+				case SpecialType.System_String: return "String";
 			}
 			switch (type.OriginalDefinition.ToDisplayString()) {
 				case "System.Numerics.Vector3": case "Source.Common.Mathematics.QAngle": return "Vector";

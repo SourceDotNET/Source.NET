@@ -18,7 +18,17 @@ public static class PlayerResourceGlobals
 public partial class C_PlayerResource : C_BaseEntity
 {
 	[PredictionTable]
-	public static readonly new PredictionField[] Prediction = [];
+	public static readonly new PredictionField[] Prediction = [
+		new(nameof(Name)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(Ping)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(Score)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(Deaths)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(Connected)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(Team)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(Alive)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(Health)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(Armor)) { Flags = FieldTypeDescFlags.Private },
+	];
 
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
@@ -50,7 +60,7 @@ public partial class C_PlayerResource : C_BaseEntity
 	InlineArrayMaxPlayersPlusOne<int> Armor = new();
 
 	const string PLAYER_UNCONNECTED_NAME = "unconnected";
-	readonly string?[] Name = new string?[Constants.MAX_PLAYERS + 1];
+	InlineArrayMaxPlayersPlusOne<string?> Name;
 
 	public C_PlayerResource() => g_pPlayerResource = this;
 
