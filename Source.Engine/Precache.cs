@@ -23,7 +23,7 @@ public class PrecacheItem
 
 	public const int PRECACHE_USER_DATA_NUMBITS = 2;
 
-	public const int MAX_MODEL_INDEX_BITS = 12;
+	public const int MAX_MODEL_INDEX_BITS = 13;
 	public const int MAX_MODELS = (1 << MAX_MODEL_INDEX_BITS);
 
 	public const int MAX_GENERIC_INDEX_BITS = 9;
