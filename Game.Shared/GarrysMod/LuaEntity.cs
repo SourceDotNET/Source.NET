@@ -2095,6 +2095,25 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__StopSound(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		string soundName = lua.CheckString(2);
+
+		if (ent.IsBaseCombatWeapon() && ent is BaseCombatWeapon weapon && weapon.GetOwner() is BaseEntity owner) {
+			BaseEntity.StopSound(owner.EntIndex(), (int)SoundEntityChannel.Weapon, soundName);
+			return 0;
+		}
+
+		if (!stristr(soundName, ".wav").IsEmpty || !stristr(soundName, ".mp3").IsEmpty || !stristr(soundName, ".ogg").IsEmpty || soundName.StartsWith('!')) {
+			for (SoundEntityChannel channel = SoundEntityChannel.Replace; channel <= SoundEntityChannel.Voice2; channel++)
+				BaseEntity.StopSound(ent.EntIndex(), (int)channel, soundName);
+		}
+		else
+			ent.StopSound(soundName);
+		return 0;
+	}
+
+	[LuaMethod]
 	static int Entity__ViewModelIndex(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		if (ent is not BaseViewModel viewModel)
