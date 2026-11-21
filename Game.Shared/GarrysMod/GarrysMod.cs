@@ -187,7 +187,7 @@ public class GarrysMod : IGarrysMod
 		AddCustomFonts();
 
 		if (gpGlobals.MaxClients > 1) {
-			// todo: ParseParticleEffects(true, false);
+			ParseParticleEffects(true, false);
 		}
 
 		string status = (gpGlobals.MaxClients < 2 ? "Singleplayer - " : "Multiplayer - ") + mapName.ToString();

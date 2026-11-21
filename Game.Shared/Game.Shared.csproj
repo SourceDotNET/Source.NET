@@ -21,6 +21,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Source.Common\Source.Common.csproj" />
 		<ProjectReference Include="..\Source.Engine\Source.Engine.csproj" />
+		<ProjectReference Include="..\Source.Particles\Source.Particles.csproj" />
 		<ProjectReference Include="..\Source.CodeAnalysis.BitVec\Source.CodeAnalysis.BitVec.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 	<ItemGroup>
