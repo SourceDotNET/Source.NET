@@ -164,7 +164,7 @@ namespace Source.CodeAnalysis.NetworkVars
 			List<string> conversions = new List<string>();
 			AddConversions(compilation, path.Type, conversions);
 
-			return new FieldAccessorModel("S|" + ownerDisplay + "|" + expression + "|" + (name ?? "\0"), registration, body.ToString(), string.Join("\n", conversions));
+			return new FieldAccessorModel("S|" + ownerDisplay + "|" + expression + "|" + (name ?? "\0"), registration, body.ToString(), string.Join("\n", conversions)) { FieldKey = FieldKey("S", path, owner, expression) };
 		}
 
 		private static FieldAccessorModel? BuildArray(Compilation compilation, INamedTypeSymbol owner, string expression, bool isList, AccessFailure failure) {
@@ -222,7 +222,7 @@ namespace Source.CodeAnalysis.NetworkVars
 			AddConversions(compilation, path.Type, conversions);
 			AddConversions(compilation, element, conversions);
 
-			return new FieldAccessorModel("A|" + ownerDisplay + "|" + expression, registration, body.ToString(), string.Join("\n", conversions));
+			return new FieldAccessorModel("A|" + ownerDisplay + "|" + expression, registration, body.ToString(), string.Join("\n", conversions)) { FieldKey = FieldKey("A", path, owner, expression) };
 		}
 
 		private static ResolvedPath? Resolve(Compilation compilation, INamedTypeSymbol owner, string expression, AccessFailure failure) {
@@ -698,11 +698,14 @@ namespace Source.CodeAnalysis.NetworkVars
 			public string Registration { get; }
 			public string Body { get; }
 			public string Conversions { get; }
+			public string? FieldKey { get; set; }
+			public bool PredictionOnly { get; set; }
 			public Location? ErrorLocation { get; private set; }
 			public object[]? ErrorArgs { get; private set; }
 
 			public bool Equals(FieldAccessorModel? other)
-				=> other != null && Key == other.Key && Registration == other.Registration && Body == other.Body && Conversions == other.Conversions && Equals(ErrorLocation, other.ErrorLocation);
+				=> other != null && Key == other.Key && Registration == other.Registration && Body == other.Body && Conversions == other.Conversions && FieldKey == other.FieldKey
+					&& PredictionOnly == other.PredictionOnly && Equals(ErrorLocation, other.ErrorLocation);
 
 			public override bool Equals(object? obj) => Equals(obj as FieldAccessorModel);
 			public override int GetHashCode() => Key.GetHashCode();
