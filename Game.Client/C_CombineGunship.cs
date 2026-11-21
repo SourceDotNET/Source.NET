@@ -4,7 +4,7 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
 [NetworkName("CNPC_CombineGunship", Table = "DT_CombineGunship")]
-public partial class C_NPC_CombineGunship : C_BaseHelicopter
+public partial class C_CombineGunship : C_BaseHelicopter
 {
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [

@@ -5,7 +5,7 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
 [NetworkName("CRagdollProp", Table = "DT_Ragdoll")]
-public partial class C_RagdollProp : C_BaseAnimating
+public partial class C_ServerRagdoll : C_BaseAnimating
 {
 	const int RAGDOLL_MAX_ELEMENTS = 32;
 	[NetworkTable]

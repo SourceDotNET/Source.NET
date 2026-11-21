@@ -5,7 +5,7 @@ using System.Numerics;
 namespace Game.Client;
 
 [NetworkName("CRagdollPropAttached", Table = "DT_Ragdoll_Attached")]
-public partial class C_RagdollPropAttached : C_RagdollProp
+public partial class C_ServerRagdollAttached : C_ServerRagdoll
 {
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [

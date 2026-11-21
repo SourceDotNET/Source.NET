@@ -4,7 +4,7 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
 [NetworkName("CEnvQuadraticBeam", Table = "DT_QuadraticBeam")]
-public partial class C_EnvQuadraticBeam : C_BaseEntity
+public partial class C_QuadraticBeam : C_BaseEntity
 {
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [

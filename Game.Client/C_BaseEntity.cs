@@ -324,7 +324,9 @@ public partial class C_BaseEntity : IClientEntity
 		}
 
 		if (!gotname) {
-			string typeName = GetType().Name.StartsWith("C_") ? GetType().Name : "C_" + GetType().Name;
+			string typeName = GetType().Name;
+			if (!typeName.StartsWith("C_") && !(typeName.Length > 1 && typeName[0] == 'C' && char.IsUpper(typeName[1])))
+				typeName = "C_" + typeName;
 #if WIN32
 			strcpy(GetClassname__outstr, $"class {typeName}");
 #else

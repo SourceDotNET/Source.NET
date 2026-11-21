@@ -16,9 +16,9 @@ using Game.Server.GarrysMod;
 [NetworkName("CSENT_point")]
 public partial class
 #if CLIENT_DLL
-    C_SENT_Point
+    C_SENT_point
 #else
-	SENT_Point
+	SENT_point
 #endif
 	: BaseEntity
 {
@@ -31,9 +31,9 @@ public partial class
 	public readonly ScriptedEntity ScriptedEntity = new();
 
 #if CLIENT_DLL
-	public C_SENT_Point() {
+	public C_SENT_point() {
 #else
-	public SENT_Point() {
+	public SENT_point() {
 #endif
 		ScriptedEntity.Init(this, 1);
 	}
