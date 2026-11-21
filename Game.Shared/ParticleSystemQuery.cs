@@ -474,6 +474,8 @@ struct ParticleModelDraw()
 		return studioHdr;
 	}
 
+	public static void ClearStudioHdrCache() => StudioHdrs.Clear();
+
 	public void SetMDL(MDLHandle_t handle) {
 		UnreferenceMDL();
 		Handle = handle;

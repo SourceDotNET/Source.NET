@@ -593,6 +593,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		gHUD.LevelShutdown();
 
 		g_pParticleSystemMgr.UncacheAllParticleSystems();
+		ParticleModelDraw.ClearStudioHdrCache();
 
 #if GMOD_DLL
 		Game.Client.GarrysMod.GarrysMod.Lua.Kill();

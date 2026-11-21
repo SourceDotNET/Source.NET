@@ -92,9 +92,9 @@ internal static class ParticleOpUtil
 	public static int ClampCP(int cp) => Math.Clamp(cp, 0, MAX_PARTICLE_CONTROL_POINTS - 1);
 
 	public static bool MatricesAreEqual(in Matrix3x4 a, in Matrix3x4 b, float tolerance)
-		=> MathF.Abs(a.M00 - b.M00) <= tolerance && MathF.Abs(a.M01 - b.M01) <= tolerance && MathF.Abs(a.M02 - b.M02) <= tolerance && MathF.Abs(a.M03 - b.M03) <= tolerance
-		&& MathF.Abs(a.M10 - b.M10) <= tolerance && MathF.Abs(a.M11 - b.M11) <= tolerance && MathF.Abs(a.M12 - b.M12) <= tolerance && MathF.Abs(a.M13 - b.M13) <= tolerance
-		&& MathF.Abs(a.M20 - b.M20) <= tolerance && MathF.Abs(a.M21 - b.M21) <= tolerance && MathF.Abs(a.M22 - b.M22) <= tolerance && MathF.Abs(a.M23 - b.M23) <= tolerance;
+		=> !(MathF.Abs(a.M00 - b.M00) > tolerance) && !(MathF.Abs(a.M01 - b.M01) > tolerance) && !(MathF.Abs(a.M02 - b.M02) > tolerance) && !(MathF.Abs(a.M03 - b.M03) > tolerance)
+		&& !(MathF.Abs(a.M10 - b.M10) > tolerance) && !(MathF.Abs(a.M11 - b.M11) > tolerance) && !(MathF.Abs(a.M12 - b.M12) > tolerance) && !(MathF.Abs(a.M13 - b.M13) > tolerance)
+		&& !(MathF.Abs(a.M20 - b.M20) > tolerance) && !(MathF.Abs(a.M21 - b.M21) > tolerance) && !(MathF.Abs(a.M22 - b.M22) > tolerance) && !(MathF.Abs(a.M23 - b.M23) > tolerance);
 
 	public static Vector3 Transform(in Vector3 v, in Matrix3x4 m) {
 		MathLib.VectorTransform(v, m, out Vector3 result);
