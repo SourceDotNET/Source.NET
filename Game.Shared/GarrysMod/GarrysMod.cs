@@ -43,6 +43,7 @@ public class GarrysMod : IGarrysMod
 {
 	public static readonly ConVar lua_strict = new("lua_strict", "0", FCvar.Replicated | FCvar.Notify, "Enable extra checks for Lua API, such as argument type checking, errors that normally would be silent, etc. Useful to catch bugs in code when developing addons.");
 	public static readonly ConVar sv_allowcslua = new("sv_allowcslua", "0", FCvar.Archive | FCvar.Notify | FCvar.Replicated, "Allow clients to run clientside addons. This will override any gamemode setting!");
+	public static readonly ConVar gmod_suit = new("gmod_suit", "0", FCvar.Replicated, "Set to non zero to enable Half-Life 2 aux suit power stuff.");
 
 	public void DLLInit(IServiceCollection services) {
 #if CLIENT_DLL
