@@ -65,6 +65,9 @@ public class Page
 	public short Tall;
 	public short NextX;
 	public short NextY;
+#if GMOD_DLL
+	public TexturePacker? PackedFontTextureCache;
+#endif
 }
 
 public class FontTextureCache
@@ -202,19 +205,123 @@ public class FontTextureCache
 	}
 
 	public void Clear() {
+#if GMOD_DLL
+		for (int i = 0; i < PageList.Count; ++i) {
+			FreeTextureIDs.Add(PageList[i].TextureID[0]);
+			FreeTextureIDs.Add(PageList[i].TextureID[1]);
+		}
+#endif
+
 		CharCache.Clear();
+#if GMOD_DLL
+		for (int i = 0; i < PageList.Count; ++i)
+			PageList[i].PackedFontTextureCache = null;
+#endif
 		PageList.Clear();
 
+#if GMOD_DLL
+		CurrPage = -1;
+#else
 		for (int i = 0; i < (int)FontPageSize.Count; ++i)
 			CurrPage[i] = -1;
+#endif
 
 		FontPages.Clear();
 	}
+
+#if GMOD_DLL
+	public void GMOD_FreeMaterials() {
+		if (FreeTextureIDs.Count == 0)
+			return;
+
+		surface.DrawSetTexture(-1);
+		for (int i = 0; i < FreeTextureIDs.Count; i++)
+			surface.DestroyTextureID(FreeTextureIDs[i]);
+
+		FreeTextureIDs.Clear();
+	}
+#endif
 
 	const int TEXTURE_PAGE_WIDTH = 256;
 	const int TEXTURE_PAGE_HEIGHT = 256;
 
 	static int fontPageId = 0;
+#if GMOD_DLL
+	bool AllocatePageForChar(int charWide, int charTall, out nint pageIndex, out int drawX, out int drawY, out int twide, out int ttall) {
+		pageIndex = 0;
+		drawX = 0; drawY = 0; twide = 0; ttall = 0;
+		if (charWide > TEXTURE_PAGE_WIDTH || charTall > TEXTURE_PAGE_HEIGHT)
+			return false;
+
+		pageIndex = CurrPage;
+
+		TexturePacker.Rect rect = new() { X = 0, Y = 0, Width = charWide, Height = charTall };
+		int nodeIndex = -1;
+		if (pageIndex >= 0)
+			nodeIndex = PageList[(int)pageIndex].PackedFontTextureCache!.InsertRect(rect);
+
+		if (nodeIndex == -1) {
+			// allocate a new page
+			pageIndex = PageList.Count;
+			Page newPage = new();
+			PageList.Add(newPage);
+
+			for (int i = 0; i < (int)FontDrawType.Count; ++i)
+				newPage.TextureID[i] = surface.CreateNewTextureID(true);
+
+			newPage.PackedFontTextureCache = new TexturePacker(TEXTURE_PAGE_WIDTH, TEXTURE_PAGE_HEIGHT, 1);
+			nodeIndex = newPage.PackedFontTextureCache.InsertRect(rect);
+			if (nodeIndex == -1) {
+				PageList.RemoveAt((int)pageIndex);
+				Warning("Failed to AllocatePageForChar!\n");
+				return false;
+			}
+
+			CurrPage = pageIndex;
+
+			Span<char> textureName = stackalloc char[64];
+			Span<char> finalName = sprintf(textureName, "%s__font_page_%d").S(FontPageName).D(fontPageId);
+			++fontPageId;
+
+			ITexture pTexture = materials.CreateProceduralTexture(
+				finalName,
+				TEXTURE_GROUP_VGUI,
+				TEXTURE_PAGE_WIDTH,
+				TEXTURE_PAGE_HEIGHT,
+				ImageFormat.RGBA8888,
+				TextureFlags.ClampS | TextureFlags.ClampT | TextureFlags.NoMip | TextureFlags.NoLOD | TextureFlags.Procedural | TextureFlags.SingleCopy
+			);
+
+			CreateFontMaterials(ref newPage, pTexture);
+			pTexture.DecrementReferenceCount();
+
+			int nByteCount = TEXTURE_PAGE_WIDTH * TEXTURE_PAGE_HEIGHT * 4;
+			Span<byte> rgba = stackalloc byte[nByteCount];
+			for (int i = 0; i < nByteCount; i += 4) {
+				rgba[i + 0] = 255;
+				rgba[i + 1] = 255;
+				rgba[i + 2] = 255;
+				rgba[i + 3] = 0;
+			}
+
+			int typePageNonAdditive = (int)FontDrawType.NonAdditive - 1;
+			surface.DrawSetTextureRGBA(newPage.TextureID[typePageNonAdditive], rgba, TEXTURE_PAGE_WIDTH, TEXTURE_PAGE_HEIGHT, 0, false);
+		}
+
+		TexturePacker packer = PageList[(int)pageIndex].PackedFontTextureCache!;
+		if (nodeIndex < 0 || nodeIndex > packer.MaxElementIndex) {
+			Warning("CTexturePacker::GetEntry Out of bounds!\n");
+			nodeIndex = 0;
+		}
+
+		TexturePacker.TreeEntry entry = packer.GetEntry(nodeIndex);
+		drawX = entry.Rc.X;
+		drawY = entry.Rc.Y;
+		twide = TEXTURE_PAGE_WIDTH;
+		ttall = TEXTURE_PAGE_HEIGHT;
+		return true;
+	}
+#else
 	bool AllocatePageForChar(int charWide, int charTall, out nint pageIndex, out int drawX, out int drawY, out int twide, out int ttall) {
 		int nPageType = ComputePageType(charTall);
 		if (nPageType < 0) {
@@ -286,6 +393,8 @@ public class FontTextureCache
 
 			CreateFontMaterials(ref newPage, pTexture);
 
+			pTexture.DecrementReferenceCount();
+
 			// clear the texture from the inital checkerboard to black
 			// allocate for 32bpp format
 			int nByteCount = TEXTURE_PAGE_WIDTH * TEXTURE_PAGE_HEIGHT * 4;
@@ -313,6 +422,8 @@ public class FontTextureCache
 		page.NextX = (short)(nNextX + 1);
 		return true;
 	}
+#endif
+
 	void CreateFontMaterials(ref Page page, ITexture fontTexture, bool bitmapFont = false) {
 		// The normal material
 		KeyValues vmtKeyValues = new KeyValues("UnlitGeneric");
@@ -357,6 +468,12 @@ public class FontTextureCache
 	}
 	Dictionary<ulong, CacheEntry> CharCache = [];
 	List<Page> PageList = [];
+#if GMOD_DLL
+	nint CurrPage = -1;
+	readonly List<TextureID> FreeTextureIDs = [];
+	readonly string FontPageName = "";
+#else
 	nint[] CurrPage = new nint[(int)Surface.FontPageSize.Count];
+#endif
 	Dictionary<IFont, Page> FontPages = [];
 }

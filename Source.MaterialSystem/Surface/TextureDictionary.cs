@@ -202,6 +202,7 @@ public class MatSystemTexture(IMaterialSystem materials)
 			if (Material!.TryFindVar("$basetexture", out IMaterialVar? var) && var.IsTexture()) {
 				Texture = var.GetTextureValue();
 				if (Texture != null) {
+					Texture.IncrementReferenceCount();
 					CreateRegen(Wide, Tall, Texture.GetImageFormat());
 					Texture.SetTextureRegenerator(Regen);
 				}
@@ -353,6 +354,7 @@ public class MatSystemTexture(IMaterialSystem materials)
 
 			IMaterial pMaterial = materials.CreateMaterial(textureName, vmtTKeyValues);
 			pMaterial.Refresh();
+			pTexture.DecrementReferenceCount();
 
 			SetMaterial(pMaterial);
 			InputTall = tall;
@@ -397,6 +399,7 @@ public class MatSystemTexture(IMaterialSystem materials)
 		if (Material!.TryFindVar("$basetexture", out IMaterialVar? var) && var.IsTexture()) {
 			Texture = var.GetTextureValue();
 			if (Texture != null) {
+				Texture.IncrementReferenceCount();
 				Assert(Texture == texture.Texture);
 				Regen = texture.Regen;
 
