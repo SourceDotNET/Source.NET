@@ -6766,7 +6766,7 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public void GatherAttackConditions(BaseEntity target, float dist) {
 		Vector3 vecLOS = target.GetAbsOrigin() - GetAbsOrigin();
 		vecLOS.Z = 0;
-		vecLOS = Vector3.Normalize(vecLOS);
+		MathLib.VectorNormalize(ref vecLOS)
 
 		Vector3 bodyDir = BodyDirection2D();
 		float dot = Vector3.Dot(vecLOS, bodyDir);
