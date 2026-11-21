@@ -117,6 +117,8 @@ public class Common(IServiceProvider providers, Sys Sys)
 		FileSystem.LoadSearchPaths(ref initInfo);
 		Common.Gamedir = Path.Combine(AppContext.BaseDirectory, initInfo.ModPath ?? throw new Exception("Mod path null"));
 
+		SetupLogDir(null);
+
 	}
 
 	public bool Initialized { get; private set; }
@@ -198,6 +200,37 @@ public class Common(IServiceProvider providers, Sys Sys)
 
 		com_token[len] = 0;
 		return data;
+	}
+
+	const int MAX_LOG_DIRECTORIES = 10000;
+	static bool logPathSetup;
+
+	public static void SetupLogDir(ReadOnlySpan<char> mapname) {
+		g_pFileSystem.RemoveSearchPath(ReadOnlySpan<char>.Empty, "LOGDIR");
+
+		if (!mapname.IsEmpty && Singleton<Source.Common.Commands.ICommandLine>().CheckParm("-uselogdir")) {
+			int i;
+			string relativeLogDir = "";
+			for (i = 0; i < MAX_LOG_DIRECTORIES; i++) {
+				relativeLogDir = $"logs/{mapname}/{i:D4}";
+				if (!g_pFileSystem.IsDirectory(relativeLogDir, "GAME"))
+					break;
+			}
+
+			if (i == MAX_LOG_DIRECTORIES)
+				relativeLogDir = $"logs/{mapname}/{0:D4}";
+
+			g_pFileSystem.CreateDirHierarchy(relativeLogDir, "GAME");
+
+			if (!logPathSetup) {
+				logPathSetup = true;
+				g_pFileSystem.AddSearchPath($"{Gamedir}/{relativeLogDir}", "LOGDIR");
+			}
+		}
+		else
+			g_pFileSystem.AddSearchPath(Gamedir, "LOGDIR");
+
+		g_pFileSystem.MarkPathIDByRequestOnly("LOGDIR", true);
 	}
 
 	public static void CreatePath(ReadOnlySpan<char> path) {

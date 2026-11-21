@@ -280,7 +280,11 @@ public partial class Host
 			else {
 				throw new NotImplementedException("Threaded Host.RunFrame path is not implemented yet");
 			}
+#endif
 
+			g_Log.RunFrame();
+
+#if !SWDS
 			if (shouldRender) {
 				_RunFrame_Render();
 				_RunFrame_Sound();
@@ -816,6 +820,8 @@ public partial class Host
 
 		AllowQueuedMaterialSystem(false);
 
+		g_Log.Init();
+
 		Initialized = true;
 		hostState.Init();
 
@@ -862,7 +868,7 @@ public partial class Host
 
 
 		// HLTV.Shutdown();
-		// Log.Shutdown();
+		g_Log.Shutdown();
 		// GameEventManager.Shutdown();
 
 		sv.Shutdown();
@@ -1606,6 +1612,7 @@ public partial class Host
 			g_GameEventManager.FireEvent(ev);
 		}
 
+		g_Log.Close();
 
 		GC.WaitForPendingFinalizers();
 		GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive);

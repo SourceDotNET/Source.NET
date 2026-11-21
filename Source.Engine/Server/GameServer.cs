@@ -597,6 +597,12 @@ public class GameServer : BaseServer
 #if !SWDS
 		EngineVGui().UpdateProgressBar(LevelLoadingProgress.SpawnServer);
 #endif
+		Common.SetupLogDir(mapName);
+
+		g_Log.Open();
+		g_Log.Print($"Loading map \"{mapName}\"\n");
+		g_Log.PrintServerVars();
+
 #if !SWDS
 		Scr.CenterStringOff();
 #endif

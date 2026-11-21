@@ -20,7 +20,7 @@ public partial class SV
 		bInFlush = true;
 		switch(Redirected){
 			case RedirectType.Packet:
-				Net.OutOfBandPrint(sv.Socket, RedirectTo, $"{A2A.Print}{RedirectBuffer.SliceNullTerminatedString()}");
+				Net.OutOfBandPrint(sv.Socket, RedirectTo, $"{(char)A2A.Print}{RedirectBuffer.SliceNullTerminatedString()}");
 				break;
 			case RedirectType.Client:
 				Host.Client!.ClientPrintf(RedirectBuffer.SliceNullTerminatedString());

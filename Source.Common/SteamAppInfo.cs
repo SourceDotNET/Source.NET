@@ -15,7 +15,9 @@ public static class SteamInfVersionInfo
 		return ref info;
 	}
 
+#if !GMOD_DLL
 	public static int build_number() => GetSteamInfIDVersionInfo().ServerVersion;
+#endif
 }
 
 public struct SteamAppInfo

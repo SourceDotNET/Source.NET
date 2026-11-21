@@ -333,6 +333,8 @@ public class Steam3ServerImpl : IDisposable
 			sprintf(msg, "\"%s<%i><%s><>\" STEAM USERID validated\n").S(client.GetClientName()).I(client.GetUserID()).S(client.GetNetworkIDString());
 
 			DevMsg(msg);
+			g_Log.Print(msg.SliceNullTerminatedString());
+
 			SV.ServerGameClients!.NetworkIDValidated(client.GetClientName(), client.GetNetworkIDString());
 		}
 
