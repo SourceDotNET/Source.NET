@@ -1816,6 +1816,24 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__AddFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent) || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+		ent.AddFlag((EntityFlags)(int)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__RemoveFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent) || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+		ent.RemoveFlag((EntityFlags)(int)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
 	static int Entity__GetParent(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		Push_Entity(ent.GetMoveParent());
