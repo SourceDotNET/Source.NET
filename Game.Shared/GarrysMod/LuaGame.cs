@@ -98,6 +98,47 @@ public static partial class LuaGame
 		rules.SkillLevel = (int)g_Lua!.CheckNumber(1);
 		return 0;
 	}
+
+	[LuaFunction]
+	static int GetGlobalState(ILuaInterface lua) {
+		int index = GlobalEntity.GetIndex(g_Lua!.CheckString(1));
+		g_Lua.PushNumber(index < 0 ? (int)GlobalEState.Dead : (int)GlobalEntity.GetState(index));
+		return 1;
+	}
+
+	[LuaFunction]
+	static int SetGlobalState(ILuaInterface lua) {
+		string name = g_Lua!.CheckString(1);
+		int index = GlobalEntity.GetIndex(name);
+		GlobalEState state = (GlobalEState)Math.Clamp((int)g_Lua.CheckNumber(2), (int)GlobalEState.Off, (int)GlobalEState.Dead);
+		if (index < 0) {
+			GlobalEntity.Add(name, gpGlobals.MapName ?? "", state);
+			GlobalEntity.SetCounter(GlobalEntity.GetIndex(name), 0);
+		}
+		else
+			GlobalEntity.SetState(index, state);
+		return 0;
+	}
+
+	[LuaFunction]
+	static int GetGlobalCounter(ILuaInterface lua) {
+		int index = GlobalEntity.GetIndex(g_Lua!.CheckString(1));
+		g_Lua.PushNumber(index < 0 ? 0 : GlobalEntity.GetCounter(index));
+		return 1;
+	}
+
+	[LuaFunction]
+	static int SetGlobalCounter(ILuaInterface lua) {
+		string name = g_Lua!.CheckString(1);
+		int index = GlobalEntity.GetIndex(name);
+		int counter = (int)g_Lua.CheckNumber(2);
+		if (index < 0) {
+			GlobalEntity.Add(name, gpGlobals.MapName ?? "", GlobalEState.Off);
+			index = GlobalEntity.GetIndex(name);
+		}
+		GlobalEntity.SetCounter(index, counter);
+		return 0;
+	}
 #endif
 
 	[LuaFunction]

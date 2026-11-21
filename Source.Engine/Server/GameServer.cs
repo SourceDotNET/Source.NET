@@ -247,9 +247,6 @@ public class GameServer : BaseServer
 		if (model != null)
 			return model;
 
-		if (index == 1)
-			return null;
-
 		ReadOnlySpan<char> name = ModelPrecacheTable.GetString(index);
 		if (name.IsEmpty)
 			return null;
