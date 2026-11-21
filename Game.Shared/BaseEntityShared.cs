@@ -67,6 +67,7 @@ public static class BaseEntityConstants
 #endif
 	public static readonly ConVar ai_shot_bias_min = new("ai_shot_bias_min", "-1.0", FCvar.Replicated);
 	public static readonly ConVar ai_shot_bias_max = new("ai_shot_bias_max", "1.0", FCvar.Replicated);
+	public static readonly ConVar ai_debug_shoot_positions = new("ai_debug_shoot_positions", "0", FCvar.Replicated | FCvar.Cheat);
 
 	public const int NUM_PARENTATTACHMENT_BITS = 8; // < gmod increased 6 . 8
 	public const int VPHYSICS_MAX_OBJECT_LIST_COUNT = 1024;

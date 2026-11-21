@@ -145,6 +145,15 @@ public static class AI_BaseNPCGlobals
 		Util.TraceLine(absStart, absEnd, Mask.BlockLOSAndNPCs, ref traceFilter, out tr);
 	}
 
+	public static void AI_TraceLOS<IF>(in Vector3 absStart, in Vector3 absEnd, BaseEntity? looker, out Trace tr, scoped ref IF filter) where IF : struct, ITraceFilter {
+		if (ai_LOS_mode.GetBool()) {
+			Util.TraceLine(absStart, absEnd, Mask.BlockLOS, looker, CollisionGroup.None, out tr);
+			return;
+		}
+
+		Util.TraceLine(absStart, absEnd, Mask.BlockLOSAndNPCs, ref filter, out tr);
+	}
+
 	public static bool AI_DoLoadSchedules(Func<bool> baseLoad, Action initCustomSchedules, ref AI_SchedLoadStatus loadStatus) {
 		baseLoad();
 
@@ -4337,7 +4346,49 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return true;
 	}
 
-	public virtual bool IsCoverPosition(in Vector3 threat, in Vector3 position) => throw new NotImplementedException();
+	public virtual bool IsCoverPosition(in Vector3 threat, in Vector3 position) {
+		BaseEntity? passEntity = null;
+
+		BaseEntity? enemy = GetEnemy();
+		if (enemy != null) {
+			bool threatPosIsEnemy = (threat - enemy.EyePosition()).LengthSquared() < 0.1f;
+			if (threatPosIsEnemy) {
+				BaseCombatCharacter? ccEnemy = enemy.MyCombatCharacterPointer();
+				if (ccEnemy != null && ccEnemy.IsInAVehicle())
+					passEntity = ccEnemy.GetVehicleEntity();
+
+				passEntity ??= enemy;
+			}
+		}
+
+		TraceFilterLOS filter = new(passEntity, Source.CollisionGroup.None, this);
+		AI_TraceLOS(threat, position, this, out Trace tr, ref filter);
+
+		if (tr.Fraction != 1.0f && hl2_episodic.GetBool()) {
+			if (tr.Ent is BaseEntity hitEntity && hitEntity.Classname == Classname)
+				return false;
+		}
+
+		return tr.Fraction != 1.0f;
+	}
+
+	public virtual bool IsValidCover(in Vector3 coverLocation, AI_Hint? hint) {
+		string? hintGroup = GetHintGroup();
+		if (!string.IsNullOrEmpty(hintGroup)) {
+			if (hint == null || hint.GetGroup() != hintGroup)
+				return false;
+		}
+
+		Vector3 startPos = coverLocation;
+		startPos.Z -= GetHullMins().Z;
+		Vector3 endPos = startPos;
+		endPos.Z += 0.01f;
+		Util.TraceEntity(this, coverLocation, endPos, Mask.NPCSolid, out Trace tr);
+		if (tr.StartSolid)
+			return false;
+
+		return true;
+	}
 
 	public bool ShouldMoveWait() => MoveWaitFinished > gpGlobals.CurTime;
 
@@ -6141,7 +6192,113 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		return SCHED_ALERT_STAND;
 	}
 
-	public virtual int SelectCombatSchedule() => throw new NotImplementedException();
+	public virtual void FearSound() { }
+
+	public virtual bool UseAttackSquadSlots() => false;
+
+	public int SelectCombatSchedule() {
+		if (ForcedInteractionPartner.Get() != null)
+			return SelectInteractionSchedule();
+
+		int sched = SelectFlinchSchedule();
+		if (sched != SCHED_NONE)
+			return sched;
+
+		if (HasCondition((int)SCOND_t.COND_NEW_ENEMY) && gpGlobals.CurTime - GetEnemies().FirstTimeSeen(GetEnemy()) < 2.0)
+			return SCHED_WAKE_ANGRY;
+
+		if (HasCondition((int)SCOND_t.COND_ENEMY_DEAD)) {
+			SetEnemy(null);
+
+			if (ChooseEnemy()) {
+				ClearCondition((int)SCOND_t.COND_ENEMY_DEAD);
+				return SelectSchedule();
+			}
+
+			SetState(NPCState.Alert);
+			return SelectSchedule();
+		}
+
+		if (IRelationType(GetEnemy()) == Disposition.FR) {
+			if (HasCondition((int)SCOND_t.COND_SEE_ENEMY) ||
+				HasCondition((int)SCOND_t.COND_LIGHT_DAMAGE) ||
+				HasCondition((int)SCOND_t.COND_HEAVY_DAMAGE)) {
+				FearSound();
+				return SCHED_RUN_FROM_ENEMY;
+			}
+
+			AI_EnemyInfo? memory = GetEnemies().Find(GetEnemy());
+			if ((memory != null && memory.Unforgettable) || (GetEnemyLastTimeSeen() > (gpGlobals.CurTime - 5.0))) {
+				if (FInAimCone(GetEnemy()!.EyePosition()))
+					return SCHED_COMBAT_STAND;
+
+				return SCHED_FEAR_FACE;
+			}
+		}
+
+		if (HasCondition((int)SCOND_t.COND_LOW_PRIMARY_AMMO) || HasCondition((int)SCOND_t.COND_NO_PRIMARY_AMMO))
+			return SCHED_HIDE_AND_RELOAD;
+
+		if (!HasCondition((int)SCOND_t.COND_SEE_ENEMY)) {
+			if (!HasCondition((int)SCOND_t.COND_ENEMY_OCCLUDED))
+				return SCHED_COMBAT_FACE;
+
+			if (GetActiveWeapon() != null || (CapabilitiesGet() & (Capability.InnateRangeAttack1 | Capability.InnateRangeAttack2)) != 0)
+				return SCHED_ESTABLISH_LINE_OF_FIRE;
+			else if ((CapabilitiesGet() & (Capability.InnateMeleeAttack1 | Capability.InnateMeleeAttack2)) != 0)
+				return SCHED_CHASE_ENEMY;
+			else
+				return SCHED_TAKE_COVER_FROM_ENEMY;
+		}
+
+		if (HasCondition((int)SCOND_t.COND_TOO_CLOSE_TO_ATTACK))
+			return SCHED_BACK_AWAY_FROM_ENEMY;
+
+		if (HasCondition((int)SCOND_t.COND_WEAPON_PLAYER_IN_SPREAD) ||
+			HasCondition((int)SCOND_t.COND_WEAPON_BLOCKED_BY_FRIEND) ||
+			HasCondition((int)SCOND_t.COND_WEAPON_SIGHT_OCCLUDED)) {
+			return SCHED_ESTABLISH_LINE_OF_FIRE;
+		}
+
+		if (GetShotRegulator().IsInRestInterval()) {
+			if (HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK1))
+				return SCHED_COMBAT_FACE;
+		}
+
+		if (HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK1)) {
+			if (!UseAttackSquadSlots() || OccupyStrategySlotRange(SquadSlot.Attack1, SquadSlot.Attack2))
+				return SCHED_RANGE_ATTACK1;
+			return SCHED_COMBAT_FACE;
+		}
+
+		if (HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK2))
+			return SCHED_RANGE_ATTACK2;
+
+		if (HasCondition((int)SCOND_t.COND_CAN_MELEE_ATTACK1))
+			return SCHED_MELEE_ATTACK1;
+
+		if (HasCondition((int)SCOND_t.COND_CAN_MELEE_ATTACK2))
+			return SCHED_MELEE_ATTACK2;
+
+		if (HasCondition((int)SCOND_t.COND_NOT_FACING_ATTACK))
+			return SCHED_COMBAT_FACE;
+
+		if (!HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK1) && !HasCondition((int)SCOND_t.COND_CAN_MELEE_ATTACK1)) {
+			if (GetActiveWeapon() != null)
+				return SCHED_MOVE_TO_WEAPON_RANGE;
+
+			if (HasCondition((int)SCOND_t.COND_TOO_FAR_TO_ATTACK) && (CapabilitiesGet() & (Capability.InnateRangeAttack1 | Capability.InnateRangeAttack2)) != 0)
+				return SCHED_MOVE_TO_WEAPON_RANGE;
+
+			if ((CapabilitiesGet() & (Capability.InnateMeleeAttack1 | Capability.InnateMeleeAttack2)) != 0)
+				return SCHED_CHASE_ENEMY;
+			else
+				return SCHED_TAKE_COVER_FROM_ENEMY;
+		}
+
+		DevWarning(2, "No suitable combat schedule!\n");
+		return SCHED_FAIL;
+	}
 
 	public virtual int SelectDeadSchedule() {
 		if (BecomeRagdollOnClient(vec3_origin)) {
@@ -6606,7 +6763,216 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 		}
 	}
 
-	public virtual void GatherAttackConditions(BaseEntity target, float dist) => throw new NotImplementedException();
+	public void GatherAttackConditions(BaseEntity target, float dist) {
+		Vector3 vecLOS = target.GetAbsOrigin() - GetAbsOrigin();
+		vecLOS.Z = 0;
+		MathLib.VectorNormalize(ref vecLOS);
+
+		Vector3 bodyDir = BodyDirection2D();
+		float dot = Vector3.Dot(vecLOS, bodyDir);
+
+		Capability capability = CapabilitiesGet();
+
+		ClearAttackConditions();
+		Vector3 targetPos = target.EyePosition();
+		bool weaponHasLOS = CurrentWeaponLOSCondition(targetPos, true);
+
+		if (!weaponHasLOS) {
+			ClearAttackConditions();
+			targetPos = target.BodyTarget(GetAbsOrigin(), true);
+			weaponHasLOS = CurrentWeaponLOSCondition(targetPos, true);
+		}
+		else
+			SetCondition((int)SCOND_t.COND_WEAPON_HAS_LOS);
+
+		BaseCombatWeapon? weapon = GetActiveWeapon();
+		bool weaponIsReady = weapon != null && !IsWeaponStateChanging();
+		int condition;
+
+		if ((capability & Capability.WeaponRangeAttack1) != 0 && weaponIsReady) {
+			condition = (int)weapon!.WeaponRangeAttack1Condition(dot, dist);
+
+			if (condition == (int)SCOND_t.COND_NOT_FACING_ATTACK && FInAimCone(targetPos))
+				DevMsg("Warning: COND_NOT_FACING_ATTACK set but FInAimCone is true\n");
+
+			if (condition != (int)SCOND_t.COND_CAN_RANGE_ATTACK1 || weaponHasLOS)
+				SetCondition(condition);
+		}
+		else if ((capability & Capability.InnateRangeAttack1) != 0) {
+			condition = RangeAttack1Conditions(dot, dist);
+			if (condition != (int)SCOND_t.COND_CAN_RANGE_ATTACK1 || weaponHasLOS)
+				SetCondition(condition);
+		}
+
+		if ((capability & Capability.WeaponRangeAttack2) != 0 && weaponIsReady && (weapon!.CapabilitiesGet() & Capability.WeaponRangeAttack2) != 0) {
+			condition = (int)weapon.WeaponRangeAttack2Condition(dot, dist);
+			if (condition != (int)SCOND_t.COND_CAN_RANGE_ATTACK2 || weaponHasLOS)
+				SetCondition(condition);
+		}
+		else if ((capability & Capability.InnateRangeAttack2) != 0) {
+			condition = RangeAttack2Conditions(dot, dist);
+			if (condition != (int)SCOND_t.COND_CAN_RANGE_ATTACK2 || weaponHasLOS)
+				SetCondition(condition);
+		}
+
+		if ((capability & Capability.WeaponMeleeAttack1) != 0 && weaponIsReady)
+			SetCondition((int)weapon!.WeaponMeleeAttack1Condition(dot, dist));
+		else if ((capability & Capability.InnateMeleeAttack1) != 0)
+			SetCondition(MeleeAttack1Conditions(dot, dist));
+
+		if ((capability & Capability.WeaponMeleeAttack2) != 0 && weaponIsReady)
+			SetCondition((int)weapon!.WeaponMeleeAttack2Condition(dot, dist));
+		else if ((capability & Capability.InnateMeleeAttack2) != 0)
+			SetCondition(MeleeAttack2Conditions(dot, dist));
+
+		if (HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK2) ||
+			HasCondition((int)SCOND_t.COND_CAN_RANGE_ATTACK1) ||
+			HasCondition((int)SCOND_t.COND_CAN_MELEE_ATTACK2) ||
+			HasCondition((int)SCOND_t.COND_CAN_MELEE_ATTACK1)) {
+			ClearCondition((int)SCOND_t.COND_TOO_CLOSE_TO_ATTACK);
+			ClearCondition((int)SCOND_t.COND_TOO_FAR_TO_ATTACK);
+			ClearCondition((int)SCOND_t.COND_WEAPON_BLOCKED_BY_FRIEND);
+		}
+	}
+
+	public virtual int RangeAttack1Conditions(float dot, float dist) {
+		if (dist < 64)
+			return (int)SCOND_t.COND_TOO_CLOSE_TO_ATTACK;
+		else if (dist > 784)
+			return (int)SCOND_t.COND_TOO_FAR_TO_ATTACK;
+		else if (dot < 0.5)
+			return (int)SCOND_t.COND_NOT_FACING_ATTACK;
+
+		return (int)SCOND_t.COND_CAN_RANGE_ATTACK1;
+	}
+
+	public virtual int RangeAttack2Conditions(float dot, float dist) {
+		if (dist < 64)
+			return (int)SCOND_t.COND_TOO_CLOSE_TO_ATTACK;
+		else if (dist > 512)
+			return (int)SCOND_t.COND_TOO_FAR_TO_ATTACK;
+		else if (dot < 0.5)
+			return (int)SCOND_t.COND_NOT_FACING_ATTACK;
+
+		return (int)SCOND_t.COND_CAN_RANGE_ATTACK2;
+	}
+
+	public virtual int MeleeAttack1Conditions(float dot, float dist) {
+		if (dist > 64)
+			return (int)SCOND_t.COND_TOO_FAR_TO_ATTACK;
+		else if (dot < 0.7)
+			return 0;
+		else if (GetEnemy() == null)
+			return 0;
+
+		if ((GetEnemy()!.GetFlags() & EntityFlags.OnGround) != 0)
+			return (int)SCOND_t.COND_CAN_MELEE_ATTACK1;
+
+		return 0;
+	}
+
+	public virtual int MeleeAttack2Conditions(float dot, float dist) {
+		if (dist > 64)
+			return (int)SCOND_t.COND_TOO_FAR_TO_ATTACK;
+		else if (dot < 0.7)
+			return 0;
+
+		return (int)SCOND_t.COND_CAN_MELEE_ATTACK2;
+	}
+
+	public bool IsWeaponStateChanging() => DesiredWeaponState == DesiredWeaponState.Changing || DesiredWeaponState == DesiredWeaponState.ChangingDestroy;
+
+	public virtual bool CurrentWeaponLOSCondition(in Vector3 targetPos, bool setConditions) => WeaponLOSCondition(GetAbsOrigin(), targetPos, setConditions);
+
+	public virtual bool WeaponLOSCondition(in Vector3 ownerPos, in Vector3 targetPos, bool setConditions) {
+		bool haveLOS = true;
+
+		if (GetActiveWeapon() != null)
+			haveLOS = GetActiveWeapon()!.WeaponLOSCondition(ownerPos, targetPos, setConditions);
+		else if ((CapabilitiesGet() & Capability.InnateRangeAttack1) != 0)
+			haveLOS = InnateWeaponLOSCondition(ownerPos, targetPos, setConditions);
+		else {
+			if (setConditions)
+				SetCondition((int)SCOND_t.COND_NO_WEAPON);
+			haveLOS = false;
+		}
+
+		if ((CapabilitiesGet() & (Capability.NoHitPlayer | Capability.NoHitSquadmates)) != 0) {
+			float spread = 0.92f;
+			if (GetActiveWeapon() != null) {
+				Vector3 vSpread = GetAttackSpread(GetActiveWeapon());
+				if (vSpread.X > VECTOR_CONE_15DEGREES.X)
+					spread = MathF.Cos(MathF.Asin(vSpread.X));
+				else
+					spread = 0.99145f;
+			}
+
+			if ((CapabilitiesGet() & Capability.NoHitPlayer) != 0) {
+				if (PlayerInSpread(ownerPos, targetPos, spread, 8 * 12)) {
+					if (setConditions)
+						SetCondition((int)SCOND_t.COND_WEAPON_PLAYER_IN_SPREAD);
+					haveLOS = false;
+				}
+			}
+
+			if (haveLOS) {
+				if ((CapabilitiesGet() & Capability.NoHitSquadmates) != 0 && Squad != null && GetEnemy() != null) {
+					if (IsSquadmateInSpread(ownerPos, targetPos, spread, 8 * 12)) {
+						SetCondition((int)SCOND_t.COND_WEAPON_BLOCKED_BY_FRIEND);
+						haveLOS = false;
+					}
+				}
+			}
+		}
+
+		return haveLOS;
+	}
+
+	public virtual bool InnateWeaponLOSCondition(in Vector3 ownerPos, in Vector3 targetPos, bool setConditions) {
+		Vector3 barrelPos = ownerPos + GetViewOffset();
+		Util.TraceLine(barrelPos, targetPos, Mask.Shot, this, Source.CollisionGroup.None, out Trace tr);
+
+		if (tr.Fraction == 1.0f)
+			return true;
+
+		BaseEntity? hitEntity = tr.Ent;
+
+		if (GetEnemy() != null) {
+			BaseCombatCharacter? ccEnemy = GetEnemy()!.MyCombatCharacterPointer();
+			if (ccEnemy != null && ccEnemy.IsInAVehicle()) {
+				BaseEntity? vehicleEnt = ccEnemy.GetVehicleEntity();
+				if (hitEntity == vehicleEnt || hitEntity?.GetOwnerEntity() == vehicleEnt)
+					return true;
+			}
+		}
+
+		if (hitEntity == GetEnemy())
+			return true;
+		else if (hitEntity != null && hitEntity.MyCombatCharacterPointer() != null) {
+			if (IRelationType(hitEntity) == Disposition.HT)
+				return true;
+			else if (setConditions)
+				SetCondition((int)SCOND_t.COND_WEAPON_BLOCKED_BY_FRIEND);
+		}
+		else if (setConditions) {
+			SetCondition((int)SCOND_t.COND_WEAPON_SIGHT_OCCLUDED);
+			SetEnemyOccluder(tr.Ent);
+		}
+
+		return false;
+	}
+
+	public virtual bool PlayerInSpread(in Vector3 sourcePos, in Vector3 targetPos, float spread, float maxDistOffCenter, bool ignoreHatedPlayers = true) {
+		for (int i = 1; i <= gpGlobals.MaxClients; i++) {
+			BasePlayer? player = Util.PlayerByIndex(i);
+
+			if (player != null && (!ignoreHatedPlayers || IRelationType(player) != Disposition.HT)) {
+				if (PointInSpread(player, sourcePos, targetPos, player.WorldSpaceCenter(), spread, maxDistOffCenter))
+					return true;
+			}
+		}
+		return false;
+	}
 
 	public virtual bool FCanCheckAttacks() {
 		if (GetNavType() == Navigation.Climb || GetNavType() == Navigation.Jump)
@@ -7861,7 +8227,25 @@ public partial class AI_BaseNPC : BaseCombatCharacter, IAI_MovementSink
 	public AI_Hint? GetHintNode() => HintNode.Get();
 
 	public virtual Activity GetReloadActivity(AI_Hint? hint) => throw new NotImplementedException();
-	public virtual Activity GetCoverActivity(AI_Hint? hint) => throw new NotImplementedException();
+	public virtual Activity GetCoverActivity(AI_Hint? hint) {
+		Activity coverActivity = Activity.ACT_INVALID;
+
+		if (hint != null) {
+			switch (hint.HintType()) {
+				case Hint.TacticalCoverMed:
+					coverActivity = Activity.ACT_COVER_MED;
+					break;
+				case Hint.TacticalCoverLow:
+					coverActivity = Activity.ACT_COVER_LOW;
+					break;
+			}
+		}
+
+		if (coverActivity == Activity.ACT_INVALID)
+			coverActivity = Activity.ACT_COVER;
+
+		return coverActivity;
+	}
 
 	static readonly List<Activity> sUniqueActivities = [];
 
