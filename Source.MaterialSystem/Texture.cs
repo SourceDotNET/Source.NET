@@ -115,9 +115,9 @@ public class Texture(MaterialSystem materials) : ITextureInternal
 		}
 	}
 
-	public void IncrementReferenceCount() => ++RefCount;
+	public void IncrementReferenceCount() => Interlocked.Increment(ref RefCount);
 
-	public void DecrementReferenceCount() => --RefCount;
+	public void DecrementReferenceCount() => Interlocked.Decrement(ref RefCount);
 
 	public bool IsCubeMap() => ((TextureFlags)Flags & TextureFlags.EnvMap) != 0;
 	public bool IsError() => ((InternalTextureFlags)InternalFlags & InternalTextureFlags.Error) != 0;

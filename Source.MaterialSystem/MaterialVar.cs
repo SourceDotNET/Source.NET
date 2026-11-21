@@ -330,7 +330,8 @@ public sealed class MaterialVar : IMaterialVar
 			AllocThreadedTempVar()?.SetTextureValue(texture);
 
 			// Matches DecrementReferenceCount in SetTextureValueQueued
-			texture?.IncrementReferenceCount();
+			if (texture != null && !ITextureInternal.IsTextureInternalEnvCubemap(texture))
+				texture.IncrementReferenceCount(); 
 
 			callQueue.QueueCall(static s => s.Var.SetTextureValueQueued(s.Val), (Var: this, Val: texture));
 			return;
@@ -357,7 +358,8 @@ public sealed class MaterialVar : IMaterialVar
 		SetTextureValue(texture);
 
 		// Matches IncrementReferenceCount in SetTextureValue
-		texture?.DecrementReferenceCount();
+		if (texture != null && !ITextureInternal.IsTextureInternalEnvCubemap(texture))
+			texture.DecrementReferenceCount();
 	}
 
 	public override void SetUndefined() {

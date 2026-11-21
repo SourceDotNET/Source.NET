@@ -48,8 +48,6 @@ public class TextureManager : ITextureManager
 		whiteTexture = CreateProceduralTexture("white", TEXTURE_GROUP_OTHER, WHITE_TEXTURE_SIZE, WHITE_TEXTURE_SIZE, 1, ImageFormat.RGB888, TextureFlags.NoMip | TextureFlags.SingleCopy)!;
 		color.R = color.G = color.B = color.A = 255;
 		CreateSolidTexture(whiteTexture, color);
-
-
 	}
 
 	private void CreateCheckerboardTexture(ITexture errorTexture, int checkerSize, Color color1, Color color2)
@@ -62,9 +60,11 @@ public class TextureManager : ITextureManager
 		name = name.SliceNullTerminatedString();
 		Texture newTexture = new(MaterialSystem);
 		newTexture.InitProceduralTexture(name, textureGroup, w, h, d, imageFormat, flags, generator);
+		
 		if (newTexture == null)
 			return null;
-
+		
+		newTexture.IncrementReferenceCount();
 		TextureList[newTexture.GetName().Hash()] = newTexture;
 		((ITextureInternal)newTexture).Download();
 

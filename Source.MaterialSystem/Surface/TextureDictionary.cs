@@ -354,6 +354,7 @@ public class MatSystemTexture(IMaterialSystem materials)
 
 			IMaterial pMaterial = materials.CreateMaterial(textureName, vmtTKeyValues);
 			pMaterial.Refresh();
+			pTexture.DecrementReferenceCount();
 
 			SetMaterial(pMaterial);
 			InputTall = tall;

@@ -1273,8 +1273,9 @@ public class Material : IMaterialInternal
 	public void DecrementReferenceCount() => --RefCount;
 
 	public void DeleteIfUnreferenced() {
-		if (RefCount > 0)
+		if (RefCount > 0 || IsErrorMaterialInternal())
 			return;
+
 		MaterialVar.DeleteUnreferencedTextures(true);
 		Uncache();
 		materials.MaterialDict.RemoveMaterial(this);
