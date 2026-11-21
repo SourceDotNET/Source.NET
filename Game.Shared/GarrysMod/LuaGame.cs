@@ -139,6 +139,90 @@ public static partial class LuaGame
 		GlobalEntity.SetCounter(index, counter);
 		return 0;
 	}
+
+	public static bool MapCleanupRunning;
+	public static bool MapCleanupDeferred;
+	static bool MapCleanupPending;
+	static bool MapCleanupDontSendToClients;
+	static readonly LuaObject MapCleanupFilters = new();
+	static readonly LuaObject MapCleanupCallback = new();
+
+	[LuaFunction]
+	static int CleanUpMap(ILuaInterface lua) {
+		// todo: refuse with "Cannot run game.CleanUpMap while deleting entities!\n" while entities are being deleted
+		if (MapCleanupRunning || MapCleanupPending) {
+			lua.ErrorFromLua("Cannot run game.CleanUpMap while it is already running!\n");
+			return 0;
+		}
+
+		bool dontSendToClients = lua.GetType(1) != LuaType.Nil && lua.GetBool(1);
+
+		LuaObject filters = new(2, LuaType.None);
+		if (!filters.isNil() && !filters.isTable()) {
+			filters.UnReference();
+			lua.TypeError("table", 2);
+		}
+
+		LuaObject callback = new(3, LuaType.None);
+		if (!callback.isNil() && !callback.isFunction()) {
+			callback.UnReference();
+			filters.UnReference();
+			lua.TypeError("function", 3);
+		}
+
+		if (callback.isNil())
+			DoCleanUpMap(dontSendToClients, filters);
+		else {
+			MapCleanupPending = true;
+			MapCleanupCallback.Set(callback);
+			MapCleanupFilters.Set(filters);
+			MapCleanupDontSendToClients = dontSendToClients;
+		}
+
+		callback.UnReference();
+		filters.UnReference();
+		return 0;
+	}
+
+	static void DoCleanUpMap(bool dontSendToClients, ILuaObject filters) {
+		MapCleanupRunning = true;
+		gGM?.Call((int)LUA_POOLEDSTRING.PreCleanupMap);
+
+		if (g_pGameRules is GMODGameRules rules)
+			rules.CleanUpMap(filters);
+
+		if (!dontSendToClients) {
+			RecipientFilter filter = new();
+			filter.AddAllPlayers();
+			filter.MakeReliable();
+			GarrysMod.BroadcastLua(filter, "game.CleanUpMap()");
+		}
+
+		// todo: unidentified step between the client broadcast and AllowImmediateEdictReuse
+		engine.AllowImmediateEdictReuse();
+
+		gGM?.Call((int)LUA_POOLEDSTRING.PostCleanupMap);
+		MapCleanupRunning = false;
+	}
+
+	public static void RunMapCleanupIfNeeded() {
+		if (!MapCleanupPending)
+			return;
+
+		MapCleanupDeferred = true;
+		DoCleanUpMap(MapCleanupDontSendToClients, MapCleanupFilters);
+		MapCleanupDeferred = false;
+		MapCleanupPending = false;
+
+		if (g_Lua != null && MapCleanupCallback.isFunction()) {
+			MapCleanupCallback.Push();
+			g_Lua.CallInternalNoReturns(0);
+		}
+
+		MapCleanupCallback.UnReference();
+		MapCleanupFilters.UnReference();
+		MapCleanupDontSendToClients = false;
+	}
 #endif
 
 	[LuaFunction]

@@ -81,7 +81,7 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 		garrysmod.Think();
 		// RemoveQueuedRecipientFilters();
 		LuaEntity.RemoveQueuedEntities();
-		// RunMapCleanupIfNeeded();
+		LuaGame.RunMapCleanupIfNeeded();
 		if (gpGlobals.TickCount != LastTick) {
 			LastTick = gpGlobals.TickCount;
 			gGM.Call((int)LUA_POOLEDSTRING.Tick);
