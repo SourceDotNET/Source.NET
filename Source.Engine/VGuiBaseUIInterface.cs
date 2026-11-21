@@ -727,6 +727,12 @@ public class EngineVGui(
 
 		ActivateGameUI();
 
+		if (staticGameConsole != null &&
+			!CommandLine.CheckParm("-forcestartupmenu") &&
+			!CommandLine.CheckParm("-hideconsole") &&
+			(CommandLine.FindParm("-toconsole") != 0 || CommandLine.FindParm("-console") != 0 || CommandLine.FindParm("-rpt") != 0 || CommandLine.FindParm("-allowdebug") != 0))
+			staticGameConsole.Activate();
+
 		NoShaderAPI = CommandLine.CheckParm("-noshaderapi");
 	}
 
