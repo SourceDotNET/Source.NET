@@ -137,8 +137,12 @@ public class Net
 		return res;
 	}
 
-	public static void OutOfBandPrint(NetSocketType sock, NetAddress adr, ReadOnlySpan<char> text){
-		// todo
+	public static void OutOfBandPrint(NetSocketType sock, NetAddress? adr, ReadOnlySpan<char> text) {
+		byte[] buffer = new byte[MAX_ROUTABLE_PAYLOAD];
+		bf_write msg = new(buffer, buffer.Length);
+		msg.WriteLong(CONNECTIONLESS_HEADER);
+		msg.WriteString(text, limit: MAX_ROUTABLE_PAYLOAD - 5);
+		Singleton<Net>().SendPacket(null!, sock, adr, msg.GetData(), msg.BytesWritten);
 	}
 
 	public bool StringToAdr(ReadOnlySpan<char> host, [NotNullWhen(true)] out IPEndPoint? ep) {

@@ -332,7 +332,7 @@ public class Log(Host Host, Net Net, ICommandLine CommandLine) : IGameEventListe
 			message = message[..1099];
 
 		if (sv_logecho.GetInt() != 0)
-			ConMsg(message);
+			ConMsg(message.Replace("%", "%%"));
 
 		if (sv_logfile.GetInt() != 0 && LogFile != null) {
 			LogFile.Stream.Write(Encoding.UTF8.GetBytes(message));
