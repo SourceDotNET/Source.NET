@@ -403,9 +403,15 @@ BaseEntity
 {
 	public static void StopSound(int entIndex, int channel, ReadOnlySpan<char> sample) => g_SoundEmitterSystem.StopSound(entIndex, channel, sample);
 	public static void StopSound(int entIndex, ReadOnlySpan<char> soundname) => g_SoundEmitterSystem.StopSound(entIndex, soundname);
-#if GAME_DLL
-	public void StopSound(ReadOnlySpan<char> soundname) => StopSound(EntIndex(), soundname);
+	public void StopSound(ReadOnlySpan<char> soundname) {
+#if CLIENT_DLL
+		if (EntIndex() == -1) {
+			StopSound(GetSoundSourceIndex(), soundname);
+			return;
+		}
 #endif
+		StopSound(EntIndex(), soundname);
+	}
 
 	public static SoundLevel LookupSoundLevel(ReadOnlySpan<char> soundname) {
 		return soundemitterbase.LookupSoundLevel(soundname);
