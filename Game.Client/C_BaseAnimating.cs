@@ -1772,7 +1772,7 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 		StudioHdr? hdr = GetModelPtr();
 		if (hdr == null)
 			return -1;
-		return BoneSetup.Studio_FindAttachment(hdr, attachmentName);
+		return BoneSetup.Studio_FindAttachment(hdr, attachmentName) + 1;
 	}
 
 	public C_BaseAnimating? FindFollowedEntity() {
