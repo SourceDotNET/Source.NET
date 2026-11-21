@@ -3108,6 +3108,29 @@ public static partial class LuaEntity
 
 #if GAME_DLL
 	[LuaMethod]
+	static int Entity__SetLagCompensated(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (ent.GetBaseAnimating() == null || ent.IsPlayer())
+			return 0;
+		if (lua.GetBool(2))
+			lagcompensation.AddAdditionalEntity(ent);
+		else
+			lagcompensation.RemoveAdditionalEntity(ent);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__IsLagCompensated(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (ent.GetBaseAnimating() == null) {
+			lua.PushBool(false);
+			return 1;
+		}
+		lua.PushBool(ent.IsPlayer() || lagcompensation.IsAdditionalEntity(ent));
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Entity__HasBoneManipulations(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		BaseAnimating? animating = ent.GetBaseAnimating();
