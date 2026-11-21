@@ -10,6 +10,9 @@ namespace Game.Client.HL2;
 [NetworkName("CWeaponCycler")]
 public partial class C_WeaponCycler : C_BaseCombatWeapon
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];
@@ -20,6 +23,9 @@ public partial class C_WeaponCycler : C_BaseCombatWeapon
 [NetworkName("CWeaponAnnabelle")]
 public partial class C_WeaponAnnabelle : C_BaseHLCombatWeapon
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];
@@ -30,6 +36,9 @@ public partial class C_WeaponAnnabelle : C_BaseHLCombatWeapon
 [NetworkName("CWeaponAlyxGun")]
 public partial class C_WeaponAlyxGun : C_HLSelectFireMachineGun
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];
@@ -40,6 +49,9 @@ public partial class C_WeaponAlyxGun : C_HLSelectFireMachineGun
 [NetworkName("CWeaponCitizenPackage")]
 public partial class C_WeaponCitizenPackage : C_BaseHLCombatWeapon
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];
@@ -50,6 +62,9 @@ public partial class C_WeaponCitizenPackage : C_BaseHLCombatWeapon
 [NetworkName("CWeaponCitizenSuitcase")]
 public partial class C_WeaponCitizenSuitcase : C_WeaponCitizenPackage
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];
@@ -60,6 +75,9 @@ public partial class C_WeaponCitizenSuitcase : C_WeaponCitizenPackage
 [NetworkName("CWeaponCubemap")]
 public partial class C_WeaponCubemap : C_BaseCombatWeapon
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];
@@ -71,6 +89,9 @@ public partial class C_WeaponCubemap : C_BaseCombatWeapon
 [NetworkName("CWeaponOldManHarpoon")]
 public partial class C_WeaponOldManHarpoon : C_WeaponCitizenPackage
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];

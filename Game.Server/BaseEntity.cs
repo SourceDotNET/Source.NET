@@ -2744,6 +2744,10 @@ public partial class BaseEntity : IServerEntity
 
 	public void SetClassname(ReadOnlySpan<char> classname) {
 		Classname = new(classname);
+#if GMOD_DLL
+		if ((ObjectCaps() & EntityCapabilities.AcrossTransition) != 0)
+			RealClassName = (ushort)Game.Server.GarrysMod.NetworkString.Add(Classname);
+#endif
 	}
 
 	public Edict Edict() => NetworkProp().Edict();

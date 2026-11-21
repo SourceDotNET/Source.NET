@@ -24,6 +24,9 @@ public partial class
 	WeaponSWEP : BaseHL2MPCombatWeapon
 #endif
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 		new(nameof(ScriptedEntity)) { Encoding = NetEncoding.DataTable, DataTable = "DT_ScriptedEntity" },

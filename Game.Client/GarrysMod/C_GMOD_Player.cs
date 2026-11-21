@@ -21,6 +21,9 @@ namespace Game.Client.GarrysMod;
 [NetworkName("CGMOD_Player")]
 public partial class C_GMOD_Player() : C_HL2MP_Player()
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 		nameof(GModPlayerFlags),

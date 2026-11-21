@@ -21,6 +21,9 @@ public partial class
 	BaseParticleEntity : BaseEntity
 #endif
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];

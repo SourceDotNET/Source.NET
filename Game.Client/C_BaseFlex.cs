@@ -144,6 +144,9 @@ public class EmphasizedPhoneme
 [NetworkName("CBaseFlex")]
 public partial class C_BaseFlex : C_BaseAnimatingOverlay, IHasLocalToGlobalFlexSettings
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	static readonly ConVar g_CV_PhonemeDelay = new("phonemedelay", "0", FCvar.None, "Phoneme delay to account for sound system latency.");
 	static readonly ConVar g_CV_PhonemeFilter = new("phonemefilter", "0.08", FCvar.None, "Time duration of box filter to pass over phonemes.");
 	static readonly ConVar g_CV_FlexRules = new("flex_rules", "1", FCvar.None, "Allow flex animation rules to run.");

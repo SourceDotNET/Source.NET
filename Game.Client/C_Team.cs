@@ -44,6 +44,9 @@ public static class TeamGlobals
 [NetworkName("CTeam")]
 public partial class C_Team : C_BaseEntity
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable(NoBase = true)]
 	public static readonly new NetworkProp[] Props = [
 		nameof(TeamNum),

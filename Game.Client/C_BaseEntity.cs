@@ -303,6 +303,10 @@ public partial class C_BaseEntity : IClientEntity
 
 	static readonly char[] GetClassname__outstr = new char[256];
 	public ReadOnlySpan<char> GetClassname() {
+#if GMOD_DLL
+		if (RealClassName != 0 && Game.Client.GarrysMod.NetworkString.Convert(RealClassName) is string realClassName)
+			return realClassName;
+#endif
 		if (!string.IsNullOrEmpty(Classname))
 			return Classname;
 #if GMOD_DLL
@@ -319,8 +323,14 @@ public partial class C_BaseEntity : IClientEntity
 			}
 		}
 
-		if (!gotname)
-			strcpy(GetClassname__outstr, GetType().Name);
+		if (!gotname) {
+			string typeName = GetType().Name.StartsWith("C_") ? GetType().Name : "C_" + GetType().Name;
+#if WIN32
+			strcpy(GetClassname__outstr, $"class {typeName}");
+#else
+			strcpy(GetClassname__outstr, $"{typeName.Length}{typeName}");
+#endif
+		}
 
 		return GetClassname__outstr.SliceNullTerminatedString();
 	}

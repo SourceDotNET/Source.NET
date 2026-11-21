@@ -17,6 +17,9 @@ public static class PlayerResourceGlobals
 [NetworkName("CPlayerResource", NoBase = true)]
 public partial class C_PlayerResource : C_BaseEntity
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 		new(nameof(Ping)) { Bits = 12, Flags = PropFlags.Unsigned },

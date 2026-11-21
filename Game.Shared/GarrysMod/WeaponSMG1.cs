@@ -8,6 +8,9 @@ namespace Game.Shared.GarrysMod;
 [NetworkName("CWeaponSMG1")]
 public partial class WeaponSMG1 : HL2MPMachineGun
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];

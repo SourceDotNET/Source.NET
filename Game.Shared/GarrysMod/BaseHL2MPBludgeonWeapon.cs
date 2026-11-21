@@ -9,6 +9,9 @@ namespace Game.Shared.GarrysMod;
 [NetworkName("CBaseHL2MPBludgeonWeapon")]
 public partial class BaseHL2MPBludgeonWeapon : BaseHL2MPCombatWeapon
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];

@@ -7,6 +7,9 @@ namespace Game.Client;
 [NetworkName("CFlexManipulate")]
 public partial class C_FlexManipulate : C_BaseEntity
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 		new(nameof(ExScale)) { Bits = 0, Flags = PropFlags.NoScale },

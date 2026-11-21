@@ -22,6 +22,9 @@ public static class HLCombatWeaponGlobals
 [NetworkName("CBaseHLCombatWeapon")]
 public partial class BaseHLCombatWeapon : BaseCombatWeapon
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];

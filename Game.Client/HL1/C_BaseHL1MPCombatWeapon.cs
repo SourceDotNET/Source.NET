@@ -7,6 +7,9 @@ namespace Game.Client.HL1;
 [NetworkName("CBaseHL1MPCombatWeapon")]
 public partial class C_BaseHL1MPCombatWeapon : C_BaseHL1CombatWeapon
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];
