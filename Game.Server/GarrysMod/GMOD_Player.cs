@@ -73,6 +73,43 @@ public partial class GMOD_Player : HL2MP_Player
 		Event_Dying(new TakeDamageInfo(this, this, 0, DamageType.NeverGib));
 	}
 
+	public void KillSilent() {
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PlayerSilentDeath)) {
+			LuaEntity.Push_Entity(this);
+			gGM.CallFinish(1);
+		}
+
+		// todo: LeaveVehicle();
+		// todo: SetDriving(null);
+		Health = 0;
+		ClearUseEntity();
+		// todo: DetonateTripmines();
+
+		GetActiveWeapon()?.Holster();
+
+		SetViewOffset(VEC_DEAD_VIEWHEIGHT_SCALED(this));
+		LifeState = (int)Source.LifeState.Dying;
+		pl.DeadFlag = true;
+		AddSolidFlags(SolidFlags.NotSolid);
+		SetMoveType(Source.MoveType.None);
+		SetGroundEntity(null);
+		SetSuitUpdate(null, false, 0);
+		SetFOV(this, 0);
+		DeathTime = gpGlobals.CurTime;
+		FlashlightTurnOff();
+		LifeState = (int)Source.LifeState.Dead;
+		RemoveEffects(EntityEffects.NoDraw);
+		StopZooming();
+		RemoveAllItems(true);
+		UnforceButtons((InButtons)0x3FFFFFF);
+		EnableButtons((InButtons)0x3FFFFFF);
+
+		if (gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PostPlayerDeath)) {
+			LuaEntity.Push_Entity(this);
+			gGM.CallFinish(1);
+		}
+	}
+
 	public ReadOnlySpan<char> GetUniqueID() {
 		if (gpGlobals.MaxClients == 1) {
 			if (NeedsUniqueID) {
