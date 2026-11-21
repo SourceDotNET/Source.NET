@@ -284,6 +284,10 @@ public class GlobalEntityList : BaseEntityList
 	public void RemoveListenerEntity(IEntityListener listener) => EntityListeners.Remove(listener);
 
 	public void CleanupDeleteList() {
+#if GMOD_DLL
+		if (GarrysMod.LuaGame.MapCleanupRunning && !GarrysMod.LuaGame.MapCleanupDeferred)
+			return;
+#endif
 		PhysOnCleanupDeleteList();
 
 		Util.g_bDisableEhandleAccess = true;

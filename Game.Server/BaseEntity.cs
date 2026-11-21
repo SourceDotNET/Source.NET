@@ -973,7 +973,11 @@ public partial class BaseEntity : IServerEntity
 			}
 		}
 
-		if (GlobalName != null) {
+		if (GlobalName != null
+#if GMOD_DLL
+			&& !GMODGameRules.CleaningUpMap
+#endif
+			) {
 			// NOTE: During level shutdown the global list will suppress this
 			// it assumes your changing levels or the game will end
 			// causing the whole list to be flushed
