@@ -225,6 +225,67 @@ public static partial class LuaGame
 	}
 #endif
 
+#if CLIENT_DLL
+	public static bool MapCleanupRunning;
+	static bool MapCleanupPending;
+	static readonly LuaObject MapCleanupCallback = new();
+
+	[LuaFunction]
+	static int CleanUpMap(ILuaInterface lua) {
+		// todo: refuse with "Cannot run game.CleanUpMap while deleting entities!\n" while entities are being deleted
+		if (MapCleanupRunning || MapCleanupPending) {
+			lua.ErrorFromLua("Cannot run game.CleanUpMap while it is already running!\n");
+			return 0;
+		}
+
+		LuaObject callback = new(3, LuaType.None);
+		if (!callback.isNil() && !callback.isFunction()) {
+			callback.UnReference();
+			lua.TypeError("function", 3);
+		}
+
+		if (callback.isNil())
+			DoCleanUpMap();
+		else {
+			MapCleanupPending = true;
+			MapCleanupCallback.Set(callback);
+		}
+
+		callback.UnReference();
+		return 0;
+	}
+
+	static void DoCleanUpMap() {
+		MapCleanupRunning = true;
+		gGM?.Call((int)LUA_POOLEDSTRING.PreCleanupMap);
+
+		// todo: remove the Lua-created clientside entities
+		engine.ClientCmd("r_cleardecals\n");
+		enginesound.StopAllSounds(true);
+		// todo: unidentified call that follows StopAllSounds
+		// todo: release every C_Hairball in the client entity list
+		// todo: unidentified step before the PostCleanupMap hook
+
+		gGM?.Call((int)LUA_POOLEDSTRING.PostCleanupMap);
+		MapCleanupRunning = false;
+	}
+
+	public static void RunMapCleanupIfNeeded() {
+		if (!MapCleanupPending)
+			return;
+
+		DoCleanUpMap();
+		MapCleanupPending = false;
+
+		if (g_Lua != null && MapCleanupCallback.isFunction()) {
+			MapCleanupCallback.Push();
+			g_Lua.CallInternalNoReturns(0);
+		}
+
+		MapCleanupCallback.UnReference();
+	}
+#endif
+
 	[LuaFunction]
 	static int GetTimeScale(ILuaInterface lua) {
 		if (g_pGameRules is not GMODGameRules rules)
