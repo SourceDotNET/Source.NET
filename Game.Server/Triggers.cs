@@ -15,6 +15,7 @@ namespace Game.Server;
 public static class TriggerGlobals
 {
 	public static readonly ConVar showtriggers = new("showtriggers", "0", FCvar.Cheat, "Shows trigger brushes");
+	public static readonly ConVar g_debug_transitions = new("g_debug_transitions", "0", FCvar.None, "Set to 1 and restart the map to be warned if the map has no trigger_transition volumes. Set to 2 to see a dump of all entities & associated results during a transition.");
 
 	// Global list of triggers that care about weapon fire
 	// Doesn't need saving, the triggers re-add themselves on restore.

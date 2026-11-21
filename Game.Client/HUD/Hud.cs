@@ -7,6 +7,7 @@ using CommunityToolkit.HighPerformance;
 using Game.Shared;
 
 using Source;
+using Source.Common.Commands;
 using Source.Common.Filesystem;
 using Source.Common.Formats.Keyvalues;
 using Source.Common.GUI;
@@ -154,6 +155,8 @@ public enum ProgressBarType
 [EngineComponent]
 public class Hud(HudElementHelper HudElementHelper)
 {
+	static readonly ConVar hidehud = new("hidehud", "0", FCvar.Cheat);
+
 	readonly HudTextureDict Icons = [];
 	public readonly List<IHudElement> HudList = [];
 	internal InButtons KeyBits;
@@ -267,7 +270,8 @@ public class Hud(HudElementHelper HudElementHelper)
 			return true;
 
 		HideHudBits hideHud = (HideHudBits)player.Local.HideHUD;
-		// todo: hidehud convar
+		if (hidehud.GetInt() != 0)
+			hideHud = (HideHudBits)hidehud.GetInt();
 
 		if ((hideHud & HideHudBits.All) != 0)
 			return true;

@@ -152,6 +152,13 @@ public static partial class LuaPlayer
 		player.Kill();
 		return 0;
 	}
+
+	[LuaMethod]
+	static int Player__KillSilent(ILuaInterface lua) {
+		GMOD_Player player = (GMOD_Player)Get_Player(1, false)!;
+		player.KillSilent();
+		return 0;
+	}
 #endif
 
 	[LuaMethod]

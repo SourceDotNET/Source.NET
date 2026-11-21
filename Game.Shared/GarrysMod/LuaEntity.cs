@@ -1816,6 +1816,24 @@ public static partial class LuaEntity
 	}
 
 	[LuaMethod]
+	static int Entity__AddFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent) || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+		ent.AddFlag((EntityFlags)(int)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__RemoveFlags(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (IsQueuedForRemoval(ent) || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+		ent.RemoveFlag((EntityFlags)(int)lua.CheckNumber(2));
+		return 0;
+	}
+
+	[LuaMethod]
 	static int Entity__GetParent(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		Push_Entity(ent.GetMoveParent());
@@ -2091,6 +2109,25 @@ public static partial class LuaEntity
 			BaseEntity.PrecacheScriptSound(soundName);
 
 		BaseEntity.EmitSound(filter, soundEnt.EntIndex(), ep);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__StopSound(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		string soundName = lua.CheckString(2);
+
+		if (ent.IsBaseCombatWeapon() && ent is BaseCombatWeapon weapon && weapon.GetOwner() is BaseEntity owner) {
+			BaseEntity.StopSound(owner.EntIndex(), (int)SoundEntityChannel.Weapon, soundName);
+			return 0;
+		}
+
+		if (!stristr(soundName, ".wav").IsEmpty || !stristr(soundName, ".mp3").IsEmpty || !stristr(soundName, ".ogg").IsEmpty || soundName.StartsWith('!')) {
+			for (SoundEntityChannel channel = SoundEntityChannel.Replace; channel <= SoundEntityChannel.Voice2; channel++)
+				BaseEntity.StopSound(ent.EntIndex(), (int)channel, soundName);
+		}
+		else
+			ent.StopSound(soundName);
 		return 0;
 	}
 
@@ -3070,6 +3107,29 @@ public static partial class LuaEntity
 	}
 
 #if GAME_DLL
+	[LuaMethod]
+	static int Entity__SetLagCompensated(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (ent.GetBaseAnimating() == null || ent.IsPlayer())
+			return 0;
+		if (lua.GetBool(2))
+			lagcompensation.AddAdditionalEntity(ent);
+		else
+			lagcompensation.RemoveAdditionalEntity(ent);
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__IsLagCompensated(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		if (ent.GetBaseAnimating() == null) {
+			lua.PushBool(false);
+			return 1;
+		}
+		lua.PushBool(ent.IsPlayer() || lagcompensation.IsAdditionalEntity(ent));
+		return 1;
+	}
+
 	[LuaMethod]
 	static int Entity__HasBoneManipulations(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
