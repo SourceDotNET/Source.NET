@@ -3527,7 +3527,7 @@ public partial class C_BaseEntity : IClientEntity
 				case FieldType.Integer: sizeOfField = sizeof(int); break;
 				case FieldType.EHandle: sizeOfField = (int)Unsafe.SizeOf<EHANDLE>(); break;
 				case FieldType.Short: sizeOfField = sizeof(short); break;
-				case FieldType.String: sizeOfField = (int)Unsafe.SizeOf<GCHandle>(); break;
+				case FieldType.String: sizeOfField = Unsafe.SizeOf<nint>(); break;
 				case FieldType.Color32: sizeOfField = (int)Unsafe.SizeOf<Color>(); break;
 				case FieldType.Boolean: sizeOfField = sizeof(bool); break;
 				case FieldType.Character: sizeOfField = sizeof(sbyte); break;
@@ -3629,7 +3629,7 @@ public partial class C_BaseEntity : IClientEntity
 				case FieldType.Integer: sizeOfField = sizeof(int); break;
 				case FieldType.EHandle: sizeOfField = (int)Unsafe.SizeOf<EHANDLE>(); break;
 				case FieldType.Short: sizeOfField = sizeof(short); break;
-				case FieldType.String: sizeOfField = (int)Unsafe.SizeOf<GCHandle>(); break;
+				case FieldType.String: sizeOfField = Unsafe.SizeOf<nint>(); break;
 				case FieldType.Color32: sizeOfField = (int)Unsafe.SizeOf<Color>(); break;
 				case FieldType.Boolean: sizeOfField = sizeof(bool); break;
 				case FieldType.Character: sizeOfField = sizeof(sbyte); break;

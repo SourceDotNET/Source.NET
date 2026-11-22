@@ -125,7 +125,6 @@ namespace Source.CodeAnalysis.NetworkVars
 			"Short" => "short",
 			"Character" => "byte",
 			"StringCharacter" => "char",
-			"String" => "char",
 			"Boolean" => "bool",
 			"Vector" => "global::System.Numerics.Vector3",
 			"Quaternion" => "global::System.Numerics.Quaternion",
@@ -146,8 +145,6 @@ namespace Source.CodeAnalysis.NetworkVars
 				case "Quaternion": return StandardCalls("Quaternion");
 				case "StringCharacter":
 					return ("self.CompareChar(output, input, size)", "self.CopyChar(difftype, output, input, size)", "self.DescribeChar(difftype, output, input, size)", DataCall("WatchData", "2 * size"));
-				case "String":
-					return ("self.CompareString(output, input)", "self.CopyString(difftype, output, input)", "self.DescribeString(difftype, output, input)", "self.WatchString(difftype, output, input)");
 				case "Color32":
 					return ("self.CompareColor(output, input, size)", "self.CopyColor(difftype, output, input, size)", DataCall("DescribeData", "4 * size"), DataCall("WatchData", "4 * size"));
 				case "EHandle":

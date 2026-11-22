@@ -465,7 +465,7 @@ namespace Source.CodeAnalysis.NetworkVars
 					ResolvedPath? path = Resolve(compilation, declaring, member.Name, new AccessFailure());
 					if (IsNoOpFieldType(entryType))
 						entries.Add("N");
-					else if (predArray && path != null && PredictionElementType(entryType) != null && predElement!.SpecialType != SpecialType.System_String)
+					else if (predArray && path != null && PredictionElementType(entryType) != null)
 						entries.Add("F|" + entryType + "|S|" + Display(declaring) + "|" + member.Name + "|\0|" + Display(path.Type)
 							+ (predContainer == ContainerKind.NetworkArray ? "|1|" + Display(predElement!) : "|0|"));
 					else if (path == null || PredictionElementType(entryType) == null || GetContainer(compilation, path.Type, out _, out _) != ContainerKind.None)

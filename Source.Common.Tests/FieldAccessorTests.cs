@@ -17,6 +17,12 @@ public struct TestFieldsChar8
 	char first;
 }
 
+[InlineArray(4)]
+public struct TestFieldsString4
+{
+	string? first;
+}
+
 public struct TestFieldsInner
 {
 	public int Value;
@@ -51,6 +57,7 @@ public partial class TestFieldsBase
 	int hidden = 2;
 	public TestFieldsWrapped Wrapped;
 	public string? Label;
+	public TestFieldsString4 Names;
 	public char Letter;
 	public byte Tiny;
 	public nint Native;
@@ -218,6 +225,34 @@ public class FieldAccessorTests
 
 		Assert.False(FIELD<TestFieldsBase>.OF(nameof(TestFieldsBase.Value)).TryGetSpan(obj, 1, out Span<long> _));
 		Assert.False(FIELD<TestFieldsBase>.OF(nameof(TestFieldsBase.Items)).TryGetSpan(obj, 1, out Span<int> _));
+	}
+
+	[Fact]
+	public void TryGetSpanAliasesStringField() {
+		TestFieldsBase obj = new() { Label = "a" };
+		DynamicAccessor field = FIELD<TestFieldsBase>.OF(nameof(TestFieldsBase.Label));
+
+		Assert.True(field.TryGetSpan(obj, 1, out Span<string?> span));
+		Assert.Equal("a", span[0]);
+		span[0] = "b";
+		Assert.Equal("b", obj.Label);
+		Assert.False(field.TryGetSpan(obj, 2, out Span<string?> _));
+	}
+
+	[Fact]
+	public void TryGetSpanAliasesInlineStringArray() {
+		TestFieldsBase obj = new();
+		obj.Names[2] = "c";
+		DynamicAccessor field = FIELD<TestFieldsBase>.OF(nameof(TestFieldsBase.Names));
+
+		Assert.True(field.TryGetSpan(obj, 4, out Span<string?> span));
+		Assert.Equal(4, span.Length);
+		Assert.Equal("c", span[2]);
+		span[0] = "a";
+		Assert.Equal("a", obj.Names[0]);
+		Assert.True(field.TryGetSpan(obj, 1, out Span<string?> first));
+		Assert.Equal("a", first[0]);
+		Assert.False(field.TryGetSpan(obj, 5, out Span<string?> _));
 	}
 
 	[Fact]
