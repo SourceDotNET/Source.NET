@@ -2172,6 +2172,14 @@ public partial class C_BaseEntity : IClientEntity
 		if (EntIndex() < 0)
 			return;
 
+#if GMOD_DLL
+		if (g_Lua != null && gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.NotifyShouldTransmit)) {
+			GarrysMod.LuaEntity.Push_Entity(this);
+			g_Lua.PushBool(state == ShouldTransmiteState.Start);
+			gGM.CallNoReturns(2);
+		}
+#endif
+
 		switch (state) {
 			case ShouldTransmiteState.Start: {
 					SetDormant(false);
@@ -2200,6 +2208,8 @@ public partial class C_BaseEntity : IClientEntity
 			case ShouldTransmiteState.End: {
 					UnlinkFromHierarchy();
 					SetDormant(true);
+
+					partition.Remove(PartitionListMask.ClientSolidEdicts | PartitionListMask.ClientResponsiveEdicts | PartitionListMask.ClientNonStaticEdicts, CollisionProp().GetPartitionHandle());
 				}
 				break;
 

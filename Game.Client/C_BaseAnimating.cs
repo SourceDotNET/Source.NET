@@ -113,6 +113,13 @@ public partial class C_BaseAnimating : C_BaseEntity, IModelLoadCallback
 	}
 	public override bool IsRagdoll() => Ragdoll != null && RenderFX == (byte)RenderFx.Ragdoll;
 
+	public override CollideType GetCollideType() {
+		if (IsRagdoll())
+			return CollideType.ShouldRespond;
+
+		return base.GetCollideType();
+	}
+
 	public override ShadowType ShadowCastType() {
 		StudioHdr? studioHdr = GetModelPtr();
 		if (studioHdr == null || !studioHdr.SequencesAvailable())
