@@ -37,6 +37,8 @@ public static class MapEntities
 {
 	static ref Edict? g_pForceAttachEdict => ref BaseEntity.g_pForceAttachEdict;
 
+	internal static readonly List<MapEntityRef> g_MapEntityRefs = [];
+
 	// creates an entity by string name, but does not spawn it
 	public static BaseEntity? CreateEntityByName(ReadOnlySpan<char> className, int forceEdictIndex = -1) {
 		if (forceEdictIndex != -1) {

@@ -560,7 +560,7 @@ public class ServerGameDLL(IFileSystem filesystem, ICommandLine CommandLine) : I
 				gpGlobals.LoadType = MapLoadType.NewGame;
 
 			// Clear out entity references, and parse the entities into it.
-			// g_MapEntityRefs.Purge();
+			g_MapEntityRefs.Clear();
 			MapLoadEntityFilter filter = new();
 			MapEntity_ParseAllEntities(pMapEntities, filter);
 
@@ -1183,6 +1183,7 @@ class MapLoadEntityFilter : IMapEntityFilter
 				entref.SerialNumber = ret.Edict()!.NetworkSerialNumber;
 		}
 
+		g_MapEntityRefs.Add(entref);
 		return ret;
 	}
 }

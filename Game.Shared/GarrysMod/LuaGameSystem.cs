@@ -53,7 +53,7 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 		LuaMesh.FlushPendingDestroy();
 		// RemoveQueuedRenderTargets();
 		LuaEntity.RemoveQueuedEntities();
-		// RunMapCleanupIfNeeded();
+		LuaGame.RunMapCleanupIfNeeded();
 		if (g_Lua == null || GarrysMod.g_LuaManager == null || gGM == null)
 			return;
 
@@ -81,7 +81,7 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 		garrysmod.Think();
 		// RemoveQueuedRecipientFilters();
 		LuaEntity.RemoveQueuedEntities();
-		// RunMapCleanupIfNeeded();
+		LuaGame.RunMapCleanupIfNeeded();
 		if (gpGlobals.TickCount != LastTick) {
 			LastTick = gpGlobals.TickCount;
 			gGM.Call((int)LUA_POOLEDSTRING.Tick);
