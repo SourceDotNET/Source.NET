@@ -5,7 +5,7 @@ using System.Numerics;
 namespace Game.Client;
 [LinkEntityToClass("beam_spotlight")]
 [NetworkName("CBeamSpotlight")]
-public partial class C_BeamSpotlight : C_BaseEntity
+public partial class C_BeamSpotLight : C_BaseEntity
 {
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [

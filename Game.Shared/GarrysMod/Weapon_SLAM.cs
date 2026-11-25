@@ -5,7 +5,7 @@ namespace Game.Shared.GarrysMod;
 [LinkEntityToClass("weapon_slam")]
 [PrecacheWeaponRegister("weapon_slam")]
 [NetworkName("CWeapon_SLAM")]
-public partial class WeaponSLAM : BaseHL2MPCombatWeapon
+public partial class Weapon_SLAM : BaseHL2MPCombatWeapon
 {
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [

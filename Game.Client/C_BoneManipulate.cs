@@ -9,6 +9,13 @@ namespace Game.Client;
 [NetworkName("CBoneManipulate")]
 public partial class C_BoneManipulate : C_BaseEntity
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		new(nameof(BonePos)) { Type = FieldType.PositionVector },
+		new(nameof(BoneAng)) { Type = FieldType.PositionVector },
+		new(nameof(BoneScale)) { Type = FieldType.PositionVector },
+	];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 		new(nameof(BonePos)) { Bits = 0, Flags = PropFlags.NoScale },

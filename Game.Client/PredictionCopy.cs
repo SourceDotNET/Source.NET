@@ -150,6 +150,45 @@ public static class PredictionCopyImpl
 			field.Accessor.SetValue(obj!, Scratch<T>.Output![0]);
 	}
 
+	static readonly List<string> PooledStrings = [];
+	static readonly Dictionary<string, nint> PooledStringIds = [];
+
+	static nint AllocPooledString(string? value) {
+		if (value == null)
+			return 0;
+
+		if (!PooledStringIds.TryGetValue(value, out nint id)) {
+			PooledStrings.Add(value);
+			id = PooledStrings.Count;
+			PooledStringIds.Add(value, id);
+		}
+		return id;
+	}
+
+	static string? GetString(bool isObject, object? obj, Span<byte> frame, TypeDescription field) {
+		if (!isObject) {
+			nint id = MemoryMarshal.Read<nint>(frame[(int)field.PackedOffset..]);
+			return id == 0 ? null : PooledStrings[(int)id - 1];
+		}
+
+		if (field.Accessor.TryGetSpan(obj!, 1, out Span<string?> span))
+			return span[0];
+
+		return field.Accessor.GetValue<string?>(obj!);
+	}
+
+	static void SetString(bool isObject, object? obj, Span<byte> frame, TypeDescription field, string? value) {
+		if (!isObject) {
+			MemoryMarshal.Write(frame[(int)field.PackedOffset..], AllocPooledString(value));
+			return;
+		}
+
+		if (field.Accessor.TryGetSpan(obj!, 1, out Span<string?> span))
+			span[0] = value;
+		else
+			field.Accessor.SetValue(obj!, value);
+	}
+
 	static readonly Dictionary<Type, PredictionCopyFieldsFn> GeneratedCopyFields = [];
 
 	public static void RegisterCopyFields(Type dataClassType, PredictionCopyFieldsFn fn) => GeneratedCopyFields[dataClassType] = fn;
@@ -269,11 +308,12 @@ public static class PredictionCopyImpl
 				}
 				break;
 			case FieldType.String: {
-					Span<char> output = GetOutput<char>(destIsObject, dest, destFrame, field, fieldSize, out writeBack);
-					ReadOnlySpan<char> input = GetInput<char>(srcIsObject, src, srcFrame, field, fieldSize);
+					string? previous = GetString(destIsObject, dest, destFrame, field), output = previous;
+					string? input = GetString(srcIsObject, src, srcFrame, field);
 					difftype = self.CompareString(output, input);
-					self.CopyString(difftype, output, input);
-					WriteBack<char>(dest, field, writeBack);
+					self.CopyString(difftype, ref output, input);
+					if (!ReferenceEquals(output, previous))
+						SetString(destIsObject, dest, destFrame, field, output);
 					if (self.ErrorCheck && self.ShouldDescribe) self.DescribeString(difftype, output, input);
 					if (shouldWatch) self.WatchString(difftype, output, input);
 				}

@@ -44,6 +44,17 @@ public static class TeamGlobals
 [NetworkName("CTeam")]
 public partial class C_Team : C_BaseEntity
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [
+		new(nameof(Teamname)) { Type = FieldType.StringCharacter, Flags = FieldTypeDescFlags.Private },
+		new(nameof(Score)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(RoundsWon)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(Deaths)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(Ping)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(Packetloss)) { Flags = FieldTypeDescFlags.Private },
+		new(nameof(TeamNum)) { Flags = FieldTypeDescFlags.Private },
+	];
+
 	[NetworkTable(NoBase = true)]
 	public static readonly new NetworkProp[] Props = [
 		nameof(TeamNum),

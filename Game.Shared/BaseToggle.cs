@@ -8,6 +8,9 @@ namespace Game.Shared;
 [NetworkName("CBaseToggle")]
 public partial class BaseToggle : BaseEntity
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 		new(nameof(FinalDest)) { Bits = 0, Flags = PropFlags.NoScale },

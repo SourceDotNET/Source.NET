@@ -10,6 +10,9 @@ namespace Game.Client;
 [NetworkName("CBaseAnimatingOverlay")]
 public partial class C_BaseAnimatingOverlay : C_BaseAnimating
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable("DT_OverlayVars")]
 	public static readonly NetworkProp[] OverlayVarsProps = [
 		new(nameof(AnimOverlay)) { Encoding = NetEncoding.List, Count = MAX_OVERLAYS, DataTable = "DT_Animationlayer", Proxy = typeof(AnimOverlayProxy) },

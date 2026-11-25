@@ -796,6 +796,7 @@ public partial class BaseEntity : IServerEntity
 
 
 	public virtual int Save(ISave save) { throw new NotImplementedException(); }
+	// todo: GMod's Restore calls SetMaterialOverride(OverrideMaterialName) and SetClassname(RealClassNameString) again when they are not empty
 	public virtual int Restore(IRestore save) { throw new NotImplementedException(); }
 	public virtual bool ShouldSavePhysics() => true;
 	public virtual void OnSave(IEntitySaveUtils utils) {
@@ -2744,6 +2745,12 @@ public partial class BaseEntity : IServerEntity
 
 	public void SetClassname(ReadOnlySpan<char> classname) {
 		Classname = new(classname);
+#if GMOD_DLL
+		if ((ObjectCaps() & EntityCapabilities.AcrossTransition) != 0) {
+			RealClassName = (ushort)Game.Server.GarrysMod.NetworkString.Add(Classname);
+			strcpy(RealClassNameString, classname);
+		}
+#endif
 	}
 
 	public Edict Edict() => NetworkProp().Edict();
@@ -2910,6 +2917,10 @@ public partial class BaseEntity : IServerEntity
 		// DEFINE_THINKFUNC( ShadowCastDistThink ),
 		DEFINE.FIELD(nameof(EffectEntity), FieldType.EHandle),
 		// DEFINE_ARRAY( m_nModelIndexOverrides, FIELD_INTEGER, MAX_VISION_MODES ),
+#if GMOD_DLL
+		DEFINE.AUTO_ARRAY(nameof(OverrideMaterialName), FieldType.Character),
+		DEFINE.AUTO_ARRAY(nameof(RealClassNameString), FieldType.Character),
+#endif
 	]);
 	public virtual DataMap? GetDataDescMap() => DataDesc;
 
@@ -3467,6 +3478,7 @@ public partial class BaseEntity : IServerEntity
 	public virtual void SetUseType(int type) { }
 
 	InlineArray256<char> OverrideMaterialName;
+	InlineArray256<char> RealClassNameString;
 
 	public virtual void SetMaterialOverride(ReadOnlySpan<char> name) {
 		if (!name.IsEmpty && name[0] != '\0') {

@@ -303,6 +303,10 @@ public partial class C_BaseEntity : IClientEntity
 
 	static readonly char[] GetClassname__outstr = new char[256];
 	public ReadOnlySpan<char> GetClassname() {
+#if GMOD_DLL
+		if (RealClassName != 0 && Game.Client.GarrysMod.NetworkString.Convert(RealClassName) is string realClassName)
+			return realClassName;
+#endif
 		if (!string.IsNullOrEmpty(Classname))
 			return Classname;
 #if GMOD_DLL
@@ -319,8 +323,16 @@ public partial class C_BaseEntity : IClientEntity
 			}
 		}
 
-		if (!gotname)
-			strcpy(GetClassname__outstr, GetType().Name);
+		if (!gotname) {
+			string typeName = GetType().Name;
+			if (!typeName.StartsWith("C_") && !(typeName.Length > 1 && typeName[0] == 'C' && char.IsUpper(typeName[1])))
+				typeName = "C_" + typeName;
+#if WIN32
+			strcpy(GetClassname__outstr, $"class {typeName}");
+#else
+			strcpy(GetClassname__outstr, $"{typeName.Length}{typeName}");
+#endif
+		}
 
 		return GetClassname__outstr.SliceNullTerminatedString();
 	}
@@ -3525,7 +3537,7 @@ public partial class C_BaseEntity : IClientEntity
 				case FieldType.Integer: sizeOfField = sizeof(int); break;
 				case FieldType.EHandle: sizeOfField = (int)Unsafe.SizeOf<EHANDLE>(); break;
 				case FieldType.Short: sizeOfField = sizeof(short); break;
-				case FieldType.String: sizeOfField = (int)Unsafe.SizeOf<GCHandle>(); break;
+				case FieldType.String: sizeOfField = Unsafe.SizeOf<nint>(); break;
 				case FieldType.Color32: sizeOfField = (int)Unsafe.SizeOf<Color>(); break;
 				case FieldType.Boolean: sizeOfField = sizeof(bool); break;
 				case FieldType.Character: sizeOfField = sizeof(sbyte); break;
@@ -3627,7 +3639,7 @@ public partial class C_BaseEntity : IClientEntity
 				case FieldType.Integer: sizeOfField = sizeof(int); break;
 				case FieldType.EHandle: sizeOfField = (int)Unsafe.SizeOf<EHANDLE>(); break;
 				case FieldType.Short: sizeOfField = sizeof(short); break;
-				case FieldType.String: sizeOfField = (int)Unsafe.SizeOf<GCHandle>(); break;
+				case FieldType.String: sizeOfField = Unsafe.SizeOf<nint>(); break;
 				case FieldType.Color32: sizeOfField = (int)Unsafe.SizeOf<Color>(); break;
 				case FieldType.Boolean: sizeOfField = sizeof(bool); break;
 				case FieldType.Character: sizeOfField = sizeof(sbyte); break;

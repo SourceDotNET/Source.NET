@@ -48,6 +48,9 @@ namespace Game.Server
 #endif
 		: BaseCombatWeapon
 	{
+		[PredictionTable]
+		public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];
@@ -108,6 +111,9 @@ namespace Game.Server
 #endif
 		: WeaponHL2MPBase
 	{
+		[PredictionTable]
+		public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];

@@ -458,20 +458,11 @@ namespace Source.Common
 				return DiffType.WithinTolerance;
 			return DiffType.Differs;
 		});
-		public DiffType CompareString(ReadOnlySpan<char> output, ReadOnlySpan<char> input) {
+		public DiffType CompareString(string? output, string? input) {
 			if (!ErrorCheck) return DiffType.Differs;
 
-			int i = 0;
-			if (CanCheck())
-				while (true) {
-					char oc = output[i];
-					char ic = input[i];
-					if (oc == '\0' || ic == '\0')
-						return oc == ic ? DiffType.Identical : DiffType.Differs;
-					if (oc != ic)
-						return DiffType.Differs;
-					i++;
-				}
+			if (CanCheck() && !string.Equals(output, input, StringComparison.Ordinal))
+				return DiffType.Differs;
 
 			return DiffType.Identical;
 		}
@@ -506,18 +497,11 @@ namespace Source.Common
 		public void CopyBool(DiffType dt, Span<bool> output, ReadOnlySpan<bool> input, int count) => BASIC_COPY(dt, output, input, count);
 		public void CopyFloat(DiffType dt, Span<float> output, ReadOnlySpan<float> input, int count) => BASIC_COPY(dt, output, input, count);
 		public void CopyDouble(DiffType dt, Span<double> output, ReadOnlySpan<double> input, int count) => BASIC_COPY(dt, output, input, count);
-		public void CopyString(DiffType dt, Span<char> output, ReadOnlySpan<char> input) {
+		public void CopyString(DiffType dt, ref string? output, string? input) {
 			if (!PerformCopy) return;
 			if (dt == DiffType.Identical) return;
 
-			int i = 0;
-			while (true) {
-				output[i] = input[i];
-				if (input[i] == '\0')
-					break;
-
-				i++;
-			}
+			output = input;
 		}
 
 		public void CopyVector(DiffType dt, Span<Vector3> output, ReadOnlySpan<Vector3> input) => CopyVector(dt, output, input, 1);
@@ -633,7 +617,7 @@ namespace Source.Common
 			WatchMsg($"double ({outdata[0]})");
 		}
 
-		public void DescribeString(DiffType dt, Span<char> outstring, ReadOnlySpan<char> instring) {
+		public void DescribeString(DiffType dt, string? outstring, string? instring) {
 			if (!ErrorCheck) return;
 
 			if (dt == DiffType.Differs) ReportFieldsDiffer($"string differs (net {instring} pred {outstring})\n");
@@ -641,10 +625,10 @@ namespace Source.Common
 			DescribeFields(dt, $"string ({outstring})\n");
 		}
 
-		public void WatchString(DiffType dt, Span<char> outstring, ReadOnlySpan<char> instring) {
+		public void WatchString(DiffType dt, string? outstring, string? instring) {
 			if (WatchField != CurrentField)
 				return;
-			WatchMsg($"string ({outstring.SliceNullTerminatedString()})");
+			WatchMsg($"string ({outstring})");
 		}
 
 		public void DescribeVector(DiffType dt, Span<Vector3> outdata, ReadOnlySpan<Vector3> indata, int size) {

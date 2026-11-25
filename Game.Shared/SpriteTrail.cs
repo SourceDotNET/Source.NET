@@ -7,6 +7,9 @@ namespace Game.Shared;
 [NetworkName("CSpriteTrail")]
 public partial class SpriteTrail : Sprite
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 		new(nameof(LifeTime)) { Encoding = NetEncoding.Float, Bits = 0, Flags = PropFlags.NoScale },

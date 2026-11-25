@@ -71,6 +71,11 @@ public abstract class FieldAccessor<TField> : DynamicAccessor
 	}
 
 	public override bool TryGetSpan<T>(object instance, int count, out Span<T> span) {
+		if (typeof(TField) == typeof(T) && count == 1) {
+			span = MemoryMarshal.CreateSpan(ref Unsafe.As<TField, T>(ref Ref(instance)), 1);
+			return true;
+		}
+
 		if (RuntimeHelpers.IsReferenceOrContainsReferences<TField>() || (count == 1 && Unsafe.SizeOf<TField>() != Unsafe.SizeOf<T>())) {
 			span = default;
 			return false;
@@ -95,6 +100,15 @@ public abstract class NetworkArrayFieldAccessor<TElement> : FieldAccessor<Networ
 public abstract class InlineArrayFieldAccessor<TField, TElement> : FieldAccessor<TField>
 {
 	protected InlineArrayFieldAccessor(Type targetType, string name, string networkName) : base(targetType, name, networkName) { }
+
+	public override bool TryGetSpan<T>(object instance, int count, out Span<T> span) {
+		if (typeof(T) == typeof(TElement) && RuntimeHelpers.IsReferenceOrContainsReferences<TElement>() && count * Unsafe.SizeOf<T>() <= Unsafe.SizeOf<TField>()) {
+			span = MemoryMarshal.CreateSpan(ref Unsafe.As<TField, T>(ref Ref(instance)), count);
+			return true;
+		}
+
+		return base.TryGetSpan(instance, count, out span);
+	}
 
 	public override void CopyFrom<T>(object instance, Span<T> source) {
 		if (typeof(T) != typeof(TElement)) {

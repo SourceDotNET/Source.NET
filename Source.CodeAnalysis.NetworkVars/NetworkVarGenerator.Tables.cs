@@ -436,7 +436,7 @@ namespace Source.CodeAnalysis.NetworkVars
 
 					ContainerKind predContainer = GetContainer(compilation, memberType, out ITypeSymbol? predElement, out int predLength);
 					bool predArray = (predContainer == ContainerKind.InlineArray || predContainer == ContainerKind.NetworkArray)
-						&& predElement != null && predElement.SpecialType != SpecialType.System_Char && predLength > 0;
+						&& predElement != null && (predElement.SpecialType != SpecialType.System_Char || SettingEnum(entry.Settings, "Type") == "StringCharacter") && predLength > 0;
 					string? fieldType = SettingEnum(entry.Settings, "Type") ?? InferFieldType(predArray ? predElement! : memberType);
 					if (fieldType == null) {
 						diagnostics.Add(new TableDiagnostic(UnsupportedPredicted, entry.Location, entry.Path, memberType.ToDisplayString()));
@@ -505,6 +505,7 @@ namespace Source.CodeAnalysis.NetworkVars
 			sb.Append(indent).AppendLine("\t});");
 
 			bool ownPredMap = !type.GetMembers("PredMap").Any(m => !m.IsImplicitlyDeclared);
+			bool declaresPredMap = baseType == null || predictionLists.Count > 0;
 			if (plain) {
 				if (isClient && ownPredMap && predicted.Count > 0) {
 					sb.Append(indent).AppendLine("\tpublic static readonly global::Source.Common.DataMap PredMap = new(new global::Source.Common.TypeDescription[] {");
@@ -518,7 +519,7 @@ namespace Source.CodeAnalysis.NetworkVars
 					.Append(tableName).Append(", ").Append(Literal(tableName)).Append(", ").Append(isTempEntity ? TempEntityFactory(type) : ClientFactory(type)).AppendLine(");");
 				sb.Append(indent).Append(baseType == null ? "\tpublic virtual" : "\tpublic override").AppendLine(" global::Source.Common.ClientClass GetClientClass() => ClientClass;");
 
-				if (isEntity && !type.GetMembers("PredMap").Any(m => !m.IsImplicitlyDeclared)) {
+				if (isEntity && ownPredMap && declaresPredMap) {
 					sb.Append(indent).AppendLine(baseType == null ? "\tpublic static readonly global::Source.Common.DataMap PredMap = new(new global::Source.Common.TypeDescription[] {" : "\tpublic static readonly new global::Source.Common.DataMap PredMap = new(new global::Source.Common.TypeDescription[] {");
 					foreach (string entry in predicted)
 						sb.Append(indent).Append("\t\t").Append(entry).AppendLine(",");
@@ -536,7 +537,7 @@ namespace Source.CodeAnalysis.NetworkVars
 			if (hasNamespace)
 				sb.AppendLine("}");
 
-			PredictionMapModel? map = isClient && ownPredMap && (isEntity || (plain && predicted.Count > 0))
+			PredictionMapModel? map = isClient && ownPredMap && ((isEntity && declaresPredMap) || (plain && predicted.Count > 0))
 				? new PredictionMapModel(type.ToDisplayString() + ".PredMap", "PredMap", typeDisplay, string.Join("\n", entries), string.Join("\n", embeddedMaps))
 				: null;
 
@@ -887,6 +888,7 @@ namespace Source.CodeAnalysis.NetworkVars
 				case SpecialType.System_Int32: case SpecialType.System_UInt32: return "Integer";
 				case SpecialType.System_Single: return "Float";
 				case SpecialType.System_Double: return "Double";
+				case SpecialType.System_String: return "String";
 			}
 			switch (type.OriginalDefinition.ToDisplayString()) {
 				case "System.Numerics.Vector3": case "Source.Common.Mathematics.QAngle": return "Vector";

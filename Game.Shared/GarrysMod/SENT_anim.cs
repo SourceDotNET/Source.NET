@@ -22,9 +22,9 @@ using Game.Server.GarrysMod;
 [NetworkName("CSENT_anim")]
 public partial class
 #if CLIENT_DLL
-	C_SENT_Anim : C_BaseAnimatingOverlay
+	C_SENT_anim : C_BaseAnimatingOverlay
 #elif GAME_DLL
-	SENT_Anim : BaseAnimatingOverlay, IMotionEvent
+	SENT_anim : BaseAnimatingOverlay, IMotionEvent
 #endif
 {
 	[NetworkTable]
@@ -36,9 +36,9 @@ public partial class
 	public readonly ScriptedEntity ScriptedEntity = new();
 
 #if CLIENT_DLL
-	public C_SENT_Anim() {
+	public C_SENT_anim() {
 #else
-	public SENT_Anim() {
+	public SENT_anim() {
 #endif
 		ScriptedEntity.Init(this, 1);
 	}

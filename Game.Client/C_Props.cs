@@ -6,9 +6,9 @@ using Source.Common;
 
 namespace Game.Client;
 using System.Numerics;
-using FIELD_PBM = Source.FIELD<PhysBoxMultiplayer>;
+using FIELD_PBM = Source.FIELD<CPhysBoxMultiplayer>;
 using FIELD_BPD = Source.FIELD<C_BasePropDoor>;
-using FIELD_PPM = Source.FIELD<PhysicsPropMultiplayer>;
+using FIELD_PPM = Source.FIELD<CPhysicsPropMultiplayer>;
 
 [NetworkName("CDynamicProp")]
 public partial class C_DynamicProp : C_BreakableProp
@@ -24,7 +24,7 @@ public partial class C_DynamicProp : C_BreakableProp
 
 
 [NetworkName("CPhysicsPropMultiplayer")]
-public partial class PhysicsPropMultiplayer : C_PhysicsProp
+public partial class CPhysicsPropMultiplayer : C_PhysicsProp
 {
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
@@ -45,7 +45,7 @@ public partial class PhysicsPropMultiplayer : C_PhysicsProp
 }
 
 [NetworkName("CPhysBoxMultiplayer")]
-public partial class PhysBoxMultiplayer : C_PhysBox
+public partial class CPhysBoxMultiplayer : C_PhysBox
 {
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [

@@ -4,7 +4,7 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
 [NetworkName("CNPC_RollerMine", Table = "DT_RollerMine")]
-public partial class C_NPC_RollerMine : C_AI_BaseNPC
+public partial class C_RollerMine : C_AI_BaseNPC
 {
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [

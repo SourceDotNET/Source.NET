@@ -16,6 +16,9 @@ namespace Game.Shared.GarrysMod;
 [NetworkName("CWeaponCrowbar")]
 public partial class WeaponCrowbar : BaseHL2MPBludgeonWeapon
 {
+	[PredictionTable]
+	public static readonly new PredictionField[] Prediction = [];
+
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
 	];

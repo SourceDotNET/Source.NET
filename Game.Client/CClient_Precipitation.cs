@@ -4,7 +4,7 @@ using Game.Shared;
 using System.Numerics;
 namespace Game.Client;
 [NetworkName("CPrecipitation")]
-public partial class C_Precipitation : C_BaseEntity
+public partial class CClient_Precipitation : C_BaseEntity
 {
 	[NetworkTable]
 	public static readonly new NetworkProp[] Props = [
