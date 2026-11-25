@@ -1461,6 +1461,7 @@ public partial class Host
 #endif
 
 	[ConCommand(helpText: "Exits the engine")]
+	[ConCommand("exit", "Exit the engine.")]
 	void quit(in TokenizedCommand args) {
 #if !SWDS
 		if (!args.FindArg("prompt").IsEmpty) {
@@ -1481,8 +1482,247 @@ public partial class Host
 		HostState.Shutdown();
 	}
 
-	[ConCommand("exit", "Exit the engine.")]
-	void exit(in TokenizedCommand args) => quit(in args);
+	static ulong atoui64(ReadOnlySpan<char> str) {
+		ulong val = 0;
+		int pos = 0;
+
+		if (str.Length > 1 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) {
+			pos = 2;
+			while (pos < str.Length) {
+				char c = str[pos++];
+				if (c >= '0' && c <= '9')
+					val = (val << 4) + c - '0';
+				else if (c >= 'a' && c <= 'f')
+					val = (val << 4) + c - 'a' + 10;
+				else if (c >= 'A' && c <= 'F')
+					val = (val << 4) + c - 'A' + 10;
+				else
+					return val;
+			}
+			return val;
+		}
+
+		if (str.Length > 0 && str[0] == '\'')
+			return str.Length > 1 ? str[1] : 0ul;
+
+		while (pos < str.Length) {
+			char c = str[pos++];
+			if (c < '0' || c > '9')
+				return val;
+			val = val * 10 + c - '0';
+		}
+
+		return val;
+	}
+
+	static string KickMessage(in TokenizedCommand args, int first) {
+		StringBuilder message = new();
+		for (int i = first; i < args.ArgC(); i++) {
+			if (i > first)
+				message.Append(' ');
+			message.Append(args[i]);
+		}
+
+		if (message.Length > 511)
+			message.Length = 511;
+
+		return message.ToString();
+	}
+
+	[ConCommand("kickid", "Kick a player by userid or uniqueid, with a message.")]
+	void kickid(in TokenizedCommand args, CommandSource source, int clientSlot) {
+		if (!sv.IsActive()) {
+			ConMsg("No server running, noone to kick.\n");
+			return;
+		}
+
+		if (args.ArgC() <= 1) {
+			ConMsg("Usage:  kickid < userid | steamid | steamid64 > { message }\n");
+			return;
+		}
+
+		string searchString = "";
+		string message;
+		ulong id = atoui64(args[1]);
+		if (id != 0)
+			message = KickMessage(in args, 2);
+		else if (args.ArgC() >= 6 && args[1].StartsWith("STEAM_", StringComparison.OrdinalIgnoreCase) && args[2].Contains(':') && args[4].Contains(':')) {
+			searchString = $"{args[1]}:{args[3]}:{args[5]}";
+			message = KickMessage(in args, 6);
+		}
+		else {
+			searchString = new(args[1]);
+			message = KickMessage(in args, 2);
+		}
+
+		if (searchString.Length > 127)
+			searchString = searchString[..127];
+
+		bool steamID64 = (id >> 32) != 0;
+		EUniverse universe = EUniverse.k_EUniversePublic;
+		if (steamID64) {
+			Source.Common.Steam.ISteamUtils? steamUtils = Steam3Client().SteamUtils();
+			if (steamUtils != null)
+				universe = steamUtils.GetConnectedUniverse();
+		}
+
+		IClient? client = null;
+		int i;
+		for (i = 0; i < sv.GetClientCount(); i++) {
+			client = sv.GetClient(i)!;
+
+			if (!client.IsConnected())
+				continue;
+
+			if (client.IsHLTV())
+				continue;
+
+			if (id != 0) {
+				if (steamID64) {
+					if (sv.GetPlayerInfo(i, out PlayerInfo info)) {
+						if (info.FriendsID == 0 && !info.FakePlayer)
+							break;
+
+						CSteamID steamID = new(new AccountID_t(info.FriendsID), universe, info.FakePlayer ? EAccountType.k_EAccountTypeAnonGameServer : EAccountType.k_EAccountTypeIndividual);
+						if (steamID.m_SteamID == id)
+							break;
+					}
+				}
+				else if (client.GetUserID() == (long)id)
+					break;
+			}
+			else if (stricmp(client.GetNetworkIDString(), searchString) == 0)
+				break;
+		}
+
+		if (i < sv.GetClientCount()) {
+			if (!sv.IsDedicated() && client!.GetPlayerSlot() == 0) {
+				Msg("Preventing kick of local server host!\n");
+				return;
+			}
+
+			if (source != CommandSource.Command && !sv.IsDedicated() && sv.GetClient(clientSlot) == client) {
+				Msg("Preventing kick of yourself!\n");
+				return;
+			}
+
+			if (message.Length != 0)
+				client!.Disconnect(message);
+			else if (source == CommandSource.Command)
+				client!.Disconnect("Kicked from server");
+			else
+				client!.Disconnect($"Kicked by {sv.GetClient(clientSlot)!.GetClientName()}");
+
+			return;
+		}
+
+		if (steamID64)
+			ConMsg($"steamid64 \"{id}\" not found\n");
+		else if (id != 0)
+			ConMsg($"userid \"{id}\" not found\n");
+		else
+			ConMsg($"steamid \"{searchString}\" not found\n");
+	}
+
+	[ConCommand("kick", "Kick a player by name.")]
+	void kick(in TokenizedCommand args, CommandSource source, int clientSlot) {
+		if (!sv.IsActive()) {
+			ConMsg("No server running, noone to kick.\n");
+			return;
+		}
+
+		if (args.ArgC() <= 1) {
+			ConMsg("Usage:  kick < name >\n");
+			return;
+		}
+
+		ReadOnlySpan<char> name = args.ArgS();
+		if (name.Length > 63)
+			name = name[..63];
+
+		if (name.IsEmpty)
+			return;
+
+		if (name[0] == '"' && name[^1] == '"')
+			name = name.Length > 1 ? name[1..^1] : name[1..];
+
+		IClient? client = null;
+		int i;
+		for (i = 0; i < sv.GetClientCount(); i++) {
+			client = sv.GetClient(i)!;
+
+			if (!client.IsConnected())
+				continue;
+
+			if (client.IsHLTV())
+				continue;
+
+			if (stricmp(client.GetClientName(), name) == 0)
+				break;
+		}
+
+		if (i < sv.GetClientCount()) {
+			if (!sv.IsDedicated() && client!.GetPlayerSlot() == 0) {
+				Msg("Preventing kick of local server host!\n");
+				return;
+			}
+
+			if (source == CommandSource.Command)
+				client!.Disconnect("Kicked from server");
+			else {
+				if (!sv.IsDedicated() && sv.GetClient(clientSlot) == client)
+					return;
+
+				client!.Disconnect($"Kicked by {sv.GetClient(clientSlot)!.GetClientName()}");
+			}
+		}
+		else
+			ConMsg($"name \"{name}\" not found\n");
+	}
+
+	[ConCommand("kickall", "Kicks everybody connected with a message.")]
+	void kickall(in TokenizedCommand args, CommandSource source, int clientSlot) {
+		if (!sv.IsActive()) {
+			ConMsg("No server running, noone to kick.\n");
+			return;
+		}
+
+		ReadOnlySpan<char> message = args.ArgS();
+		if (message.Length > 127)
+			message = message[..127];
+
+		for (int i = 0; i < sv.GetClientCount(); i++) {
+			IClient client = sv.GetClient(i)!;
+
+			if (!client.IsConnected())
+				continue;
+
+			if (!sv.IsDedicated() && client.GetPlayerSlot() == 0) {
+				Msg("Preventing kick of local server host!\n");
+				continue;
+			}
+
+			if (source != CommandSource.Command && !sv.IsDedicated() && sv.GetClient(clientSlot) == client)
+				continue;
+
+			if (client.IsHLTV())
+				continue;
+
+			if (source == CommandSource.Command) {
+				if (!message.IsEmpty)
+					client.Disconnect(message);
+				else
+					client.Disconnect("Kicked from server");
+			}
+			else {
+				ReadOnlySpan<char> who = sv.GetClient(clientSlot)!.GetClientName();
+				if (!message.IsEmpty)
+					client.Disconnect($"Kicked by {who} : {message}");
+				else
+					client.Disconnect($"Kicked by {who}");
+			}
+		}
+	}
 
 	readonly ConVar voice_recordtofile = new("voice_recordtofile", "0", 0, "Record mic data and decompressed voice data into 'voice_micdata.wav' and 'voice_decompressed.wav'");
 	readonly ConVar voice_inputfromfile;

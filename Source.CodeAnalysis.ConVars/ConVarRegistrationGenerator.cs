@@ -258,8 +258,8 @@ namespace Source.CodeAnalysis.ConVars
 							break;
 						}
 					case IMethodSymbol method: {
-							AttributeData? attribute = FindAttribute(method, s.ConCommandAttribute);
-							if (attribute == null) {
+							AttributeData[] attributes = method.GetAttributes().Where(a => DerivesFrom(a.AttributeClass, s.ConCommandAttribute)).ToArray();
+							if (attributes.Length == 0) {
 								for (IMethodSymbol? overridden = method.OverriddenMethod; overridden != null; overridden = overridden.OverriddenMethod) {
 									if (FindAttribute(overridden, s.ConCommandAttribute) != null) {
 										candidates = true;
@@ -271,12 +271,14 @@ namespace Source.CodeAnalysis.ConVars
 							}
 
 							candidates = true;
-							Member? member = AnalyzeCommand(s, type, method, attribute, nameable, isStruct);
-							if (member == null)
-								reflect = true;
-							else {
-								member.Id = nextId++;
-								model.Members.Add(member);
+							foreach (AttributeData attribute in attributes) {
+								Member? member = AnalyzeCommand(s, type, method, attribute, nameable, isStruct);
+								if (member == null)
+									reflect = true;
+								else {
+									member.Id = nextId++;
+									model.Members.Add(member);
+								}
 							}
 							break;
 						}

@@ -145,6 +145,8 @@ public class Net
 		Singleton<Net>().SendPacket(null!, sock, adr, msg.GetData(), msg.BytesWritten);
 	}
 
+	Source.Engine.Server.Filter? _filter = null; Source.Engine.Server.Filter Filter => _filter ??= Singleton<Source.Engine.Server.Filter>();
+
 	public bool StringToAdr(ReadOnlySpan<char> host, [NotNullWhen(true)] out IPEndPoint? ep) {
 		host = host.SliceNullTerminatedString();
 		ep = null;
@@ -280,6 +282,11 @@ public class Net
 			packet = GetPacket(sock, scratch.Data);
 			if (packet == null) {
 				break;
+			}
+
+			if (Filter.ShouldDiscard(packet.From)) {
+				Filter.SendBan(packet.From);
+				continue;
 			}
 
 			unsafe {

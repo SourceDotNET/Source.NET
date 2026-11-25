@@ -555,35 +555,36 @@ public class EngineBuilder(ICommandLine cmdLine) : ServiceCollection
 
 				for (int i = 0; i < methods.Length; i++) {
 					MethodInfo method = methods[i];
-					ConCommandAttribute? cmdAttr = method.GetCustomAttribute<ConCommandAttribute>();
-					if (cmdAttr == null)
+					ConCommandAttribute[] cmdAttrs = [.. method.GetCustomAttributes<ConCommandAttribute>()];
+					if (cmdAttrs.Length == 0)
 						continue;
 
-					ConCommandAttribute attribute = method.GetCustomAttribute<ConCommandAttribute>()!; // < never null!
 					object? instance = method.IsStatic ? null : DetermineInstance(engineAPI, type, true, method.Name);
 
-					// Lets see if we can find a FnCommandCompletionCallback...
-					FnCommandCompletionCallback? completionCallback = null;
-					if (attribute.AutoCompleteMethod != null)
-						type.TryExtractMethodDelegate(instance, x => x.Name == attribute.AutoCompleteMethod, out completionCallback);
+					foreach (ConCommandAttribute attribute in cmdAttrs) {
+						// Lets see if we can find a FnCommandCompletionCallback...
+						FnCommandCompletionCallback? completionCallback = null;
+						if (attribute.AutoCompleteMethod != null)
+							type.TryExtractMethodDelegate(instance, x => x.Name == attribute.AutoCompleteMethod, out completionCallback);
 
-					// Construct a new ConCommand
-					string cmdName = attribute.Name ?? method.Name;
-					string? helpText = attribute.HelpText;
-					FCvar flags = attribute.Flags;
+						// Construct a new ConCommand
+						string cmdName = attribute.Name ?? method.Name;
+						string? helpText = attribute.HelpText;
+						FCvar flags = attribute.Flags;
 
-					ConCommand cmd;
+						ConCommand cmd;
 
-					if (method.TryToDelegate<FnCommandCallbackVoid>(instance, out var callbackVoid))
-						cmd = new ConCommand(cmdName, callbackVoid, helpText, flags, completionCallback);
-					else if (method.TryToDelegate<FnCommandCallback>(instance, out var callback))
-						cmd = new ConCommand(cmdName, callback, helpText, flags, completionCallback);
-					else if (method.TryToDelegate<FnCommandCallbackSourced>(instance, out var callbackSourced))
-						cmd = new ConCommand(cmdName, callbackSourced, helpText, flags, completionCallback);
-					else
-						throw new ArgumentException("Cannot dynamically produce ConCommand with the arguments we were given");
+						if (method.TryToDelegate<FnCommandCallbackVoid>(instance, out var callbackVoid))
+							cmd = new ConCommand(cmdName, callbackVoid, helpText, flags, completionCallback);
+						else if (method.TryToDelegate<FnCommandCallback>(instance, out var callback))
+							cmd = new ConCommand(cmdName, callback, helpText, flags, completionCallback);
+						else if (method.TryToDelegate<FnCommandCallbackSourced>(instance, out var callbackSourced))
+							cmd = new ConCommand(cmdName, callbackSourced, helpText, flags, completionCallback);
+						else
+							throw new ArgumentException("Cannot dynamically produce ConCommand with the arguments we were given");
 
-					cvar.RegisterConCommand(cmd);
+						cvar.RegisterConCommand(cmd);
+					}
 				}
 			}
 		}

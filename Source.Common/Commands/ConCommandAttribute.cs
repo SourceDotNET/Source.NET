@@ -3,7 +3,7 @@
 /// <summary>
 /// Indicates the method will be constructed as a concommand.
 /// </summary>
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public class ConCommandAttribute : Attribute {
 	public readonly string? Name;
 	public readonly string? HelpText;
