@@ -19,9 +19,8 @@ public static partial class LuaGame
 	[LuaFunction]
 	static int AddParticles(ILuaInterface lua) {
 		string file = g_Lua!.CheckString(1);
-		if (LuaFileLibrary.IsFileAccessAllowed(file, "GAME", false, false)) {
-			// GMOD_LoadParticleConfigFile(file); // TODO!
-		}
+		if (LuaFileLibrary.IsFileAccessAllowed(file, "GAME", false, false))
+			GMOD_LoadParticleConfigFile(file);
 		return 0;
 	}
 
