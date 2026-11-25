@@ -274,7 +274,7 @@ public static partial class LuaGame
 		Soundscape_OnStopAllSounds();
 		List<C_BaseEntity> hairballs = [];
 		for (C_BaseEntity? ent = cl_entitylist.FirstBaseEntity(); ent != null; ent = cl_entitylist.NextBaseEntity(ent))
-			if (!ent.IsEFlagSet(EFL.KillMe) && strcmp(ent.GetClassname(), "class C_Hairball") == 0)
+			if (!ent.IsEFlagSet(EFL.KillMe) && stricmp(ent.GetClassname(), "class C_Hairball") == 0)
 				hairballs.Add(ent);
 		foreach (C_BaseEntity ent in hairballs)
 			ent.Release();

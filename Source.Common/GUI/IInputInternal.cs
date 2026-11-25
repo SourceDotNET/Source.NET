@@ -123,6 +123,9 @@ public interface IVGuiInput
 	IPanel? GetMouseCapture();
 	IPanel? GetMouseFocus();
 
+	void PushAppModalSurface(IPanel? panel);
+	void PopAppModalSurface(IPanel? panel);
+
 	// InputInternal
 
 	void RunFrame();

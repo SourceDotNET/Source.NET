@@ -25,6 +25,7 @@ public class LuaClass
 	public string Name;
 	public string? DerivedFrom;
 	public LuaType Type;
+	public int LuaID;
 	public List<LuaClassFunction>? Functions;
 	public LuaObject MetaTable;
 	public Action? InitFn;
@@ -32,6 +33,7 @@ public class LuaClass
 	public LuaClass(string name, LuaType type, Action? initFn, string? derivedFrom) {
 		MetaTable = new();
 		Functions = null;
+		LuaID = -1;
 		Name = name;
 		DerivedFrom = derivedFrom;
 		Type = type;
@@ -80,6 +82,8 @@ public class LuaClass
 	}
 
 	public void Push(object? data) {
+		if (g_LuaID != LuaID || LuaID == -1)
+			Error("CLuaClass::Push - Invalid Lua instance! Is Lua shutting down?");
 		if (!MetaTable.isTable())
 			Error("CLuaClass::Push - Not Table!");
 		g_Lua!.PushObjectUserType(data, Type);
@@ -103,6 +107,9 @@ public class LuaClass
 	}
 
 	public void InitClasses() {
+		if (LuaID != -1)
+			Error($"Double initialization of class {Name}?\n");
+
 		ILuaObject? meta = g_Lua!.GetMetaTableObject(Name, (int)Type);
 		if (meta == null)
 			Error($"Error initializing class {Name}\n");
@@ -124,9 +131,13 @@ public class LuaClass
 		}
 
 		InitFn?.Invoke();
+		LuaID = g_LuaID;
 	}
 
-	public void Shutdown() => MetaTable.UnReference();
+	public void Shutdown() {
+		MetaTable.UnReference();
+		LuaID = -1;
+	}
 
 	public static void InitLuaClasses(ILuaInterface lua) {
 		if (g_LuaClasses == null)
@@ -143,8 +154,10 @@ public class LuaClass
 		if (g_LuaClasses == null)
 			return;
 
-		for (int i = 0; i < g_LuaClasses.Count; i++)
+		for (int i = 0; i < g_LuaClasses.Count; i++) {
 			g_LuaClasses[i].MetaTable.UnReference();
+			g_LuaClasses[i].LuaID = -1;
+		}
 	}
 }
 #endif

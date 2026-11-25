@@ -129,9 +129,15 @@ public partial class Registry
 		Span<char> modelKey = stackalloc char[1024];
 		int n = sprintf(modelKey, "Software\\Valve\\%s").S(subDirectoryUnderValve);
 
-		Key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(
-			modelKey[..n].ToString(),
-			RegistryKeyPermissionCheck.ReadWriteSubTree);
+		try {
+			Key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(
+				modelKey[..n].ToString(),
+				RegistryKeyPermissionCheck.ReadWriteSubTree);
+		}
+		catch (Exception e) {
+			Error($"Failed to open registry key: {e.HResult & 0xFFFF} - {e.Message}");
+			return false;
+		}
 
 		if (Key == null) {
 			Valid = false;

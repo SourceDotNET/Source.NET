@@ -1033,7 +1033,12 @@ public static partial class LuaEntity
 	[LuaMethod]
 	static int Entity__DrawModel(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
-		ent.DrawModel((StudioFlags)(int)lua.CheckNumberOpt(2, (int)StudioFlags.Render));
+		double flags = lua.CheckNumberOpt(2, (int)StudioFlags.Render);
+		if (ent.EntIndex() == 0) {
+			lua.ErrorNoHalt("Trying to call DrawModel on the world entity, this will not work.");
+			return 0;
+		}
+		ent.DrawModel((StudioFlags)(int)flags);
 		return 0;
 	}
 #endif

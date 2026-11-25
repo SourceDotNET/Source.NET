@@ -755,7 +755,7 @@ public class VGuiInput : IVGuiInput
 
 		ref InputContext context = ref GetInputContext(Context);
 
-		if (context.AppModalPanel != null)
+		if (context.AppModalPanel != null && context.AppModalPanel.IsVisible())
 			if (!panel.HasParent(context.AppModalPanel))
 				return false;
 
@@ -784,6 +784,29 @@ public class VGuiInput : IVGuiInput
 	public void SetAppModalSurface(IPanel? panel) {
 		ref InputContext context = ref GetInputContext(Context);
 		context.AppModalPanel = panel;
+	}
+
+	static readonly List<IPanel> AppModalStack = [];
+
+	public void PushAppModalSurface(IPanel? panel) {
+		IPanel? current = GetAppModalSurface();
+		if (current != null && !AppModalStack.Contains(current))
+			AppModalStack.Add(current);
+		SetAppModalSurface(panel);
+	}
+
+	public void PopAppModalSurface(IPanel? panel) {
+		if (GetAppModalSurface() == panel) {
+			ReleaseAppModalSurface();
+			if (AppModalStack.Count > 0) {
+				SetAppModalSurface(AppModalStack[^1]);
+				AppModalStack.RemoveAt(AppModalStack.Count - 1);
+			}
+			return;
+		}
+
+		if (panel != null)
+			AppModalStack.Remove(panel);
 	}
 
 	public void SetCandidateListPageStart(int start) {

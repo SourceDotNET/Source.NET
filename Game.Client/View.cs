@@ -519,6 +519,9 @@ public class ViewRender : IViewRender
 				renderContext.PopRenderTargetAndViewport();
 				renderContext.Flush();
 			}
+#if GMOD_DLL
+			gGM?.Call((int)Source.Common.GarrysMod.Lua.LUA_POOLEDSTRING.PostRender);
+#endif
 		}
 
 		RenderingView = false;

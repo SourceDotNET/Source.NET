@@ -65,7 +65,7 @@ public class MessageBox : Frame
 	public void SetCancelCommand(KeyValues? command) => CancelCommand = command;
 	public virtual void DoModal(Frame? frameOver = null) {
 		ShowWindow(frameOver);
-		Input.SetAppModalSurface(this);
+		Input.PushAppModalSurface(this);
 	}
 
 	[UiCommand("OnOk")]
@@ -96,10 +96,7 @@ public class MessageBox : Frame
 		AutoClose();
 	}
 
-	private void ReleaseModalSurface() {
-		if (Input.GetAppModalSurface() == this)
-			Input.ReleaseAppModalSurface();
-	}
+	private void ReleaseModalSurface() => Input.PopAppModalSurface(this);
 
 	private void AutoClose() {
 		if (!NoAutoClose)
