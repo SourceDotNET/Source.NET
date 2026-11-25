@@ -149,7 +149,11 @@ public static partial class LuaGame
 
 	[LuaFunction]
 	static int CleanUpMap(ILuaInterface lua) {
-		// todo: refuse with "Cannot run game.CleanUpMap while deleting entities!\n" while entities are being deleted
+		if (Util.g_bRemovingEntity > 0 || Util.g_bDisableEhandleAccess) {
+			lua.ErrorFromLua("Cannot run game.CleanUpMap while deleting entities!\n");
+			return 0;
+		}
+
 		if (MapCleanupRunning || MapCleanupPending) {
 			lua.ErrorFromLua("Cannot run game.CleanUpMap while it is already running!\n");
 			return 0;
@@ -198,11 +202,16 @@ public static partial class LuaGame
 			GarrysMod.BroadcastLua(filter, "game.CleanUpMap()");
 		}
 
-		// todo: unidentified step between the client broadcast and AllowImmediateEdictReuse
+		// todo: s_RagdollLRU.RemoveAll()
 		engine.AllowImmediateEdictReuse();
 
 		gGM?.Call((int)LUA_POOLEDSTRING.PostCleanupMap);
 		MapCleanupRunning = false;
+	}
+
+	public static void ResetMapCleanupSchedule() {
+		MapCleanupPending = false;
+		MapCleanupDontSendToClients = false;
 	}
 
 	public static void RunMapCleanupIfNeeded() {
@@ -259,12 +268,17 @@ public static partial class LuaGame
 		MapCleanupRunning = true;
 		gGM?.Call((int)LUA_POOLEDSTRING.PreCleanupMap);
 
-		// todo: remove the Lua-created clientside entities
+		// todo: C_PhysPropClientside.RecreateAll()
 		engine.ClientCmd("r_cleardecals\n");
 		enginesound.StopAllSounds(true);
-		// todo: unidentified call that follows StopAllSounds
-		// todo: release every C_Hairball in the client entity list
-		// todo: unidentified step before the PostCleanupMap hook
+		Soundscape_OnStopAllSounds();
+		List<C_BaseEntity> hairballs = [];
+		for (C_BaseEntity? ent = cl_entitylist.FirstBaseEntity(); ent != null; ent = cl_entitylist.NextBaseEntity(ent))
+			if (!ent.IsEFlagSet(EFL.KillMe) && strcmp(ent.GetClassname(), "class C_Hairball") == 0)
+				hairballs.Add(ent);
+		foreach (C_BaseEntity ent in hairballs)
+			ent.Release();
+		// todo: s_RagdollLRU.RemoveAll()
 
 		gGM?.Call((int)LUA_POOLEDSTRING.PostCleanupMap);
 		MapCleanupRunning = false;

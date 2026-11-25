@@ -273,6 +273,18 @@ public class AI_DynamicLink : ServerOnlyEntity
 		}
 	}
 
+	public static void PurgeDynamicLinks() {
+		AI_DynamicLink? dynamicLink = AllDynamicLinks;
+
+		while (dynamicLink != null) {
+			// todo: Editor_DeleteNodeLink
+			if (!dynamicLink.IsLinkValid())
+				Util.Remove(dynamicLink);
+
+			dynamicLink = dynamicLink.NextDynamicLink;
+		}
+	}
+
 	public bool IsLinkValid() {
 		AI_Node node = g_pBigAINet!.GetNode(SrcID)!;
 		return !Unsafe.IsNullRef(ref node.GetLink(DestID));
