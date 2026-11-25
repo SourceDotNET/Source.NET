@@ -102,6 +102,7 @@ public class ClientState : BaseClientState
 	public INetworkStringTable? LightStyleTable;
 	public INetworkStringTable? UserInfoTable;
 	public INetworkStringTable? ServerStartupTable;
+	public PureServerWhitelist? PureServerWhitelist; // note: GMod never sets it
 	public INetworkStringTable? DynamicModelsTable;
 	public INetworkStringTable? DownloadableFileTable;
 
@@ -258,6 +259,9 @@ IModelLoader modelloader, ICommandLine commandLine,
 				return true;
 			case Protocol.USER_INFO_TABLENAME:
 				UserInfoTable = table;
+				return true;
+			case Protocol.SERVER_STARTUP_DATA_TABLENAME:
+				ServerStartupTable = table;
 				return true;
 			case Protocol.DOWNLOADABLE_FILE_TABLENAME:
 				DownloadableFileTable = table;
@@ -918,6 +922,8 @@ IModelLoader modelloader, ICommandLine commandLine,
 		if (sv.State < ServerState.Loading)
 			modelloader.ResetModelServerCounts();
 		SetModel(1);
+
+		CL.CheckForPureServerWhitelist();
 
 		CL.RegisterResources();
 

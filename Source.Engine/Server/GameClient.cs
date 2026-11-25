@@ -151,6 +151,9 @@ public class GameClient : BaseClient
 
 
 	protected override bool ProcessFileCRCCheck(CLC_FileCRCCheck msg) {
+#if GMOD_DLL
+		return true;
+#else
 		if (!sv.IsInPureServerMode())
 			return true;
 
@@ -198,6 +201,7 @@ public class GameClient : BaseClient
 		}
 
 		return true;
+#endif
 	}
 
 	protected override bool ProcessFileMD5Check(CLC_FileMD5Check msg) {
