@@ -79,7 +79,10 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 		vieweffects.LevelInit();
 
+		ParseParticleEffectsMap(mapname, true);
+
 		modemanager.LevelInit(mapname);
+		ParticleMgr.Instance.LevelInit();
 		ResetToneMapping(1.0f);
 		IGameSystem.LevelInitPreEntityAllSystems(mapname);
 #if GMOD_DLL
@@ -138,6 +141,10 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		get.IntroScreen()!.Update("Initializing Convars", true);
 		get.IntroScreen()!.Update("Initializing Objects", true);
 		get.IntroScreen()!.Update("Initializing Particles", true);
+#endif
+		if (!ParticleMgr.Instance.Init(ParticleMgr.MAX_TOTAL_PARTICLES, materials))
+			return false;
+#if GMOD_DLL
 		get.IntroScreen()!.Update("Initializing VGUI", true);
 		get.IntroScreen()!.Update("Adding Game Systems", true);
 #endif
@@ -205,6 +212,7 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 
 	public void Shutdown() {
 		ClientVoiceMgr_Shutdown();
+		ParticleMgr.Instance.Term();
 #if GMOD_DLL
 		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
 		get.MenuSystem()?.Shutdown();
@@ -239,6 +247,32 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 	public static bool g_bLevelInitialized;
 	public static INetworkStringTable? g_pStringTableClientSideChoreoScenes;
 	public static INetworkStringTable? g_pStringTableMaterials;
+	public static INetworkStringTable? g_pStringTableEffectDispatch;
+	public static INetworkStringTable? g_pStringTableParticleEffectNames;
+
+	public static void PrecacheParticleSystem(ReadOnlySpan<char> particleSystemName) {
+		g_pStringTableParticleEffectNames!.AddString(false, particleSystemName);
+		g_pParticleSystemMgr.PrecacheParticleSystem(particleSystemName.ToString());
+	}
+
+	public static int GetParticleSystemIndex(ReadOnlySpan<char> particleSystemName) {
+		if (!particleSystemName.IsEmpty) {
+			int index = g_pStringTableParticleEffectNames!.FindStringIndex(particleSystemName);
+			if (index != INetworkStringTable.INVALID_STRING_INDEX)
+				return index;
+			DevWarning($"Client: Missing precache for particle system \"{particleSystemName}\"!\n");
+		}
+		return 0;
+	}
+
+	public static ReadOnlySpan<char> GetParticleSystemNameFromIndex(int index) {
+		if (index < g_pStringTableParticleEffectNames!.GetMaxStrings())
+			return g_pStringTableParticleEffectNames.GetString(index);
+		return "error";
+	}
+
+	static void OnParticleSystemStringTableChanged(object? context, INetworkStringTable stringTable, int stringNumber, ReadOnlySpan<char> newString, ReadOnlySpan<byte> newData)
+		=> g_pParticleSystemMgr.PrecacheParticleSystem(newString.ToString());
 
 	public static int GetMaterialIndex(ReadOnlySpan<char> materialName) {
 		if (!materialName.IsEmpty) {
@@ -300,12 +334,18 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 			case "Materials":
 				g_pStringTableMaterials = networkstringtable.FindTable(tableName);
 				break;
-			case "EffectDispatch": Warning("FIXME: EffectDispatch string table not being processed yet\n"); break;
+			case "EffectDispatch":
+				g_pStringTableEffectDispatch = networkstringtable.FindTable(tableName);
+				break;
 			// I don't think InfoPanel is a thing?
 			case "Scenes":
 				g_pStringTableClientSideChoreoScenes = networkstringtable.FindTable(tableName);
 				break;
-			case "ParticleEffectNames": Warning("FIXME: ParticleEffectNames string table not being processed yet\n"); break;
+			case "ParticleEffectNames":
+				g_pStringTableParticleEffectNames = networkstringtable.FindTable(tableName);
+				networkstringtable.SetAllowClientSideAddString(g_pStringTableParticleEffectNames!, true);
+				g_pStringTableParticleEffectNames!.SetStringChangedCallback(null, OnParticleSystemStringTableChanged);
+				break;
 #if GMOD_DLL
 			case Protocol.NETWORKSTRING_TABLENAME:
 				Game.Client.GarrysMod.NetworkString.Install();
@@ -398,6 +438,8 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 			// tempents.Update();
 			beams.UpdateTempEntBeams();
 		}
+
+		ParticleMgr.Instance.Simulate((float)gpGlobals.FrameTime);
 
 		C_BaseEntity.CalcAimEntPositions();
 
@@ -546,11 +588,14 @@ public class HLClient(IServiceProvider services, ClientGlobalVariables gpGlobals
 		view.LevelShutdown();
 		beams.ClearBeams();
 
-		// ParticleMgr().RemoveAllEffects();
+		ParticleMgr.Instance.RemoveAllEffects();
 
 		// StopAllRumbleEffects();
 
 		gHUD.LevelShutdown();
+
+		g_pParticleSystemMgr.UncacheAllParticleSystems();
+		ParticleModelDraw.ClearStudioHdrCache();
 
 #if GMOD_DLL
 		Game.Client.GarrysMod.GarrysMod.Lua.Kill();
