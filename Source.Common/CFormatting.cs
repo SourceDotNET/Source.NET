@@ -6,10 +6,12 @@
 	for their arguments instead, along with not trying to reinvent the wheel and read actual C stdlib implementations.
 */
 
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Source.Common;
 
@@ -1128,13 +1130,17 @@ public static class CFormatting
 
 
 	public static void strlower(Span<char> str) {
-		for (int i = 0; i < str.Length; i++)
-			str[i] = char.ToLower(str[i]);
+		if (Ascii.ToLowerInPlace(str, out int processed) == OperationStatus.Done)
+			return;
+		for (int i = processed; i < str.Length; i++)
+			str[i] = char.ToLowerInvariant(str[i]);
 	}
 
 	public static void strupper(Span<char> str) {
-		for (int i = 0; i < str.Length; i++)
-			str[i] = char.ToUpper(str[i]);
+		if (Ascii.ToUpperInPlace(str, out int processed) == OperationStatus.Done)
+			return;
+		for (int i = processed; i < str.Length; i++)
+			str[i] = char.ToUpperInvariant(str[i]);
 	}
 
 	public static int strcmp(scoped ReadOnlySpan<char> a, scoped ReadOnlySpan<char> b) => a.SliceNullTerminatedString().CompareTo(b.SliceNullTerminatedString(), StringComparison.Ordinal);
@@ -1143,14 +1149,14 @@ public static class CFormatting
 	public static int stricmp(scoped ReadOnlySpan<char> a, scoped ReadOnlySpan<char> b) {
 		a = a.SliceNullTerminatedString(); b = b.SliceNullTerminatedString();
 		for (int i = 0; i < a.Length && i < b.Length; i++)
-			if (char.ToLowerInvariant(a[i]) != char.ToLowerInvariant(b[i]))
+			if (a[i] != b[i] && char.ToLowerInvariant(a[i]) != char.ToLowerInvariant(b[i]))
 				return char.ToLowerInvariant(a[i]) - char.ToLowerInvariant(b[i]);
 		return a.Length - b.Length;
 	}
 	public static int stricmp(scoped ReadOnlySpan<byte> a, scoped ReadOnlySpan<byte> b) {
 		a = a.SliceNullTerminatedString(); b = b.SliceNullTerminatedString();
 		for (int i = 0; i < a.Length && i < b.Length; i++)
-			if (char.ToLowerInvariant((char)a[i]) != char.ToLowerInvariant((char)b[i]))
+			if (a[i] != b[i] && char.ToLowerInvariant((char)a[i]) != char.ToLowerInvariant((char)b[i]))
 				return char.ToLowerInvariant((char)a[i]) - char.ToLowerInvariant((char)b[i]);
 		return a.Length - b.Length;
 	}
@@ -1161,21 +1167,13 @@ public static class CFormatting
 	public static bool strieq(scoped ReadOnlySpan<char> a, scoped ReadOnlySpan<char> b) => a.SliceNullTerminatedString().Equals(b.SliceNullTerminatedString(), StringComparison.OrdinalIgnoreCase);
 
 	public static nint strlen(scoped ReadOnlySpan<char> str) {
-		int i = 0;
-		for (i = 0; i < str.Length; i++) {
-			if (str[i] == '\0')
-				return i;
-		}
-		return i;
+		int i = str.IndexOf('\0');
+		return i == -1 ? str.Length : i;
 	}
 
 	public static nint strlen(scoped ReadOnlySpan<byte> str) {
-		int i = 0;
-		for (i = 0; i < str.Length; i++) {
-			if (str[i] == '\0')
-				return i;
-		}
-		return i;
+		int i = str.IndexOf((byte)0);
+		return i == -1 ? str.Length : i;
 	}
 	public static int strcpy(scoped Span<byte> target, scoped ReadOnlySpan<byte> str) {
 		str = str.SliceNullTerminatedString();
