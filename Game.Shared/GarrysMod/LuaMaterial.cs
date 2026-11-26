@@ -45,7 +45,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -159,7 +159,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -186,7 +186,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -202,7 +202,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -219,7 +219,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -235,7 +235,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -255,7 +255,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -271,7 +271,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -287,7 +287,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -303,7 +303,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -320,7 +320,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -338,7 +338,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -358,7 +358,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -379,7 +379,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 
@@ -397,7 +397,7 @@ public static partial class LuaMaterial
 			return 0;
 		}
 
-		IMaterialVar var = material.FindVar(lua.CheckString(2), out bool found, false);
+		IMaterialVar var = material.FindVar(lua.CheckString(2, stackalloc char[256]), out bool found, false);
 		if (var == null || !found)
 			return 0;
 

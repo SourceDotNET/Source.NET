@@ -70,6 +70,7 @@ public interface ILuaBase
 	string GetTypeName(LuaType type);
 	void CreateMetaTableType(ReadOnlySpan<char> name, int type);
 	string CheckString(int stackPos = -1);
+	ReadOnlySpan<char> CheckString(int stackPos, Span<char> buffer);
 	double CheckNumber(int stackPos = -1);
 	int ObjLen(int stackPos = -1);
 	QAngle GetAngle(int stackPos = -1);

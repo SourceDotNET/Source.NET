@@ -193,6 +193,7 @@ public sealed class LuaNullInterface : ILuaInterface
 	public string GetTypeName(LuaType type) => "nil";
 	public void CreateMetaTableType(ReadOnlySpan<char> name, int type) { }
 	public string CheckString(int stackPos = -1) => "";
+	public ReadOnlySpan<char> CheckString(int stackPos, Span<char> buffer) => [];
 	public double CheckNumber(int stackPos = -1) => 0;
 	public int ObjLen(int stackPos = -1) => 0;
 	public QAngle GetAngle(int stackPos = -1) => default;
