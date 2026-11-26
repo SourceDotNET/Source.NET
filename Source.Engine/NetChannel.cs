@@ -1838,7 +1838,7 @@ public class NetChannel : INetChannelInfo, INetChannel
 	public TimeUnit_t GetAverageData(int flow) => DataFlow[flow].AverageBytesPerSec;
 	public TimeUnit_t GetAveragePackets(int flow) => DataFlow[flow].AveragePacketsPerSec;
 
-	public ReadOnlySpan<char> GetAddress() => RemoteAddress?.ToString();
+	public ReadOnlySpan<char> GetAddress() => RemoteAddress == null ? default : RemoteAddress.ToString(false);
 
 	public double GetTime() => Net.Time;
 

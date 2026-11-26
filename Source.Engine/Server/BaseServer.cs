@@ -660,16 +660,13 @@ public abstract class BaseServer : IServer
 
 	private void SetMasterServerKeyValue(ISteamGameServer server, IConVar var) {
 		if (var.IsFlagSet(FCvar.Protected)) {
-			if (var.GetString()[0] != '\0' && 0 != stricmp(var.GetString(), "none"))
+			if (var.GetString().Length != 0 && 0 != stricmp(var.GetString(), "none"))
 				SteamGameServer.SetKeyValue(var.GetName(), "1");
 			else
 				SteamGameServer.SetKeyValue(var.GetName(), "0");
 		}
 		else
 			SteamGameServer.SetKeyValue(var.GetName(), var.GetString());
-
-		if (Steam3Server().BIsActive())
-			sv.RecalculateTags();
 	}
 
 	public virtual void Clear() {
@@ -1045,19 +1042,6 @@ public abstract class BaseServer : IServer
 	public void SetMasterServerRulesDirty() {
 		MasterServerRulesDirty = true;
 	}
-	public void SendQueryPortToClient(NetAddress adr) {
-		throw new NotImplementedException();
-	}
-
-	public void RecalculateTags() {
-		throw new NotImplementedException();
-	}
-	public void AddTag(ReadOnlySpan<char> pszTag) {
-		throw new NotImplementedException();
-	}
-	public void RemoveTag(ReadOnlySpan<char> pszTag) {
-		throw new NotImplementedException();
-	}
 
 	public int GetNumConnections() => NumConnections;
 
@@ -1374,8 +1358,24 @@ public abstract class BaseServer : IServer
 
 		return false;
 	}
+	const int MAX_REUSE_PER_IP = 5;
+
 	protected virtual bool CheckIPConnectionReuse(NetAddress adr) {
-		throw new NotImplementedException();
+		int simultaneouslyConnections = 0;
+
+		for (int i = 0; i < Clients.Count; i++) {
+			BaseClient client = Clients[i];
+
+			if (client.IsConnected() && !client.IsActive() && !client.IsFakeClient() && adr.CompareAdr(client.NetChannel.GetRemoteAddress(), true))
+				simultaneouslyConnections++;
+		}
+
+		if (simultaneouslyConnections > MAX_REUSE_PER_IP) {
+			Msg($"Too many connect packets from {adr.ToString(true)}\n");
+			return false;
+		}
+
+		return true;
 	}
 
 	protected virtual void ReplyChallenge(NetAddress adr, int clientChallenge) {
@@ -1402,8 +1402,17 @@ public abstract class BaseServer : IServer
 		}
 		Net.SendPacket(null!, Socket, adr, msg.GetData(), msg.BytesWritten);
 	}
+	readonly byte[] ServerChallengeBuffer = new byte[16];
+
 	protected virtual void ReplyServerChallenge(NetAddress adr) {
-		throw new NotImplementedException();
+		bf_write msg = new(ServerChallengeBuffer, ServerChallengeBuffer.Length);
+
+		int challengeNr = GetChallengeNr(adr);
+
+		msg.WriteLong(Protocol.CONNECTIONLESS_HEADER);
+		msg.WriteByte(S2C.Challenge);
+		msg.WriteLong(challengeNr);
+		Net.SendPacket(null!, Socket, adr, msg.GetData(), msg.BytesWritten);
 	}
 
 	protected virtual void CalculateCPUUsage() {
@@ -1464,7 +1473,28 @@ public abstract class BaseServer : IServer
 		UpdateMasterServerPlayers();
 		Steam3Server().SendUpdatedServerDetails();
 	}
-	protected void UpdateMasterServerRules() { }
+	protected void UpdateMasterServerRules() {
+		if (!MasterServerRulesDirty)
+			return;
+
+		ISteamGameServer? updater = Steam3Server().SteamGameServer();
+		if (updater == null)
+			return;
+
+		updater.ClearAllKeyValues();
+
+		foreach (ConCommandBase var in cvar.GetCommands()) {
+			if (!var.IsFlagSet(FCvar.Notify))
+				continue;
+
+			if (var is not ConVar conVar)
+				continue;
+
+			SetMasterServerKeyValue(updater, conVar);
+		}
+
+		MasterServerRulesDirty = false;
+	}
 	protected virtual void UpdateMasterServerPlayers() { }
 	readonly byte[] packetData = new byte[16 * 1024];
 	readonly NetAddress adr = new();
