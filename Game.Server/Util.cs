@@ -344,6 +344,7 @@ public static partial class Util
 	}
 
 	public static bool g_bDisableEhandleAccess = false;
+	public static int g_bRemovingEntity = 0;
 	public static bool g_bReceivedChainedUpdateOnRemove = false;
 	public static void LogPrintf(ReadOnlySpan<char> text) {
 		engine.LogPrint(text);

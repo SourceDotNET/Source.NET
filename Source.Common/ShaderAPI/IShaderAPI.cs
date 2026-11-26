@@ -276,6 +276,7 @@ public interface IShaderAPI : IShaderDynamicAPI
 	void SceneFogMode(MaterialFogMode fogMode);
 	void SceneFogRadial(bool radial);
 	bool GetSceneFogRadial();
+	float GetFogMaxDensity();
 
 	// Can we download textures?
 	bool CanDownloadTextures();

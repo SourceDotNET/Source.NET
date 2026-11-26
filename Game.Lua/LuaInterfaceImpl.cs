@@ -542,6 +542,16 @@ public unsafe class LuaInterfaceImpl : ILuaInterface
 		return GetString(stackPos)!;
 	}
 
+	public ReadOnlySpan<char> CheckString(int stackPos, Span<char> buffer) {
+		int type = lua_type(state, stackPos);
+		if (type != TSTRING && type != TNUMBER)
+			TypeError("string", stackPos);
+		ReadOnlySpan<byte> bytes = GetStringBytes(stackPos);
+		if (Encoding.UTF8.GetMaxCharCount(bytes.Length) > buffer.Length)
+			return Encoding.UTF8.GetString(bytes);
+		return buffer[..Encoding.UTF8.GetChars(bytes, buffer)];
+	}
+
 	public double CheckNumber(int stackPos = -1) {
 		if (lua_isnumber(state, stackPos) == 0)
 			TypeError("number", stackPos);

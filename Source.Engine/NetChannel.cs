@@ -1930,6 +1930,78 @@ public class NetChannel : INetChannelInfo, INetChannel
 		if (filename.IsEmpty || filename[0] == '\0')
 			return false;
 
+#if GMOD_DLL
+		Span<char> path = stackalloc char[MAX_PATH];
+		ReadOnlySpan<char> src = filename.SliceNullTerminatedString();
+		int copyLen = Math.Min(src.Length, MAX_PATH - 1);
+		src[..copyLen].CopyTo(path);
+		path[copyLen] = '\0';
+		StrTools.FixSlashes(path, '/');
+
+		int p = 0;
+		int componentLen = 0;
+		while (true) {
+			char c = path[p];
+			if (c == '\\' || c == '/' || c == '\0') {
+				if (componentLen == 0)
+					return false;
+				if (path[p - 1] == ' ')
+					return false;
+				if (c == '\0')
+					break;
+				componentLen = 0;
+				p++;
+				continue;
+			}
+
+			bool allowedChar = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '.' || c == '_' || c == '-' || c == ' ';
+			if (!allowedChar)
+				return false;
+
+			if (componentLen == 0) {
+				if (c == ' ' || c == '.')
+					return false;
+			}
+			else {
+				if (c == ' ' && path[p - 1] == ' ')
+					return false;
+				if (c == '.' && path[p - 1] == '.')
+					return false;
+			}
+
+			componentLen++;
+			p++;
+		}
+
+		if (p > 0) {
+			while (path[p] != '.' && path[p] != ' ') {
+				p--;
+				if (p <= 0)
+					break;
+			}
+		}
+		if (path[p] != '.')
+			return false;
+
+		ReadOnlySpan<char> ext = ((ReadOnlySpan<char>)path[p..]).SliceNullTerminatedString();
+		if (ext.Length == 1)
+			return false;
+
+		ReadOnlySpan<char> fullPath = path;
+		if ((HasPathPrefix(fullPath, "user_custom/") && stricmp(ext, ".dat") == 0) ||
+			(HasPathPrefix(fullPath, "particles/") && stricmp(ext, ".pcf") == 0) ||
+			(HasPathPrefix(fullPath, "resource/localization/") && stricmp(ext, ".properties") == 0) ||
+			(HasPathPrefix(fullPath, "resource/fonts/") && (stricmp(ext, ".otf") == 0 || stricmp(ext, ".ttf") == 0)) ||
+			(HasPathPrefix(fullPath, "maps/") && stricmp(ext, ".bsp") == 0) ||
+			(HasPathPrefix(fullPath, "sound/") && (stricmp(ext, ".wav") == 0 || stricmp(ext, ".mp3") == 0 || stricmp(ext, ".ogg") == 0)) ||
+			(HasPathPrefix(fullPath, "materials/") && (stricmp(ext, ".vmt") == 0 || stricmp(ext, ".vtf") == 0 || stricmp(ext, ".png") == 0 || stricmp(ext, ".jpg") == 0 || stricmp(ext, ".jpeg") == 0)) ||
+			(HasPathPrefix(fullPath, "models/") && (stricmp(ext, ".mdl") == 0 || stricmp(ext, ".vvd") == 0 || stricmp(ext, ".vtx") == 0 || stricmp(ext, ".phy") == 0 || stricmp(ext, ".ani") == 0)))
+			return true;
+
+		bool inDataFolder = HasPathPrefix(fullPath, "data_static/") || HasPathPrefix(fullPath, "data/");
+		bool isDataExt = stricmp(ext, ".dat") == 0 || stricmp(ext, ".txt") == 0 || stricmp(ext, ".json") == 0 || stricmp(ext, ".xml") == 0 || stricmp(ext, ".csv") == 0 || stricmp(ext, ".bsp") == 0;
+		return inDataFolder && isDataExt;
+#else
 		if (!Source.Engine.Common.IsValidPath(filename) || Path.IsPathFullyQualified(filename))
 			return false;
 
@@ -2018,7 +2090,12 @@ public class NetChannel : INetChannelInfo, INetChannel
 			return false;
 
 		return true;
+#endif
 	}
+
+#if GMOD_DLL
+	static bool HasPathPrefix(ReadOnlySpan<char> path, ReadOnlySpan<char> prefix) => strnicmp(path, prefix, prefix.Length) == 0;
+#endif
 
 	public bool SendFile(ReadOnlySpan<char> filename, uint transferID) {
 		// add file to waiting list
@@ -2029,7 +2106,7 @@ public class NetChannel : INetChannelInfo, INetChannel
 			return false;
 
 		ReadOnlySpan<char> sendfile = filename;
-		while (sendfile[0] != '\0' && sendfile[0].IsPathSeparator())
+		while (sendfile[0] != '\0' && (sendfile[0] == ' ' || sendfile[0].IsPathSeparator()))
 			sendfile = sendfile[1..];
 
 		// Don't transfer exe, vbs, com, bat-type files.

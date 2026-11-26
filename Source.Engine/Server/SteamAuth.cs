@@ -40,7 +40,7 @@ public class Steam3ServerImpl : IDisposable
 	readonly ISteamUtils __SteamUtils = new ImplSteamUtils();
 	readonly ISteamNetworking __SteamNetworking = new ImplSteamNetworking();
 	readonly ISteamGameServerStats __SteamGameServerStats = new ImplSteamGameServerStats();
-	readonly ISteamHTTP __SteamHTTP = new ImplSteamHTTP();
+	readonly ISteamHTTP __SteamHTTP = new ImplSteamGameServerHTTP();
 	readonly ISteamInventory __SteamInventory = new ImplSteamInventory();
 	readonly ISteamUGC __SteamUGC = new ImplSteamUGC();
 

@@ -801,6 +801,13 @@ public class DownloadManager
 		while (!rc.ShouldStop) {
 			int dwSize = stream.Read(data, 0, BufferSize);
 			if (dwSize == 0) {
+				if (rc.BytesCurrent != rc.BytesTotal) {
+					rc.Status = HTTPStatus.Error;
+					rc.Error = HttpRequestError.ZeroLengthFile;
+					Warning($"FastDL: Received incomplete data! Got {rc.BytesCurrent} of {rc.BytesTotal} bytes\n");
+					return;
+				}
+
 				// We're at the end of the file. If the file doesn't exist, write it out.
 				WriteFileFromRequestContext(rc);
 

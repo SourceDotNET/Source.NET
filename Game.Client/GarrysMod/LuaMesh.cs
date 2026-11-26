@@ -287,13 +287,20 @@ public static partial class LuaMesh
 		Matrix4x4 model = Matrix4x4.Identity;
 		renderContext.GetMatrix(MaterialMatrixMode.Model, out model);
 
-		int bone = 1;
-		while (IsMatrixMember(table, bone)) {
-			Matrix4x4 bind = table.GetMemberMatrix(bone, default);
+		int bone = 0;
+		while (true) {
+			if (!IsMatrixMember(table, bone)) {
+				if (bone != 0)
+					break;
+				bone = 1;
+				if (!IsMatrixMember(table, bone))
+					break;
+			}
 			if (bone > 52) {
 				lua.ErrorNoHalt($"Too many model transform matrices! ({53} max)\n");
 				break;
 			}
+			Matrix4x4 bind = table.GetMemberMatrix(bone, default);
 			if (transform)
 				MathLib.MatrixMultiply(model, bind, out bind);
 			renderContext.LoadBoneMatrix(bone, new ReadOnlySpan<Matrix4x4>(in bind).Cast<Matrix4x4, Matrix3x4>()[0]);
@@ -456,11 +463,11 @@ public static partial class LuaMesh
 		uint index = (uint)lua.CheckNumber(1);
 		uint bone = (uint)lua.CheckNumber(2);
 		if (index >= 3) {
-			lua.Error($"Invalid bone matrix index. Must be integer [0,{index - 1}]\n");
+			lua.Error($"Invalid bone matrix index. Must be integer [0,{2}]\n");
 			return 0;
 		}
 		if (bone >= 53) {
-			lua.Error($"Invalid bone matrix bone. Must be integer [1,{52}]\n");
+			lua.Error($"Invalid bone matrix bone. Must be integer [0,{52}]\n");
 			return 0;
 		}
 

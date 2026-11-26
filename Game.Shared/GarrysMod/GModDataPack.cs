@@ -341,9 +341,10 @@ public class GModDataPack : IGModDataPack
 			if (!SingleplayerFiles.Add(fileName))
 				return;
 
-			string files = ":";
+			StringBuilder builder = new(":");
 			foreach (string name in SingleplayerFiles)
-				files += name + ":";
+				builder.Append(name).Append(':');
+			string files = builder.ToString();
 
 			for (int i = 0, offset = 0; i < 0x400; i++, offset += 0x19000) {
 				string key = $"singleplayer_files{i}";

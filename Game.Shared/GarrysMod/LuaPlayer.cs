@@ -169,6 +169,13 @@ public static partial class LuaPlayer
 	}
 
 	[LuaMethod]
+	static int Player__KeyPressed(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		lua.PushBool(((int)lua.CheckNumber(2) & (int)player.AfButtonPressed) != 0);
+		return 1;
+	}
+
+	[LuaMethod]
 	static int Player__KeyDownLast(ILuaInterface lua) {
 		BasePlayer player = Get_Player(1, false)!;
 		lua.PushBool(((int)lua.CheckNumber(2) & (int)player.AfButtonLast) != 0);
@@ -885,6 +892,15 @@ public static partial class LuaPlayer
 			filter.MakeReliable();
 			GarrysMod.BroadcastLua(filter, code);
 		}
+		return 0;
+	}
+
+	[LuaMethod]
+	static int Player__PrintMessage(ILuaInterface lua) {
+		BasePlayer player = Get_Player(1, false)!;
+		ReadOnlySpan<char> msg = lua.CheckString(3);
+		HudPrint type = (HudPrint)(int)lua.CheckNumber(2);
+		Util.ClientPrint(player, type, msg);
 		return 0;
 	}
 #endif

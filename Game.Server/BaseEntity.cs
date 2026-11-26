@@ -934,6 +934,7 @@ public partial class BaseEntity : IServerEntity
 	}
 
 	public virtual void UpdateOnRemove() {
+		Util.g_bRemovingEntity++;
 		Util.g_bReceivedChainedUpdateOnRemove = true;
 
 #if GMOD_DLL
@@ -1013,6 +1014,7 @@ public partial class BaseEntity : IServerEntity
 			modelinfo.ReleaseDynamicModel(ModelIndex); // no-op if not dynamic
 			ModelIndex = -1;
 		}
+		Util.g_bRemovingEntity--;
 	}
 
 	public string GetDebugName() {
@@ -3143,6 +3145,7 @@ public partial class BaseEntity : IServerEntity
 	/// see CBaseEntity::~CBaseEntity() etc
 	/// </summary>
 	public virtual void Term() {
+		Util.g_bRemovingEntity++;
 		VPhysicsDestroyObject();
 
 		// Need to remove references to this entity before EHANDLES go null
@@ -3163,6 +3166,7 @@ public partial class BaseEntity : IServerEntity
 		LuaTableObject?.UnReference();
 		LuaTableObject = null;
 		LuaCalcAbsolutePosition.UnReference();
+		Util.g_bRemovingEntity--;
 
 		CollisionProp().DestroyPartitionHandle();
 

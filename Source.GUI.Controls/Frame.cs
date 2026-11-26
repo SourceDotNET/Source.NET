@@ -526,8 +526,6 @@ public class Frame : EditablePanel
 
 	public void SetDeleteSelfOnClose(bool state) => DeleteSelfOnClose = state;
 
-	IPanel? PreviousModal;
-
 	public virtual void Activate() {
 		MoveToFront();
 		if (IsKeyboardInputEnabled())
@@ -543,11 +541,18 @@ public class Frame : EditablePanel
 	}
 
 	public override void DoModal() {
+		if (!Surface.IsCursorVisible())
+			return;
+
 		MoveToCenterOfScreen();
 		InvalidateLayout();
 		Activate();
-		PreviousModal = Input.GetAppModalSurface();
-		Input.SetAppModalSurface(this);
+		Input.PushAppModalSurface(this);
+	}
+
+	public override void Dispose() {
+		Input.PopAppModalSurface(this);
+		base.Dispose();
 	}
 
 	public Frame(Panel? parent, ReadOnlySpan<char> name, bool showTaskbarIcon = true, bool popup = true) : base(parent, name) {
@@ -858,13 +863,7 @@ public class Frame : EditablePanel
 		GetFocusNavGroup().GetDefaultPanel()?.RequestFocus();
 	}
 	public override void OnClose() {
-		if (Input.GetAppModalSurface() == this) {
-			Input.ReleaseAppModalSurface();
-			if (PreviousModal != null) {
-				Input.SetAppModalSurface(PreviousModal);
-				PreviousModal = null;
-			}
-		}
+		Input.PopAppModalSurface(this);
 
 		base.OnClose();
 
@@ -963,11 +962,7 @@ public class Frame : EditablePanel
 	[UiMessage("CloseModal")]
 	[UiCommand("CloseModal")]
 	private void CloseModal() {
-		Input.ReleaseAppModalSurface();
-		if (PreviousModal != null) {
-			Input.SetAppModalSurface(PreviousModal);
-			PreviousModal = null;
-		}
+		Input.PopAppModalSurface(this);
 		PostMessage(this, new("Close"));
 	}
 

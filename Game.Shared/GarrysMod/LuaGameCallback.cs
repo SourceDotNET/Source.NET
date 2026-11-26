@@ -45,6 +45,11 @@ public class LuaGameCallback : ILuaGameCallback
 	static readonly ConVar lua_log = new("lua_log_sv", "0", 0, "Log serverside Lua errors to lua_errors_server.txt.");
 #endif
 	static readonly ConVar lua_error_url = new("lua_error_url", "", FCvar.Replicated | FCvar.DontRecord);
+#if CLIENT_DLL
+	static readonly ConVar lua_print_stack = new("lua_print_stack_cl", "0", 0, "Print the Lua stack when a message is printed to console from Lua. This is meant for debugging, to find out source of the messages, and is not supposed to be enabled at all times.");
+#else
+	static readonly ConVar lua_print_stack = new("lua_print_stack_sv", "0", 0, "Print the Lua stack when a message is printed to console from Lua. This is meant for debugging, to find out source of the messages, and is not supposed to be enabled at all times.");
+#endif
 
 	static readonly Dictionary<string, bool> m_ReportedErrors = [];
 	static readonly Queue<LuaErrorToSend> LuaErrorQueue = [];
@@ -133,20 +138,39 @@ public class LuaGameCallback : ILuaGameCallback
 
 	public void Msg(ReadOnlySpan<char> msg, bool useless) => MsgColour(msg, in cMsgColor);
 
-	public void MsgColour(ReadOnlySpan<char> msg, in Color color) => Dbg._ColorSpewMessage(SpewType.Message, in color, msg.ToString());
+	public void MsgColour(ReadOnlySpan<char> msg, in Color color) {
+		Dbg._ColorSpewMessage(SpewType.Message, in color, msg.ToString());
+
+		if (lua_print_stack.GetInt() == 0 || (msg.Length == 1 && (msg[0] == '\t' || msg[0] == '\n')))
+			return;
+
+		LuaError error = new();
+		LuaGlobalFunctions.ReadStackFrom(ref error, g_Lua!);
+		string stack = FormatLuaStack(error.Stack);
+
+		if (msg.Length == 0 || msg[^1] != '\n')
+			Dbg._ColorSpewMessage(SpewType.Message, in color, $"\n{stack}\n");
+		else
+			Dbg._ColorSpewMessage(SpewType.Message, in color, $"{stack}\n");
+	}
+
+	static string FormatLuaStack(List<LuaError.StackEntry> stack) {
+		string result = "";
+		string indent = "";
+		int i = 0;
+		foreach (LuaError.StackEntry entry in stack) {
+			indent += " ";
+			string function = entry.Function.Length == 0 ? "unknown" : entry.Function;
+			string source = entry.Source.Length == 0 ? "filename" : entry.Source;
+			result += $"{indent} {++i}. {function} - {source}:{entry.Line}\n";
+		}
+		return result;
+	}
 
 	public void LuaError(in LuaError error) {
 		bool isAddon = LuaHelper.GetAddonFromError(in error, out IAddonSystem.Information addon, out bool overriding);
 
-		string stack = "";
-		string indent = "";
-		int i = 0;
-		foreach (LuaError.StackEntry entry in error.Stack) {
-			indent += " ";
-			string function = entry.Function.Length == 0 ? "unknown" : entry.Function;
-			string source = entry.Source.Length == 0 ? "filename" : entry.Source;
-			stack += $"{indent}{++i}. {function} - {source}:{entry.Line}\n";
-		}
+		string stack = FormatLuaStack(error.Stack);
 
 		string message = error.Message;
 		string tag = "ERROR";

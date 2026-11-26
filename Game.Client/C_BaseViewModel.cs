@@ -83,7 +83,7 @@ public partial class C_BaseViewModel
 			drawnFlags = flags | StudioFlags.Transparency;
 			if ((flags & (StudioFlags.ShadowDepthTexture | StudioFlags.SSAODepthTexture)) != 0)
 				drawnFlags = flags & ~StudioFlags.Transparency;
-			weapon.ViewModelDrawn(this);
+			weapon.ViewModelDrawn(this, drawnFlags);
 		}
 
 		if ((drawnFlags & StudioFlags.Render) != 0 && weapon != null && player != null && gGM != null && gGM.CallWithArgs((int)LUA_POOLEDSTRING.PostDrawViewModel)) {
@@ -133,7 +133,7 @@ public partial class C_BaseViewModel
 
 			// Tell the weapon itself that we've rendered, in case it wants to do something
 			if (weapon != null)
-				weapon.ViewModelDrawn(this);
+				weapon.ViewModelDrawn(this, flags);
 		}
 
 		return ret;

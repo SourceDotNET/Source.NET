@@ -714,6 +714,7 @@ public class MatRenderContext : MatRenderContextBase, IMatRenderContextInternal
 	public void FogRadial(bool radial) => shaderAPI.SceneFogRadial(radial);
 
 	public bool GetFogRadial() => shaderAPI.GetSceneFogRadial();
+	public float GetFogMaxDensity() => shaderAPI.GetFogMaxDensity();
 
 	public void GMOD_FlushQueue() {
 		throw new NotImplementedException("Incomplete port of IMatRenderContext");

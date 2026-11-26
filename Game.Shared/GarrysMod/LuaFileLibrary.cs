@@ -792,12 +792,16 @@ public static partial class LuaFileLibrary
 			Bootil.String.Lower(ref fileName);
 
 		if (!IsFileAccessAllowed(fileName, path, false, false)) {
-			lua.PushNumber(-1);
+			AsyncReadEarlyReturn(lua, fileName, path);
 			return 1;
 		}
 
 		long size = filesystem.Size(fileName, path);
-		int bytes = size < 0 ? 0 : (int)size;
+		if (size <= 0) {
+			AsyncReadEarlyReturn(lua, fileName, path);
+			return 1;
+		}
+		int bytes = (int)size;
 
 		FileAsyncRequest request = new() {
 			FileName = fileName,
@@ -814,6 +818,20 @@ public static partial class LuaFileLibrary
 
 		lua.PushNumber((double)filesystem.AsyncRead(request));
 		return 1;
+	}
+
+	static void AsyncReadEarlyReturn(ILuaInterface lua, string fileName, string path) {
+		LuaObject callback = new(3, LuaType.None);
+		if (callback.isFunction()) {
+			callback.Push();
+			lua.PushString(fileName);
+			lua.PushString(path);
+			lua.PushNumber(-1);
+			lua.PushString("");
+			lua.CallInternalNoReturns(4);
+		}
+		callback.UnReference();
+		lua.PushNumber(-1);
 	}
 #endif
 

@@ -79,4 +79,5 @@ public interface IModelRender
 	bool DrawModelShadowSetup(IClientRenderable renderable, int body, int skin, ref Source.Common.DrawModelInfo info, Span<Matrix3x4> customBoneToWorld, out Span<Matrix3x4> boneToWorldOut);
 	void DrawModelShadow(IClientRenderable renderable, in Source.Common.DrawModelInfo info, Span<Matrix3x4> boneToWorld);
 	void SuppressEngineLighting(bool suppress);
+	void RestoreAllStaticPropColorData();
 }

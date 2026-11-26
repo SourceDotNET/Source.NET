@@ -76,6 +76,7 @@ public static class SourceDllMain
 	[Dependency] public static IInput input { get; private set; } = null!;
 	[Dependency] public static IModelRender modelrender { get; private set; } = null!;
 	[Dependency] public static IStudioRender studiorender { get; private set; } = null!;
+	[Dependency] public static RenderUtils renderUtils { get; private set; } = null!;
 	[Dependency] public static IVEfx effects { get; private set; } = null!;
 	[Dependency] public static IFileSystem filesystem { get; private set; } = null!;
 	[Dependency] public static ISchemeManager vguiSchemeManager { get; private set; } = null!;

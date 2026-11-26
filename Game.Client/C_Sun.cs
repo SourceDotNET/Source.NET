@@ -42,5 +42,5 @@ public partial class C_Sun : C_BaseEntity
 	public int OverlayMaterial;
 	// todo: RecvProxy_HDRColorScale
 	[NetworkVar("HDRColorScale")]
-	public int HDRColorScale;
+	public float HDRColorScale;
 }

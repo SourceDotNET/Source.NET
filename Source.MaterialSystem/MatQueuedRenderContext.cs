@@ -398,6 +398,7 @@ public sealed unsafe class MatQueuedRenderContext : MatRenderContextBase, IMatRe
 	}
 
 	public bool GetFogRadial() => FogRadialValue;
+	public float GetFogMaxDensity() => FogMaxDensityValue;
 
 	public MaterialFogMode GetFogMode() => FogModeValue;
 

@@ -987,7 +987,13 @@ public class MatSysInterface(IMaterialSystem materials, IServiceProvider service
 	}
 
 	public void WorldStaticMeshDestroy() {
+		using MatRenderContextPtr renderContext = new(materials);
 
+		Span<MeshList> meshes = Meshes.AsSpan();
+		for (int i = 0; i < meshes.Length; i++)
+			renderContext.DestroyStaticMesh(meshes[i].Mesh);
+		WorldStaticMeshes.Clear();
+		Meshes.Clear();
 	}
 
 	public ConVar mat_loadtextures = new("1", 0);

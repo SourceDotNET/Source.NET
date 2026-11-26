@@ -128,7 +128,15 @@ public class LuaGameSystem : AutoGameSystemPerFrame, IGameEventListener2
 		return true;
 	}
 
+#if GAME_DLL
+	public override void LevelShutdownPostEntity() {
+		// todo: EmptyLoopingSounds();
+		LuaGame.ResetMapCleanupSchedule();
+		// todo: RemoveQueuedRecipientFilters();
+	}
+#else
 	// todo LevelShutdownPostEntity
+#endif
 
 	public void FireGameEvent(IGameEvent ev) {
 #if CLIENT_DLL

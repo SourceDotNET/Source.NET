@@ -951,7 +951,13 @@ IModelLoader modelloader, ICommandLine commandLine,
 
 		return tickTime + TickRemainder;
 	}
-	public bool IsPaused() => Paused;
+	public bool IsPaused() {
+		return Paused ||
+			// todo: (g_LostVideoMemory && Host.IsSinglePlayerGame()) ||
+			!Host.Initialized ||
+			// todo: demoplayer.IsPlaybackPaused() ||
+			(EngineVGui != null && EngineVGui.ShouldPause());
+	}
 	public double GetPausedExpireTime() => PausedExpireTime;
 	public double GetFrameTime() {
 		if (!ClockDriftMgr.Enabled && InSimulation) {

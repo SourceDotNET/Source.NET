@@ -973,6 +973,7 @@ public class ShaderAPIGl46 : IShaderAPI, IShaderDevice, IDebugTextureInfo
 	}
 
 	public bool GetSceneFogRadial() => SceneFogRadialValue;
+	public float GetFogMaxDensity() => FogMaxDensityValue;
 
 	private void InitVertexAndPixelShaders() {
 		// TODO; everything before this call

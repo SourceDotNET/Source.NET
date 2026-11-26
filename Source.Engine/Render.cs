@@ -821,7 +821,7 @@ public partial class Render(
 		}
 	}
 
-	private void RedownloadAllLightmaps() {
+	public void RedownloadAllLightmaps() {
 		double st = Sys.Time;
 
 		bool onlyUseLightStyles = false;

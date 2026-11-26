@@ -327,15 +327,15 @@ public class GarrysMod : IGarrysMod
 
 	static readonly string[] OverridableEntities = [
 		"point_servercommand", "point_teleport", "point_viewcontrol", "env_credits", "env_hudhint", "env_screenoverlay", "env_zoom",
-		"filter_activator_team", "filter_activator_context", "game_player_equip", "info_npc_spawn_destination", "logic_auto",
+		"env_message", "filter_activator_team", "filter_activator_context", "game_player_equip", "info_npc_spawn_destination", "logic_auto",
 		"player_loadsaved", "player_speedmod", "npc_template_maker", "npc_maker", "prop_physics_respawnable", "trigger_auto",
 		"trigger_changelevel", "trigger_hurt", "trigger_multiple", "trigger_once", "trigger_teleport", "trigger_transition",
-		"trigger_push", "ambient_generic", "func_pushable", "func_healthcharger", "func_recharge", "func_tankmortar",
+		"trigger_push", "trigger_portal_cleanser", "ambient_generic", "func_pushable", "func_healthcharger", "func_recharge", "func_tankmortar",
 		"item_suitcharger", "item_healthcharger", "item_longjump", "item_suit", "item_healthkit", "item_battery", "weaponbox",
 		"speaker", "monster_satchel", "monster_tripmine", "info_player_teamspawn", "info_vehicle_groundspawn", "ammo_crossbow",
 		"ammo_egonclip", "ammo_gaussclip", "ammo_glockclip", "ammo_9mmclip", "ammo_mp5clip", "ammo_9mmar", "ammo_9mmbox",
 		"ammo_mp5grenades", "ammo_argrenades", "ammo_357", "ammo_rpgclip", "ammo_buckshot", "bounce_bomb", "combine_bouncemine",
-		"combine_mine", "prop_car_alarm", "prop_car_glass", "prop_health_cabinet", "asw_door", "dod_control_point",
+		"combine_mine", "npc_portal_turret_floor", "npc_turret_floor", "npc_ichthyosaur", "prop_car_alarm", "prop_car_glass", "prop_health_cabinet", "asw_door", "dod_control_point",
 		"team_control_point", "prop_portal_stats_display", "npc_personality_core", "prop_tractor_beam", "prop_under_floor_button",
 		"prop_floor_ball_button", "prop_floor_cube_button", "prop_under_button", "prop_floor_button", "prop_button",
 		"prop_indicator_panel", "prop_testchamber_door", "prop_wall_projector", "npc_wheatley_boss", "prop_laser_relay",
@@ -704,7 +704,7 @@ public class GarrysMod : IGarrysMod
 			LuaTimer.Cycle();
 			LuaFileLibrary.AsyncCycle();
 #endif
-			// HTTP.Cycle();
+			LuaHTTP.Cycle();
 			// ErrorReporter.RunQueue();
 		}
 		// AutoRefresh.Cycle();

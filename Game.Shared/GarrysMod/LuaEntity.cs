@@ -1033,7 +1033,12 @@ public static partial class LuaEntity
 	[LuaMethod]
 	static int Entity__DrawModel(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
-		ent.DrawModel((StudioFlags)(int)lua.CheckNumberOpt(2, (int)StudioFlags.Render));
+		double flags = lua.CheckNumberOpt(2, (int)StudioFlags.Render);
+		if (ent.EntIndex() == 0) {
+			lua.ErrorNoHalt("Trying to call DrawModel on the world entity, this will not work.");
+			return 0;
+		}
+		ent.DrawModel((StudioFlags)(int)flags);
 		return 0;
 	}
 #endif
@@ -1175,6 +1180,27 @@ public static partial class LuaEntity
 				lua.SetTable(-3);
 			}
 			lua.SetField(-2, "submodels");
+			lua.SetTable(-3);
+		}
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__GetAttachments(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		StudioHdr? studioHdr = animating != null && !ent.IsEFlagSet(EFL.KillMe) && !animating.IsDynamicModelLoading() ? animating.GetModelPtr() : null;
+		lua.CreateTable();
+		if (studioHdr == null)
+			return 1;
+
+		for (int i = 0; i < studioHdr.GetNumAttachments(); i++) {
+			lua.PushNumber(i + 1);
+			lua.CreateTable();
+			lua.PushString(studioHdr.Attachment(i).Name());
+			lua.SetField(-2, "name");
+			lua.PushNumber(i + 1);
+			lua.SetField(-2, "id");
 			lua.SetTable(-3);
 		}
 		return 1;
@@ -1512,6 +1538,19 @@ public static partial class LuaEntity
 		if (animating.Skin != skin)
 			animating.Skin = skin;
 		return 0;
+	}
+
+	[LuaMethod]
+	static int Entity__GetModelBounds(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		Model? model = ent.GetModel();
+		if (model == null)
+			return 0;
+
+		modelinfo.GetModelBounds(model, out Vector3 mins, out Vector3 maxs);
+		LuaVector.Push_Vector(mins);
+		LuaVector.Push_Vector(maxs);
+		return 2;
 	}
 
 	[LuaMethod]
@@ -2197,7 +2236,7 @@ public static partial class LuaEntity
 		TypeDescription? td = null;
 		for (DataMap? map = ent.GetDataDescMap(); map != null && td == null; map = map.BaseMap) {
 			foreach (TypeDescription field in map.DataDesc) {
-				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(ReallyUglyHack(name), field.FieldName) == 0))) {
 					td = field;
 					break;
 				}
@@ -2206,7 +2245,7 @@ public static partial class LuaEntity
 #if CLIENT_DLL
 		for (DataMap? map = ent.GetPredDescMap(); map != null && td == null; map = map.BaseMap) {
 			foreach (TypeDescription field in map.DataDesc) {
-				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(ReallyUglyHack(name), field.FieldName) == 0))) {
 					td = field;
 					break;
 				}
@@ -2427,6 +2466,18 @@ public static partial class LuaEntity
 		}
 	}
 
+	// FIXME FIXME FIXME
+	// datadesc stores c# names rn..
+	static ReadOnlySpan<char> ReallyUglyHack(ReadOnlySpan<char> name) {
+		if (name.Length < 3 || name[0] != 'm' || name[1] != '_')
+			return name;
+		name = name[2..];
+		int i = 0;
+		while (i < name.Length && char.IsLower(name[i]))
+			i++;
+		return i == name.Length ? name : name[i..];
+	}
+
 	[LuaMethod]
 	static int Entity__GetInternalVariable(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
@@ -2435,7 +2486,7 @@ public static partial class LuaEntity
 		TypeDescription? td = null;
 		for (DataMap? map = ent.GetDataDescMap(); map != null && td == null; map = map.BaseMap) {
 			foreach (TypeDescription field in map.DataDesc) {
-				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(ReallyUglyHack(name), field.FieldName) == 0))) {
 					td = field;
 					break;
 				}
@@ -2444,7 +2495,7 @@ public static partial class LuaEntity
 #if CLIENT_DLL
 		for (DataMap? map = ent.GetPredDescMap(); map != null && td == null; map = map.BaseMap) {
 			foreach (TypeDescription field in map.DataDesc) {
-				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(name, field.FieldName) == 0))) {
+				if (field.Flags != FieldTypeDescFlags.Input && (field.Flags & FieldTypeDescFlags.Output) == 0 && ((field.ExternalName.Length != 0 && stricmp(name, field.ExternalName) == 0) || (field.FieldName.Length != 0 && stricmp(ReallyUglyHack(name), field.FieldName) == 0))) {
 					td = field;
 					break;
 				}
@@ -2517,6 +2568,13 @@ public static partial class LuaEntity
 	static int Entity__GetGroundEntity(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;
 		Push_Entity(ent.GetGroundEntity());
+		return 1;
+	}
+
+	[LuaMethod]
+	static int Entity__SetGroundEntity(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		ent.SetGroundEntity(Get_Entity(2, true));
 		return 1;
 	}
 
@@ -3320,6 +3378,32 @@ public static partial class LuaEntity
 		ent.GetBaseAnimating()?.InvalidateBoneCache();
 		return 0;
 	}
+#endif
+
+	[LuaMethod]
+	static int Entity__GetBonePosition(ILuaInterface lua) {
+		BaseEntity ent = Get_Entity(1, false)!;
+		BaseAnimating? animating = ent.GetBaseAnimating();
+		if (animating == null || ent.IsEFlagSet(EFL.KillMe))
+			return 0;
+
+		int bone = (int)lua.CheckNumber(2);
+		if (bone < 0)
+			return 0;
+
+#if CLIENT_DLL
+		if (animating.IsDynamicModelLoading())
+			return 0;
+#endif
+		StudioHdr? hdr = animating.GetModelPtr();
+		if (hdr == null || bone >= hdr.NumBones())
+			return 0;
+
+		animating.GetBonePosition(bone, out Vector3 origin, out QAngle angles);
+		LuaVector.Push_Vector(origin);
+		LuaAngle.Push_Angle(angles);
+		return 2;
+	}
 
 	[LuaMethod]
 	static int Entity__GetBoneMatrix(ILuaInterface lua) {
@@ -3333,6 +3417,7 @@ public static partial class LuaEntity
 			return 0;
 
 		mdlcache.BeginLock();
+#if CLIENT_DLL
 		if (!animating.IsDynamicModelLoading()) {
 			StudioHdr? hdr = animating.GetModelPtr();
 			if (hdr != null && bone < hdr.NumBones() && (animating.AccumulatedBoneMask & hdr.BoneFlags(bone)) != 0) {
@@ -3343,10 +3428,22 @@ public static partial class LuaEntity
 				return 1;
 			}
 		}
+#else
+		StudioHdr? hdr = animating.GetModelPtr();
+		if (hdr != null && bone < hdr.NumBones()) {
+			animating.GetBoneTransform(bone, out Matrix3x4 boneToWorld);
+			Matrix4x4 matrix = default;
+			matrix.Init(boneToWorld);
+			LuaVMatrix.Push_VMatrix(matrix);
+			mdlcache.EndLock();
+			return 1;
+		}
+#endif
 		mdlcache.EndLock();
 		return 0;
 	}
 
+#if CLIENT_DLL
 	[LuaMethod]
 	static int Entity__SetupBones(ILuaInterface lua) {
 		BaseEntity ent = Get_Entity(1, false)!;

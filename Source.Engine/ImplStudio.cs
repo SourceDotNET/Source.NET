@@ -1403,6 +1403,18 @@ public class ModelRender : IModelRender
 		}
 	}
 
+	public void RestoreAllStaticPropColorData() {
+#if !SWDS
+		if (host_state.WorldModel == null)
+			return;
+
+		Render.InvalidateStaticLightingCache();
+
+		foreach (KeyValuePair<ModelInstanceHandle_t, ModelInstance> instance in ModelInstances)
+			UpdateStaticPropColorData(instance.Value.Renderable!.GetIClientUnknown(), instance.Key);
+#endif
+	}
+
 	private bool UpdateStaticPropColorData(IHandleEntity? pProp, ModelInstanceHandle_t handle) {
 #if !SWDS
 		ColorMeshData? colorMeshData = FindOrCreateStaticPropColorData(handle);

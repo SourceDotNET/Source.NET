@@ -5,10 +5,6 @@ using Source.Common.Steam;
 
 using Steamworks;
 
-#if GAME_DLL
-using SteamHTTP = Steamworks.SteamGameServerHTTP;
-#endif
-
 #if CLIENT_DLL
 namespace Game.Client.GarrysMod;
 #elif MENU_DLL
@@ -161,18 +157,18 @@ public class LuaHTTPRequest
 
 	void Send() {
 		string method = (Table.GetMemberStr("method", "get") ?? "get").ToLowerInvariant();
-		Request = SteamHTTP.CreateHTTPRequest(MethodFromName(method), Url);
+		Request = get.SteamHTTP()!.CreateHTTPRequest(MethodFromName(method), Url);
 		if (Request == HTTPRequestHandle.Invalid) {
 			Fail("invalid request");
 			return;
 		}
 
-		ForEachStringPair("headers", (key, value) => SteamHTTP.SetHTTPRequestHeaderValue(Request, key, value));
-		ForEachStringPair("parameters", (key, value) => SteamHTTP.SetHTTPRequestGetOrPostParameter(Request, key, value));
+		ForEachStringPair("headers", (key, value) => get.SteamHTTP()!.SetHTTPRequestHeaderValue(Request, key, value));
+		ForEachStringPair("parameters", (key, value) => get.SteamHTTP()!.SetHTTPRequestGetOrPostParameter(Request, key, value));
 
 		string type = Table.GetMemberStr("type", "text/plain; charset=utf-8") ?? "";
 		int timeout = Math.Clamp(Table.GetMemberInt("timeout", 60), 1, 3600);
-		SteamHTTP.SetHTTPRequestNetworkActivityTimeout(Request, (uint)timeout);
+		get.SteamHTTP()!.SetHTTPRequestNetworkActivityTimeout(Request, (uint)timeout);
 
 		LuaObject body = new();
 		Table.GetMember("body", body);
@@ -186,11 +182,11 @@ public class LuaHTTPRequest
 			body.Push();
 			byte[] bytes = g_Lua!.GetStringBytes(-1).ToArray();
 			g_Lua.Pop(1);
-			SteamHTTP.SetHTTPRequestRawPostBody(Request, type, bytes, (uint)bytes.Length);
+			get.SteamHTTP()!.SetHTTPRequestRawPostBody(Request, type, bytes, (uint)bytes.Length);
 		}
 		body.UnReference();
 
-		if (!SteamHTTP.SendHTTPRequest(Request, out SteamAPICall_t call)) {
+		if (!get.SteamHTTP()!.SendHTTPRequest(Request, out SteamAPICall_t call)) {
 			Fail("invalid request");
 			return;
 		}
@@ -213,26 +209,26 @@ public class LuaHTTPRequest
 		}
 
 		if (!result.m_bRequestSuccessful) {
-			SteamHTTP.GetHTTPRequestWasTimedOut(result.m_hRequest, out bool timedOut);
+			get.SteamHTTP()!.GetHTTPRequestWasTimedOut(result.m_hRequest, out bool timedOut);
 			Fail(timedOut ? "timeout" : "unsuccessful");
 			return;
 		}
 
 		LuaTable headers = new();
 		foreach (string name in ResponseHeaders) {
-			if (!SteamHTTP.GetHTTPResponseHeaderSize(Request, name, out uint size))
+			if (!get.SteamHTTP()!.GetHTTPResponseHeaderSize(Request, name, out uint size))
 				continue;
 
 			byte[] value = new byte[size];
-			if (SteamHTTP.GetHTTPResponseHeaderValue(Request, name, value, size)) {
+			if (get.SteamHTTP()!.GetHTTPResponseHeaderValue(Request, name, value, size)) {
 				int length = Array.IndexOf(value, (byte)0);
 				headers.SetMember(name, length < 0 ? value : value.AsSpan(0, length));
 			}
 		}
 
-		SteamHTTP.GetHTTPResponseBodySize(result.m_hRequest, out uint bodySize);
+		get.SteamHTTP()!.GetHTTPResponseBodySize(result.m_hRequest, out uint bodySize);
 		byte[] responseBody = new byte[bodySize];
-		SteamHTTP.GetHTTPResponseBodyData(result.m_hRequest, responseBody, bodySize);
+		get.SteamHTTP()!.GetHTTPResponseBodyData(result.m_hRequest, responseBody, bodySize);
 
 		LuaObject success = new();
 		Table.GetMember("success", success);
@@ -252,7 +248,7 @@ public class LuaHTTPRequest
 	void Delete() {
 		RequestCompleted.Dispose();
 		if (Request != HTTPRequestHandle.Invalid) {
-			SteamHTTP.ReleaseHTTPRequest(Request);
+			get.SteamHTTP()!.ReleaseHTTPRequest(Request);
 			Request = HTTPRequestHandle.Invalid;
 		}
 		Table.UnReference();
@@ -263,6 +259,20 @@ public class LuaHTTPRequest
 
 public static partial class LuaHTTP
 {
+	static readonly List<LuaObject> PendingHTTPRequests = [];
+
+	public static void Cycle() {
+		if (get.SteamHTTP() == null || PendingHTTPRequests.Count == 0)
+			return;
+
+		foreach (LuaObject table in PendingHTTPRequests) {
+			if (!table.isNil())
+				LuaHTTPRequest.Create(table);
+			table.UnReference();
+		}
+		PendingHTTPRequests.Clear();
+	}
+
 	static void CallFailed(ILuaObject table, string reason) {
 		LuaObject failed = new();
 		table.GetMember("failed", failed);
@@ -290,17 +300,14 @@ public static partial class LuaHTTP
 			return 1;
 		}
 
-#if GAME_DLL
-		if (!SteamworksExts.HasSteamGameServer()) {
-#else
-		if (!SteamworksExts.HasSteamHTTP()) {
-#endif
-			lua.ErrorFromLua("HTTP failed - ISteamHTTP isn't available!\n");
-			lua.PushBool(false);
-			return 1;
+		if (get.SteamHTTP() != null)
+			LuaHTTPRequest.Create(table);
+		else {
+			LuaObject pending = new();
+			pending.Set(table);
+			PendingHTTPRequests.Add(pending);
 		}
 
-		LuaHTTPRequest.Create(table);
 		lua.PushBool(true);
 		return 1;
 	}

@@ -1051,20 +1051,37 @@ public static class UnmanagedUtils
 	}
 
 	public static void FileBase(this ReadOnlySpan<char> inSpan, Span<char> outSpan) {
-		// Strip inSpan until we reach a .
-		while (inSpan.Length > 0 && inSpan[^1] != '.')
-			inSpan = inSpan[..^1];
-		// Strip the period
-		inSpan = inSpan[..^1];
+		inSpan = inSpan.SliceNullTerminatedString();
+		if (inSpan.IsEmpty) {
+			if (!outSpan.IsEmpty)
+				outSpan[0] = '\0';
+			return;
+		}
 
-		// Then repeat the same process, except for a slash
-		int lenPtr = inSpan.Length - 1;
-		while (lenPtr > 0 && (inSpan[lenPtr] != '/' && inSpan[lenPtr] != '\\'))
-			lenPtr--;
-		// This should be the final span
-		inSpan = inSpan[(lenPtr + 1)..];
-		// Then copy 
-		inSpan.ClampedCopyTo(outSpan);
+		int len = inSpan.Length;
+
+		int end = len - 1;
+		while (end != 0 && inSpan[end] != '.' && !StrTools.IsPathSeparator(inSpan[end]))
+			end--;
+
+		if (inSpan[end] != '.')
+			end = len - 1;
+		else
+			end--;
+
+		int start = len - 1;
+		while (start >= 0 && !StrTools.IsPathSeparator(inSpan[start]))
+			start--;
+
+		if (start < 0 || !StrTools.IsPathSeparator(inSpan[start]))
+			start = 0;
+		else
+			start++;
+
+		len = end - start + 1;
+
+		int maxcopy = Math.Min(len + 1, outSpan.Length);
+		strcpy(outSpan[..maxcopy], inSpan[start..(start + Math.Max(len, 0))]);
 	}
 
 	public static ReadOnlySpan<char> UnqualifiedFileName(this ReadOnlySpan<char> input) {

@@ -878,16 +878,19 @@ public partial class
 
 		ILuaInterface lua = g_Lua!;
 		filters.Push();
-		lua.PushNil();
-		while (lua.Next(-2)) {
-			if (lua.GetString(-1) is string value && className.SequenceEqual(value)) {
-				lua.Pop(3);
+		for (int i = 1; ; i++) {
+			lua.PushNumber(i);
+			lua.GetTable(-2);
+			if (lua.GetType(-1) != LuaType.String) {
+				lua.Pop(2);
+				return false;
+			}
+			if (strcmp(lua.GetString(-1), className) == 0) {
+				lua.Pop(2);
 				return true;
 			}
 			lua.Pop(1);
 		}
-		lua.Pop(1);
-		return false;
 	}
 
 	sealed class GMODMapEntityFilter(ILuaObject? filters) : IMapEntityFilter
@@ -917,8 +920,8 @@ public partial class
 	public void CleanUpMap(ILuaObject? filters) {
 		BaseEntity? ent = gEntList.FirstEnt();
 		AI_DynamicLink.gm_bInitialized = false;
-		// todo: AI_DynamicLink.PurgeDynamicLinks();
-		// todo: AI_DynamicLink.ResetStates();
+		AI_DynamicLink.PurgeDynamicLinks();
+		AI_DynamicLink.ResetDynamicLinks();
 
 		CleaningUpMap = true;
 		while (ent != null) {
@@ -943,7 +946,7 @@ public partial class
 		MapEntity_ParseAllEntities(engine.GetMapEntitiesString(), new GMODMapEntityFilter(filters), true);
 
 		AI_DynamicLink.InitDynamicLinks();
-		// todo: unidentified reset call that follows InitDynamicLinks
+		Game.Server.NavMesh.NavMesh.Instance?.Load();
 	}
 #endif
 }

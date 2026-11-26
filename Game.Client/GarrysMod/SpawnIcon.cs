@@ -548,7 +548,7 @@ public class SpawnIcon : Panel
 		string path = SpawnIconPath;
 		Bootil.String.File.ExtractFilename(ref path);
 		Bootil.String.File.StripExtension(ref path);
-		string cmd = "mat_reloadmaterial " + path + "\n";
+		string cmd = "mat_reloadmaterial \"" + path + "\"\n";
 		if (!cmd.Contains(';'))
 			engine.ClientCmd(cmd);
 	}

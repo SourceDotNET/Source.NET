@@ -88,6 +88,11 @@ public class FrameSnapshotManager
 	public virtual void LevelChanged() {
 		Assert(FrameSnapshots.Count == 0);
 
+		for (int i = 0; i < Constants.MAX_EDICTS; i++) {
+			if (PackedData[i] != INVALID_PACKED_ENTITY_HANDLE)
+				RemoveEntityReference(PackedData[i]);
+		}
+
 		PackedEntityCache.Clear();
 		HandleMap.Clear();
 		_nextHandle = 1;

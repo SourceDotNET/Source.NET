@@ -270,6 +270,9 @@ public partial class CL(IServiceProvider services, Net Net,
 
 		if (!engineClient.IsLevelMainMenuBackground())
 			Host.AllowQueuedMaterialSystem(true);
+
+		if (cl.MaxClients == 1 /* && !demoplayer.IsPlayingBack() */)
+			Scr.NextDrawTick = Host.TickCount + TIME_TO_TICKS(0.25f);
 	}
 
 	public void Connect(ReadOnlySpan<char> address, string sourceTag) {
