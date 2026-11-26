@@ -929,7 +929,7 @@ public partial class BaseFileSystem : IFileSystem
 				ISearchPath? searchPath = collection.AtSorted(i);
 				if (searchPath == null)
 					break;
-				if (searchPath is not DiskSearchPath)
+				if (searchPath is not DiskSearchPath { Workshop: true })
 					continue;
 
 				ReadOnlySpan<char> path = searchPath.GetPathString();
@@ -1026,6 +1026,10 @@ public partial class BaseFileSystem : IFileSystem
 		void PrepareFinds(ISearchPath path) {
 			files!.Clear();
 			dirs!.Clear();
+#if GMOD_DLL
+			if (path is DiskSearchPath { Workshop: true })
+				return;
+#endif
 			path.PrepareFinds(files, dirs, Wildcard.String());
 			for (int i = dirs.Count - 1; i >= 0; i--)
 				if (!foundAlready!.Add(dirs[i].Hash()))

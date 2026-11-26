@@ -45,6 +45,14 @@ public struct UtlSymbol
 		ValidId = id != UTL_INVAL_SYMBOL;
 	}
 	public readonly string? String() => CurrTable().String(id);
+	public readonly char this[int i] {
+		get {
+			string? str = String();
+			if (str != null && i < str.Length)
+				return str[i];
+			return '\0';
+		}
+	}
 	public readonly bool IsValid() => ValidId && id != UTL_INVAL_SYMBOL;
 	public readonly UtlSymId_t Id => ValidId ? id : UTL_INVAL_SYMBOL;
 

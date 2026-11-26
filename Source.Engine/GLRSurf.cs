@@ -1693,6 +1693,11 @@ public class BrushBatchRender
 	public static readonly MaterialReference BrushMaterialOverride = new();
 
 	public void DrawOpaqueBrushModel(IClientEntity? baseEntity, Model? model, in Vector3 origin, RenderDepthMode depthMode) {
+		if (model!.StrName[0] != '*') {
+			Warning("DrawOpaqueBrushModel: Refusing to render the map on an entity to prevent crashes!\n");
+			return;
+		}
+
 		SurfaceHandle_t firstSurfID = model!.Brush.FirstModelSurface;
 
 		BrushRender? render = FindOrCreateRenderBatch(model);
@@ -1815,6 +1820,11 @@ public class BrushBatchRender
 	}
 
 	private void DrawTranslucentBrushModel(Model? model, IClientEntity? baseEntity) {
+		if (model!.StrName[0] != '*') {
+			Warning("DrawTranslucentBrushModel: Refusing to render the map on an entity to prevent crashes!\n");
+			return;
+		}
+
 		TransRender renderT = new() {
 			LastBatch = -1,
 			LastNode = -1,
