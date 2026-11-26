@@ -520,7 +520,7 @@ public class ViewRender : IViewRender
 				renderContext.Flush();
 			}
 #if GMOD_DLL
-			gGM?.Call((int)Source.Common.GarrysMod.Lua.LUA_POOLEDSTRING.PostRender);
+			gGM?.Call((int)LUA_POOLEDSTRING.PostRender);
 #endif
 		}
 

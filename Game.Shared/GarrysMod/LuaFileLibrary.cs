@@ -821,7 +821,7 @@ public static partial class LuaFileLibrary
 	}
 
 	static void AsyncReadEarlyReturn(ILuaInterface lua, string fileName, string path) {
-		using LuaObject callback = new(3, LuaType.None);
+		LuaObject callback = new(3, LuaType.None);
 		if (callback.isFunction()) {
 			callback.Push();
 			lua.PushString(fileName);
@@ -830,6 +830,7 @@ public static partial class LuaFileLibrary
 			lua.PushString("");
 			lua.CallInternalNoReturns(4);
 		}
+		callback.UnReference();
 		lua.PushNumber(-1);
 	}
 #endif
