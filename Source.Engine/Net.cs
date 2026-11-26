@@ -1040,7 +1040,7 @@ public class Net
 		}
 		else {
 			// split packet into smaller pieces
-			ret = SendLong(chan!, sock, netSocket, data, length, addr, maxRoutable);
+			ret = SendLong(chan, sock, netSocket, data, length, addr, maxRoutable);
 		}
 
 	end:
@@ -1071,7 +1071,7 @@ public class Net
 		return numbers;
 	}
 
-	public unsafe int SendLong(NetChannel netchan, NetSocketType sock, Socket s, byte[] buf, int len, NetAddress to, int maxRoutable) {
+	public unsafe int SendLong(NetChannel? netchan,NetSocketType sock, Socket s, byte[] buf, int len, NetAddress to, int maxRoutable) {
 		short splitSizeMinusHeader = (short)(maxRoutable - sizeof(SPLITPACKET));
 
 		int sequenceNumber = -1;

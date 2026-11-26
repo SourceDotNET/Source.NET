@@ -1371,7 +1371,7 @@ public abstract class BaseServer : IServer
 		}
 
 		if (simultaneouslyConnections > MAX_REUSE_PER_IP) {
-			Msg($"Too many connect packets from {adr}\n");
+			Msg($"Too many connect packets from {adr.ToString(true)}\n");
 			return false;
 		}
 
@@ -1402,9 +1402,10 @@ public abstract class BaseServer : IServer
 		}
 		Net.SendPacket(null!, Socket, adr, msg.GetData(), msg.BytesWritten);
 	}
+	readonly byte[] ServerChallengeBuffer = new byte[16];
+
 	protected virtual void ReplyServerChallenge(NetAddress adr) {
-		byte[] buffer = new byte[16];
-		bf_write msg = new(buffer, buffer.Length);
+		bf_write msg = new(ServerChallengeBuffer, ServerChallengeBuffer.Length);
 
 		int challengeNr = GetChallengeNr(adr);
 
